@@ -9,7 +9,7 @@ import seaborn as sns
 from shutil import rmtree
 from skimage.io import imsave
 
-from ark.mibi.mibitracker_utils import MibiRequests
+from creed.mibitracker_utils import MibiRequests
 
 import ark.settings as settings
 import ark.utils.io_utils as io_utils
