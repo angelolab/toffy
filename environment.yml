@@ -2,7 +2,8 @@ name: bin_tools_env
 dependencies:
   - python=3.8
   - pip:
-    - git+https://github.com/angelolab/mibi-bin-tools.git@main 
+    - git+https://github.com/angelolab/mibi-bin-tools.git@master
+    - git+https://github.com/angelolab/ark-analysis.git@master
     - jupyter>=1.0.0,<2
     - jupyter_contrib_nbextensions>=0.5.1,<1
     - jupyterlab>=3.1.5,<4
