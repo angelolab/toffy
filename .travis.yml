@@ -25,7 +25,7 @@ cache: pip
 
 script:
   - python -m pip install --editable .
-  - python -m pytest --cov=creed --pycodestyle tests/* creed
+  - python -m pytest --cov=creed --pycodestyle creed
 
 after_success:
   - coveralls
