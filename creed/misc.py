@@ -2,6 +2,14 @@ from ark.utils import io_utils
 
 
 def extract_sweep_parameters(sweep_name):
+    """Performs string manipulations to get the sweep parameters from an FOV folder
+
+    Args:
+        sweep_name: the name of a folder containing a single FOV of a detector sweep
+
+    Returns
+        tuple: the extracted voltage, date, and time"""
+
     _, voltage, date, time = sweep_name.split('_')
     voltage = int(voltage[:-1])
     time = time.replace('-', '')
@@ -10,6 +18,17 @@ def extract_sweep_parameters(sweep_name):
 
 
 def find_detector_sweep_folders(data_dir, first_fov, last_fov, sweep_step=25):
+    """Generates the names of all folders from a single detector sweep
+
+    Args:
+        data_dir: directory where runs are saved
+        first_fov: the name of the first FOV from the detector sweep
+        last_fov: the name of the last FOV from the detector sweep
+        sweep_step: the voltage increase between FOVs in the detector sweep
+
+    Returns:
+        list: the names of all detector sweep folders"""
+
     first_voltage, first_date, first_time = extract_sweep_parameters(first_fov)
     last_voltage, last_date, last_time = extract_sweep_parameters(last_fov)
 
