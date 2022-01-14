@@ -1,4 +1,10 @@
-dist: xenial
+jobs:
+  include:
+    -
+      os: linux
+      dist: xenial
+    -
+      os: windows
 
 git:
   depth: false
