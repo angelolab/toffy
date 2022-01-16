@@ -11,7 +11,7 @@ from sklearn.utils import shuffle
 
 from dataclasses import dataclass
 
-import ark.settings as settings
+from creed import settings
 from ark.utils import misc_utils
 
 
