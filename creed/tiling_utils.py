@@ -332,8 +332,8 @@ def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_righ
 
     for i in range(num_x):
         for j in range(num_y):
-            x_coord = top_left.x + x_baseline * i + y_increment * i
-            y_coord = top_left.y + y_baseline * j + x_increment * j
+            x_coord = top_left.x + x_baseline * i + x_increment * j
+            y_coord = top_left.y + y_baseline * j + y_increment * i
             pairs.append((int(x_coord), int(y_coord)))
 
     return pairs
