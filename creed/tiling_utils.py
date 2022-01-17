@@ -308,7 +308,7 @@ def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_righ
     bottom_y_shift = bottom_right.y - bottom_left.y
 
     # average between the two will be used to increment indices
-    avg_y_shift = (top_y_shift + bottom_y_shift) / 2
+    -avg_y_shift = (top_y_shift + bottom_y_shift) / 2
 
     # compute shift in x across the sides of the tma
     left_x_shift = bottom_left.x - top_left.x
