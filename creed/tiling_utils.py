@@ -302,6 +302,18 @@ def generate_x_y_fov_pairs(x_range, y_range):
 
 
 def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_right, num_x, num_y):
+    """Generates coordinates of FOVs as defined by corners of a rhombus
+
+    Args:
+        top_left (dataclass): coordinate of top left corner
+        top_right (dataclass): coordinate of top right corner
+        bottom_left (dataclass): coordinate of bottom right corner
+        bottom_right (dataclass): coordiante of bottom right corner
+        num_x (int): number of fovs on x dimension
+        num_y (int): number of fovs on x dimension
+
+    Returns:
+        list: coordinates for all FOVs defined by region"""
 
     # compute shift in y across the top and bottom of the TMA
     top_y_shift = top_right.y - top_left.y
@@ -442,10 +454,19 @@ def tiled_region_generate_fov_list(tiling_params, moly_point):
     return fov_regions
 
 
-def validate_tma_corners(upper_left, upper_right, bottom_left, bottom_right):
-    # TODO: all pairwise comparisons?
+def validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
+    """Ensures that the provided TMA corners match assumptions
 
-    if upper_left.x > upper_right.x:
+    Args:
+        top_left (dataclass): coordinate of top left corner
+        top_right (dataclass): coordinate of top right corner
+        bottom_left (dataclass): coordinate of bottom right corner
+        bottom_right (dataclass): coordiante of bottom right corner
+
+    """
+    # TODO: should we programmatically validate all pairwise comparisons?
+
+    if top_left.x > top_right.x:
         raise ValueError("Invalid corner file: The upper left corner is "
                          "to the right of the upper right corner")
 
@@ -453,11 +474,11 @@ def validate_tma_corners(upper_left, upper_right, bottom_left, bottom_right):
         raise ValueError("Invalid corner file: The bottom left corner is "
                          "to the right of the bottom right corner")
 
-    if upper_left.y < bottom_left.y:
+    if top_left.y < bottom_left.y:
         raise ValueError("Invalid corner file: The upper left corner is "
                          "below the bottom left corner")
 
-    if upper_right.y < bottom_right.y:
+    if top_right.y < bottom_right.y:
         raise ValueError("Invalid corner file: The upper right corner is "
                          "below the bottom right corner")
 
