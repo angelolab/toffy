@@ -1,3 +1,4 @@
+from dataclasses import dataclass
 from ark.utils import io_utils, misc_utils
 
 
@@ -54,7 +55,8 @@ def find_detector_sweep_folders(data_dir, first_fov, last_fov, sweep_step=25):
     pred_sweep_voltages = range(first_sweep.voltage + sweep_step, last_sweep.voltage, sweep_step)
     obs_sweep_voltages = [parse_sweep_parameters(sweep).voltage for sweep in potential_sweeps]
 
-    misc_utils.verify_same_elements(pred_sweep_voltages, obs_sweep_voltages)
+    misc_utils.verify_same_elements(predicted_voltages=pred_sweep_voltages,
+                                    observed_voltages=obs_sweep_voltages)
 
     final_folder_list = [first_fov] + potential_sweeps + [last_fov]
 
