@@ -9,7 +9,7 @@ import os
 from skimage.draw import ellipse
 from sklearn.utils import shuffle
 
-import ark.settings as settings
+from creed import settings
 from ark.utils import misc_utils
 
 
@@ -117,7 +117,7 @@ def generate_region_info(region_params):
     return region_params_list
 
 
-def tiled_region_read_input(fov_list_info, region_params):
+def read_tiled_region_inputs(fov_list_info, region_params):
     """Reads input for tiled regions from user and `fov_list_info`.
 
     Updates all the tiling params inplace. Units used are microns.
@@ -129,7 +129,7 @@ def tiled_region_read_input(fov_list_info, region_params):
             A `dict` mapping each region-specific parameter to a list of values per FOV
     """
 
-    # read in the data for each fov (region_start from fov_list_path, all others from user)
+    # read in the data for each fov (region_start from region_corners_path, all others from user)
     for fov in fov_list_info['fovs']:
         region_params['region_start_x'].append(fov['centerPointMicrons']['x'])
         region_params['region_start_y'].append(fov['centerPointMicrons']['y'])
@@ -183,13 +183,13 @@ def tiled_region_read_input(fov_list_info, region_params):
         region_params['region_rand'].append(randomize)
 
 
-def tiled_region_set_params(fov_list_path, moly_path):
+def set_tiled_region_params(region_corners_path, moly_path):
     """Given a file specifying FOV regions, set the MIBI tiling parameters
 
     User inputs will be required for many values. Also returns `moly_path` data.
 
     Args:
-        fov_list_path (str):
+        region_corners_path (str):
             Path to the JSON file containing the FOVs used to define each tiled region
         moly_path (str):
             Path to the JSON moly point file, needed to separate FOVs
@@ -203,14 +203,14 @@ def tiled_region_set_params(fov_list_path, moly_path):
     """
 
     # file path validation
-    if not os.path.exists(fov_list_path):
-        raise FileNotFoundError("FOV region file %s does not exist" % fov_list_path)
+    if not os.path.exists(region_corners_path):
+        raise FileNotFoundError("FOV region file %s does not exist" % region_corners_path)
 
     if not os.path.exists(moly_path):
         raise FileNotFoundError("Moly point file %s does not exist" % moly_path)
 
     # read in the fov list data
-    with open(fov_list_path, 'r') as flf:
+    with open(region_corners_path, 'r') as flf:
         fov_list_info = json.load(flf)
 
     # read in the moly point data
@@ -227,7 +227,7 @@ def tiled_region_set_params(fov_list_path, moly_path):
     region_params = {rpf: [] for rpf in settings.REGION_PARAM_FIELDS}
 
     # prompt the user for params associated with each tiled region
-    tiled_region_read_input(fov_list_info, region_params)
+    read_tiled_region_inputs(fov_list_info, region_params)
 
     # need to copy fov metadata over, needed for generate_fov_list
     tiling_params['fovs'] = copy.deepcopy(fov_list_info['fovs'])
@@ -299,7 +299,7 @@ def generate_x_y_fov_pairs(x_range, y_range):
     return all_pairs
 
 
-def tiled_region_generate_fov_list(tiling_params, moly_point):
+def generate_tiled_region_fov_list(tiling_params, moly_point):
     """Generate the list of FOVs on the image from the `tiling_params` set for tiled regions
 
     Moly point insertion: happens once every number of FOVs you specified in
@@ -402,14 +402,14 @@ def tiled_region_generate_fov_list(tiling_params, moly_point):
     return fov_regions
 
 
-def tma_generate_fov_list(fov_list_path, num_fov_x, num_fov_y):
-    """Generate the list of FOVs on the image using the TMA input file in `fov_list_path`
+def generate_tma_fov_list(tma_corners_path, num_fov_x, num_fov_y):
+    """Generate the list of FOVs on the image using the TMA input file in `tma_corners_path`
 
     NOTE: unlike tiled regions, the returned list of FOVs is just an intermediate step to the
     interactive remapping process. So the result will just be each FOV name mapped to its centroid.
 
     Args:
-        fov_list_path (dict):
+        tma_corners_path (dict):
             Path to the JSON file containing the FOVs used to define the tiled TMA region
         num_fov_x (int):
             Number of FOVs to define along the x-axis
@@ -422,8 +422,8 @@ def tma_generate_fov_list(fov_list_path, num_fov_x, num_fov_y):
     """
 
     # file path validation
-    if not os.path.exists(fov_list_path):
-        raise FileNotFoundError("FOV region file %s does not exist" % fov_list_path)
+    if not os.path.exists(tma_corners_path):
+        raise FileNotFoundError("FOV region file %s does not exist" % tma_corners_path)
 
     # user needs to define at least 3 FOVs along the x- and y-axes
     if num_fov_x < 3:
@@ -432,13 +432,13 @@ def tma_generate_fov_list(fov_list_path, num_fov_x, num_fov_y):
     if num_fov_y < 3:
         raise ValueError("Number of FOVs along y-axis must be at least 3")
 
-    # read in fov_list_path
-    with open(fov_list_path, 'r') as flf:
+    # read in tma_corners_path
+    with open(tma_corners_path, 'r') as flf:
         fov_list_info = json.load(flf)
 
     # a TMA can only be defined by 2 FOVs: an upper-left corner and a bottom-right corner
     if len(fov_list_info['fovs']) != 2:
-        raise ValueError("Your FOV region file %s needs to contain only 2 FOVs" % fov_list_path)
+        raise ValueError("Your FOV region file %s needs to contain only 2 FOVs" % tma_corners_path)
 
     # retrieve the corner FOVs
     # NOTE: the upper-left should always be listed before the bottom-right
