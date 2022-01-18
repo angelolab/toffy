@@ -183,39 +183,27 @@ def read_tiled_region_inputs(fov_list_info, region_params):
         region_params['region_rand'].append(randomize)
 
 
-def set_tiled_region_params(region_corners_path, moly_path):
+def set_tiled_region_params(region_corners_path):
     """Given a file specifying FOV regions, set the MIBI tiling parameters
 
-    User inputs will be required for many values. Also returns `moly_path` data.
+    User inputs will be required for many values.
 
     Args:
         region_corners_path (str):
             Path to the JSON file containing the FOVs used to define each tiled region
-        moly_path (str):
-            Path to the JSON moly point file, needed to separate FOVs
 
     Returns:
-        tuple:
-            Contains:
-
-            - A `dict` containing the tiling parameters for each FOV
-            - A `dict` defining the moly points to insert if specified
+        dict:
+            Contains the tiling parameters for each tiled region
     """
 
     # file path validation
     if not os.path.exists(region_corners_path):
         raise FileNotFoundError("FOV region file %s does not exist" % region_corners_path)
 
-    if not os.path.exists(moly_path):
-        raise FileNotFoundError("Moly point file %s does not exist" % moly_path)
-
     # read in the fov list data
     with open(region_corners_path, 'r') as flf:
         fov_list_info = json.load(flf)
-
-    # read in the moly point data
-    with open(moly_path, 'r') as mpf:
-        moly_point = json.load(mpf)
 
     # define the parameter dict to return
     tiling_params = {}
@@ -270,7 +258,7 @@ def set_tiled_region_params(region_corners_path, moly_path):
 
         tiling_params['moly_interval'] = moly_interval
 
-    return tiling_params, moly_point
+    return tiling_params
 
 
 def generate_x_y_fov_pairs(x_range, y_range):
@@ -299,7 +287,7 @@ def generate_x_y_fov_pairs(x_range, y_range):
     return all_pairs
 
 
-def generate_tiled_region_fov_list(tiling_params, moly_point):
+def generate_tiled_region_fov_list(tiling_params, moly_path):
     """Generate the list of FOVs on the image from the `tiling_params` set for tiled regions
 
     Moly point insertion: happens once every number of FOVs you specified in
@@ -318,13 +306,22 @@ def generate_tiled_region_fov_list(tiling_params, moly_point):
     Args:
         tiling_params (dict):
             The tiling parameters created by `tiled_region_set_params`
-        moly_point (dict):
-            The moly point to insert between FOVs (and intervals if specified in `tiling_params`)
+        moly_path (str):
+            The path to the Moly point to insert between FOV intervals and/or regions.
+            If these insertion parameters are not specified in `tiling_params`, this won't be used.
 
     Returns:
         dict:
             Data containing information about each FOV
     """
+
+    # file path validation
+    if not os.path.exists(moly_path):
+        raise FileNotFoundError("Moly point file %s does not exist" % moly_path)
+
+    # read in the moly point data
+    with open(moly_path, 'r') as mpf:
+        moly_point = json.load(mpf)
 
     # define the fov_regions dict
     fov_regions = {}
