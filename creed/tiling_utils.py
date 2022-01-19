@@ -413,7 +413,9 @@ def generate_tma_fov_list(tma_corners_path, num_fov_x, num_fov_y):
 
     # file path validation
     if not os.path.exists(tma_corners_path):
-        raise FileNotFoundError("TMA corners file %s does not exist" % tma_corners_path)
+        raise FileNotFoundError(
+            "TMA corners file %s does not exist" % tma_corners_path
+        )
 
     # user needs to define at least 3 FOVs along the x- and y-axes
     if num_fov_x < 3:
