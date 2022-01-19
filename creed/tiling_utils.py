@@ -190,7 +190,8 @@ def set_tiled_region_params(region_corners_path):
 
     Args:
         region_corners_path (str):
-            Path to the JSON file containing the FOVs used to define each tiled region
+            Path to the JSON file containing the FOVs used to define the upper-left corner
+            of each tiled region
 
     Returns:
         dict:
@@ -201,7 +202,7 @@ def set_tiled_region_params(region_corners_path):
     if not os.path.exists(region_corners_path):
         raise FileNotFoundError("FOV region file %s does not exist" % region_corners_path)
 
-    # read in the fov list data
+    # read in the region corners data
     with open(region_corners_path, 'r') as flf:
         tiled_region_corners = json.load(flf)
 
