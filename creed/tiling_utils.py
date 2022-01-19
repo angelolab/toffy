@@ -291,7 +291,8 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
       not be placed at the end of the region. Suppose 3 FOVs are defined along both the x- and
       y-axis for region 1 (for a total of 9 FOVs) and a Moly point FOV interval of 3 is specified.
       Without also setting Moly point insertion between different regions, a Moly point will NOT be
-      placed after the last FOV of region 1 (the next Moly point will appear in region 2's FOVs).
+      placed after the last FOV of region 1 (the next Moly point will appear after the 3rd
+      FOV in in region 2).
 
     Args:
         tiling_params (dict):
