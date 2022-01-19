@@ -200,7 +200,9 @@ def set_tiled_region_params(region_corners_path):
 
     # file path validation
     if not os.path.exists(region_corners_path):
-        raise FileNotFoundError("FOV region file %s does not exist" % region_corners_path)
+        raise FileNotFoundError(
+            "Tiled region corners list file %s does not exist" % region_corners_path
+        )
 
     # read in the region corners data
     with open(region_corners_path, 'r') as flf:
@@ -411,7 +413,7 @@ def generate_tma_fov_list(tma_corners_path, num_fov_x, num_fov_y):
 
     # file path validation
     if not os.path.exists(tma_corners_path):
-        raise FileNotFoundError("FOV region file %s does not exist" % tma_corners_path)
+        raise FileNotFoundError("TMA corners file %s does not exist" % tma_corners_path)
 
     # user needs to define at least 3 FOVs along the x- and y-axes
     if num_fov_x < 3:
