@@ -1077,7 +1077,7 @@ def remap_and_reorder_fovs(manual_fov_regions, manual_to_auto_map,
     with open(moly_path, 'r') as mp:
         moly_point = json.load(mp)
 
-    # error check: moly_interval cannot be less than or equal to 0
+    # error check: moly_interval cannot be less than or equal to 0 if moly_insert is True
     if moly_insert and moly_interval <= 0:
         raise ValueError("moly_interval must be at least 1")
 
