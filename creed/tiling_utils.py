@@ -236,26 +236,15 @@ def set_tiled_region_params(region_corners_path):
     tiling_params['moly_region'] = moly_region_insert
 
     # whether to insert moly points between fovs
-    moly_interval_insert = read_tiling_param(
-        "Specify moly point FOV interval? Y/N: ",
-        "Error: moly interval insertion parameter must either Y or N",
-        lambda mii: mii in ['Y', 'N', 'y', 'n'],
-        dtype=str
+    moly_interval = read_tiling_param(
+        "Enter the FOV interval size to insert Moly points. If you do not want to insert "
+        "Moly points at a FOV interval, enter 0:",
+        "Error: moly interval must be 0 or a positive integer",
+        lambda mi: mi >= 0,
+        dtype=int
     )
 
-    # convert to uppercase to standardize
-    moly_interval_insert = moly_interval_insert.upper()
-
-    # if moly insert is set, we need to specify an additional moly_interval param
-    # NOTE: the interval applies regardless of if the fovs overlap regions or not
-    if moly_interval_insert == 'Y':
-        moly_interval = read_tiling_param(
-            "Enter the FOV interval size to insert moly points: ",
-            "Error: moly interval must be a positive integer",
-            lambda mi: mi >= 1,
-            dtype=int
-        )
-
+    if moly_interval > 0:
         tiling_params['moly_interval'] = moly_interval
 
     return tiling_params

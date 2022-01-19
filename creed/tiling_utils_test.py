@@ -204,7 +204,7 @@ def test_set_tiled_region_params(monkeypatch):
     )
 
     # set the user inputs
-    user_inputs = iter([3, 3, 1, 1, 'Y', 3, 3, 1, 1, 'Y', 'Y', 'Y', 1])
+    user_inputs = iter([3, 3, 1, 1, 'Y', 3, 3, 1, 1, 'Y', 'Y', 1])
 
     # override the default functionality of the input function
     monkeypatch.setattr('builtins.input', lambda _: next(user_inputs))
@@ -260,9 +260,6 @@ def test_set_tiled_region_params(monkeypatch):
             sample_region_params[i]['region_rand'] == 'Y' for i in
             range(len(sample_region_params))
         )
-
-        # assert moly region is set to Y
-        assert sample_tiling_params['moly_region'] == 'Y'
 
         # assert moly interval is set to 1
         assert sample_tiling_params['moly_interval'] == 1
