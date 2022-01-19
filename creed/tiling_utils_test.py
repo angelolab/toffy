@@ -82,7 +82,7 @@ def test_read_tiling_param(monkeypatch):
     # make sure the function receives the incorrect input first then the correct input
     monkeypatch.setattr('builtins.input', lambda _: next(user_inputs_int))
 
-    # simulate the input sequence for
+    # simulate the input sequence for int
     sample_tiling_param = tiling_utils.read_tiling_param(
         "Sample prompt: ",
         "Sample error message",
@@ -100,7 +100,7 @@ def test_read_tiling_param(monkeypatch):
     # make sure the function receives the incorrect input first then the correct input
     monkeypatch.setattr('builtins.input', lambda _: next(user_inputs_str))
 
-    # simulate the input sequence for
+    # simulate the input sequence for str
     sample_tiling_param = tiling_utils.read_tiling_param(
         "Sample prompt: ",
         "Sample error message",
@@ -591,7 +591,7 @@ def test_assign_closest_fovs():
 
 
 def test_generate_fov_circles():
-    # we'll literally be copying the data generated from test_assign_closest_fovs
+    # we'll be copying the data generated from test_assign_closest_fovs
     sample_manual_to_auto_map = {
         'row0_col25': 'row0_col0',
         'row50_col25': 'row0_col0',
@@ -665,9 +665,12 @@ def test_remap_and_reorder_fovs(randomize_setting, moly_insert, moly_interval):
     with open('sample_moly_point.json', 'w') as smp:
         json.dump(sample_moly_point, smp)
 
-    # error check: moly_interval must be at least 1
+    # error check: moly_interval must be at least 1 if moly_insert set
+    # TODO: open a PR to refactor test cases in tiling_utils_test.py in a format
+    # similar to Adam's mibi-bin-tools
     with pytest.raises(ValueError):
-        tiling_utils.remap_and_reorder_fovs({}, {}, 'sample_moly_point.json', moly_interval=0)
+        tiling_utils.remap_and_reorder_fovs({}, {}, 'sample_moly_point.json',
+                                            moly_insert=True, moly_interval=0)
 
     # define the coordinates and fov names manual by the user
     manual_coords = [(0, 25), (50, 25), (50, 50), (75, 50), (100, 25), (100, 75)]
@@ -746,6 +749,7 @@ def test_remap_and_reorder_fovs(randomize_setting, moly_insert, moly_interval):
         for mi in moly_indices:
             assert remapped_sample_fovs['fovs'][mi]['name'] == 'MoQC'
     else:
+        # assert no Moly points appear in the list of fovs
         fov_names = [remapped_sample_fovs['fovs'][i]['name']
                      for i in range(len(remapped_sample_fovs['fovs']))]
         assert 'MoQC' not in fov_names

@@ -63,7 +63,7 @@ def read_tiling_param(prompt, error_msg, cond, dtype):
 
     Returns:
         Union([int, str]):
-            The value to place in the variable, limited to just int and str for now
+            The value to place in the variable, limited to just `int` and `str` for now
     """
 
     # ensure the dtype is valid
@@ -298,7 +298,7 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
 
     Args:
         tiling_params (dict):
-            The tiling parameters created by `tiled_region_set_params`
+            The tiling parameters created by `set_tiled_region_params`
         moly_path (str):
             The path to the Moly point to insert between FOV intervals and/or regions.
             If these insertion parameters are not specified in `tiling_params`, this won't be used.
@@ -1078,7 +1078,7 @@ def remap_and_reorder_fovs(manual_fov_regions, manual_to_auto_map,
         moly_point = json.load(mp)
 
     # error check: moly_interval cannot be less than or equal to 0
-    if moly_interval <= 0:
+    if moly_insert and moly_interval <= 0:
         raise ValueError("moly_interval must be at least 1")
 
     # define a new fov regions dict for remapped names
