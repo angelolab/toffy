@@ -47,7 +47,7 @@ def test_assign_metadata_vals():
         7: None
     }
 
-    example_keys_ignore = [2, 4, 6]
+    example_keys_ignore = [2, 4, 6, 8]
 
     # tests a few things
     # 1. valid metadata keys are copied over from input_dict to output_dict
