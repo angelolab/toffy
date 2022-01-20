@@ -22,12 +22,6 @@ _AUTO_MOLY_INTERVAL_SETTING_CASES = [False, True]
 _AUTO_MOLY_INTERVAL_VALUE_CASES = [3, 4]
 
 
-@dataclass
-class xy_coord:
-    x: float
-    y: float
-
-
 # the order of the tests:
 # 1. rectangular grid
 # 2. slant only along the x-axis
@@ -37,16 +31,28 @@ class xy_coord:
 # TODO: we need to clean up this testing format, refer to Adam's setup
 _TMA_RHOMBUS_TEST_NAMES = {
     'rectangle': [
-        xy_coord(1500, 2000), xy_coord(2000, 2000), xy_coord(1500, 1000), xy_coord(2000, 1000)
+        tiling_utils.XYCoord(1500, 2000),
+        tiling_utils.XYCoord(2000, 2000),
+        tiling_utils.XYCoord(1500, 1000),
+        tiling_utils.XYCoord(2000, 1000)
     ],
     'x-slant': [
-        xy_coord(1500, 2000), xy_coord(2000, 2000), xy_coord(1600, 1000), xy_coord(2200, 1000)
+        tiling_utils.XYCoord(1500, 2000),
+        tiling_utils.XYCoord(2000, 2000),
+        tiling_utils.XYCoord(1600, 1000),
+        tiling_utils.XYCoord(2200, 1000)
     ],
     'y-slant': [
-        xy_coord(1500, 2000), xy_coord(2000, 2225), xy_coord(1500, 1000), xy_coord(2000, 1100)
+        tiling_utils.XYCoord(1500, 2000),
+        tiling_utils.XYCoord(2000, 2225),
+        tiling_utils.XYCoord(1500, 1000),
+        tiling_utils.XYCoord(2000, 1100)
     ],
     'both-slant': [
-        xy_coord(1600, 2000), xy_coord(2200, 2175), xy_coord(1475, 1000), xy_coord(2100, 1200)
+        tiling_utils.XYCoord(1600, 2000),
+        tiling_utils.XYCoord(2200, 2175),
+        tiling_utils.XYCoord(1475, 1000),
+        tiling_utils.XYCoord(2100, 1200)
     ]
 }
 
@@ -531,10 +537,10 @@ def test_tiled_region_generate_fov_list(randomize_setting, moly_region,
 
 def test_validate_tma_corners():
     # define some really invalid points
-    top_left = xy_coord(100, 200)
-    top_right = xy_coord(50, 100)
-    bottom_left = xy_coord(150, 300)
-    bottom_right = xy_coord(100, 200)
+    top_left = tiling_utils.XYCoord(100, 200)
+    top_right = tiling_utils.XYCoord(50, 100)
+    bottom_left = tiling_utils.XYCoord(150, 300)
+    bottom_right = tiling_utils.XYCoord(100, 200)
 
     # catches the first error (top_left right of top_right)
     with pytest.raises(ValueError, match='upper left corner is to the right'):
