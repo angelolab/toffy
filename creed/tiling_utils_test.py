@@ -16,7 +16,7 @@ from ark.utils import misc_utils
 from ark.utils import test_utils
 
 
-# for tiled region script
+# for tiled region param dict creation
 _PARAM_SET_MOLY_INTERVAL_VALUE_CASES = [0, 1]
 
 
