@@ -28,7 +28,7 @@ def assign_metadata_vals(input_dict, output_dict, keys_ignore):
             Note that if a metadata key name in `input_dict` exists in `output_dict`,
             the latter's will get overwritten
         keys_ignore (list):
-            The list of keys in input_dict to ignore
+            The list of keys in `input_dict` to ignore
 
     Returns:
         dict:
@@ -66,7 +66,7 @@ def read_tiling_param(prompt, error_msg, cond, dtype):
 
     Returns:
         Union([int, str]):
-            The value to place in the variable, limited to just int and str for now
+            The value to place in the variable, limited to just `int` and `str` for now
     """
 
     # ensure the dtype is valid
@@ -120,20 +120,20 @@ def generate_region_info(region_params):
     return region_params_list
 
 
-def tiled_region_read_input(fov_list_info, region_params):
-    """Reads input for tiled regions from user and `fov_list_info`.
+def read_tiled_region_inputs(region_corners, region_params):
+    """Reads input for tiled regions from user and `region_corners`.
 
     Updates all the tiling params inplace. Units used are microns.
 
     Args:
-        fov_list_info (dict):
-            The data containing the FOVs used to define each tiled region
+        region_corners (dict):
+            The data containing the FOVs used to define the upper-left corner of each tiled region
         region_params (dict):
             A `dict` mapping each region-specific parameter to a list of values per FOV
     """
 
-    # read in the data for each fov (region_start from fov_list_path, all others from user)
-    for fov in fov_list_info['fovs']:
+    # read in the data for each fov (region_start from region_corners_path, all others from user)
+    for fov in region_corners['fovs']:
         region_params['region_start_x'].append(fov['centerPointMicrons']['x'])
         region_params['region_start_y'].append(fov['centerPointMicrons']['y'])
 
@@ -186,61 +186,52 @@ def tiled_region_read_input(fov_list_info, region_params):
         region_params['region_rand'].append(randomize)
 
 
-def tiled_region_set_params(fov_list_path, moly_path):
+def set_tiled_region_params(region_corners_path):
     """Given a file specifying FOV regions, set the MIBI tiling parameters
 
-    User inputs will be required for many values. Also returns `moly_path` data.
+    User inputs will be required for many values.
 
     Args:
-        fov_list_path (str):
-            Path to the JSON file containing the FOVs used to define each tiled region
-        moly_path (str):
-            Path to the JSON moly point file, needed to separate FOVs
+        region_corners_path (str):
+            Path to the JSON file containing the FOVs used to define the upper-left corner
+            of each tiled region
 
     Returns:
-        tuple:
-            Contains:
-
-            - A `dict` containing the tiling parameters for each FOV
-            - A `dict` defining the moly points to insert if specified
+        dict:
+            Contains the tiling parameters for each tiled region
     """
 
     # file path validation
-    if not os.path.exists(fov_list_path):
-        raise FileNotFoundError("FOV region file %s does not exist" % fov_list_path)
+    if not os.path.exists(region_corners_path):
+        raise FileNotFoundError(
+            "Tiled region corners list file %s does not exist" % region_corners_path
+        )
 
-    if not os.path.exists(moly_path):
-        raise FileNotFoundError("Moly point file %s does not exist" % moly_path)
-
-    # read in the fov list data
-    with open(fov_list_path, 'r') as flf:
-        fov_list_info = json.load(flf)
-
-    # read in the moly point data
-    with open(moly_path, 'r') as mpf:
-        moly_point = json.load(mpf)
+    # read in the region corners data
+    with open(region_corners_path, 'r') as flf:
+        tiled_region_corners = json.load(flf)
 
     # define the parameter dict to return
     tiling_params = {}
 
-    # copy over the metadata values from fov_list_info to tiling_params
-    tiling_params = assign_metadata_vals(fov_list_info, tiling_params, ['fovs'])
+    # copy over the metadata values from tiled_region_corners to tiling_params
+    tiling_params = assign_metadata_vals(tiled_region_corners, tiling_params, ['fovs'])
 
     # define the region_params dict
     region_params = {rpf: [] for rpf in settings.REGION_PARAM_FIELDS}
 
     # prompt the user for params associated with each tiled region
-    tiled_region_read_input(fov_list_info, region_params)
+    read_tiled_region_inputs(tiled_region_corners, region_params)
 
     # need to copy fov metadata over, needed for generate_fov_list
-    tiling_params['fovs'] = copy.deepcopy(fov_list_info['fovs'])
+    tiling_params['fovs'] = copy.deepcopy(tiled_region_corners['fovs'])
 
     # store the read in parameters in the region_params key
     tiling_params['region_params'] = generate_region_info(region_params)
 
     # whether to insert moly points between regions
     moly_region_insert = read_tiling_param(
-        "Insert moly points between regions? Y/N: ",
+        "Insert a moly point between each tiled region? Y/N: ",
         "Error: moly point region parameter must be either Y or N",
         lambda mri: mri in ['Y', 'N', 'y', 'n'],
         dtype=str
@@ -251,29 +242,18 @@ def tiled_region_set_params(fov_list_path, moly_path):
     tiling_params['moly_region'] = moly_region_insert
 
     # whether to insert moly points between fovs
-    moly_interval_insert = read_tiling_param(
-        "Specify moly point FOV interval? Y/N: ",
-        "Error: moly interval insertion parameter must either Y or N",
-        lambda mii: mii in ['Y', 'N', 'y', 'n'],
-        dtype=str
+    moly_interval = read_tiling_param(
+        "Enter the FOV interval size to insert Moly points. If yes, enter the number of FOVs "
+        "between each Moly point. If no, enter 0: ",
+        "Error: moly interval must be 0 or a positive integer",
+        lambda mi: mi >= 0,
+        dtype=int
     )
 
-    # convert to uppercase to standardize
-    moly_interval_insert = moly_interval_insert.upper()
-
-    # if moly insert is set, we need to specify an additional moly_interval param
-    # NOTE: the interval applies regardless of if the fovs overlap regions or not
-    if moly_interval_insert == 'Y':
-        moly_interval = read_tiling_param(
-            "Enter the FOV interval size to insert moly points: ",
-            "Error: moly interval must be a positive integer",
-            lambda mi: mi >= 1,
-            dtype=int
-        )
-
+    if moly_interval > 0:
         tiling_params['moly_interval'] = moly_interval
 
-    return tiling_params, moly_point
+    return tiling_params
 
 
 def generate_x_y_fov_pairs(x_range, y_range):
@@ -351,8 +331,7 @@ def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_righ
 
     return pairs
 
-
-def tiled_region_generate_fov_list(tiling_params, moly_point):
+def generate_tiled_region_fov_list(tiling_params, moly_path):
     """Generate the list of FOVs on the image from the `tiling_params` set for tiled regions
 
     Moly point insertion: happens once every number of FOVs you specified in
@@ -366,18 +345,28 @@ def tiled_region_generate_fov_list(tiling_params, moly_point):
       not be placed at the end of the region. Suppose 3 FOVs are defined along both the x- and
       y-axis for region 1 (for a total of 9 FOVs) and a Moly point FOV interval of 3 is specified.
       Without also setting Moly point insertion between different regions, a Moly point will NOT be
-      placed after the last FOV of region 1 (the next Moly point will appear in region 2's FOVs).
+      placed after the last FOV of region 1 (the next Moly point will appear after the 3rd
+      FOV in in region 2).
 
     Args:
         tiling_params (dict):
-            The tiling parameters created by `tiled_region_set_params`
-        moly_point (dict):
-            The moly point to insert between FOVs (and intervals if specified in `tiling_params`)
+            The tiling parameters created by `set_tiled_region_params`
+        moly_path (str):
+            The path to the Moly point to insert between FOV intervals and/or regions.
+            If these insertion parameters are not specified in `tiling_params`, this won't be used.
 
     Returns:
         dict:
             Data containing information about each FOV
     """
+
+    # file path validation
+    if not os.path.exists(moly_path):
+        raise FileNotFoundError("Moly point file %s does not exist" % moly_path)
+
+    # read in the moly point data
+    with open(moly_path, 'r') as mpf:
+        moly_point = json.load(mpf)
 
     # define the fov_regions dict
     fov_regions = {}
@@ -490,14 +479,14 @@ class XYCoord:
     y: float
 
 
-def tma_generate_fov_list(fov_list_path, num_fov_x, num_fov_y):
-    """Generate the list of FOVs on the image using the TMA input file in `fov_list_path`
+def generate_tma_fov_list(tma_corners_path, num_fov_x, num_fov_y):
+    """Generate the list of FOVs on the image using the TMA input file in `tma_corners_path`
 
     NOTE: unlike tiled regions, the returned list of FOVs is just an intermediate step to the
     interactive remapping process. So the result will just be each FOV name mapped to its centroid.
 
     Args:
-        fov_list_path (dict):
+        tma_corners_path (dict):
             Path to the JSON file containing the FOVs used to define the tiled TMA region
         num_fov_x (int):
             Number of FOVs to define along the x-axis
@@ -510,8 +499,10 @@ def tma_generate_fov_list(fov_list_path, num_fov_x, num_fov_y):
     """
 
     # file path validation
-    if not os.path.exists(fov_list_path):
-        raise FileNotFoundError("FOV region file %s does not exist" % fov_list_path)
+    if not os.path.exists(tma_corners_path):
+        raise FileNotFoundError(
+            "TMA corners file %s does not exist" % tma_corners_path
+        )
 
     # user needs to define at least 3 FOVs along the x- and y-axes
     if num_fov_x < 3:
@@ -521,16 +512,16 @@ def tma_generate_fov_list(fov_list_path, num_fov_x, num_fov_y):
         raise ValueError("Number of FOVs along y-axis must be at least 3")
 
     # read in fov_list_path
-    with open(fov_list_path, 'r') as flf:
-        fov_list_info = json.load(flf)
+    with open(tma_corners_path, 'r') as flf:
+        tma_corners = json.load(flf)
 
     # a TMA can only be defined by four FOVs, one for each corner
-    if len(fov_list_info['fovs']) != 4:
-        raise ValueError("Your FOV region file %s needs to contain four FOVs" % fov_list_path)
+    if len(tma_corners['fovs']) != 4:
+        raise ValueError("Your FOV region file %s needs to contain four FOVs" % tma_corners)
 
     # retrieve the FOVs from JSON file
     corners = [0] * 4
-    for i, fov in enumerate(fov_list_info['fovs']):
+    for i, fov in enumerate(tma_corners['fovs']):
         corners[i] = XYCoord(*itemgetter('x', 'y')(fov['centerPointMicrons']))
 
     top_left, top_right, bottom_left, bottom_right = corners
@@ -1150,8 +1141,8 @@ def remap_and_reorder_fovs(manual_fov_regions, manual_to_auto_map,
     with open(moly_path, 'r') as mp:
         moly_point = json.load(mp)
 
-    # error check: moly_interval cannot be less than or equal to 0
-    if moly_interval <= 0:
+    # error check: moly_interval cannot be less than or equal to 0 if moly_insert is True
+    if moly_insert and moly_interval <= 0:
         raise ValueError("moly_interval must be at least 1")
 
     # define a new fov regions dict for remapped names
