@@ -228,7 +228,7 @@ def set_tiled_region_params(region_corners_path):
 
     # whether to insert moly points between regions
     moly_region_insert = read_tiling_param(
-        "Insert moly points between regions? Y/N: ",
+        "Insert a moly point between each tiled region? Y/N: ",
         "Error: moly point region parameter must be either Y or N",
         lambda mri: mri in ['Y', 'N', 'y', 'n'],
         dtype=str
