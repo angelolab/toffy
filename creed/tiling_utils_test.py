@@ -50,18 +50,6 @@ _TMA_RHOMBUS_TEST_NAMES = {
     ]
 }
 
-# # the order of the tests:
-# # 1. number of x and y FOVs divide respective axes cleanly
-# # 2. number of x FOVs do not divide x-axis cleanly
-# # 3. number of y FOVs do not divide y-axis cleanly
-# # 4. number of x FOVs and y FOVs do not divide respective axes cleanly
-# _TMA_RHOMBUS_FOV_SIZE_CASES = [
-#     [4, 3],
-#     [8, 5],
-#     [4, 7],
-#     [8, 7]
-# ]
-
 # for remapping
 _REMAP_RANDOMIZE_TEST_CASES = [False, True]
 _REMAP_MOLY_INSERT_CASES = [False, True]
