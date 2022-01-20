@@ -25,7 +25,7 @@ def assign_metadata_vals(input_dict, output_dict, keys_ignore):
             Note that if a metadata key name in `input_dict` exists in `output_dict`,
             the latter's will get overwritten
         keys_ignore (list):
-            The list of keys in input_dict to ignore
+            The list of keys in `input_dict` to ignore
 
     Returns:
         dict:
@@ -241,7 +241,7 @@ def set_tiled_region_params(region_corners_path):
     # whether to insert moly points between fovs
     moly_interval = read_tiling_param(
         "Enter the FOV interval size to insert Moly points. If you do not want to insert "
-        "Moly points at a FOV interval, enter 0:",
+        "Moly points at a FOV interval, enter 0: ",
         "Error: moly interval must be 0 or a positive integer",
         lambda mi: mi >= 0,
         dtype=int
