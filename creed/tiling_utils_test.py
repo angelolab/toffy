@@ -624,70 +624,40 @@ def test_tma_generate_fov_list(rhombus_test_name):
     # NOTE: we'll save the coordinate checks for test_validate_tma_corners
 
     # create the FOV regions
+    num_x = 4
+    num_y = 3
     fov_regions = tiling_utils.tma_generate_fov_list(
-        'sample_fovs_list.json', 4, 3
+        'sample_fovs_list.json', num_x, num_y
     )
 
-    # define the generated fov_names and center points
+    # assert the correct number of fovs were created
+    assert len(fov_regions) == num_x * num_y
+
+    # get the list of fov names
     fov_names = list(fov_regions.keys())
-    center_points = list(fov_regions.values())
 
-    # define the actual center points created
-    if rhombus_test_name == 'rectangle':
-        actual_center_points = []
-        for x_coord in [1500, 1666, 1833, 2000]:
-            actual_center_points.extend([
-                (x_coord, y_coord)
-                for y_coord in reversed(np.arange(1000, 2500, 500))
-            ])
-    elif rhombus_test_name == 'x-slant':
-        # total x-offset is 150 (average of the left-offset (100) and right-offset (200))
-        # 3 fovs along the y-axis, so divide by 2 to get individual fov offset (75)
-        x_increment = 75
-        actual_center_points = []
-        for x_coord in [1500, 1666, 1833, 2000]:
-            actual_center_points.extend([
-                (x_coord + x_increment * i, y_coord)
-                for (i, y_coord) in enumerate(reversed(np.arange(1000, 2500, 500)))
-            ])
-    elif rhombus_test_name == 'y-slant':
-        # total y-offset is 162.5 (average of the top-offset (225) and right_offset (100))
-        # 4 fovs along the x-axis, so divide by 3 to get individual fov offset
-        y_increment = 162.5 / 3
-        actual_center_points = []
-        for i, x_coord in enumerate([1500, 1666, 1833, 2000]):
-            actual_center_points.extend([
-                (x_coord, int(y_coord + y_increment * i))
-                for y_coord in reversed(np.arange(1000, 2500, 500))
-            ])
-    elif rhombus_test_name == 'both-slant':
-        # total x-offset is -112.5 (average of the left-offset (-125) and right-offset (-100))
-        # 3 fovs along the y-axis, so divide by 2 to get the individual fov offset
-        x_increment = -112.5 / 2
+    # specific tests for the corners: assert they are named correctly
+    # NOTE: because of slanting, the coords may not match the originals in sample_fovs_list
+    # we leave test_generate_x_y_fov_pairs_rhombus to test the correctness of the coord assignment
+    top_left_fov = fov_names[0]
+    assert top_left_fov == 'R1C1'
 
-        # total y-offset is 187.5 (average of the top-offset (175) and the bottom-offset (200))
-        # 4 fovs along the x-axis, so divide by 3 to get the individual fov offset
-        y_increment = 187.5 / 3
+    top_right_fov = fov_names[num_x * num_y - num_y]
+    assert top_right_fov == 'R1C%d' % num_x
 
-        # defining the equivalent rectangle indices will help for this
-        # the baseline x-coord for a rectangle
-        # take the difference between the x-value for the top-left and top-right corner (600)
-        # since there are 4 fovs along the x-axis, divide by 3 (200)
-        x_start = 200
+    bottom_left_fov = fov_names[num_y - 1]
+    assert bottom_left_fov == 'R%dC1' % num_y
 
-        # the baseline y-coord for a rectangle
-        # take the difference between the y-value for the bottom-left and top-left corner (-1000)
-        # since there are 3 fovs along the y-axis, divide by 2 (-500)
-        y_start = -500
+    bottom_right_fov = fov_names[(num_x * num_y) - 1]
+    assert bottom_right_fov == 'R%dC%d' % (num_y, num_x)
 
-        actual_center_points = [
-            (int(top_left.x + x_start * i + x_increment * j),
-             int(top_left.y + y_start * j + y_increment * i))
-            for i in np.arange(4) for j in np.arange(3)
-        ]
+    # now assert all the FOVs in between are named correctly and in the right order
+    # TODO: might be a duplicate test for corners above, might want this to handle it alone
+    for i, fov in enumerate(fov_regions.keys()):
+        row_ind = (i % num_y) + 1
+        col_ind = int(i / num_y) + 1
 
-    # assert the centroids match up
-    assert actual_center_points == center_points
+        assert fov == 'R%dC%d' % (row_ind, col_ind)
 
 
 def test_convert_microns_to_pixels():
