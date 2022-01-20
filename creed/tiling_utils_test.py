@@ -610,7 +610,6 @@ def test_tma_generate_fov_list(rhombus_test_name):
         )
 
     # trim sample_fovs_list so it only contains 4 FOVs, one defining each corner
-    from pprint import pprint
     sample_fovs_list['fovs'] = sample_fovs_list['fovs'][:4]
 
     # resave with just 4 FOVs
@@ -684,10 +683,6 @@ def test_tma_generate_fov_list(rhombus_test_name):
 
     # assert the centroids match up
     assert actual_center_points == center_points
-
-    # assert each fov is associated with the correct point
-    for i, fov_name in enumerate(fov_names):
-        assert fov_regions[fov_name] == center_points[i]
 
 
 def test_convert_microns_to_pixels():
