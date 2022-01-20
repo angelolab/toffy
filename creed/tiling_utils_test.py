@@ -70,7 +70,7 @@ class ValidateRhombusCoordsTests:
 
 
 # TMA rhombus inputs for coordinate generation and tma FOV list generation
-_TMA_RHOMBUS_X_COORDS = (1500, 1600, 1833, 2000)
+_TMA_RHOMBUS_X_COORDS = (1500, 1666, 1833, 2000)
 
 
 class RhombusCoordInputTests:
@@ -84,7 +84,7 @@ class RhombusCoordInputTests:
 
         # since this is a simple rectangle we can easily and programmatically define these coords
         actual_pairs = []
-        for x_coord in [1500, 1666, 1833, 2000]:
+        for x_coord in _TMA_RHOMBUS_X_COORDS:
             actual_pairs.extend([
                 (x_coord, y_coord)
                 for y_coord in reversed(np.arange(1000, 2500, 500))
@@ -104,7 +104,7 @@ class RhombusCoordInputTests:
         # 3 fovs along the y-axis, so divide by 2 to get individual fov offset (75)
         x_increment = 75
         actual_pairs = []
-        for x_coord in [1500, 1666, 1833, 2000]:
+        for x_coord in _TMA_RHOMBUS_X_COORDS:
             actual_pairs.extend([
                 (x_coord + x_increment * i, y_coord)
                 for (i, y_coord) in enumerate(reversed(np.arange(1000, 2500, 500)))
@@ -124,7 +124,7 @@ class RhombusCoordInputTests:
         # 4 fovs along the x-axis, so divide by 3 to get individual fov offset
         y_increment = 162.5 / 3
         actual_pairs = []
-        for i, x_coord in enumerate([1500, 1666, 1833, 2000]):
+        for i, x_coord in enumerate(_TMA_RHOMBUS_X_COORDS):
             actual_pairs.extend([
                 (x_coord, int(y_coord + y_increment * i))
                 for y_coord in reversed(np.arange(1000, 2500, 500))
