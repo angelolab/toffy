@@ -5,6 +5,7 @@ from itertools import combinations, product
 import json
 import matplotlib.pyplot as plt
 import numpy as np
+from operator import itemgetter
 import os
 from skimage.draw import ellipse
 from sklearn.utils import shuffle
@@ -305,10 +306,10 @@ def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_righ
     """Generates coordinates of FOVs as defined by corners of a rhombus
 
     Args:
-        top_left (dataclass): coordinate of top left corner
-        top_right (dataclass): coordinate of top right corner
-        bottom_left (dataclass): coordinate of bottom right corner
-        bottom_right (dataclass): coordiante of bottom right corner
+        top_left (XYCoord): coordinate of top left corner
+        top_right (XYCoord): coordinate of top right corner
+        bottom_left (XYCoord): coordinate of bottom right corner
+        bottom_right (XYCoord): coordiante of bottom right corner
         num_x (int): number of fovs on x dimension
         num_y (int): number of fovs on x dimension
 
@@ -458,10 +459,10 @@ def validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
     """Ensures that the provided TMA corners match assumptions
 
     Args:
-        top_left (dataclass): coordinate of top left corner
-        top_right (dataclass): coordinate of top right corner
-        bottom_left (dataclass): coordinate of bottom right corner
-        bottom_right (dataclass): coordiante of bottom right corner
+        top_left (XYCoord): coordinate of top left corner
+        top_right (XYCoord): coordinate of top right corner
+        bottom_left (XYCoord): coordinate of bottom right corner
+        bottom_right (XYCoord): coordiante of bottom right corner
 
     """
     # TODO: should we programmatically validate all pairwise comparisons?
@@ -483,6 +484,12 @@ def validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
                          "below the bottom right corner")
 
 
+@dataclass
+class XYCoord:
+    x: float
+    y: float
+
+
 def tma_generate_fov_list(fov_list_path, num_fov_x, num_fov_y):
     """Generate the list of FOVs on the image using the TMA input file in `fov_list_path`
 
@@ -501,11 +508,6 @@ def tma_generate_fov_list(fov_list_path, num_fov_x, num_fov_y):
         dict:
             Data containing information about each FOV (just FOV name mapped to centroid)
     """
-
-    @dataclass
-    class xy_coord:
-        x: float
-        y: float
 
     # file path validation
     if not os.path.exists(fov_list_path):
@@ -527,17 +529,11 @@ def tma_generate_fov_list(fov_list_path, num_fov_x, num_fov_y):
         raise ValueError("Your FOV region file %s needs to contain four FOVs" % fov_list_path)
 
     # retrieve the FOVs from JSON file
-    top_left = xy_coord(fov_list_info['fovs'][0]['centerPointMicrons']['x'],
-                        fov_list_info['fovs'][0]['centerPointMicrons']['y'])
+    corners = [0] * 4
+    for i, fov in enumerate(fov_list_info['fovs']):
+        corners[i] = XYCoord(*itemgetter('x', 'y')(fov['centerPointMicrons']))
 
-    top_right = xy_coord(fov_list_info['fovs'][1]['centerPointMicrons']['x'],
-                         fov_list_info['fovs'][1]['centerPointMicrons']['y'])
-
-    bottom_left = xy_coord(fov_list_info['fovs'][2]['centerPointMicrons']['x'],
-                           fov_list_info['fovs'][2]['centerPointMicrons']['y'])
-
-    bottom_right = xy_coord(fov_list_info['fovs'][3]['centerPointMicrons']['x'],
-                            fov_list_info['fovs'][3]['centerPointMicrons']['y'])
+    top_left, top_right, bottom_left, bottom_right = corners
 
     validate_tma_corners(top_left, top_right, bottom_left, bottom_right)
 
