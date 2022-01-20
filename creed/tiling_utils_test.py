@@ -528,6 +528,7 @@ def test_generate_tiled_region_fov_list(randomize_setting, moly_region,
                 # NOTE: due to randomization, this test will fail once in a blue moon
                 assert center_points[fov_1_end:] != actual_center_points_sorted[fov_1_end:]
 
+
 def test_validate_tma_corners():
     # define some really invalid points
     top_left = tiling_utils.XYCoord(100, 200)
@@ -564,10 +565,10 @@ def test_validate_tma_corners():
 
 
 @pytest.mark.parametrize('rhombus_test_name', list(_TMA_RHOMBUS_TEST_NAMES.keys()))
-def test_tma_generate_fov_list(rhombus_test_name):
+def test_generate_tma_fov_list(rhombus_test_name):
     # file path validation
     with pytest.raises(FileNotFoundError):
-        tiling_utils.tma_generate_fov_list(
+        tiling_utils.generate_tma_fov_list(
             'bad_path.json', 3, 3
         )
 
@@ -597,13 +598,13 @@ def test_tma_generate_fov_list(rhombus_test_name):
 
     # too few y-fovs defined
     with pytest.raises(ValueError):
-        tiling_utils.tma_generate_fov_list(
+        tiling_utils.generate_tma_fov_list(
             'sample_fovs_list.json', 3, 2
         )
 
     # the fovs list defined does not contain exactly 4 FOVs
     with pytest.raises(ValueError):
-        tiling_utils.tma_generate_fov_list(
+        tiling_utils.generate_tma_fov_list(
             'sample_fovs_list.json', 3, 3
         )
 
@@ -619,7 +620,7 @@ def test_tma_generate_fov_list(rhombus_test_name):
     # create the FOV regions
     num_x = 4
     num_y = 3
-    fov_regions = tiling_utils.tma_generate_fov_list(
+    fov_regions = tiling_utils.generate_tma_fov_list(
         'sample_fovs_list.json', num_x, num_y
     )
 

@@ -331,6 +331,7 @@ def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_righ
 
     return pairs
 
+
 def generate_tiled_region_fov_list(tiling_params, moly_path):
     """Generate the list of FOVs on the image from the `tiling_params` set for tiled regions
 
