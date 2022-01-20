@@ -210,13 +210,6 @@ class TMAFovListFailureCases:
         return 'sample_tma_corners.json', 3, 3
 
 
-_TMA_TEST_CASES = [False, True]
-_AUTO_RANDOMIZE_TEST_CASES = [['N', 'N'], ['N', 'Y'], ['Y', 'Y']]
-_AUTO_MOLY_REGION_CASES = ['N', 'Y']
-_AUTO_MOLY_INTERVAL_SETTING_CASES = [False, True]
-_AUTO_MOLY_INTERVAL_VALUE_CASES = [3, 4]
-
-
 # parameters for remapping
 class RemapFOVOrderRandomizeCases:
     def case_false(self):
