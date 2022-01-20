@@ -528,16 +528,16 @@ def tma_generate_fov_list(fov_list_path, num_fov_x, num_fov_y):
 
     # retrieve the FOVs from JSON file
     top_left = xy_coord(fov_list_info['fovs'][0]['centerPointMicrons']['x'],
-                          fov_list_info['fovs'][0]['centerPointMicrons']['y'])
+                        fov_list_info['fovs'][0]['centerPointMicrons']['y'])
 
     top_right = xy_coord(fov_list_info['fovs'][1]['centerPointMicrons']['x'],
-                          fov_list_info['fovs'][1]['centerPointMicrons']['y'])
+                         fov_list_info['fovs'][1]['centerPointMicrons']['y'])
 
     bottom_left = xy_coord(fov_list_info['fovs'][2]['centerPointMicrons']['x'],
                            fov_list_info['fovs'][2]['centerPointMicrons']['y'])
 
     bottom_right = xy_coord(fov_list_info['fovs'][3]['centerPointMicrons']['x'],
-                           fov_list_info['fovs'][3]['centerPointMicrons']['y'])
+                            fov_list_info['fovs'][3]['centerPointMicrons']['y'])
 
     validate_tma_corners(top_left, top_right, bottom_left, bottom_right)
 

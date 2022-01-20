@@ -6,8 +6,10 @@ import pytest
 import random
 import tempfile
 
-from ark.mibi import tiling_utils
-import ark.settings as settings
+from dataclasses import dataclass, astuple
+
+from creed import tiling_utils
+from creed import settings
 from ark.utils import misc_utils
 from ark.utils import test_utils
 
@@ -18,6 +20,47 @@ _AUTO_RANDOMIZE_TEST_CASES = [['N', 'N'], ['N', 'Y'], ['Y', 'Y']]
 _AUTO_MOLY_REGION_CASES = ['N', 'Y']
 _AUTO_MOLY_INTERVAL_SETTING_CASES = [False, True]
 _AUTO_MOLY_INTERVAL_VALUE_CASES = [3, 4]
+
+
+@dataclass
+class xy_coord:
+    x: float
+    y: float
+
+
+# the order of the tests:
+# 1. rectangular grid
+# 2. slant only along the x-axis
+# 3. slant only along the y-axis
+# 4. slant along the x- and y-axes
+# make the slants along the x- and y-axis different for completeness of test 4
+# TODO: we need to clean up this testing format, refer to Adam's setup
+_TMA_RHOMBUS_TEST_NAMES = {
+    'rectangle': [
+        xy_coord(1500, 2000), xy_coord(2000, 2000), xy_coord(1500, 1000), xy_coord(2000, 1000)
+    ],
+    'x-slant': [
+        xy_coord(1500, 2000), xy_coord(2000, 2000), xy_coord(1600, 1000), xy_coord(2200, 1000)
+    ],
+    'y-slant': [
+        xy_coord(1500, 2000), xy_coord(2000, 2225), xy_coord(1500, 1000), xy_coord(2000, 1100)
+    ],
+    'both-slant': [
+        xy_coord(1600, 2000), xy_coord(2200, 2175), xy_coord(1475, 1000), xy_coord(2100, 1200)
+    ]
+}
+
+# # the order of the tests:
+# # 1. number of x and y FOVs divide respective axes cleanly
+# # 2. number of x FOVs do not divide x-axis cleanly
+# # 3. number of y FOVs do not divide y-axis cleanly
+# # 4. number of x FOVs and y FOVs do not divide respective axes cleanly
+# _TMA_RHOMBUS_FOV_SIZE_CASES = [
+#     [4, 3],
+#     [8, 5],
+#     [4, 7],
+#     [8, 7]
+# ]
 
 # for remapping
 _REMAP_RANDOMIZE_TEST_CASES = [False, True]
@@ -293,6 +336,76 @@ def test_generate_x_y_fov_pairs():
     assert sample_pairs == [(0, 2), (0, 4), (5, 2), (5, 4)]
 
 
+# TODO: clean up this test, something like Adam's setup might work here
+@pytest.mark.parametrize('rhombus_test_name', list(_TMA_RHOMBUS_TEST_NAMES.keys()))
+def test_generate_x_y_fov_pairs_rhombus(rhombus_test_name):
+    # retrieve the coordinates defining the TMA and the number of FOVs along each axis
+    top_left, top_right, bottom_left, bottom_right = _TMA_RHOMBUS_TEST_NAMES[rhombus_test_name]
+
+    # generate the FOV-coordinate pairs
+    # use 4 and 3 because 4 divides unevently (requires rounding) and 3 divides evenly
+    pairs = tiling_utils.generate_x_y_fov_pairs_rhombus(
+        top_left, top_right, bottom_left, bottom_right, 4, 3
+    )
+
+    # python 3.10 pattern matching would be just great!
+    if rhombus_test_name == 'rectangle':
+        # since this is a simple rectangle we can easily and programmatically define these coords
+        actual_pairs = []
+        for x_coord in [1500, 1666, 1833, 2000]:
+            actual_pairs.extend([
+                (x_coord, y_coord)
+                for y_coord in reversed(np.arange(1000, 2500, 500))
+            ])
+    elif rhombus_test_name == 'x-slant':
+        # total x-offset is 150 (average of the left-offset (100) and right-offset (200))
+        # 3 fovs along the y-axis, so divide by 2 to get individual fov offset (75)
+        x_increment = 75
+        actual_pairs = []
+        for x_coord in [1500, 1666, 1833, 2000]:
+            actual_pairs.extend([
+                (x_coord + x_increment * i, y_coord)
+                for (i, y_coord) in enumerate(reversed(np.arange(1000, 2500, 500)))
+            ])
+    elif rhombus_test_name == 'y-slant':
+        # total y-offset is 162.5 (average of the top-offset (225) and right_offset (100))
+        # 4 fovs along the x-axis, so divide by 3 to get individual fov offset
+        y_increment = 162.5 / 3
+        actual_pairs = []
+        for i, x_coord in enumerate([1500, 1666, 1833, 2000]):
+            actual_pairs.extend([
+                (x_coord, int(y_coord + y_increment * i))
+                for y_coord in reversed(np.arange(1000, 2500, 500))
+            ])
+    elif rhombus_test_name == 'both-slant':
+        # total x-offset is -112.5 (average of the left-offset (-125) and right-offset (-100))
+        # 3 fovs along the y-axis, so divide by 2 to get the individual fov offset
+        x_increment = -112.5 / 2
+
+        # total y-offset is 187.5 (average of the top-offset (175) and the bottom-offset (200))
+        # 4 fovs along the x-axis, so divide by 3 to get the individual fov offset
+        y_increment = 187.5 / 3
+
+        # defining the equivalent rectangle indices will help for this
+        # the baseline x-coord for a rectangle
+        # take the difference between the x-value for the top-left and top-right corner (600)
+        # since there are 4 fovs along the x-axis, divide by 3 (200)
+        x_start = 200
+
+        # the baseline y-coord for a rectangle
+        # take the difference between the y-value for the bottom-left and top-left corner (-1000)
+        # since there are 3 fovs along the y-axis, divide by 2 (-500)
+        y_start = -500
+
+        actual_pairs = [
+            (int(top_left.x + x_start * i + x_increment * j),
+             int(top_left.y + y_start * j + y_increment * i))
+            for i in np.arange(4) for j in np.arange(3)
+        ]
+
+    assert pairs == actual_pairs
+
+
 @pytest.mark.parametrize('randomize_setting', _AUTO_RANDOMIZE_TEST_CASES)
 @pytest.mark.parametrize('moly_region', _AUTO_MOLY_REGION_CASES)
 @pytest.mark.parametrize('moly_interval_setting', _AUTO_MOLY_INTERVAL_SETTING_CASES)
@@ -429,19 +542,61 @@ def test_tiled_region_generate_fov_list(randomize_setting, moly_region,
             assert center_points[fov_1_end:] != actual_center_points_sorted[fov_1_end:]
 
 
-def test_tma_generate_fov_list():
+def test_validate_tma_corners():
+    # define some really invalid points
+    top_left = xy_coord(100, 200)
+    top_right = xy_coord(50, 100)
+    bottom_left = xy_coord(150, 300)
+    bottom_right = xy_coord(100, 200)
+
+    # catches the first error (top_left right of top_right)
+    with pytest.raises(ValueError, match='upper left corner is to the right'):
+        tiling_utils.validate_tma_corners(top_left, top_right, bottom_left, bottom_right)
+
+    top_right.x = 150
+
+    # catches the second error (bottom_left right of bottom_right)
+    with pytest.raises(ValueError, match='bottom left corner is to the right'):
+        tiling_utils.validate_tma_corners(top_left, top_right, bottom_left, bottom_right)
+
+    bottom_right.x = 200
+
+    # catches the third error (upper_left below bottom_left)
+    with pytest.raises(ValueError, match='upper left corner is below'):
+        tiling_utils.validate_tma_corners(top_left, top_right, bottom_left, bottom_right)
+
+    top_left.y = 400
+
+    # catches the last error (upper_right below bottom_right)
+    with pytest.raises(ValueError, match='upper right corner is below'):
+        tiling_utils.validate_tma_corners(top_left, top_right, bottom_left, bottom_right)
+
+    top_right.y = 300
+
+    # this should not throw an error
+    tiling_utils.validate_tma_corners(top_left, top_right, bottom_left, bottom_right)
+
+
+@pytest.mark.parametrize('rhombus_test_name', list(_TMA_RHOMBUS_TEST_NAMES.keys()))
+def test_tma_generate_fov_list(rhombus_test_name):
     # file path validation
     with pytest.raises(FileNotFoundError):
         tiling_utils.tma_generate_fov_list(
             'bad_path.json', 3, 3
         )
 
+    # extract the coordinates
+    top_left, top_right, bottom_left, bottom_right = _TMA_RHOMBUS_TEST_NAMES[rhombus_test_name]
+
     # generate a sample FOVs list
-    # NOTE: this intentionally contains more than 2 FOVs for now so it fails immediately
+    # NOTE: this intentionally contains more than 4 FOVs for now so it fails immediately
     # we will trim it later on
     sample_fovs_list = test_utils.generate_sample_fovs_list(
-        fov_coords=[(0, 0), (100, 100), (100, 100), (200, 200)],
-        fov_names=["TheFirstFOV", "TheFirstFOV", "TheSecondFOV", "TheSecondFOV"]
+        fov_coords=[astuple(top_left), astuple(top_right),
+                    astuple(bottom_left), astuple(bottom_right),
+                    (100, 100), (200, 200)],
+        fov_names=["TheFirstFOV", "TheFirstFOV", "TheFirstFOV", "TheFirstFOV",
+                   "TheSecondFOV", "TheSecondFOV"]
     )
 
     # save sample FOV
@@ -460,74 +615,91 @@ def test_tma_generate_fov_list():
             'sample_fovs_list.json', 3, 2
         )
 
-    # the fovs list defined does not contain exactly 2 FOVs
+    # the fovs list defined does not contain exactly 4 FOVs
     with pytest.raises(ValueError):
         tiling_utils.tma_generate_fov_list(
             'sample_fovs_list.json', 3, 3
         )
 
-    # trim sample_fovs_list so it only contains 2 FOVs
-    # one to define the upper-left corner, one to define the bottom-left corner
-    sample_fovs_list['fovs'] = sample_fovs_list['fovs'][:2]
+    # trim sample_fovs_list so it only contains 4 FOVs, one defining each corner
+    from pprint import pprint
+    sample_fovs_list['fovs'] = sample_fovs_list['fovs'][:4]
 
-    # error checking, define the upper-left x-coord to be greater than the bottom-right
-    sample_fovs_list['fovs'][0]['centerPointMicrons']['x'] = 100
-    sample_fovs_list['fovs'][1]['centerPointMicrons']['x'] = 0
-
-    # resave the data
+    # resave with just 4 FOVs
     with open('sample_fovs_list.json', 'w') as sfl:
         json.dump(sample_fovs_list, sfl)
 
-    # assert test fails
-    with pytest.raises(ValueError):
-        tiling_utils.tma_generate_fov_list(
-            'sample_fovs_list.json', 3, 4
-        )
-
-    # reset x values
-    sample_fovs_list['fovs'][0]['centerPointMicrons']['x'] = 0
-    sample_fovs_list['fovs'][1]['centerPointMicrons']['x'] = 100
-
-    # error checking, define the upper-left y-coord to be less than the bottom-right
-    sample_fovs_list['fovs'][0]['centerPointMicrons']['y'] = 0
-    sample_fovs_list['fovs'][1]['centerPointMicrons']['y'] = 100
-
-    # resave the data
-    with open('sample_fovs_list.json', 'w') as sfl:
-        json.dump(sample_fovs_list, sfl)
-
-    # assert test fails
-    with pytest.raises(ValueError):
-        tiling_utils.tma_generate_fov_list(
-            'sample_fovs_list.json', 3, 4
-        )
-
-    # reset y values
-    sample_fovs_list['fovs'][0]['centerPointMicrons']['y'] = 100
-    sample_fovs_list['fovs'][1]['centerPointMicrons']['y'] = 0
-
-    # resave the data
-    with open('sample_fovs_list.json', 'w') as sfl:
-        json.dump(sample_fovs_list, sfl)
+    # NOTE: we'll save the coordinate checks for test_validate_tma_corners
 
     # create the FOV regions
-    # use 3 and 4 since 3 divides into clean ints and 4 does not
     fov_regions = tiling_utils.tma_generate_fov_list(
-        'sample_fovs_list.json', 3, 4
+        'sample_fovs_list.json', 4, 3
     )
 
-    center_points = [fov_regions[fov] for fov in fov_regions]
+    # define the generated fov_names and center points
+    fov_names = list(fov_regions.keys())
+    center_points = list(fov_regions.values())
 
     # define the actual center points created
-    # NOTE: y-coordinates are intentionally rounded
-    actual_x = [0, 50, 100]
-    actual_y = [100, 66, 33, 0]
-    actual_center_points = [
-        (x, y) for x in actual_x for y in actual_y
-    ]
+    if rhombus_test_name == 'rectangle':
+        actual_center_points = []
+        for x_coord in [1500, 1666, 1833, 2000]:
+            actual_center_points.extend([
+                (x_coord, y_coord)
+                for y_coord in reversed(np.arange(1000, 2500, 500))
+            ])
+    elif rhombus_test_name == 'x-slant':
+        # total x-offset is 150 (average of the left-offset (100) and right-offset (200))
+        # 3 fovs along the y-axis, so divide by 2 to get individual fov offset (75)
+        x_increment = 75
+        actual_center_points = []
+        for x_coord in [1500, 1666, 1833, 2000]:
+            actual_center_points.extend([
+                (x_coord + x_increment * i, y_coord)
+                for (i, y_coord) in enumerate(reversed(np.arange(1000, 2500, 500)))
+            ])
+    elif rhombus_test_name == 'y-slant':
+        # total y-offset is 162.5 (average of the top-offset (225) and right_offset (100))
+        # 4 fovs along the x-axis, so divide by 3 to get individual fov offset
+        y_increment = 162.5 / 3
+        actual_center_points = []
+        for i, x_coord in enumerate([1500, 1666, 1833, 2000]):
+            actual_center_points.extend([
+                (x_coord, int(y_coord + y_increment * i))
+                for y_coord in reversed(np.arange(1000, 2500, 500))
+            ])
+    elif rhombus_test_name == 'both-slant':
+        # total x-offset is -112.5 (average of the left-offset (-125) and right-offset (-100))
+        # 3 fovs along the y-axis, so divide by 2 to get the individual fov offset
+        x_increment = -112.5 / 2
 
-    # assert the centroids are the same
-    assert center_points == actual_center_points
+        # total y-offset is 187.5 (average of the top-offset (175) and the bottom-offset (200))
+        # 4 fovs along the x-axis, so divide by 3 to get the individual fov offset
+        y_increment = 187.5 / 3
+
+        # defining the equivalent rectangle indices will help for this
+        # the baseline x-coord for a rectangle
+        # take the difference between the x-value for the top-left and top-right corner (600)
+        # since there are 4 fovs along the x-axis, divide by 3 (200)
+        x_start = 200
+
+        # the baseline y-coord for a rectangle
+        # take the difference between the y-value for the bottom-left and top-left corner (-1000)
+        # since there are 3 fovs along the y-axis, divide by 2 (-500)
+        y_start = -500
+
+        actual_center_points = [
+            (int(top_left.x + x_start * i + x_increment * j),
+             int(top_left.y + y_start * j + y_increment * i))
+            for i in np.arange(4) for j in np.arange(3)
+        ]
+
+    # assert the centroids match up
+    assert actual_center_points == center_points
+
+    # assert each fov is associated with the correct point
+    for i, fov_name in enumerate(fov_names):
+        assert fov_regions[fov_name] == center_points[i]
 
 
 def test_convert_microns_to_pixels():
