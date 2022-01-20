@@ -331,7 +331,6 @@ def test_generate_x_y_fov_pairs_rhombus(rhombus_test_name):
     top_left, top_right, bottom_left, bottom_right = _TMA_RHOMBUS_TEST_NAMES[rhombus_test_name]
 
     # generate the FOV-coordinate pairs
-    # use 4 and 3 because 4 divides unevently (requires rounding) and 3 divides evenly
     pairs = tiling_utils.generate_x_y_fov_pairs_rhombus(
         top_left, top_right, bottom_left, bottom_right, 4, 3
     )
