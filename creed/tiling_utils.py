@@ -240,8 +240,8 @@ def set_tiled_region_params(region_corners_path):
 
     # whether to insert moly points between fovs
     moly_interval = read_tiling_param(
-        "Enter the FOV interval size to insert Moly points. If you do not want to insert "
-        "Moly points at a FOV interval, enter 0: ",
+        "Enter the FOV interval size to insert Moly points. If yes, enter the number of FOVs "
+        "between each Moly point. If no, enter 0: ",
         "Error: moly interval must be 0 or a positive integer",
         lambda mi: mi >= 0,
         dtype=int
