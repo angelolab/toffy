@@ -512,7 +512,7 @@ def generate_tma_fov_list(tma_corners_path, num_fov_x, num_fov_y):
     if num_fov_y < 3:
         raise ValueError("Number of FOVs along y-axis must be at least 3")
 
-    # read in fov_list_path
+    # read in tma_corners_path
     with open(tma_corners_path, 'r') as flf:
         tma_corners = json.load(flf)
 
