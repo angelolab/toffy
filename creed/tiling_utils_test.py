@@ -403,7 +403,6 @@ def test_generate_tiled_region_fov_list_success(randomize_setting, moly_region_s
             assert center_points[fov_1_end_pos:] != actual_center_points_sorted[fov_1_end_pos:]
 
 
-
 @parametrize_with_cases('top_left, top_right, bottom_left, bottom_right',
                         cases=test_cases.ValidateRhombusCoordsTests, glob='*_failure')
 def test_validate_tma_corners_failure(top_left, top_right, bottom_left, bottom_right):
