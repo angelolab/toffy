@@ -23,7 +23,7 @@ cache: pip
 
 script:
   - python -m pip install --editable .
-  - python -m pytest --cov=creed --pycodestyle creed
+  - python -m pytest --cov=toffy --pycodestyle toffy
 
 after_success:
   - coveralls
