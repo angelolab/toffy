@@ -378,7 +378,7 @@ def test_generate_tiled_region_fov_list_success(randomize_setting, moly_region_s
             # however, fov 2 sorted entries should NOT equal fov 2 random entries
             # NOTE: due to randomization, this test will fail once in a blue moon
             assert center_points[fov_1_end_pos:] != actual_center_points_sorted[fov_1_end_pos:]
-        # if both regions are randomized
+        # if both fovs are randomized
         elif randomize_setting == ['Y', 'Y']:
             # ensure the random center points for fov 1 contain the same elements
             # as its sorted version
