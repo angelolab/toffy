@@ -9,7 +9,7 @@ from scipy.ndimage import gaussian_filter
 
 from ark.utils.load_utils import load_imgs_from_tree, load_imgs_from_dir
 from ark.utils.io_utils import list_folders
-from ark.utils.misc_utils import verify_same_elements
+from ark.utils.misc_utils import verify_same_elements, verify_in_list
 
 
 def transform_compensation_json(json_path, comp_mat_path):
@@ -69,8 +69,8 @@ def compensate_matrix_simple(raw_inputs, comp_coeffs):
     return outputs
 
 
-def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info_path, ps_tiffs,
-                          batch_size=10, gaus_rad=1):
+def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info_path,
+                          save_format='normalized', batch_size=10, gaus_rad=1):
     """Function to compensate MIBI data with a flow-cytometry style compensation matrix
 
     Args:
@@ -78,9 +78,14 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         comp_data_dir: path to directory where compensated images will be saved
         comp_mat_path: path to compensation matrix, nxn with channel labels
         panel_info_path: path to panel info file with 'masses' and 'targets' as columns
-        ps_tiffs: bool to indicate whether a directory of 16-bit tiffs should be saved
+        save_format: flag to control how the processed tifs are saved. Must be one of:
+            'raw': Direct output from the compensation matrix corresponding to number of ion events
+                detected per pixel. These will not be viewable in many image processing programs
+            'normalized': all images are divided by 100 to enable visualization. This transform
+                has no effect on downstream analysis as it preserves relative expression values
+            'both': saves both 'raw' and 'normalized' images
         batch_size: number of images to process at a time
-        gaus_rad: radius for blurring image data
+        gaus_rad: radius for blurring image data. Passing 0 will result in no blurring
     """
 
     # get list of all fovs
@@ -106,6 +111,17 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
 
     verify_same_elements(image_files=test_data.channels.values, listed_channels=acquired_targets)
 
+    # check for valid save_formats
+    allowed_formats = ['raw', 'normalized', 'both']
+    save_format = save_format.lower()
+    verify_in_list(save_format=save_format, allowed_formats=allowed_formats)
+
+    if batch_size < 1 or not batch_size.dtype == 'int':
+        raise ValueError('batch_size parameter must be a positive integer')
+
+    if gaus_rad < 0 or not gaus_rad.dtype == 'int':
+        raise ValueError('gaus_rad parameter must be a non-negative integer')
+
     # loop over each set of FOVs in the batch
     for i in range(0, len(fovs), batch_size):
         print("Processing image {}".format(i))
@@ -114,14 +130,16 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         batch_fovs = fovs[i: i + batch_size]
         batch_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=batch_fovs,
                                          channels=acquired_targets, dtype='float32')
-        batch_data.values = batch_data.values.astype('float')
 
         # blur data
-        batch_data_blurred = np.zeros_like(batch_data, dtype='float')
-        for j in range(batch_data.shape[0]):
-            for k in range(batch_data.shape[-1]):
-                blurred = gaussian_filter(batch_data[j, :, :, k], sigma=gaus_rad)
-                batch_data_blurred[j, :, :, k] = blurred
+        if gaus_rad > 0:
+            batch_data_blurred = np.zeros_like(batch_data)
+            for j in range(batch_data.shape[0]):
+                for k in range(batch_data.shape[-1]):
+                    blurred = gaussian_filter(batch_data[j, :, :, k], sigma=gaus_rad)
+                    batch_data_blurred[j, :, :, k] = blurred
+        else:
+            batch_data_blurred = batch_data
 
         comp_data = compensate_matrix_simple(raw_inputs=batch_data_blurred,
                                              comp_coeffs=comp_mat.values)
@@ -131,20 +149,29 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
 
         # save data
         for j in range(batch_data.shape[0]):
-            save_folder = os.path.join(comp_data_dir, batch_data.fovs.values[j])
-            os.makedirs(save_folder, exist_ok=True)
-            if ps_tiffs:
-                ps_folder = os.path.join(save_folder, 'PS_tiffs')
-                os.makedirs(ps_folder, exist_ok=True)
+            fov_folder = os.path.join(comp_data_dir, batch_data.fovs.values[j])
+            os.makedirs(fov_folder)
+
+            # create directories for saving tifs
+            if save_format == 'normalized' or save_format == 'both':
+                norm_folder = os.path.join(fov_folder, 'normalized')
+                os.makedirs(norm_folder)
+
+            if save_format == 'raw' or save_format == 'both':
+                raw_folder = os.path.join(fov_folder, 'raw')
+                os.makedirs(raw_folder)
 
             for k in range(batch_data.shape[-1]):
-                save_path = os.path.join(save_folder, batch_data.channels.values[k] + '.tiff')
-                io.imsave(save_path, comp_data[j, :, :, k], check_contrast=False)
-                if ps_tiffs:
-                    im_data_PS = np.multiply(comp_data[j, :, :, k], 100).astype(int)
-                    img = im_data_PS.astype(np.uint16)
-                    ps_save_path = os.path.join(ps_folder, batch_data.channels.values[k] + '.tiff')
-                    io.imsave(ps_save_path, img, check_contrast=False)
+                channel_name = batch_data.channels.values[k] + '.tiff'
+
+                # save tifs to appropriate directories
+                if save_format == 'normalized' or save_format == 'both':
+                    save_path = os.path.join(norm_folder, channel_name)
+                    io.imsave(save_path, comp_data[j, :, :, k] / 100, check_contrast=False)
+
+                if save_format == 'raw' or save_format == 'both':
+                    save_path = os.path.join(raw_folder, channel_name)
+                    io.imsave(save_path, comp_data[j, :, :, k], check_contrast=False)
 
 
 def compare_comped_images(raw_dir, comp_dir_list, output_dir):

@@ -22,7 +22,7 @@ def test_compensate_matrix_simple():
     # second fov is 10x greater than first
     inputs[1] = inputs[0] * 10
 
-    # define coefficient matrix
+    # define coefficient matrix; each channel has a 10x higher multiplier than previous
     coeffs = np.array([[1, 0, 0, 2], [10, 0, 0, 20], [100, 0, 0, 200], [1000, 0, 0, 2000]])
 
     # calculate amount that should be removed from first channel
