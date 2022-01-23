@@ -5,10 +5,15 @@ import pandas as pd
 import tempfile
 
 from creed import rosetta_utils
+import creed.rosetta_utils_test_cases as test_cases
 from ark.utils import test_utils
 from ark.utils.load_utils import load_imgs_from_tree
 
 from ark.utils.io_utils import list_folders, list_files
+
+import pytest
+from pytest_cases import parametrize_with_cases
+
 
 
 def test_compensate_matrix_simple():
@@ -47,7 +52,9 @@ def test_compensate_matrix_simple():
     assert np.all(out[1, :, :, -1] == inputs[1, :, :, -1] - total_comp * 10 * 2)
 
 
-def test_compensate_image_data():
+@pytest.mark.parametrize('gaus_rad', [0, 1, 2])
+@parametrize_with_cases('panel_info', cases=test_cases.CompensateImageDataPanel)
+def test_compensate_image_data(gaus_rad, panel_info):
     with tempfile.TemporaryDirectory() as top_level_dir:
         data_dir = os.path.join(top_level_dir, 'data_dir')
         output_dir = os.path.join(top_level_dir, 'output_dir')
@@ -61,51 +68,31 @@ def test_compensate_image_data():
             data_dir, fovs, chans, img_shape=(10, 10), fills=True)
 
         # create panel info csv
-        masses = ['25', '50', '101']
-        d = {'masses': masses, 'targets': chans}
-        panel_info = pd.DataFrame(d)
         panel_info_path = os.path.join(data_dir, 'panel_info.csv')
         panel_info.to_csv(panel_info_path, index=False)
 
         # create compensation matrix
         comp_mat_vals = np.random.rand(3, 3) / 100
-
-        # channel 0  will be unchanged
-        comp_mat_vals[:, 0] = 0
-
-        # channel 2 has 3x the difference of channel 1
-        comp_mat_vals[:, 2] = comp_mat_vals[:, 1] * 3
-
-        # create compensation matrix
-        comp_mat = pd.DataFrame(comp_mat_vals, columns=masses, index=masses)
+        comp_mat = pd.DataFrame(comp_mat_vals, columns=['25', '50', '101'], index=['25', '50', '101'])
         comp_mat_path = os.path.join(data_dir, 'comp_mat.csv')
         comp_mat.to_csv(comp_mat_path)
 
         # run with default settings
         rosetta_utils.compensate_image_data(data_dir, output_dir, comp_mat_path, panel_info_path,
-                                            False, gaus_rad=0)
+                                            'raw', gaus_rad=gaus_rad)
 
         # all folders created
         output_folders = list_folders(output_dir)
         assert set(fovs) == set(output_folders)
 
         # all channels processed
-        output_files = list_files(os.path.join(output_dir, fovs[0]), '.tif')
+        output_files = list_files(os.path.join(output_dir, fovs[0], 'raw'), '.tif')
         output_files = [chan.split('.tif')[0] for chan in output_files]
-        assert set(output_files) == set(chans)
-        output_data = load_imgs_from_tree(data_dir=output_dir)
+        assert set(output_files) == set(panel_info['targets'].values)
+        output_data = load_imgs_from_tree(data_dir=output_dir, img_sub_folder='raw')
 
-        # first channel is unmodified
-        assert np.all(output_data.values[:, :, :, 0] == data_xr.values[:, :, :, 0])
-
-        # other channels are smaller than original
+        # all channels are smaller than original
         for i in range(output_data.shape[0]):
-            for j in range(1, output_data.shape[-1]):
-                assert np.all(output_data.values[i, :, :, j] <= data_xr.values[i, :, :, j])
+            for j in range(output_data.shape[-1]):
+                assert np.sum(output_data.values[i, :, :, j]) <= np.sum(data_xr.values[i, :, :, j])
 
-        # change in channel 2 is 3x change in channel 1
-        for i in range(output_data.shape[0]):
-            chan1_dif = np.sum(output_data.values[i, :, :, 1] - data_xr.values[i, :, :, 1])
-            chan2_dif = np.sum(output_data.values[i, :, :, 2] - data_xr.values[i, :, :, 2])
-
-            np.testing.assert_almost_equal(chan2_dif, chan1_dif * 3)

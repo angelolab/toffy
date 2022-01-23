@@ -116,10 +116,10 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
     save_format = save_format.lower()
     verify_in_list(save_format=save_format, allowed_formats=allowed_formats)
 
-    if batch_size < 1 or not batch_size.dtype == 'int':
+    if batch_size < 1 or not isinstance(batch_size, int):
         raise ValueError('batch_size parameter must be a positive integer')
 
-    if gaus_rad < 0 or not gaus_rad.dtype == 'int':
+    if gaus_rad < 0 or not isinstance(gaus_rad, int):
         raise ValueError('gaus_rad parameter must be a non-negative integer')
 
     # loop over each set of FOVs in the batch
