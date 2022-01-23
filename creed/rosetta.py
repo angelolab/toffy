@@ -218,7 +218,8 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
 #                 tiled_image[(img_size * (idx + 2)):(img_size * (idx + 3)), start:end] = \
 #                     comp_dict[key].values[i, :, :, j]
 #
-#         io.imsave(os.path.join(output_dir, raw_images.channels.values[j] + '_comparison.tiff'), tiled_image)
+#         io.imsave(os.path.join(output_dir, raw_images.channels.values[j] + '_comparison.tiff'),
+#                   tiled_image)
 
 
 def create_tiled_comparison(input_dir_list, output_dir):

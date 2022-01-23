@@ -81,7 +81,7 @@ def test_compensate_image_data(gaus_rad, save_format, panel_info, comp_mat):
 
         # call function
         rosetta.compensate_image_data(data_dir, output_dir, comp_mat_path, panel_info_path,
-                                            save_format, gaus_rad=gaus_rad)
+                                      save_format, gaus_rad=gaus_rad)
 
         # all folders created
         output_folders = list_folders(output_dir)
@@ -107,7 +107,8 @@ def test_compensate_image_data(gaus_rad, save_format, panel_info, comp_mat):
             # all channels are smaller than original
             for i in range(output_data.shape[0]):
                 for j in range(output_data.shape[-1]):
-                    assert np.sum(output_data.values[i, :, :, j]) <= np.sum(data_xr.values[i, :, :, j])
+                    assert np.sum(output_data.values[i, :, :, j]) <= \
+                           np.sum(data_xr.values[i, :, :, j])
 
 
 @parametrize('dir_num', [2, 3])
