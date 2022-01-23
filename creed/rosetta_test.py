@@ -1,8 +1,9 @@
 import os
 
 import numpy as np
-import pandas as pd
 import tempfile
+
+import skimage.io as io
 
 from creed import rosetta
 import creed.rosetta_test_cases as test_cases
@@ -107,3 +108,41 @@ def test_compensate_image_data(gaus_rad, save_format, panel_info, comp_mat):
             for i in range(output_data.shape[0]):
                 for j in range(output_data.shape[-1]):
                     assert np.sum(output_data.values[i, :, :, j]) <= np.sum(data_xr.values[i, :, :, j])
+
+
+@parametrize('dir_num', [2, 3])
+def test_create_tiled_comparison(dir_num):
+    with tempfile.TemporaryDirectory() as top_level_dir:
+        num_chans = 3
+        num_fovs = 4
+
+        output_dir = os.path.join(top_level_dir, 'output_dir')
+        os.makedirs(output_dir)
+        dir_names = ['input_dir_{}'.format(i) for i in range(dir_num)]
+
+        # create matching input directories
+        for input_dir in dir_names:
+            full_path = os.path.join(top_level_dir, input_dir)
+            os.makedirs(full_path)
+
+            fovs, chans = test_utils.gen_fov_chan_names(num_fovs=num_fovs, num_chans=num_chans)
+            filelocs, data_xr = test_utils.create_paired_xarray_fovs(
+                full_path, fovs, chans, img_shape=(10, 10), fills=True)
+
+        # pass full paths to function
+        paths = [os.path.join(top_level_dir, img_dir) for img_dir in dir_names]
+        rosetta.create_tiled_comparison(paths, output_dir)
+
+        # check that each tiled image was created
+        for i in range(num_chans):
+            chan_name = 'chan{}_comparison.tiff'.format(i)
+            chan_img = io.imread(os.path.join(output_dir, chan_name))
+            row_len = num_fovs * 10
+            col_len = dir_num * 10
+            assert chan_img.shape == (col_len, row_len)
+
+        # check that directories with different images raises error
+        for i in range(num_fovs):
+            os.remove(os.path.join(top_level_dir, dir_names[0], 'fov{}'.format(i), 'chan0.tiff'))
+        with pytest.raises(ValueError):
+            rosetta.create_tiled_comparison(paths, output_dir)
