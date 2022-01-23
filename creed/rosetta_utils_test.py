@@ -99,7 +99,9 @@ def test_compensate_image_data(gaus_rad, save_format, panel_info, comp_mat):
             output_files = list_files(os.path.join(output_dir, fovs[0], folder), '.tif')
             output_files = [chan.split('.tif')[0] for chan in output_files]
             assert set(output_files) == set(panel_info['targets'].values)
+
             output_data = load_imgs_from_tree(data_dir=output_dir, img_sub_folder=folder)
+            assert np.issubdtype(output_data.dtype, np.floating)
 
             # all channels are smaller than original
             for i in range(output_data.shape[0]):

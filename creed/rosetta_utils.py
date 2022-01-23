@@ -70,7 +70,7 @@ def compensate_matrix_simple(raw_inputs, comp_coeffs):
 
 
 def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info_path,
-                          save_format='normalized', batch_size=10, gaus_rad=1):
+                          save_format='normalized', batch_size=10, gaus_rad=1, norm_const=100):
     """Function to compensate MIBI data with a flow-cytometry style compensation matrix
 
     Args:
@@ -86,6 +86,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
             'both': saves both 'raw' and 'normalized' images
         batch_size: number of images to process at a time
         gaus_rad: radius for blurring image data. Passing 0 will result in no blurring
+        norm_const: constant used for normalization if save_format == 'normalized'
     """
 
     # get list of all fovs
@@ -166,74 +167,79 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                 # save tifs to appropriate directories
                 if save_format in ['normalized', 'both']:
                     save_path = os.path.join(norm_folder, channel_name)
-                    io.imsave(save_path, comp_data[j, :, :, k] / 100, check_contrast=False)
+                    io.imsave(save_path, comp_data[j, :, :, k] / norm_const, check_contrast=False)
 
                 if save_format in ['raw', 'both']:
                     save_path = os.path.join(raw_folder, channel_name)
                     io.imsave(save_path, comp_data[j, :, :, k], check_contrast=False)
 
+# TODO: Decide if this code is necessary or not
+# def compare_comped_images(raw_dir, comp_dir_list, output_dir):
+#     """Creates a tiled image containing the raw image, difference image, and output image
+#     from each compensated directory supplied
+#
+#     Args:
+#         raw_dir: directory containing raw images
+#         comp_dir_list: list of directories containing compensated images
+#         output_dir: directory where tifs will be saved"""
+#
+#     # load images
+#     raw_images = load_imgs_from_tree(raw_dir, dtype='float')
+#     comp_dict = {}
+#     for dir_name in comp_dir_list:
+#         comp_images = load_imgs_from_tree(dir_name, dtype='float')
+#         comp_dict[dir_name] = comp_images
+#
+#     img_size = raw_images.shape[1]
+#     fov_num = raw_images.shape[0]
+#     # compute difference between first compensation image and baseline
+#     diff_images = raw_images.values - comp_dict[comp_dir_list[0]].values
+#     diff_images[diff_images < 0] = 0
+#
+#     comp_image_num = len(comp_dir_list)
+#     # loop over each channel
+#     for j in range(raw_images.shape[3]):
+#         # create tiled array of corrections x fovs
+#         tiled_image = np.zeros((img_size * (comp_image_num + 2),
+#                                 img_size * fov_num))
+#         # loop over each fov, and place into columns of tiled array
+#         for i in range(raw_images.shape[0]):
+#             start = i * img_size
+#             end = (i + 1) * img_size
+#
+#             # first row is raw image
+#             tiled_image[:img_size, start:end] = raw_images.values[i, :, :, j]
+#
+#             # second row is difference image between raw and first compensated image
+#             tiled_image[img_size:(img_size * 2), start:end] = diff_images[i, :, :, j]
+#
+#             # subsequent rows are compensated images with different coefficients
+#             for idx, key in enumerate(comp_dir_list):
+#                 tiled_image[(img_size * (idx + 2)):(img_size * (idx + 3)), start:end] = \
+#                     comp_dict[key].values[i, :, :, j]
+#
+#         io.imsave(os.path.join(output_dir, raw_images.channels.values[j] + '_comparison.tiff'), tiled_image)
 
-def compare_comped_images(raw_dir, comp_dir_list, output_dir):
-    """Creates a tiled image containing the raw image, difference image, and output image
-    from each compensated directory supplied
 
-    Args:
-        raw_dir: directory containing raw images
-        comp_dir_list: list of directories containing compensated images
-        output_dir: directory where tifs will be saved"""
-
-    # load images
-    raw_images = load_imgs_from_tree(raw_dir, dtype='float')
-    comp_dict = {}
-    for dir_name in comp_dir_list:
-        comp_images = load_imgs_from_tree(dir_name, dtype='float')
-        comp_dict[dir_name] = comp_images
-
-    img_size = raw_images.shape[1]
-    fov_num = raw_images.shape[0]
-    # compute difference between first compensation image and baseline
-    diff_images = raw_images.values - comp_dict[comp_dir_list[0]].values
-    diff_images[diff_images < 0] = 0
-
-    comp_image_num = len(comp_dir_list)
-    # loop over each channel
-    for j in range(raw_images.shape[3]):
-        # create tiled array of corrections x fovs
-        tiled_image = np.zeros((img_size * (comp_image_num + 2),
-                                img_size * fov_num))
-        # loop over each fov, and place into columns of tiled array
-        for i in range(raw_images.shape[0]):
-            start = i * img_size
-            end = (i + 1) * img_size
-
-            # first row is raw image
-            tiled_image[:img_size, start:end] = raw_images.values[i, :, :, j]
-
-            # second row is difference image between raw and first compensated image
-            tiled_image[img_size:(img_size * 2), start:end] = diff_images[i, :, :, j]
-
-            # subsequent rows are compensated images with different coefficients
-            for idx, key in enumerate(comp_dir_list):
-                tiled_image[(img_size * (idx + 2)):(img_size * (idx + 3)), start:end] = \
-                    comp_dict[key].values[i, :, :, j]
-
-        io.imsave(os.path.join(output_dir, raw_images.channels.values[j] + '_comparison.tiff'), tiled_image)
-
-
-def compare_paired_runs(input_dir_list, output_dir):
-    """Creates a tiled image containing paired images from multiple runs
+def create_tiled_comparison(input_dir_list, output_dir):
+    """Creates a tiled image comparing FOVs from all supplied runs for each channel.
 
     Args:
         input_dir_list: list of directories to compare
         output_dir: directory where tifs will be saved"""
 
     # load images
-    comp_dict = {}
+    dir_dict = {}
+    dir_shapes = []
     for dir_name in input_dir_list:
-        comp_images = load_imgs_from_tree(dir_name, dtype='float')
-        comp_dict[dir_name] = comp_images
+        dir_images = load_imgs_from_tree(dir_name)
+        dir_shapes.append(dir_images.shape)
+        dir_dict[dir_name] = dir_images
 
-    first_dir = comp_dict[input_dir_list[0]]
+    if not np.all([shape == dir_shapes[0] for shape in dir_shapes]):
+        raise ValueError("All directories must contain the same number of images")
+
+    first_dir = dir_dict[input_dir_list[0]]
     img_size = first_dir.shape[1]
     fov_num = first_dir.shape[0]
 
@@ -241,7 +247,7 @@ def compare_paired_runs(input_dir_list, output_dir):
     for j in range(first_dir.shape[3]):
         # create tiled array of dirs x fovs
         tiled_image = np.zeros((img_size * len(input_dir_list),
-                                img_size * fov_num))
+                                img_size * fov_num), dtype=first_dir.dtype)
 
         # loop over each fov, and place into columns of tiled array
         for i in range(first_dir.shape[0]):
@@ -251,7 +257,33 @@ def compare_paired_runs(input_dir_list, output_dir):
             # go through each of the directories and place in appropriate spot
             for idx, key in enumerate(input_dir_list):
                 tiled_image[(img_size * idx):(img_size * (idx + 1)), start:end] = \
-                    comp_dict[key].values[i, :, :, j]
+                    dir_dict[key].values[i, :, :, j]
 
         io.imsave(os.path.join(output_dir, first_dir.channels.values[j] + '_comparison.tiff'),
-                  tiled_image / 200)
+                  tiled_image)
+
+
+def create_rosetta_matrices(default_matrix, multipliers=[0.5, 1, 1.5], channels=None):
+    """Creates a series of compensation matrices for evaluating coefficients
+
+    Args:
+        default_matrix (str): path to the rosetta matrix to use as the default
+        multipliers (list): the range of values to multiply the default matrix by
+            to get new coefficients
+        channels (list | None): an optional list of channels to include in the multiplication. If
+            only a subset of channels are specified, other channels will retain their values
+            in all iterations. If None, all channels are included"""
+
+    # TODO: Cameron will make this function
+
+    # step 1: read in the default matrix
+
+    # step 2: figure out which channels will be modified
+
+    # step 3: loop over each of the multipliers
+
+    # step 4: modify the appropriate channels based on mulitiplier
+
+    # step 5: save the modified matrix as original_name_multiplier
+
+    pass
