@@ -14,6 +14,7 @@ from ark.utils.io_utils import list_folders, list_files
 import pytest
 from pytest_cases import parametrize_with_cases
 
+parametrize = pytest.mark.parametrize
 
 
 def test_compensate_matrix_simple():
@@ -52,9 +53,11 @@ def test_compensate_matrix_simple():
     assert np.all(out[1, :, :, -1] == inputs[1, :, :, -1] - total_comp * 10 * 2)
 
 
-@pytest.mark.parametrize('gaus_rad', [0, 1, 2])
+@parametrize('gaus_rad', [0, 1, 2])
+@parametrize('save_format', ['raw', 'both'])
 @parametrize_with_cases('panel_info', cases=test_cases.CompensateImageDataPanel)
-def test_compensate_image_data(gaus_rad, panel_info):
+@parametrize_with_cases('comp_mat', cases=test_cases.CompensateImageDataMat)
+def test_compensate_image_data(gaus_rad, save_format, panel_info, comp_mat):
     with tempfile.TemporaryDirectory() as top_level_dir:
         data_dir = os.path.join(top_level_dir, 'data_dir')
         output_dir = os.path.join(top_level_dir, 'output_dir')
@@ -72,27 +75,33 @@ def test_compensate_image_data(gaus_rad, panel_info):
         panel_info.to_csv(panel_info_path, index=False)
 
         # create compensation matrix
-        comp_mat_vals = np.random.rand(3, 3) / 100
-        comp_mat = pd.DataFrame(comp_mat_vals, columns=['25', '50', '101'], index=['25', '50', '101'])
         comp_mat_path = os.path.join(data_dir, 'comp_mat.csv')
         comp_mat.to_csv(comp_mat_path)
 
-        # run with default settings
+        # call function
         rosetta_utils.compensate_image_data(data_dir, output_dir, comp_mat_path, panel_info_path,
-                                            'raw', gaus_rad=gaus_rad)
+                                            save_format, gaus_rad=gaus_rad)
 
         # all folders created
         output_folders = list_folders(output_dir)
         assert set(fovs) == set(output_folders)
 
-        # all channels processed
-        output_files = list_files(os.path.join(output_dir, fovs[0], 'raw'), '.tif')
-        output_files = [chan.split('.tif')[0] for chan in output_files]
-        assert set(output_files) == set(panel_info['targets'].values)
-        output_data = load_imgs_from_tree(data_dir=output_dir, img_sub_folder='raw')
+        # determine output directory structure
+        if save_format == 'raw':
+            format_folders = ['raw']
+        elif save_format == 'normalized':
+            format_folders = ['normalized']
+        elif save_format == 'both':
+            format_folders = ['raw', 'normalized']
 
-        # all channels are smaller than original
-        for i in range(output_data.shape[0]):
-            for j in range(output_data.shape[-1]):
-                assert np.sum(output_data.values[i, :, :, j]) <= np.sum(data_xr.values[i, :, :, j])
+        for folder in format_folders:
+            # check that all files were created
+            output_files = list_files(os.path.join(output_dir, fovs[0], folder), '.tif')
+            output_files = [chan.split('.tif')[0] for chan in output_files]
+            assert set(output_files) == set(panel_info['targets'].values)
+            output_data = load_imgs_from_tree(data_dir=output_dir, img_sub_folder=folder)
 
+            # all channels are smaller than original
+            for i in range(output_data.shape[0]):
+                for j in range(output_data.shape[-1]):
+                    assert np.sum(output_data.values[i, :, :, j]) <= np.sum(data_xr.values[i, :, :, j])

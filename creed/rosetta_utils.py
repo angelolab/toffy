@@ -113,7 +113,6 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
 
     # check for valid save_formats
     allowed_formats = ['raw', 'normalized', 'both']
-    save_format = save_format.lower()
     verify_in_list(save_format=save_format, allowed_formats=allowed_formats)
 
     if batch_size < 1 or not isinstance(batch_size, int):
@@ -153,11 +152,11 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
             os.makedirs(fov_folder)
 
             # create directories for saving tifs
-            if save_format == 'normalized' or save_format == 'both':
+            if save_format in ['normalized', 'both']:
                 norm_folder = os.path.join(fov_folder, 'normalized')
                 os.makedirs(norm_folder)
 
-            if save_format == 'raw' or save_format == 'both':
+            if save_format in ['raw', 'both']:
                 raw_folder = os.path.join(fov_folder, 'raw')
                 os.makedirs(raw_folder)
 
@@ -165,11 +164,11 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                 channel_name = batch_data.channels.values[k] + '.tiff'
 
                 # save tifs to appropriate directories
-                if save_format == 'normalized' or save_format == 'both':
+                if save_format in ['normalized', 'both']:
                     save_path = os.path.join(norm_folder, channel_name)
                     io.imsave(save_path, comp_data[j, :, :, k] / 100, check_contrast=False)
 
-                if save_format == 'raw' or save_format == 'both':
+                if save_format in ['raw', 'both']:
                     save_path = os.path.join(raw_folder, channel_name)
                     io.imsave(save_path, comp_data[j, :, :, k], check_contrast=False)
 
