@@ -4,8 +4,8 @@ import numpy as np
 import pandas as pd
 import tempfile
 
-from creed import rosetta_utils
-import creed.rosetta_utils_test_cases as test_cases
+from creed import rosetta
+import creed.rosetta_test_cases as test_cases
 from ark.utils import test_utils
 from ark.utils.load_utils import load_imgs_from_tree
 
@@ -35,7 +35,7 @@ def test_compensate_matrix_simple():
     total_comp = (coeffs[0, 0] * inputs[0, 0, 0, 0] + coeffs[1, 0] * inputs[0, 0, 0, 1] +
                   coeffs[2, 0] * inputs[0, 0, 0, 2] + coeffs[3, 0] * inputs[0, 0, 0, 3])
 
-    out = rosetta_utils.compensate_matrix_simple(inputs, coeffs)
+    out = rosetta.compensate_matrix_simple(inputs, coeffs)
 
     # non-affected channels are identical
     assert np.all(out[:, :, :, 1:-1] == inputs[:, :, :, 1:-1])
@@ -79,7 +79,7 @@ def test_compensate_image_data(gaus_rad, save_format, panel_info, comp_mat):
         comp_mat.to_csv(comp_mat_path)
 
         # call function
-        rosetta_utils.compensate_image_data(data_dir, output_dir, comp_mat_path, panel_info_path,
+        rosetta.compensate_image_data(data_dir, output_dir, comp_mat_path, panel_info_path,
                                             save_format, gaus_rad=gaus_rad)
 
         # all folders created
