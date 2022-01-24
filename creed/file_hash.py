@@ -5,6 +5,7 @@ from ark.utils import io_utils, misc_utils
 
 import warnings
 
+
 def get_hash(filepath):
     """Computes the hash of the specified file to verify file integrity
 
@@ -18,7 +19,7 @@ def get_hash(filepath):
         file_hash = hashlib.blake2b()
         while chunk := f.read(8192):
             file_hash.update(chunk)
-    return  file_hash.hexdigest()
+    return file_hash.hexdigest()
 
 
 def compare_directories(dir_1, dir_2):
@@ -35,14 +36,16 @@ def compare_directories(dir_1, dir_2):
     dir_2_folders = io_utils.list_folders(dir_2)
 
     if len(dir_1_folders) > 0:
-        warnings.warn("The following subfolders were found in the first directory. Sub-folder contents will not"
-                      "be compared for accuracy, if you want to ensure successful copying please run this"
-                      "function on those subdirectories. {}".format(dir_1_folders))
+        warnings.warn("The following subfolders were found in the first directory. Sub-folder "
+                      "contents will not be compared for accuracy, if you want to ensure "
+                      "successful copying please run this function on those subdirectories. "
+                      "{}".format(dir_1_folders))
 
     if len(dir_2_folders) > 0:
-        warnings.warn("The following subfolders were found in the second directory. Sub-folder contents will not"
-                      "be compared for accuracy, if you want to ensure successful copying please run this"
-                      "function on those subdirectories. {}".format(dir_2_folders))
+        warnings.warn("The following subfolders were found in the second directory. Sub-folder "
+                      "contents will not be compared for accuracy, if you want to ensure "
+                      "successful copying please run this function on those subdirectories. "
+                      "{}".format(dir_2_folders))
 
     dir_1_files = io_utils.list_files(dir_1)
     dir_2_files = io_utils.list_files(dir_2)
@@ -59,6 +62,3 @@ def compare_directories(dir_1, dir_2):
             bad_files.append(file)
 
     return bad_files
-
-
-
