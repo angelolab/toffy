@@ -269,7 +269,6 @@ def test_generate_x_y_fov_pairs():
 
 
 # TODO: clean up this test, something like Adam's setup might work here
-# @pytest.mark.parametrize('rhombus_test_name', list(_TMA_RHOMBUS_TEST_NAMES.keys()))
 @parametrize_with_cases('coords, actual_pairs', cases=test_cases.RhombusCoordInputTests)
 def test_generate_x_y_fov_pairs_rhombus(coords, actual_pairs):
     # retrieve the coordinates defining the TMA and the number of FOVs along each axis
@@ -418,8 +417,9 @@ def test_validate_tma_corners_success(top_left, top_right, bottom_left, bottom_r
     tiling_utils.validate_tma_corners(top_left, top_right, bottom_left, bottom_right)
 
 
-@parametrize_with_cases('tma_corners_file, num_x, num_y', cases=test_cases.TMAFovListFailureCases)
-def test_generate_tma_fov_list_failure(tma_corners_file, num_x, num_y):
+@parametrize_with_cases('tma_corners_file, num_x, num_y, err_type, err_match',
+                        cases=test_cases.TMAFovListFailureCases)
+def test_generate_tma_fov_list_failure(tma_corners_file, num_x, num_y, err_type, err_match):
     sample_fovs_list = test_utils.generate_sample_fovs_list(
         fov_coords=[(1500, 2000), (2000, 2000), (1500, 1000), (2000, 1000),
                     (100, 100), (200, 200)],
@@ -432,11 +432,11 @@ def test_generate_tma_fov_list_failure(tma_corners_file, num_x, num_y):
         with open(sample_tma_corners_path, 'w') as sfl:
             json.dump(sample_fovs_list, sfl)
 
-        # error check 1: tma_corners_file does not exist
-        # error check 2: invalid num_x
-        # error check 3: invalid num_y
-        # error check 4: the number of FOVs provided in tma_corners_file is not 4
-        with pytest.raises((FileNotFoundError, ValueError)):
+        # test 1: tma_corners_file does not exist
+        # test 2: invalid num_x
+        # test 3: invalid num_y
+        # test 4: the number of FOVs provided in tma_corners_file is not 4
+        with pytest.raises(err_type, match=err_match):
             tiling_utils.generate_tma_fov_list(
                 os.path.join(td, tma_corners_file), num_x, num_y
             )
@@ -630,8 +630,9 @@ def test_generate_fov_circles():
             assert np.all(sample_slide_img[x, y, :] == np.array([162, 197, 255]))
 
 
-@parametrize_with_cases('moly_path, moly_interval', cases=test_cases.RemappingFailureCases)
-def test_remap_and_reorder_fovs_failure(moly_path, moly_interval):
+@parametrize_with_cases('moly_path, moly_interval, err_type, err_match',
+                        cases=test_cases.RemappingFailureCases)
+def test_remap_and_reorder_fovs_failure(moly_path, moly_interval, err_type, err_match):
     # define the sample Moly point
     sample_moly_point = test_utils.generate_sample_fov_tiling_entry(
         coord=(14540, -10830), name="MoQC"
@@ -641,16 +642,16 @@ def test_remap_and_reorder_fovs_failure(moly_path, moly_interval):
     with open('sample_moly_point.json', 'w') as smp:
         json.dump(sample_moly_point, smp)
 
-    # error check 1: moly_path must exist
-    # error check 2: moly_interval must be at least 1 if moly_insert set
-    with pytest.raises((FileNotFoundError, ValueError)):
+    # test 1: moly_path does not exist
+    # test 2: moly_interval is less than 1
+    with pytest.raises(err_type, match=err_match):
         tiling_utils.remap_and_reorder_fovs(
             {}, {}, moly_path, moly_insert=True, moly_interval=moly_interval)
 
 
-@parametrize_with_cases('randomize_setting', cases=test_cases.RemapFOVOrderRandomizeCases)
-@parametrize_with_cases('moly_insert', cases=test_cases.RemapMolyInsertCases)
-@parametrize_with_cases('moly_interval', cases=test_cases.RemapMolyIntervalCases)
+@pytest.mark.parametrize('randomize_setting', test_cases._REMAP_FOV_ORDER_RANDOMIZE_CASES)
+@pytest.mark.parametrize('moly_insert', test_cases._REMAP_MOLY_INSERT_CASES)
+@pytest.mark.parametrize('moly_interval', test_cases._REMAP_MOLY_INTERVAL_CASES)
 def test_remap_and_reorder_fovs_success(randomize_setting, moly_insert, moly_interval):
     # define the sample Moly point
     sample_moly_point = test_utils.generate_sample_fov_tiling_entry(

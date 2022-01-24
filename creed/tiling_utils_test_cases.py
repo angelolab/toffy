@@ -184,47 +184,31 @@ class RhombusCoordInputTests:
 # testing failures for TMA fov generation
 class TMAFovListFailureCases:
     def case_json_path_failure(self):
-        return 'bad_json.path', 3, 3
+        return 'bad_json.path', 3, 3, FileNotFoundError, 'TMA corners file'
 
     def case_x_fov_failure(self):
-        return 'sample_tma_corners.json', 2, 3
+        return 'sample_tma_corners.json', 2, 3, ValueError, 'x-axis'
 
     def case_y_fov_failure(self):
-        return 'sample_tma_corners.json', 3, 2
+        return 'sample_tma_corners.json', 3, 2, ValueError, 'y-axis'
 
     def case_four_fovs_failure(self):
-        return 'sample_tma_corners.json', 3, 3
+        return 'sample_tma_corners.json', 3, 3, ValueError, 'four FOVs'
 
 
 # parameters for remapping
-class RemapFOVOrderRandomizeCases:
-    def case_false(self):
-        return False
-
-    def case_true(self):
-        return True
-
-
-class RemapMolyInsertCases:
-    def case_false(self):
-        return False
-
-    def case_true(self):
-        return True
-
-
-class RemapMolyIntervalCases:
-    def case_uneven_partition(self):
-        return 4
-
-    def case_even_partition(self):
-        return 2
+_REMAP_FOV_ORDER_RANDOMIZE_CASES = [False, True]
+_REMAP_MOLY_INSERT_CASES = [False, True]
+_REMAP_MOLY_INTERVAL_CASES = [4, 2]
 
 
 # testing failures for remapping
 class RemappingFailureCases:
     def case_bad_moly_path(self):
-        return 'bad_path.json', 2
+        return 'bad_path.json', 2, FileNotFoundError, 'Moly point'
 
-    def case_bad_moly_interval(self):
-        return 'sample_moly_point.json', 0
+    def case_bad_moly_interval_type(self):
+        return 'sample_moly_point.json', 1.5, ValueError, 'moly_interval'
+
+    def case_bad_moly_interval_value(self):
+        return 'sample_moly_point.json', 0, ValueError, 'moly_interval'
