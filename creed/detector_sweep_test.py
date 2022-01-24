@@ -2,8 +2,6 @@ import os
 import pytest
 import tempfile
 
-import numpy as np
-
 from creed import detector_sweep
 
 
@@ -48,4 +46,3 @@ def test_find_detector_sweep_folders():
         os.makedirs(os.path.join(temp_dir, bad_voltage))
         with pytest.raises(ValueError):
             _ = detector_sweep.find_detector_sweep_folders(temp_dir, sweeps[0], sweeps[-1])
-
