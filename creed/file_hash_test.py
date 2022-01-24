@@ -17,16 +17,20 @@ def test_get_hash():
             temp_file_path = os.path.join(temp_dir, 'test_file_{}.tiff'.format(img))
             io.imsave(temp_file_path, array)
 
+        shutil.copy(os.path.join(temp_dir, 'test_file_0.tiff'),
+                    os.path.join(temp_dir, 'test_file_0_copy.tiff'))
+
         hash1 = file_hash.get_hash(os.path.join(temp_dir, 'test_file_0.tiff'))
+        hash1_copy = file_hash.get_hash(os.path.join(temp_dir, 'test_file_0_copy.tiff'))
         hash2 = file_hash.get_hash(os.path.join(temp_dir, 'test_file_1.tiff'))
 
         assert hash1 != hash2
+        assert hash1 == hash1_copy
 
 
 def test_compare_directories():
     with tempfile.TemporaryDirectory() as top_level_dir:
         dir_1 = os.path.join(top_level_dir, 'dir_1')
-        dir_2 = os.path.join(top_level_dir, 'dir_2')
         os.makedirs(dir_1)
 
         # make fake data for testing
@@ -36,6 +40,7 @@ def test_compare_directories():
             io.imsave(temp_file_path, array)
 
         # copy same data into second directory
+        dir_2 = os.path.join(top_level_dir, 'dir_2')
         shutil.copytree(dir_1, dir_2)
 
         file_hash.compare_directories(dir_1, dir_2)
