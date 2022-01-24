@@ -46,3 +46,7 @@ def test_find_detector_sweep_folders():
         os.makedirs(os.path.join(temp_dir, bad_voltage))
         with pytest.raises(ValueError):
             _ = detector_sweep.find_detector_sweep_folders(temp_dir, sweeps[0], sweeps[-1])
+
+        # detector sweep with different start and end dates should raise and error
+        with pytest.raises(ValueError):
+            _ = detector_sweep.find_detector_sweep_folders(temp_dir, sweeps[0], bad_date)

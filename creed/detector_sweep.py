@@ -42,7 +42,7 @@ def find_detector_sweep_folders(data_dir, first_fov, last_fov, sweep_step=25):
 
     if first_sweep.date != last_sweep.date:
         raise ValueError("The day of the first fov {} is not the same as"
-                         "the day of the last fov {}".format(first_date, last_date))
+                         "the day of the last fov {}".format(first_sweep.date, last_sweep.date))
 
     # get all folders with matching date
     potential_sweeps = io_utils.list_folders(data_dir, 'Detector')
