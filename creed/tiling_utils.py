@@ -908,7 +908,7 @@ def interactive_remap(manual_to_auto_map, manual_fovs_info,
     # the second will define the automatically-generated fovs
     # the default value should be set to the auto fov the initial manual fov maps to
     w_auto = widgets.Dropdown(
-        options=[afi for afi in list(auto_fovs_info.keys())],
+        options=[afi for afi in sorted(list(auto_fovs_info.keys()))],
         value=manual_to_auto_map[first_manual],
         description='Automatically-generated FOV',
         layout=widgets.Layout(width='auto'),
