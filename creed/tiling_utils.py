@@ -1,4 +1,5 @@
 import copy
+from datetime import datetime
 from IPython.display import display
 import ipywidgets as widgets
 from itertools import combinations, product
@@ -584,10 +585,7 @@ def assign_closest_fovs(manual_fovs, auto_fovs):
     )
 
     # for each manual point, get the index of the auto point closest to it
-    closest_auto_point_ind = np.argmin(
-        np.linalg.norm(manual_centroids[:, np.newaxis] - auto_centroids, axis=2),
-        axis=1
-    )
+    closest_auto_point_ind = np.argmin(manual_auto_dist, axis=1)
 
     # assign the mapping in manual_to_auto_map
     for manual_index, auto_index in enumerate(closest_auto_point_ind):
@@ -599,19 +597,20 @@ def assign_closest_fovs(manual_fovs, auto_fovs):
         man_name = manual_centroid_to_fov[manual_coords]
         auto_name = auto_centroid_to_fov[auto_coords]
 
-        # map the manual fov name to its closest auto fov name
-        manual_to_auto_map[man_name] = auto_name
+        # map the manual fov name to its closest auto fov name and corresponding distance
+        manual_to_auto_map[man_name] = {
+            'closest_auto_fov': auto_name,
+            'distance': manual_auto_dist[manual_index, auto_index]
+        }
 
     return manual_to_auto_map, manual_fovs_info, auto_fovs_info
 
 
-def generate_fov_circles(manual_to_auto_map, manual_fovs_info, auto_fovs_info,
+def generate_fov_circles(manual_fovs_info, auto_fovs_info,
                          manual_name, auto_name, slide_img, draw_radius=7):
     """Draw the circles defining each FOV (manually-specified and automatically-generated)
 
     Args:
-        manual_to_auto_map (dict):
-            defines the mapping of manual to auto FOV names
         manual_fovs_info (dict):
             maps each manual FOV to its centroid coordinates and size
         auto_fovs_info (dict):
@@ -696,11 +695,9 @@ def update_mapping_display(change, w_auto, manual_to_auto_map, manual_coords, au
         manual_to_auto_map (dict):
             defines the mapping of manual to auto FOV names
         manual_coords (dict):
-            a `dict` defining each FOV in `manual_fov_regions` mapped to its centroid
-            coordinates
+            maps each manually-defined FOV to its annotation coordinate
         auto_coords (dict):
-            a `dict` defining each FOV in `auto_fov_regions` mapped to its centroid
-            coordinates
+            maps each automatically-generated FOV to its annotation coordinate
         slide_img (numpy.ndarray):
             the image to overlay
         draw_radius (int):
@@ -751,7 +748,7 @@ def update_mapping_display(change, w_auto, manual_to_auto_map, manual_coords, au
     slide_img[new_mr_x, new_mr_y, 2] = 37
 
     # retrieve the new auto centroid
-    new_auto_x, new_auto_y = auto_coords[manual_to_auto_map[change['new']]]
+    new_auto_x, new_auto_y = auto_coords[manual_to_auto_map[change['new']]['closest_auto_fov']]
 
     # redraw the new auto centroid on the slide_img
     new_ar_x, new_ar_y = ellipse(
@@ -763,12 +760,12 @@ def update_mapping_display(change, w_auto, manual_to_auto_map, manual_coords, au
     slide_img[new_ar_x, new_ar_y, 2] = 229
 
     # set the mapped auto value according to the new manual value
-    w_auto.value = manual_to_auto_map[change['new']]
+    w_auto.value = manual_to_auto_map[change['new']]['closest_auto_fov']
 
     return slide_img
 
 
-def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, auto_coords,
+def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_coords, auto_coords,
                                  slide_img, draw_radius=7):
     """Changes the bolded automatically-generated FOV to new value selected for manual FOV
     and updates the mapping in `manual_to_auto_map`
@@ -782,6 +779,8 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, auto_coords,
             the dropdown menu handler for the manual FOVs
         manual_to_auto_map (dict):
             defines the mapping of manual to auto FOV names
+        manual_coords (dict):
+            maps each manually-defined FOV to its annotation coordinate
         auto_coords (dict):
             maps each automatically-generated FOV to its annotation coordinate
         slide_img (numpy.ndarray):
@@ -822,7 +821,13 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, auto_coords,
     slide_img[new_ar_x, new_ar_y, 2] = 229
 
     # remap the manual fov to the changed value
-    manual_to_auto_map[w_man.value] = change['new']
+    manual_to_auto_map[w_man.value]['closest_auto_fov'] = change['new']
+
+    # update the distance between the manual FOV and its changed value in manual_to_auto_map
+    manual_coord = manual_coords[w_man.value]
+    new_auto_coord = auto_coords[change['new']]
+    updated_manual_auto_dist = np.linalg.norm(np.array(manual_coord) - np.array(new_auto_coord))
+    manual_to_auto_map[w_man.value]['distance'] = updated_manual_auto_dist
 
     return slide_img
 
@@ -841,18 +846,26 @@ def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
             the path to the file to save the mapping to
     """
 
+    # we can remove the distance key from the mapping
+    manual_to_auto_map_trim = {
+        k: v['closest_auto_fov'] for (k, v) in manual_to_auto_map.items()
+    }
+
     # save the mapping
     with open(mapping_path, 'w') as mp:
-        json.dump(manual_to_auto_map, mp)
+        json.dump(manual_to_auto_map_trim, mp)
 
     # remove the save annotation if it already exists
     # clears up some space if the user decides to save several times
     if save_ann['annotation']:
         save_ann['annotation'].remove()
 
+    # get the current datetime, need to display when the annotation was saved
+    timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+
     # display save annotation above the plot
     save_msg = plt.annotate(
-        'Mapping saved!',
+        'Mapping saved at %s!' % timestamp,
         (0, 20),
         color='white',
         fontweight='bold',
@@ -865,7 +878,7 @@ def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
 
 def interactive_remap(manual_to_auto_map, manual_fovs_info,
                       auto_fovs_info, slide_img, mapping_path,
-                      draw_radius=7, figsize=(7, 7)):
+                      draw_radius=7, dist_threshold=50, figsize=(7, 7)):
     """Creates the remapping interactive interface for manually-defined
     to automatically-generated FOVs
 
@@ -882,6 +895,9 @@ def interactive_remap(manual_to_auto_map, manual_fovs_info,
             the path to the file to save the mapping to
         draw_radius (int):
             the radius to draw each circle on the slide
+        dist_threshold (float):
+            if the distance between a manual-auto FOV pair exceeds this value, it will
+            be reported for a potential error
         figsize (tuple):
             the size of the interactive figure to display
     """
@@ -909,7 +925,7 @@ def interactive_remap(manual_to_auto_map, manual_fovs_info,
     # the default value should be set to the auto fov the initial manual fov maps to
     w_auto = widgets.Dropdown(
         options=[afi for afi in sorted(list(auto_fovs_info.keys()))],
-        value=manual_to_auto_map[first_manual],
+        value=manual_to_auto_map[first_manual]['closest_auto_fov'],
         description='Automatically-generated FOV',
         layout=widgets.Layout(width='auto'),
         style={'description_width': 'initial'}
@@ -943,9 +959,29 @@ def interactive_remap(manual_to_auto_map, manual_fovs_info,
 
     # generate the circles and annotations for each circle to display on the image
     slide_img = generate_fov_circles(
-        manual_to_auto_map, manual_fovs_info, auto_fovs_info, w_man.value, w_auto.value,
+        manual_fovs_info, auto_fovs_info, w_man.value, w_auto.value,
         slide_img, draw_radius
     )
+
+    # generate the FOV pairings that need extra inspection, falls into at least one of:
+    # 1. the distance between the manual and auto FOV exceeds dist_thresh
+    # 2. two manual FOVs map to the same auto FOV
+    # 3. a manual FOV name does not match its auto FOV name
+    fov_dist_invalid = []
+    auto_fov_count = {}
+    fov_mismatch_name = []
+
+    for mf in manual_to_auto_map:
+        if manual_to_auto_map[mf]['distance'] > dist_thresh:
+            fov_dist_invalid.append(mf)
+
+        closest_auto_fov = manual_to_auto_map[mf]['closest_auto_fov']
+        if closest_auto_fov not in auto_fov_count:
+            auto_fov_count[closest_auto_fov] = []
+        auto_fov_count[closest_auto_fov].append(mf)
+
+        if mf != manual_to_auto_map[mf]['closest_auto_fov']:
+            fov_mismatch_name.append(mf)
 
     # make sure the output gets displayed to the output widget so it displays properly
     with out:
@@ -957,6 +993,8 @@ def interactive_remap(manual_to_auto_map, manual_fovs_info,
 
         # remove massive padding
         _ = plt.tight_layout()
+
+        # using the validation function, print the error message
 
         # define status of the save annotation, initially None, updates when user clicks w_save
         # NOTE: ipywidget callback functions can only access dicts defined in scope
@@ -1003,7 +1041,8 @@ def interactive_remap(manual_to_auto_map, manual_fovs_info,
             # need to be in the output widget context to update
             with out:
                 new_slide_img = remap_manual_to_auto_display(
-                    change, w_man, manual_to_auto_map, auto_fovs_info, slide_img, draw_radius
+                    change, w_man, manual_to_auto_map, manual_fovs_info, auto_fovs_info,
+                    slide_img, draw_radius
                 )
 
                 # set the new slide img in the plot
