@@ -8,7 +8,7 @@ import skimage.io as io
 from scipy.ndimage import gaussian_filter
 
 from ark.utils.load_utils import load_imgs_from_tree, load_imgs_from_dir
-from ark.utils.io_utils import list_folders
+from ark.utils.io_utils import list_folders, validate_paths
 from ark.utils.misc_utils import verify_same_elements, verify_in_list
 
 
@@ -56,8 +56,7 @@ def compensate_matrix_simple(raw_inputs, comp_coeffs):
         chan_coeffs = comp_coeffs[:, chan]
 
         # convert from 1D to 4D for broadcasting
-        chan_coeffs = \
-            np.expand_dims(np.expand_dims(np.expand_dims(chan_coeffs, axis=0), axis=0), axis=0)
+        chan_coeffs = np.reshape(chan_coeffs, (1, 1, 1, len(chan_coeffs)))
 
         # broadcast across entire dataset and collapse into single set of values
         chan_vals = raw_inputs * chan_coeffs
@@ -65,6 +64,9 @@ def compensate_matrix_simple(raw_inputs, comp_coeffs):
 
         # subtract compensated values from target channel
         outputs[..., chan] -= chan_vals
+
+    # set negative values to zero
+    outputs = np.where(outputs > 0, outputs, 0)
 
     return outputs
 
@@ -88,6 +90,9 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         gaus_rad: radius for blurring image data. Passing 0 will result in no blurring
         norm_const: constant used for normalization if save_format == 'normalized'
     """
+
+    validate_paths([raw_data_dir, comp_data_dir, comp_mat_path, panel_info_path],
+                   data_prefix=False)
 
     # get list of all fovs
     fovs = list_folders(raw_data_dir, substrs=['fov'])
@@ -133,19 +138,13 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
 
         # blur data
         if gaus_rad > 0:
-            batch_data_blurred = np.zeros_like(batch_data)
             for j in range(batch_data.shape[0]):
                 for k in range(batch_data.shape[-1]):
-                    blurred = gaussian_filter(batch_data[j, :, :, k], sigma=gaus_rad)
-                    batch_data_blurred[j, :, :, k] = blurred
-        else:
-            batch_data_blurred = batch_data
+                    batch_data[j, :, :, k] = gaussian_filter(batch_data[j, :, :, k],
+                                                             sigma=gaus_rad)
 
-        comp_data = compensate_matrix_simple(raw_inputs=batch_data_blurred,
+        comp_data = compensate_matrix_simple(raw_inputs=batch_data,
                                              comp_coeffs=comp_mat.values)
-
-        # set negative values to zero
-        comp_data = np.where(comp_data > 0, comp_data, 0)
 
         # save data
         for j in range(batch_data.shape[0]):
@@ -173,54 +172,6 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                     save_path = os.path.join(raw_folder, channel_name)
                     io.imsave(save_path, comp_data[j, :, :, k], check_contrast=False)
 
-# TODO: Decide if this code is necessary or not
-# def compare_comped_images(raw_dir, comp_dir_list, output_dir):
-#     """Creates a tiled image containing the raw image, difference image, and output image
-#     from each compensated directory supplied
-#
-#     Args:
-#         raw_dir: directory containing raw images
-#         comp_dir_list: list of directories containing compensated images
-#         output_dir: directory where tifs will be saved"""
-#
-#     # load images
-#     raw_images = load_imgs_from_tree(raw_dir, dtype='float')
-#     comp_dict = {}
-#     for dir_name in comp_dir_list:
-#         comp_images = load_imgs_from_tree(dir_name, dtype='float')
-#         comp_dict[dir_name] = comp_images
-#
-#     img_size = raw_images.shape[1]
-#     fov_num = raw_images.shape[0]
-#     # compute difference between first compensation image and baseline
-#     diff_images = raw_images.values - comp_dict[comp_dir_list[0]].values
-#     diff_images[diff_images < 0] = 0
-#
-#     comp_image_num = len(comp_dir_list)
-#     # loop over each channel
-#     for j in range(raw_images.shape[3]):
-#         # create tiled array of corrections x fovs
-#         tiled_image = np.zeros((img_size * (comp_image_num + 2),
-#                                 img_size * fov_num))
-#         # loop over each fov, and place into columns of tiled array
-#         for i in range(raw_images.shape[0]):
-#             start = i * img_size
-#             end = (i + 1) * img_size
-#
-#             # first row is raw image
-#             tiled_image[:img_size, start:end] = raw_images.values[i, :, :, j]
-#
-#             # second row is difference image between raw and first compensated image
-#             tiled_image[img_size:(img_size * 2), start:end] = diff_images[i, :, :, j]
-#
-#             # subsequent rows are compensated images with different coefficients
-#             for idx, key in enumerate(comp_dir_list):
-#                 tiled_image[(img_size * (idx + 2)):(img_size * (idx + 3)), start:end] = \
-#                     comp_dict[key].values[i, :, :, j]
-#
-#         io.imsave(os.path.join(output_dir, raw_images.channels.values[j] + '_comparison.tiff'),
-#                   tiled_image)
-
 
 def create_tiled_comparison(input_dir_list, output_dir):
     """Creates a tiled image comparing FOVs from all supplied runs for each channel.
@@ -238,7 +189,7 @@ def create_tiled_comparison(input_dir_list, output_dir):
         dir_dict[dir_name] = dir_images
 
     if not np.all([shape == dir_shapes[0] for shape in dir_shapes]):
-        raise ValueError("All directories must contain the same number of images")
+        raise ValueError("All directories must contain the same number of fovs and images")
 
     first_dir = dir_dict[input_dir_list[0]]
     img_size = first_dir.shape[1]

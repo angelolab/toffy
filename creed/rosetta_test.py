@@ -29,8 +29,9 @@ def test_compensate_matrix_simple():
     # second fov is 10x greater than first
     inputs[1] = inputs[0] * 10
 
-    # define coefficient matrix; each channel has a 10x higher multiplier than previous
-    coeffs = np.array([[1, 0, 0, 2], [10, 0, 0, 20], [100, 0, 0, 200], [1000, 0, 0, 2000]])
+    # define coefficient matrix; each channel has a 2x higher multiplier than previous
+    coeffs = np.array([[0.01, 0, 0, 0.02], [0.02, 0, 0, 0.040],
+                       [0.04, 0, 0, 0.08], [0.08, 0, 0, 0.16]])
 
     # calculate amount that should be removed from first channel
     total_comp = (coeffs[0, 0] * inputs[0, 0, 0, 0] + coeffs[1, 0] * inputs[0, 0, 0, 1] +
@@ -41,21 +42,21 @@ def test_compensate_matrix_simple():
     # non-affected channels are identical
     assert np.all(out[:, :, :, 1:-1] == inputs[:, :, :, 1:-1])
 
-    # first channel is changed by expected amount
+    # first channel is changed by baseline amount
     assert np.all(out[0, :, :, 0] == inputs[0, :, :, 0] - total_comp)
 
-    # first channel in second fov is changed by expected amount
+    # first channel in second fov is changed by baseline amount * 10 due to fov multiplier
     assert np.all(out[1, :, :, 0] == inputs[1, :, :, 0] - total_comp * 10)
 
-    # last channel is changed by expected amount
+    # last channel is changed by baseline amount * 2 due to multiplier in coefficient matrix
     assert np.all(out[0, :, :, -1] == inputs[0, :, :, -1] - total_comp * 2)
 
-    # last channel in second fov is changed by expected amount
+    # last channel in second fov is changed by baseline * 2 * 10 due to fov and coefficient
     assert np.all(out[1, :, :, -1] == inputs[1, :, :, -1] - total_comp * 10 * 2)
 
 
 @parametrize('gaus_rad', [0, 1, 2])
-@parametrize('save_format', ['raw', 'both'])
+@parametrize('save_format', ['raw', 'normalized', 'both'])
 @parametrize_with_cases('panel_info', cases=test_cases.CompensateImageDataPanel)
 @parametrize_with_cases('comp_mat', cases=test_cases.CompensateImageDataMat)
 def test_compensate_image_data(gaus_rad, save_format, panel_info, comp_mat):
@@ -88,12 +89,9 @@ def test_compensate_image_data(gaus_rad, save_format, panel_info, comp_mat):
         assert set(fovs) == set(output_folders)
 
         # determine output directory structure
-        if save_format == 'raw':
-            format_folders = ['raw']
-        elif save_format == 'normalized':
-            format_folders = ['normalized']
-        elif save_format == 'both':
-            format_folders = ['raw', 'normalized']
+        format_folders = ['raw', 'normalized']
+        if save_format in format_folders:
+            format_folders = [save_format]
 
         for folder in format_folders:
             # check that all files were created
