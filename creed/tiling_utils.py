@@ -876,6 +876,49 @@ def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
     save_ann['annotation'] = save_msg
 
 
+def find_manual_auto_invalid_dist(manual_to_auto_map, dist_threshold=50):
+    """Finds the manual FOVs that map to auto FOVs greater than `dist_threshold` away
+
+    Used  to define an annotation to display to the user.
+
+    Args:
+        manual_to_auto_map (dict):
+            defines the mapping of manual to auto FOV names
+        manual_fovs_info (dict):
+            maps each manual FOV to its centroid coordinates
+        auto_fovs_info (dict):
+            maps each automatically-generated FOV to its centroid coordinates
+        dist_threshold (float):
+            if the distance between a manual-auto FOV pair exceeds this value, it will
+            be reported for a potential error
+
+    Returns:
+        str:
+            the annotation to display to the user identifying which FOV pairings have distances
+            above `dist_threshold`
+    """
+
+    bad_dist_manual_fovs = [
+        (mf, dist) for (mf, dist) in manual_to_auto_map.items() if dist > dist_thresh
+    ]
+
+    invalid_dist_annot = "The following FOV mappings are separated by more than %.2f:\n"
+    invalid_dist_annot += '\n'.join(
+        ["Manual %s to auto %s: %.2f" % (mf, manual_to_auto_map[mf], dist)
+         for (mf, dist) in bad_dist_manual_fovs]
+    )
+
+    return invalid_dist_annot
+
+
+def count_auto_fov_mappings(manual_to_auto_map):
+    pass
+
+
+def find_manual_auto_name_mismatches():
+    pass
+
+
 def interactive_remap(manual_to_auto_map, manual_fovs_info,
                       auto_fovs_info, slide_img, mapping_path,
                       draw_radius=7, dist_threshold=50, figsize=(7, 7)):
