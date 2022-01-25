@@ -766,7 +766,8 @@ def update_mapping_display(change, w_auto, manual_to_auto_map, manual_coords, au
 
 
 def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_coords, auto_coords,
-                                 slide_img, draw_radius=7, dist_threshold=50):
+                                 slide_img, draw_radius=7, check_dist=50,
+                                 check_duplicates=True, check_mismatches=True):
     """Changes the bolded automatically-generated FOV to new value selected for manual FOV
     and updates the mapping in `manual_to_auto_map`
 
@@ -787,9 +788,13 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_coord
             the image to overlay
         draw_radius (int):
             the radius to draw each circle on the slide
-        dist_threshold (float):
+        check_dist (float):
             if the distance between a manual-auto FOV pair exceeds this value, it will
-            be reported for a potential error
+            be reported for a potential error, if `None` does not validate distance
+        check_duplicates (bool):
+            if `True`, validate whether an auto FOV has 2 manual FOVs mapping to it
+        check_mismatches (bool):
+            if `True`, validate whether the the manual auto FOV pairs have matching names
 
     Returns:
         tuple:
@@ -839,11 +844,9 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_coord
     # define the potential sources of error in the new mapping
     # TODO: maybe not a good idea to loop through every FOV again since we can store the results
     # of the previous invalid_dist, duplicate_auto, and name_mismatch lists?
-    invalid_dist = find_manual_auto_invalid_dist(manual_to_auto_map, dist_threshold)
-    duplicate_auto = find_duplicate_auto_mappings(manual_to_auto_map)
-    name_mismatch = find_manual_auto_name_mismatches(manual_to_auto_map)
-
-    manual_auto_warning = generate_validation_annot(manual_to_auto_map, dist_threshold)
+    manual_auto_warning = generate_validation_annot(
+        manual_to_auto_map, check_dist, check_duplicates, check_mismatches
+    )
 
     return slide_img, manual_auto_warning
 
@@ -895,7 +898,7 @@ def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
 def find_manual_auto_invalid_dist(manual_to_auto_map, dist_threshold=50):
     """Finds the manual FOVs that map to auto FOVs greater than `dist_threshold` away
 
-    TODO: use type hinting for this
+    TODO: potential type hinting candidate?
 
     Args:
         manual_to_auto_map (dict):
@@ -930,7 +933,7 @@ def find_manual_auto_invalid_dist(manual_to_auto_map, dist_threshold=50):
 
 
 def find_duplicate_auto_mappings(manual_to_auto_map):
-    """Finds the manual FOVs that map to auto FOVs greater than `dist_threshold` away
+    """Finds each auto FOV with more than one manual FOV mapping to it
 
     TODO: need to fix the return description barf
 
@@ -1002,33 +1005,44 @@ def find_manual_auto_name_mismatches(manual_to_auto_map):
     return manual_auto_mismatches
 
 
-def generate_validation_annot(manual_to_auto_map, dist_threshold=50):
+def generate_validation_annot(manual_to_auto_map, check_dist=50,
+                              check_duplicates=True, check_mismatches=True):
     """Finds problematic manual-auto FOV pairs and generates a warning message to display
 
-    The following potential sources of error are reported:
+    The following potential sources of error can be requested by the user:
 
-    - Manual to auto FOV pairs that are of a distance greater than `dist_threshold` away
+    - Manual to auto FOV pairs that are of a distance greater than `check_dist` away
     - Auto FOV names that have more than one manual FOV name mapping to it
     - Manual to auto FOV pairs that don't have the same name
 
-    TODO: use type hinting for this one
+    TODO: potential type hinting candidate?
 
     Args:
         manual_to_auto_map (dict):
             defines the mapping of manual to auto FOV names
-        dist_threshold (float):
+        check_dist (float):
             if the distance between a manual-auto FOV pair exceeds this value, it will
-            be reported for a potential error
+            be reported for a potential error, if `None` does not validate distance
+        check_duplicates (bool):
+            if `True`, validate whether an auto FOV has 2 manual FOVs mapping to it
+        check_mismatches (bool):
+            if `True`, validate whether the the manual auto FOV pairs have matching names
 
     Returns:
         str:
             the warning message to display to the user
     """
 
-    # define the potential sources of error in the mapping
-    invalid_dist = find_manual_auto_invalid_dist(manual_to_auto_map, dist_threshold)
-    duplicate_auto = find_duplicate_auto_mappings(manual_to_auto_map)
-    name_mismatch = find_manual_auto_name_mismatches(manual_to_auto_map)
+    # define the potential sources of error desired by user in the mapping
+    invalid_dist = find_manual_auto_invalid_dist(
+        manual_to_auto_map, check_dist
+    ) if check_dist is not None else []
+    duplicate_auto = find_duplicate_auto_mappings(
+        manual_to_auto_map
+    ) if check_duplicates else []
+    name_mismatch = find_manual_auto_name_mismatches(
+        manual_to_auto_map
+    ) if check_mismatches else []
 
     # generate the annotation
     warning_annot = ""
@@ -1036,41 +1050,50 @@ def generate_validation_annot(manual_to_auto_map, dist_threshold=50):
     # add the manual-auto FOV pairs with invalid distances
     if len(invalid_dist) > 0:
         warning_annot += \
-            "The following mappings are placed more than %d microns apart:\n" % dist_threshold
+            'The following mappings are placed more than %d pixels apart:\n\n' % check_dist
 
         warning_annot += '\n'.join([
-            "User-defined FOV %s to TMA-grid FOV %s (distance: %f)" % (mf, af, dist)
+            'User-defined FOV %s to TMA-grid FOV %s (distance: %f)' % (mf, af, dist)
             for (mf, af, dist) in invalid_dist
-        ]) + '\n\n'
+        ])
+
+        warning_annot += '\n\n'
 
     # add the auto FOVs that have more than one manual FOV mapping to it
     if len(duplicate_auto) > 0:
         warning_annot += \
-            "The following TMA-grid FOVs have more than one user-defined FOV mapping to it:\n"
+            'The following TMA-grid FOVs have more than one user-defined FOV mapping to it:\n\n'
 
         warning_annot += '\n'.join([
-            "TMA-grid FOV %s: mapped with user-defined FOVs %s" % (af, ', '.join(mf_tuple))
+            'TMA-grid FOV %s: mapped with user-defined FOVs %s' % (af, ', '.join(mf_tuple))
             for (af, mf_tuple) in duplicate_auto
-        ]) + '\n\n'
+        ])
+
+        warning_annot += '\n\n'
 
     # add the manual-auto FOV pairs with mismatched names
     if len(name_mismatch) > 0:
         warning_annot += \
-            "The following mappings have mismatched names:\n"
+            'The following mappings have mismatched names:\n\n'
 
         warning_annot += '\n'.join([
-            "User-defined FOV %s: mapped with TMA-grid FOV %s" % (mf, af)
+            'User-defined FOV %s: mapped with TMA-grid FOV %s' % (mf, af)
             for (mf, af) in name_mismatch
-        ]) + '\n\n'
+        ])
+
+        warning_annot += '\n\n'
 
     return warning_annot
 
 
 def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
                           auto_fovs_info, slide_img, mapping_path,
-                          draw_radius=7, dist_threshold=50, figsize=(7, 7)):
+                          draw_radius=7, figsize=(7, 7), check_dist=50,
+                          check_duplicates=True, check_mismatches=True):
     """Creates the remapping interactive interface for manually-defined
     to automatically-generated FOVs
+
+    # TODO: potential type hinting candidate?
 
     Args:
         manual_to_auto_map (dict):
@@ -1085,11 +1108,18 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
             the path to the file to save the mapping to
         draw_radius (int):
             the radius to draw each circle on the slide
-        dist_threshold (float):
+        check_dist (float):
             if the distance between a manual-auto FOV pair exceeds this value, it will
-            be reported for a potential error
+            be reported for a potential error, if `None` distance will not be validated
         figsize (tuple):
             the size of the interactive figure to display
+        check_dist (float):
+            the distance threshold between FOVs to use for validation
+            if `None`, don't validate distance
+        check_duplicates (bool):
+            if `True`, validate whether an auto FOV has 2 manual FOVs mapping to it
+        check_mismatches (bool):
+            if `True`, validate whether the the manual auto FOV pairs have matching names
     """
 
     # error check: ensure mapping path exists
@@ -1097,6 +1127,12 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
         raise FileNotFoundError(
             "Path %s to mapping_path does not exist, "
             "please rename to a valid location" % os.path.split(mapping_path)[0]
+        )
+
+    # verify check_dist is an positive value if set as a float value
+    if (isinstance(check_dist, float) or isinstance(check_dist, int)) and check_dist <= 0:
+        raise ValueError(
+            "If validating distance, check_dist must be a positive floating point value"
         )
 
     # get the first manual fov, this will define the initial default value to display
@@ -1121,11 +1157,26 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
         style={'description_width': 'initial'}
     )
 
+    # define the save button
     w_save = widgets.Button(
         description='Save mapping',
         layout=widgets.Layout(width='auto'),
         style={'description_width': 'initial'}
     )
+
+    # define the textbox to display the error message
+    w_err = widgets.Textarea(
+        description='FOV pair validation checks:',
+        layout=widgets.Layout(height="auto", width='auto'),
+        style={'description_width': 'initial'}
+    )
+
+    # ensure the text area adjusts based on the amount of text needed
+    def increase_textarea_size(args):
+        w_err.rows = w_err.value.count('\n') + 1
+
+    # ensure the entire error message is displayed
+    w_err.observe(increase_textarea_size, 'value')
 
     # define a box to hold w_man and w_auto
     w_box = widgets.HBox(
@@ -1141,6 +1192,9 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
     # display the box with w_man and w_auto dropdown menus
     display(w_box)
 
+    # display the w_err text box
+    display(w_err)
+
     # define an output context to display
     out = widgets.Output()
 
@@ -1152,13 +1206,6 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
         manual_fovs_info, auto_fovs_info, w_man.value, w_auto.value,
         slide_img, draw_radius
     )
-
-    # generate the annotation defining FOV pairings that need extra inspection
-    # these fall into at least one of:
-    # 1. the distance between the manual and auto FOV exceeds dist_thresh
-    # 2. two manual FOVs map to the same auto FOV
-    # 3. a manual FOV name does not match its auto FOV name
-    manual_auto_warning = generate_validation_annot(manual_to_auto_map, dist_threshold)
 
     # make sure the output gets displayed to the output widget so it displays properly
     with out:
@@ -1175,19 +1222,17 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
         # NOTE: ipywidget callback functions can only access dicts defined in scope
         save_ann = {'annotation': None}
 
-        # display the validation warning on the image
-        validate_warning = plt.annotate(
-            manual_auto_warning,
-            (0, 100),
-            color='white',
-            fontweight='bold',
-            annotation_clip=False
+        # generate the annotation defining FOV pairings that need extra inspection
+        # the user can specify as many of the following:
+        # 1. the distance between the manual and auto FOV exceeds check_dist
+        # 2. two manual FOVs map to the same auto FOV
+        # 3. a manual FOV name does not match its auto FOV name
+        manual_auto_warning = generate_validation_annot(
+            manual_to_auto_map, check_dist, check_duplicates, check_mismatches
         )
 
-        # same note about ipywidget callback functions accessing just dicts
-        validate_ann = {
-            'annotation': validate_warning
-        }
+        # display the errors in the text box
+        w_err.value = manual_auto_warning
 
     # a callback function for changing w_auto to the value w_man maps to
     # NOTE: needs to be here so it can access w_man and w_auto in scope
@@ -1231,22 +1276,15 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
             with out:
                 new_slide_img, manual_auto_warning = remap_manual_to_auto_display(
                     change, w_man, manual_to_auto_map, manual_fovs_info, auto_fovs_info,
-                    slide_img, draw_radius, dist_threshold
+                    slide_img, draw_radius, check_dist, check_duplicates, check_mismatches
                 )
 
                 # set the new slide img in the plot
                 img_plot.set_data(new_slide_img)
                 fig.canvas.draw_idle()
 
-                # redraw the validation warning
-                validate_warning.remove()
-                validate_warning = plt.annotate(
-                    manual_auto_warning,
-                    (0, 100),
-                    color='white',
-                    fontweight='bold',
-                    annotation_clip=False
-                )
+                # re-generate the validation warning in w_err
+                w_err.value = manual_auto_warning
 
     # a callback function for saving manual_to_auto_map to mapping_path if w_save clicked
     def save_mapping(b):
