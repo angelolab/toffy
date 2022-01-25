@@ -879,7 +879,44 @@ def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
 def find_manual_auto_invalid_dist(manual_to_auto_map, dist_threshold=50):
     """Finds the manual FOVs that map to auto FOVs greater than `dist_threshold` away
 
-    Used  to define an annotation to display to the user.
+    TODO: use type hinting for this
+
+    Args:
+        manual_to_auto_map (dict):
+            defines the mapping of manual to auto FOV names
+        dist_threshold (float):
+            if the distance between a manual-auto FOV pair exceeds this value, it will
+            be reported for a potential error
+
+    Returns:
+        list:
+            contains tuples with elements:
+
+            - `tuple`: the manual FOV to auto FOV pair
+            - `float`: the distance between the manual and auto FOV
+
+            applies only for manual-auto pairs with distance greater than `dist_threshold`
+    """
+
+    # define the fov pairs at a distance greater than dist_thresh
+    manual_auto_invalid_dist_pairs = [
+        (mf, mf_data['closest_auto_fov'], mf_data['distance'])
+        for (mf, mf_data) in manual_to_auto_map.items()
+        if mf_data['distance'] > dist_threshold
+    ]
+
+    # sort these fov pairs by distance descending
+    manual_auto_invalid_dist_pairs = sorted(
+        manual_auto_invalid_dist_pairs, key=lambda val: val[2], reverse=True
+    )
+
+    return manual_auto_invalid_dist_pairs
+
+
+def find_duplicate_auto_mappings(manual_to_auto_map):
+    """Finds the manual FOVs that map to auto FOVs greater than `dist_threshold` away
+
+    TODO: need to fix the return description barf
 
     Args:
         manual_to_auto_map (dict):
@@ -888,40 +925,134 @@ def find_manual_auto_invalid_dist(manual_to_auto_map, dist_threshold=50):
             maps each manual FOV to its centroid coordinates
         auto_fovs_info (dict):
             maps each automatically-generated FOV to its centroid coordinates
+
+    Returns:
+        list:
+            contains tuples with elements:
+
+            - `str`: the name of the auto FOV
+            - `tuple`: the list of manual FOVs that map to the auto FOV
+
+            only for auto FOVs with more than one manual FOV pair
+    """
+
+    # "reverse" manual_to_auto_map: for each auto FOV find the list of manual FOVs that map to it
+    auto_fov_mappings = {}
+
+    # good ol' incremental dict building!
+    for mf in manual_to_auto_map:
+        closest_auto_fov = manual_to_auto_map[mf]['closest_auto_fov']
+
+        if closest_auto_fov not in auto_fov_mappings:
+            auto_fov_mappings[closest_auto_fov] = []
+
+        auto_fov_mappings[closest_auto_fov].append(mf)
+
+    # only keep the auto FOVs with more than one manual FOV mapping to it
+    duplicate_auto_fovs = [
+        (af, tuple(mf_list)) for (af, mf_list) in auto_fov_mappings.items() if len(mf_list) > 1
+    ]
+
+    # sort auto FOVs alphabetically
+    duplicate_auto_fovs = sorted(duplicate_auto_fovs, key=lambda val: val[0])
+
+    return duplicate_auto_fovs
+
+
+def find_manual_auto_name_mismatches(manual_to_auto_map):
+    """Finds the manual FOVs with names that do not match their corresponding auto FOV
+
+    Args:
+        manual_to_auto_map (dict):
+            defines the mapping of manual to auto FOV names
+
+    Returns:
+        list:
+            contains tuples with elements:
+
+            - `str`: the manual FOV
+            - `str`: the corresponding auto FOV
+
+            `manual_to_auto_map` with just the manual-to-auto FOV pairs with mismatched names
+    """
+
+    # find the manual FOVs that don't match the closest_auto_fov name
+    # NOTE: this method maintains the original manual FOV ordering which is already sorted
+    manual_auto_mismatches = [
+        (k, v['closest_auto_fov'])
+        for (k, v) in manual_to_auto_map.items() if k != v['closest_auto_fov']
+    ]
+
+    return manual_auto_mismatches
+
+
+def generate_validation_annot(manual_to_auto_map, dist_threshold=50):
+    """Finds problematic manual-auto FOV pairs and generates a warning message to display
+
+    The following potential sources of error are reported:
+
+    - Manual to auto FOV pairs that are of a distance greater than `dist_threshold` away
+    - Auto FOV names that have more than one manual FOV name mapping to it
+    - Manual to auto FOV pairs that don't have the same name
+
+    TODO: use type hinting for this one
+
+    Args:
+        manual_to_auto_map (dict):
+            defines the mapping of manual to auto FOV names
         dist_threshold (float):
             if the distance between a manual-auto FOV pair exceeds this value, it will
             be reported for a potential error
 
     Returns:
         str:
-            the annotation to display to the user identifying which FOV pairings have distances
-            above `dist_threshold`
+            the warning message to display to the user
     """
 
-    bad_dist_manual_fovs = [
-        (mf, dist) for (mf, dist) in manual_to_auto_map.items() if dist > dist_thresh
-    ]
+    # define the potential sources of error in the mapping
+    invalid_dist = find_manual_auto_invalid_dist(manual_to_auto_map, dist_threshold)
+    duplicate_auto = find_duplicate_auto_mappings(manual_to_auto_map)
+    name_mismatch = find_manual_auto_name_mismatches(manual_to_auto_map)
 
-    invalid_dist_annot = "The following FOV mappings are separated by more than %.2f:\n"
-    invalid_dist_annot += '\n'.join(
-        ["Manual %s to auto %s: %.2f" % (mf, manual_to_auto_map[mf], dist)
-         for (mf, dist) in bad_dist_manual_fovs]
-    )
+    # generate the annotation
+    warning_annot = ""
 
-    return invalid_dist_annot
+    # add the manual-auto FOV pairs with invalid distances
+    if len(invalid_dist) > 0:
+        warning_annot += \
+            "The following mappings are placed more than %d microns apart:\n" % dist_threshold
+
+        warning_annot += '\n'.join([
+            "User-defined FOV %s to TMA-grid FOV %s (distance: %f)" % (mf, af, dist)
+            for (mf, af, dist) in invalid_dist
+        ]) + '\n\n'
+
+    # add the auto FOVs that have more than one manual FOV mapping to it
+    if len(duplicate_auto) > 0:
+        warning_annot += \
+            "The following TMA-grid FOVs have more than one user-defined FOV mapping to it:\n"
+
+        warning_annot += '\n'.join([
+            "TMA-grid FOV %s: mapped with user-defined FOVs %s" % (af, ', '.join(mf_tuple))
+            for (af, mf_tuple) in duplicate_auto
+        ]) + '\n\n'
+
+    # add the manual-auto FOV pairs with mismatched names
+    if len(name_mismatch) > 0:
+        warning_annot += \
+            "The following mappings have mismatched names:\n"
+
+        warning_annot += '\n'.join([
+            "User-defined FOV %s: mapped with TMA-grid FOV %s" % (mf, af)
+            for (mf, af) in name_mismatch
+        ])
+
+    return warning_annot
 
 
-def count_auto_fov_mappings(manual_to_auto_map):
-    pass
-
-
-def find_manual_auto_name_mismatches():
-    pass
-
-
-def interactive_remap(manual_to_auto_map, manual_fovs_info,
-                      auto_fovs_info, slide_img, mapping_path,
-                      draw_radius=7, dist_threshold=50, figsize=(7, 7)):
+def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
+                          auto_fovs_info, slide_img, mapping_path,
+                          draw_radius=7, dist_threshold=50, figsize=(7, 7)):
     """Creates the remapping interactive interface for manually-defined
     to automatically-generated FOVs
 
@@ -1006,25 +1137,13 @@ def interactive_remap(manual_to_auto_map, manual_fovs_info,
         slide_img, draw_radius
     )
 
-    # generate the FOV pairings that need extra inspection, falls into at least one of:
+    # generate the annotation defining FOV pairings that need extra inspection
+    # these fall into at least one of:
     # 1. the distance between the manual and auto FOV exceeds dist_thresh
     # 2. two manual FOVs map to the same auto FOV
     # 3. a manual FOV name does not match its auto FOV name
-    fov_dist_invalid = []
-    auto_fov_count = {}
-    fov_mismatch_name = []
-
-    for mf in manual_to_auto_map:
-        if manual_to_auto_map[mf]['distance'] > dist_thresh:
-            fov_dist_invalid.append(mf)
-
-        closest_auto_fov = manual_to_auto_map[mf]['closest_auto_fov']
-        if closest_auto_fov not in auto_fov_count:
-            auto_fov_count[closest_auto_fov] = []
-        auto_fov_count[closest_auto_fov].append(mf)
-
-        if mf != manual_to_auto_map[mf]['closest_auto_fov']:
-            fov_mismatch_name.append(mf)
+    manual_auto_warning = generate_validation_annot(manual_to_auto_map, dist_threshold)
+    print(manual_auto_warning)
 
     # make sure the output gets displayed to the output widget so it displays properly
     with out:
