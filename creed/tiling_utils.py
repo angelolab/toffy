@@ -766,7 +766,7 @@ def update_mapping_display(change, w_auto, manual_to_auto_map, manual_coords, au
 
 
 def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_coords, auto_coords,
-                                 slide_img, draw_radius=7):
+                                 slide_img, draw_radius=7, dist_threshold=50):
     """Changes the bolded automatically-generated FOV to new value selected for manual FOV
     and updates the mapping in `manual_to_auto_map`
 
@@ -787,10 +787,17 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_coord
             the image to overlay
         draw_radius (int):
             the radius to draw each circle on the slide
+        dist_threshold (float):
+            if the distance between a manual-auto FOV pair exceeds this value, it will
+            be reported for a potential error
 
     Returns:
-        numpy.ndarray:
-            `slide_img` with the updated circles after auto fov changed remapping the fovs
+        tuple:
+            contains the following elements
+
+            - `numpy.ndarray`:`slide_img` with the updated circles after auto fov changed
+              remapping the fovs
+            - `str`: the new error message to display after a remapping
     """
 
     # define the fov size boundaries, needed to prevent drawing a circle out of bounds
@@ -829,7 +836,16 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_coord
     updated_manual_auto_dist = np.linalg.norm(np.array(manual_coord) - np.array(new_auto_coord))
     manual_to_auto_map[w_man.value]['distance'] = updated_manual_auto_dist
 
-    return slide_img
+    # define the potential sources of error in the new mapping
+    # TODO: maybe not a good idea to loop through every FOV again since we can store the results
+    # of the previous invalid_dist, duplicate_auto, and name_mismatch lists?
+    invalid_dist = find_manual_auto_invalid_dist(manual_to_auto_map, dist_threshold)
+    duplicate_auto = find_duplicate_auto_mappings(manual_to_auto_map)
+    name_mismatch = find_manual_auto_name_mismatches(manual_to_auto_map)
+
+    manual_auto_warning = generate_validation_annot(manual_to_auto_map, dist_threshold)
+
+    return slide_img, manual_auto_warning
 
 
 def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
@@ -1045,7 +1061,7 @@ def generate_validation_annot(manual_to_auto_map, dist_threshold=50):
         warning_annot += '\n'.join([
             "User-defined FOV %s: mapped with TMA-grid FOV %s" % (mf, af)
             for (mf, af) in name_mismatch
-        ])
+        ]) + '\n\n'
 
     return warning_annot
 
@@ -1143,7 +1159,6 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
     # 2. two manual FOVs map to the same auto FOV
     # 3. a manual FOV name does not match its auto FOV name
     manual_auto_warning = generate_validation_annot(manual_to_auto_map, dist_threshold)
-    print(manual_auto_warning)
 
     # make sure the output gets displayed to the output widget so it displays properly
     with out:
@@ -1202,9 +1217,9 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
         if change['name'] == 'value' and change['new'] != change['old']:
             # need to be in the output widget context to update
             with out:
-                new_slide_img = remap_manual_to_auto_display(
+                new_slide_img, manual_auto_warning = remap_manual_to_auto_display(
                     change, w_man, manual_to_auto_map, manual_fovs_info, auto_fovs_info,
-                    slide_img, draw_radius
+                    slide_img, draw_radius, dist_threshold
                 )
 
                 # set the new slide img in the plot
