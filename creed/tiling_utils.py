@@ -1171,11 +1171,23 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
         # remove massive padding
         _ = plt.tight_layout()
 
-        # using the validation function, print the error message
-
         # define status of the save annotation, initially None, updates when user clicks w_save
         # NOTE: ipywidget callback functions can only access dicts defined in scope
         save_ann = {'annotation': None}
+
+        # display the validation warning on the image
+        validate_warning = plt.annotate(
+            manual_auto_warning,
+            (0, 100),
+            color='white',
+            fontweight='bold',
+            annotation_clip=False
+        )
+
+        # same note about ipywidget callback functions accessing just dicts
+        validate_ann = {
+            'annotation': validate_warning
+        }
 
     # a callback function for changing w_auto to the value w_man maps to
     # NOTE: needs to be here so it can access w_man and w_auto in scope
@@ -1225,6 +1237,16 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
                 # set the new slide img in the plot
                 img_plot.set_data(new_slide_img)
                 fig.canvas.draw_idle()
+
+                # redraw the validation warning
+                validate_warning.remove()
+                validate_warning = plt.annotate(
+                    manual_auto_warning,
+                    (0, 100),
+                    color='white',
+                    fontweight='bold',
+                    annotation_clip=False
+                )
 
     # a callback function for saving manual_to_auto_map to mapping_path if w_save clicked
     def save_mapping(b):
