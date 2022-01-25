@@ -1,17 +1,14 @@
 # adapted from https://machinelearningmastery.com/curve-fitting-with-python/
 
+import json
+import os
+import warnings
+
 import numpy as np
 from scipy.optimize import curve_fit
+import skimage.io as io
 import matplotlib.pyplot as plt
 import pandas as pd
-
-
-#
-# pulse_height = pd.read_csv('/Users/noahgreenwald/Downloads/trigger_1300_MPH.csv')
-# pulse_heights_final = pulse_height['median_intensity'].values[2:-5]
-#
-# moly_counts = pd.read_csv('/Users/noahgreenwald/Downloads/trigger_1300_MPI_full_window.csv')
-# moly_counts_final = moly_counts['Mo98'].values[2:-5]
 
 
 def create_objective_function(obj_func):
@@ -74,35 +71,120 @@ def fit_calibration_curve(x_vals, y_vals, obj_func, plot_fit=False):
     return popt
 
 
-def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, norm_value, calibration_func):
+def create_prediction_function(name, weights):
+    """Creates a prediction function given a specified function type and fitted weights
+
+    Args:
+        name (str): name of the function to use
+        weights (list): list of fitted weights
+
+    Returns:
+        func: prediction function"""
+
+    # get function based on specified pred type
+    obj_func = create_objective_function(name)
+
+    # define function which takes only x as input, uses weights for remaining parameters
+    def pred_func(x):
+        output = obj_func(x, *weights)
+        return output
+
+    return pred_func
+
+
+def combine_fov_metrics(dir_list, num_fovs):
+    """Combines metrics for data normalization together into a single dataframe
+
+    Args:
+        dir_list (list): list of directories
+        num_fovs (int): number of fovs present within each directory
+
+    Returns:
+        pd.DataFrame: dataframe containing aggregates metrics"""
+
+    # create list to hold all extracted data
+    all_dirs = []
+
+    # loop through directories, and if present, multiple fovs within directories
+    for dir in dir_list:
+        all_fovs = []
+        for fov in range(1, num_fovs + 1):
+            pulse_heights = pd.read_csv(os.path.join(dir, 'pulse_heights_{}.csv'.format(fov)))
+            channel_counts = pd.read_csv(os.path.join(dir, 'channel_counts_{}.csv'.format(fov)))
+
+            if not np.all(pulse_heights['masses'] == channel_counts['masses']):
+                raise ValueError("Pulse counts and channel counts must be generated for the same"
+                                 "mass range. However, the following data contain different"
+                                 "masses: directory {}, fov {}".format(dir, fov))
+
+            # combine into single df per fov, and add to list for entire directory
+            pulse_heights['channel_counts'] = channel_counts['counts']
+            pulse_heights['fov'] = fov
+            all_fovs.append(pulse_heights)
+
+        # combine data from all fovs into single df, and add to list for all directories
+        fov_df = pd.concat(all_fovs)
+        fov_df['directory'] = dir
+        all_dirs.append(fov_df)
+
+    # combine data from each dir together
+    all_data = pd.concat(all_dirs)
+    all_data.reset_index()
+
+    # create normalized counts column
+    subset = all_data[['channel_counts', 'masses']]
+    all_data['norm_channel_counts'] = subset.groupby('masses').transform(lambda x: (x / x.max()))
+
+    return all_data
+
+
+def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info_path,
+                         calibration_func_path):
+    """Normalizes image data based on median pulse height
+
+    """
 
     # get FOVs to loop over
     if fovs is None:
         fovs = io_utils.list_folders(data_dir)
 
-    pred_weights, pred_name = calibration_func
-    obj_func = create_objective_function(pred_name)
+    # load calibration function
+    with open(calibration_func_path, 'r') as cf:
+        calibration_json = json.load(cf)
 
-    def pred_func(x):
-        pred_value = obj_func(x, *pred_weights)
-        return pred_value
+    cal_weights, cal_name = calibration_json['weights'], calibration_json['name']
+
+    panel_info = pd.read_csv(panel_info_path)
+    channels = panel_info['targets'].values
+
+    # instantiate function which translates pulse height to a normalization constant
+    calibration_func = create_prediction_function(cal_name, cal_weights)
 
     for fov in fovs:
         current_fov_dir = os.path.join(data_dir, fov)
         output_fov_dir = os.path.join(output_dir, fov)
         os.makedirs(output_fov_dir)
 
-        images = load_utils.load_imgs_from_dir(current_fov_dir)
+        # get images and pulse heights for current fov
+        images = load_utils.load_imgs_from_dir(current_fov_dir, channels=channels)
+        fov_pulse_heights = pulse_heights.loc[pulse_heights['fov'] == fov, :]
 
-        fov_pulse_height = pulse_heights.loc[fov, 'pulse_height'].values
+        # fit a function to model pulse height as a function of mass
+        mass_weights = fit_calibration_curve(x=fov_pulse_heights['masses'],
+                                             y=fov_pulse_heights['mphs'],
+                                             obj_func='poly_2')
+        mass_func = create_prediction_function(name='poly_2', weights=mass_weights)
+        norm_vals = mass_func[panel_info['masses']].reshape((1, 1, 1, len(channels)))
 
-        fov_norm_factor = norm_value / fov_pulse_height
+        if np.any(norm_vals < 0.5 or norm_vals > 1.3):
+            warnings.warn('The following FOV had an extreme normalization value. Manually '
+                          'inspection for accuracy is recommended: fov {}'.format(fov))
 
-        normalized_images = images.values * fov_norm_factor
+        normalized_images = images / norm_vals
+
+        for idx, chan in channels:
+            io.imsave(os.path.join(output_fov_dir, chan + '.tiff'), normalized_images[0, :, :, idx])
 
 
-# new_pred_func = fit_calibration_curve(pulse_heights=pulse_heights_final,
-#                                       signal_counts=moly_counts_final,
-#                                       obj_func='log')
-#
-# new_pred_func(2500)
+
+
