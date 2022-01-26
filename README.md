@@ -1,5 +1,5 @@
-# creed-helper
-Utility and QC scripts for the commercial MibiScope access computer
+# toffy
+Scripts for interacting with and generating data from the commercial MIBIScope
 
 ## Requirements
 
@@ -10,13 +10,13 @@ Latest version of conda (miniconda prefered)
 Clone the repo
 
 ```
-git clone https://github.com/angelolab/creed-helper.git
+git clone https://github.com/angelolab/toffy.git
 ```
 
 Move into directory and build environment
 
 ```
-cd creed-helper
+cd toffy
 conda env create -f environment.yml
 ```
 
@@ -25,7 +25,7 @@ conda env create -f environment.yml
 Activate the environment
 
 ```
-conda activate bin_tools_env
+conda activate toffy_env
 ```
 
 Once activated, notebooks can be used via this command:
@@ -47,7 +47,7 @@ git pull
 You may have to rebuild the environment which can be done via:
 
 ```
-conda remove --name bin_tools_env --all
+conda remove --name toffy_env --all
 conda env create -f environment.yml
 ```
 
