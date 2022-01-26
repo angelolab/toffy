@@ -2,9 +2,6 @@ import numpy as np
 
 from creed.tiling_utils import XYCoord
 
-# for tiled region param dict creation
-_PARAM_SET_MOLY_INTERVAL_VALUE_CASES = [0, 1]
-
 
 # for tiled region FOV generation
 class TiledRegionRandomizeCases:
