@@ -1056,8 +1056,6 @@ def find_manual_auto_name_mismatches(manual_to_auto_map):
 
             - `str`: the manual FOV
             - `str`: the corresponding auto FOV
-
-            `manual_to_auto_map` with just the manual-to-auto FOV pairs with mismatched names
     """
 
     # find the manual FOVs that don't match the closest_auto_fov name
@@ -1113,6 +1111,7 @@ def generate_validation_annot(manual_to_auto_map, check_dist=50,
     warning_annot = ""
 
     # add the manual-auto FOV pairs with invalid distances
+    # TODO: should we stick with pixels or should we convert to microns or stage coordinates?
     if len(invalid_dist) > 0:
         warning_annot += \
             'The following mappings are placed more than %d pixels apart:\n\n' % check_dist

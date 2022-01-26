@@ -181,6 +181,160 @@ class RhombusCoordInputTests:
         return coords, actual_pairs
 
 
+# testing auto FOVs mapped to by multiple manual FOVs validation
+class MappingDuplicateCases:
+    def case_no_duplicates(self):
+        manual_to_auto_map = {
+            'R0C0': {
+                'closest_auto_fov': 'R0C0',
+                'distance': 1.5
+            },
+            'R0C1': {
+                'closest_auto_fov': 'R0C1',
+                'distance': 3.0
+            },
+            'R0C2': {
+                'closest_auto_fov': 'R0C3',
+                'distance': 3.0
+            },
+            'R1C0': {
+                'closest_auto_fov': 'R1C0',
+                'distance': 1.0
+            },
+            'R1C1': {
+                'closest_auto_fov': 'R1C2',
+                'distance': 1.0
+            },
+            'R1C2': {
+                'closest_auto_fov': 'R1C4',
+                'distance': 1.0
+            }
+        }
+
+        duplicate_list = []
+
+        return manual_to_auto_map, duplicate_list
+
+    def case_at_most_one_duplicate(self):
+        manual_to_auto_map = {
+            'R0C0': {
+                'closest_auto_fov': 'R0C0',
+                'distance': 1.5
+            },
+            'R0C1': {
+                'closest_auto_fov': 'R0C1',
+                'distance': 3.0
+            },
+            'R0C2': {
+                'closest_auto_fov': 'R0C3',
+                'distance': 3.0
+            },
+            'R1C0': {
+                'closest_auto_fov': 'R0C1',
+                'distance': 1.0
+            },
+            'R1C1': {
+                'closest_auto_fov': 'R1C2',
+                'distance': 1.0
+            },
+            'R1C2': {
+                'closest_auto_fov': 'R1C2',
+                'distance': 1.0
+            }
+        }
+
+        duplicate_list = [
+            ('R0C1', ('R0C1', 'R1C0')), ('R1C2', ('R1C1', 'R1C2'))
+        ]
+
+        return manual_to_auto_map, duplicate_list
+
+    def case_more_than_one_duplicate(self):
+        manual_to_auto_map = {
+            'R0C0': {
+                'closest_auto_fov': 'R0C1',
+                'distance': 1.5
+            },
+            'R0C1': {
+                'closest_auto_fov': 'R0C1',
+                'distance': 3.0
+            },
+            'R0C2': {
+                'closest_auto_fov': 'R0C3',
+                'distance': 3.0
+            },
+            'R1C0': {
+                'closest_auto_fov': 'R0C1',
+                'distance': 1.0
+            },
+            'R1C1': {
+                'closest_auto_fov': 'R1C2',
+                'distance': 1.0
+            },
+            'R1C2': {
+                'closest_auto_fov': 'R1C2',
+                'distance': 1.0
+            }
+        }
+
+        duplicate_list = [
+            ('R0C1', ('R0C0', 'R0C1', 'R1C0')), ('R1C2', ('R1C1', 'R1C2'))
+        ]
+
+        return manual_to_auto_map, duplicate_list
+
+
+# testing manual-auto FOV name mismatch validation
+class MappingMismatchCases:
+    def case_no_mismatches(self):
+        manual_to_auto_map = {
+            'R0C0': {
+                'closest_auto_fov': 'R0C0',
+                'distance': 1.5
+            },
+            'R0C1': {
+                'closest_auto_fov': 'R0C1',
+                'distance': 3.0
+            },
+            'R1C0': {
+                'closest_auto_fov': 'R1C0',
+                'distance': 1.0
+            },
+            'R1C1': {
+                'closest_auto_fov': 'R1C1',
+                'distance': 1.0
+            }
+        }
+
+        mismatch_list = []
+
+        return manual_to_auto_map, mismatch_list
+
+    def case_mismatches(self):
+        manual_to_auto_map = {
+            'R0C0': {
+                'closest_auto_fov': 'R0C0',
+                'distance': 1.5
+            },
+            'R0C1': {
+                'closest_auto_fov': 'R0C2',
+                'distance': 3.0
+            },
+            'R1C0': {
+                'closest_auto_fov': 'R1C1',
+                'distance': 1.0
+            },
+            'R1C1': {
+                'closest_auto_fov': 'R1C1',
+                'distance': 1.0
+            }
+        }
+
+        mismatch_list = [('R0C1', 'R0C2'), ('R1C0', 'R1C1')]
+
+        return manual_to_auto_map, mismatch_list
+
+
 # testing failures for TMA fov generation
 class TMAFovListFailureCases:
     def case_json_path_failure(self):

@@ -646,6 +646,22 @@ def test_generate_fov_circles():
             assert np.all(sample_slide_img[x, y, :] == np.array([162, 197, 255]))
 
 
+@parametrize_with_cases('manual_to_auto_map, actual_duplicate_list',
+                        cases=test_cases.MappingDuplicateCases)
+def test_find_duplicate_auto_mappings(manual_to_auto_map, actual_duplicate_list):
+    generated_duplicate_list = tiling_utils.find_duplicate_auto_mappings(manual_to_auto_map)
+
+    assert generated_duplicate_list == actual_duplicate_list
+
+
+@parametrize_with_cases('manual_to_auto_map, actual_mismatch_list',
+                        cases=test_cases.MappingMismatchCases)
+def test_find_manual_auto_name_mismatches(manual_to_auto_map, actual_mismatch_list):
+    generated_mismatch_list = tiling_utils.find_manual_auto_name_mismatches(manual_to_auto_map)
+
+    assert generated_mismatch_list == actual_mismatch_list
+
+
 @parametrize_with_cases('moly_path, moly_interval, err_type, err_match',
                         cases=test_cases.RemappingFailureCases)
 def test_remap_and_reorder_fovs_failure(moly_path, moly_interval, err_type, err_match):
