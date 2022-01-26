@@ -2,7 +2,7 @@ import os
 import pytest
 import tempfile
 
-from creed import detector_sweep
+from toffy import detector_sweep
 
 
 def test_parse_sweep_parameters():
