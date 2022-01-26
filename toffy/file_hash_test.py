@@ -6,7 +6,7 @@ import pytest
 import skimage.io as io
 import numpy as np
 
-from creed import file_hash
+from toffy import file_hash
 
 
 def test_get_hash():

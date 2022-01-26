@@ -5,8 +5,8 @@ import tempfile
 
 import skimage.io as io
 
-from creed import rosetta
-import creed.rosetta_test_cases as test_cases
+from toffy import rosetta
+import toffy.rosetta_test_cases as test_cases
 from ark.utils import test_utils
 from ark.utils.load_utils import load_imgs_from_tree
 
