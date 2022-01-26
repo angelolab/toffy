@@ -520,15 +520,15 @@ def test_assign_closest_fovs():
     # define the coordinates and fov names generated from the fov script
     # note that we intentionally define more auto fovs than manual fovs
     # to test that not all auto fovs necessarily get mapped to
-    auto_coords = [(0, 0), (0, 50), (0, 100), (100, 0), (100, 50), (100, 100),
-                   (150, 100), (150, 150)]
+    auto_coords = [(0, 0), (0, 5000), (0, 10000), (10000, 0), (10000, 5000), (10000, 10000),
+                   (15000, 10000), (15000, 15000)]
     auto_fov_names = ['row%d_col%d' % (x, y) for (x, y) in auto_coords]
 
     # generate the list of automatically-generated fovs
     auto_sample_fovs = dict(zip(auto_fov_names, auto_coords))
 
     # define the coordinates and fov names proposed by the user
-    manual_coords = [(0, 25), (50, 25), (50, 50), (75, 50), (100, 25)]
+    manual_coords = [(0, 2500), (5000, 2500), (5000, 5000), (7500, 5000), (10000, 2500)]
     manual_fov_names = ['row%d_col%d' % (x, y) for (x, y) in manual_coords]
 
     # generate the list of manual fovs
@@ -562,11 +562,28 @@ def test_assign_closest_fovs():
     # 1. Not all auto fovs (ex. row150_col100 and row150_col150) will be mapped to
     # 2. Multiple manual fovs can map to one auto fov (ex. row0_col25 and row50_col25 to row0_col0)
     actual_map = {
-        'row0_col25': 'row0_col0',
-        'row50_col25': 'row0_col0',
-        'row50_col50': 'row0_col100',
-        'row75_col50': 'row100_col100',
-        'row100_col25': 'row100_col0'
+        'row0_col2500': {
+            'closest_auto_fov': 'row0_col5000',
+            'distance': 36.0
+        },
+        'row5000_col2500': {
+            'closest_auto_fov': 'row0_col5000',
+            'distance': np.linalg.norm(
+                np.array([1089, 471]) - np.array([1053, 398])  # micron to pixel converted coords
+            )
+        },
+        'row5000_col5000': {
+            'closest_auto_fov': 'row0_col5000',
+            'distance': 73.0
+        },
+        'row7500_col5000': {
+            'closest_auto_fov': 'row10000_col5000',
+            'distance': 37.0
+        },
+        'row10000_col2500': {
+            'closest_auto_fov': 'row10000_col5000',
+            'distance': 36.0
+        }
     }
 
     assert manual_to_auto_map == actual_map
@@ -604,8 +621,7 @@ def test_generate_fov_circles():
 
     # draw the circles
     sample_slide_img = tiling_utils.generate_fov_circles(
-        sample_manual_to_auto_map, sample_manual_fovs_info,
-        sample_auto_fovs_info, 'row0_col25', 'row0_col0',
+        sample_manual_fovs_info, sample_auto_fovs_info, 'row0_col25', 'row0_col0',
         sample_slide_img, draw_radius=1
     )
 
