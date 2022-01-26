@@ -16,14 +16,14 @@ with open(path.join(PKG_FOLDER, 'README.md')) as f:
 
 
 setup(
-    name='creed-helper',
+    name='toffy',
     version=VERSION,
     packages=find_packages(),
     license='Modified Apache License 2.0',
-    description='Scripts for running QC analysis on the MibiScope CAC',
+    description='Scripts for interacting with and generating data from the commercial MIBIScope',
     author='Angelo Lab',
-    url='https://github.com/angelolab/creed-helper',
-    download_url='https://github.com/angelolab/creed-helper/archive/v{}.tar.gz'.format(VERSION),
+    url='https://github.com/angelolab/toffy',
+    download_url='https://github.com/angelolab/toffy/archive/v{}.tar.gz'.format(VERSION),
     install_requires=requirements,
     extras_require={
         'tests': ['pytest',

@@ -3,8 +3,8 @@ import pandas as pd
 from requests.exceptions import HTTPError
 import xarray as xr
 
-from creed.mibitracker_utils import MibiRequests
-from creed import qc_comp
+from toffy.mibitracker_utils import MibiRequests
+from toffy import qc_comp
 import ark.utils.io_utils as io_utils
 import ark.utils.misc_utils as misc_utils
 import ark.utils.test_utils as test_utils
