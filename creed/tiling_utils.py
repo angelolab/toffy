@@ -5,9 +5,12 @@ from itertools import combinations, product
 import json
 import matplotlib.pyplot as plt
 import numpy as np
+from operator import itemgetter
 import os
 from skimage.draw import ellipse
 from sklearn.utils import shuffle
+
+from dataclasses import dataclass
 
 from creed import settings
 from ark.utils import misc_utils
@@ -279,6 +282,56 @@ def generate_x_y_fov_pairs(x_range, y_range):
     return all_pairs
 
 
+def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_right, num_x, num_y):
+    """Generates coordinates of FOVs as defined by corners of a rhombus
+
+    Args:
+        top_left (XYCoord): coordinate of top left corner
+        top_right (XYCoord): coordinate of top right corner
+        bottom_left (XYCoord): coordinate of bottom right corner
+        bottom_right (XYCoord): coordiante of bottom right corner
+        num_x (int): number of fovs on x dimension
+        num_y (int): number of fovs on x dimension
+
+    Returns:
+        list: coordinates for all FOVs defined by region"""
+
+    # compute shift in y across the top and bottom of the TMA
+    top_y_shift = top_right.y - top_left.y
+    bottom_y_shift = bottom_right.y - bottom_left.y
+
+    # average between the two will be used to increment indices
+    avg_y_shift = (top_y_shift + bottom_y_shift) / 2
+
+    # compute shift in x across the sides of the tma
+    left_x_shift = bottom_left.x - top_left.x
+    right_x_shift = bottom_right.x - top_right.x
+
+    # average between the two will be used to increment indices
+    avg_x_shift = (left_x_shift + right_x_shift) / 2
+
+    # compute per-FOV adjustment
+    x_increment = avg_x_shift / (num_y - 1)
+    y_increment = avg_y_shift / (num_x - 1)
+
+    # compute baseline indices for a rectangle with same coords
+    x_dif = top_right.x - top_left.x
+    y_dif = bottom_left.y - top_left.y
+
+    x_baseline = x_dif / (num_x - 1)
+    y_baseline = y_dif / (num_y - 1)
+
+    pairs = []
+
+    for i in range(num_x):
+        for j in range(num_y):
+            x_coord = top_left.x + x_baseline * i + x_increment * j
+            y_coord = top_left.y + y_baseline * j + y_increment * i
+            pairs.append((int(x_coord), int(y_coord)))
+
+    return pairs
+
+
 def generate_tiled_region_fov_list(tiling_params, moly_path):
     """Generate the list of FOVs on the image from the `tiling_params` set for tiled regions
 
@@ -392,6 +445,41 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
     return fov_regions
 
 
+def validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
+    """Ensures that the provided TMA corners match assumptions
+
+    Args:
+        top_left (XYCoord): coordinate of top left corner
+        top_right (XYCoord): coordinate of top right corner
+        bottom_left (XYCoord): coordinate of bottom right corner
+        bottom_right (XYCoord): coordiante of bottom right corner
+
+    """
+    # TODO: should we programmatically validate all pairwise comparisons?
+
+    if top_left.x > top_right.x:
+        raise ValueError("Invalid corner file: The upper left corner is "
+                         "to the right of the upper right corner")
+
+    if bottom_left.x > bottom_right.x:
+        raise ValueError("Invalid corner file: The bottom left corner is "
+                         "to the right of the bottom right corner")
+
+    if top_left.y < bottom_left.y:
+        raise ValueError("Invalid corner file: The upper left corner is "
+                         "below the bottom left corner")
+
+    if top_right.y < bottom_right.y:
+        raise ValueError("Invalid corner file: The upper right corner is "
+                         "below the bottom right corner")
+
+
+@dataclass
+class XYCoord:
+    x: float
+    y: float
+
+
 def generate_tma_fov_list(tma_corners_path, num_fov_x, num_fov_y):
     """Generate the list of FOVs on the image using the TMA input file in `tma_corners_path`
 
@@ -428,45 +516,22 @@ def generate_tma_fov_list(tma_corners_path, num_fov_x, num_fov_y):
     with open(tma_corners_path, 'r') as flf:
         tma_corners = json.load(flf)
 
-    # a TMA can only be defined by 2 FOVs: an upper-left corner and a bottom-right corner
-    if len(tma_corners['fovs']) != 2:
-        raise ValueError("Your FOV region file %s needs to contain only 2 FOVs" % tma_corners_path)
+    # a TMA can only be defined by four FOVs, one for each corner
+    if len(tma_corners['fovs']) != 4:
+        raise ValueError("Your FOV region file %s needs to contain four FOVs" % tma_corners)
 
-    # retrieve the corner FOVs
-    # NOTE: the upper-left should always be listed before the bottom-right
-    upper_left = tma_corners['fovs'][0]
-    bottom_right = tma_corners['fovs'][1]
+    # retrieve the FOVs from JSON file
+    corners = [0] * 4
+    for i, fov in enumerate(tma_corners['fovs']):
+        corners[i] = XYCoord(*itemgetter('x', 'y')(fov['centerPointMicrons']))
 
-    # define the start and end coordinates
-    start_fov_x = upper_left['centerPointMicrons']['x']
-    end_fov_x = bottom_right['centerPointMicrons']['x']
-    start_fov_y = upper_left['centerPointMicrons']['y']
-    end_fov_y = bottom_right['centerPointMicrons']['y']
+    top_left, top_right, bottom_left, bottom_right = corners
 
-    # the coordinates have to be valid: upper-left cannot be below or to the right of bottom-right
-    if start_fov_x > end_fov_x:
-        err_msg = ("Coordinate error for region %s: upper-left x coordinates cannot be"
-                   " greater than bottom-right coordinates")
-        raise ValueError(err_msg % upper_left['name'])
+    validate_tma_corners(top_left, top_right, bottom_left, bottom_right)
 
-    # NOTE: because ascending values on the y-axis go from bottom to top
-    # we need to enforce a < rather than > constraint
-    if start_fov_y < end_fov_y:
-        err_msg = ("Coordinate error for region %s: upper-left y coordinates cannot be"
-                   " less than bottom-right coordinates")
-        raise ValueError(err_msg % upper_left['name'])
-
-    # define each FOV along the x- and y-axis, casted because indices cannot be floats
-    # need additional .item() cast to prevent int64 is not JSON serializable error
-    x_interval = [
-        x.item() for x in np.linspace(start_fov_x, end_fov_x, num_fov_x).astype(int)
-    ]
-    y_interval = list(reversed([
-        y.item() for y in np.linspace(end_fov_y, start_fov_y, num_fov_y).astype(int)
-    ]))
-
-    # create all pairs between two lists
-    x_y_pairs = generate_x_y_fov_pairs(x_interval, y_interval)
+    # create all x_y coordinates
+    x_y_pairs = generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_right,
+                                               num_fov_x, num_fov_y)
 
     # name the FOVs according to MIBI conventions
     fov_names = ['R%dC%d' % (y + 1, x + 1) for x in range(num_fov_x) for y in range(num_fov_y)]
@@ -1078,8 +1143,8 @@ def remap_and_reorder_fovs(manual_fov_regions, manual_to_auto_map,
         moly_point = json.load(mp)
 
     # error check: moly_interval cannot be less than or equal to 0 if moly_insert is True
-    if moly_insert and moly_interval <= 0:
-        raise ValueError("moly_interval must be at least 1")
+    if moly_insert and (not isinstance(moly_interval, int) or moly_interval < 1):
+        raise ValueError("moly_interval must be a positive integer")
 
     # define a new fov regions dict for remapped names
     remapped_fov_regions = {}
