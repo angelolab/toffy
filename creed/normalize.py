@@ -10,6 +10,8 @@ import skimage.io as io
 import matplotlib.pyplot as plt
 import pandas as pd
 
+from ark.utils import io_utils
+
 
 def create_objective_function(obj_func):
     """Creates a function of specified type to be used for fitting a curve
@@ -36,7 +38,10 @@ def create_objective_function(obj_func):
     elif obj_func == 'poly_5':
         def objective(x, a, b, c, d, e, f):
             return a * x + b * x ** 2 + c * x ** 3 + d * x ** 4 + e * x ** 5 + f
-    else:
+    elif obj_func == 'log':
+        def objective(x, a, b):
+            return a * np.log(x) + b
+    elif obj_func == 'exp':
         def objective(x, a, b):
             return a * np.log(x) + b
 
@@ -90,6 +95,22 @@ def create_prediction_function(name, weights):
         return output
 
     return pred_func
+
+
+def combine_run_metrics(run_dir, file_prefix):
+    files = io_utils.list_files(run_dir, file_prefix)
+    bins = io_utils.list_files(run_dir, '.bin')
+
+    if len(bins) != len(files):
+        raise ValueError('Not all bin files have a corresponding {} file'.format(file_prefix))
+
+    metrics = []
+    for file in files:
+        metrics.append(pd.read_csv(os.path.join(run_dir, file)))
+
+    metrics = pd.concat(metrics)
+
+    metrics.to_csv(os.path.join(run_dir, file_prefix + '_combined.csv'), index=False)
 
 
 def combine_fov_metrics(dir_list, num_fovs):
