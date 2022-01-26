@@ -13,7 +13,7 @@ from sklearn.utils import shuffle
 
 from dataclasses import dataclass
 
-from creed import settings
+from toffy import settings
 from ark.utils import misc_utils
 
 

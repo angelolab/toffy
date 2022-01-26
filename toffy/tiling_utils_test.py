@@ -9,12 +9,14 @@ import tempfile
 
 from dataclasses import dataclass, astuple
 
-from creed import tiling_utils
-from creed import tiling_utils_test_cases as test_cases
-from creed import settings
+from toffy import settings
+from toffy import test_utils
+from toffy import tiling_utils
+from toffy import tiling_utils_test_cases as test_cases
 
 from ark.utils import misc_utils
-from ark.utils import test_utils
+
+parametrize = pytest.mark.parametrize
 
 
 def test_assign_metadata_vals():
@@ -192,7 +194,7 @@ def test_generate_region_info():
     assert sample_region_params[1]['region_rand'] == 'Y'
 
 
-@pytest.mark.parametrize('moly_interval_val', test_cases._PARAM_SET_MOLY_INTERVAL_VALUE_CASES)
+@parametrize('moly_interval_val', [0, 1])
 def test_set_tiled_region_params(monkeypatch, moly_interval_val):
     # bad fov list path provided
     with pytest.raises(FileNotFoundError):
