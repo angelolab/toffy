@@ -106,7 +106,7 @@ def test_read_tiling_param(monkeypatch):
 def test_read_tiled_region_inputs(monkeypatch):
     # define a sample fovs list
     sample_fovs_list = test_utils.generate_sample_fovs_list(
-        fov_coords=[(0, 150), (100, 300)], fov_names=["TheFirstFOV", "TheSecondFOV"]
+        fov_coords=[(50, 150), (100, 300)], fov_names=["TheFirstFOV", "TheSecondFOV"]
     )
 
     # define sample region_params to read data into
@@ -123,18 +123,24 @@ def test_read_tiled_region_inputs(monkeypatch):
         sample_fovs_list, sample_region_params
     )
 
-    assert (sample_region_params[i]['region_start_x'] == 100 * i
-            for i in range(len(sample_region_params)))
-    assert (sample_region_params[i]['region_start_y'] == 150 * (i + 1)
-            for i in range(len(sample_region_params)))
-    assert (sample_region_params[i]['fov_num_x'] == 2 * (i + 1)
-            for i in range(len(sample_region_params)))
-    assert (sample_region_params[i]['fov_num_y'] == 4 * (i + 1)
-            for i in range(len(sample_region_params)))
-    assert (sample_region_params[i]['x_fov_size'] == 1 * (i + 1)
-            for i in range(len(sample_region_params)))
-    assert (sample_region_params[i]['y_fov_size'] == 2 * (i + 1)
-            for i in range(len(sample_region_params)))
+    # define the starting values to increment from for each numeric param
+    base_param_vals = {
+        'region_start_x': 50,
+        'region_start_y': 150,
+        'fov_num_x': 2,
+        'fov_num_y': 4,
+        'x_fov_size': 1,
+        'y_fov_size': 2
+    }
+
+    # test the value of each numeric tiling parameter
+    for param, val in list(sample_region_params.items()):
+        if not isinstance(val[0], str):
+            assert val == list(np.arange(
+                base_param_vals[param],
+                base_param_vals[param] * (len(val) + 1),
+                base_param_vals[param])
+            )
 
     assert sample_region_params['region_rand'] == ['N', 'Y']
 
@@ -153,41 +159,21 @@ def test_generate_region_info():
     # generate the region params
     sample_region_params = tiling_utils.generate_region_info(sample_region_inputs)
 
-    # assert region_start_x set correctly
-    assert all(
-        sample_region_params[i]['region_start_x'] == 100 * (i + 1)
-        for i in range(len(sample_region_params))
-    )
+    # define the starting values to increment from for each numeric param
+    base_param_vals = {
+        'region_start_x': 100,
+        'region_start_y': 200,
+        'fov_num_x': 3,
+        'fov_num_y': 6,
+        'x_fov_size': 5,
+        'y_fov_size': 10
+    }
 
-    # assert region_start_y set correctly
-    assert all(
-        sample_region_params[i]['region_start_y'] == 200 * (i + 1)
-        for i in range(len(sample_region_params))
-    )
-
-    # assert fov_num_x set correctly
-    assert all(
-        sample_region_params[i]['fov_num_x'] == 3 * (i + 1)
-        for i in range(len(sample_region_params))
-    )
-
-    # assert fov_num_y set correctly
-    assert all(
-        sample_region_params[i]['fov_num_y'] == 6 * (i + 1)
-        for i in range(len(sample_region_params))
-    )
-
-    # assert x_fov_size set correctly
-    assert all(
-        sample_region_params[i]['x_fov_size'] == 5 * (i + 1)
-        for i in range(len(sample_region_params))
-    )
-
-    # assert y_fov_size set correctly
-    assert all(
-        sample_region_params[i]['y_fov_size'] == 10 * (i + 1)
-        for i in range(len(sample_region_params))
-    )
+    # test the value of each tiling param for both regions
+    for i in range(len(sample_region_params)):
+        for param, val in list(sample_region_params[i].items()):
+            if not isinstance(val, str):
+                assert val == base_param_vals[param] * (i + 1)
 
     # assert region_rand set correctly
     assert sample_region_params[0]['region_rand'] == 'N'
@@ -202,7 +188,7 @@ def test_set_tiled_region_params(monkeypatch, moly_interval_val):
 
     # define a sample set of fovs
     sample_fovs_list = test_utils.generate_sample_fovs_list(
-        fov_coords=[(0, 150), (100, 300)], fov_names=["TheFirstFOV", "TheSecondFOV"]
+        fov_coords=[(50, 150), (100, 300)], fov_names=["TheFirstFOV", "TheSecondFOV"]
     )
 
     # set the user inputs
@@ -226,22 +212,22 @@ def test_set_tiled_region_params(monkeypatch, moly_interval_val):
 
         # assert region start x and region start y values are correct
         sample_region_params = sample_tiling_params['region_params']
-        fov_0 = sample_fovs_list['fovs'][0]
-        fov_1 = sample_fovs_list['fovs'][1]
 
-        # assert region start, fov_num, and fov_size set correctly
-        assert (sample_region_params[i]['region_start_x'] == 100 * i
-                for i in range(len(sample_region_params)))
-        assert (sample_region_params[i]['region_start_y'] == 150 * (i + 1)
-                for i in range(len(sample_region_params)))
-        assert (sample_region_params[i]['fov_num_x'] == 2 * (i + 1)
-                for i in range(len(sample_region_params)))
-        assert (sample_region_params[i]['fov_num_y'] == 4 * (i + 1)
-                for i in range(len(sample_region_params)))
-        assert (sample_region_params[i]['x_fov_size'] == 1 * (i + 1)
-                for i in range(len(sample_region_params)))
-        assert (sample_region_params[i]['y_fov_size'] == 2 * (i + 1)
-                for i in range(len(sample_region_params)))
+        # define the starting values to increment from for each numeric param
+        base_param_vals = {
+            'region_start_x': 50,
+            'region_start_y': 150,
+            'fov_num_x': 2,
+            'fov_num_y': 4,
+            'x_fov_size': 1,
+            'y_fov_size': 2
+        }
+
+        # test the value of each tiling param for both regions
+        for i in range(len(sample_region_params)):
+            for param, val in list(sample_region_params[i].items()):
+                if not isinstance(val, str):
+                    assert val == base_param_vals[param] + base_param_vals[param] * i
 
         # assert region_rand set correctly
         assert sample_region_params[0]['region_rand'] == 'N'
