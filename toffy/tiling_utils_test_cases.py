@@ -1,6 +1,6 @@
 import numpy as np
 
-from creed.tiling_utils import XYCoord
+from toffy.tiling_utils import XYCoord
 
 
 # for tiled region FOV generation

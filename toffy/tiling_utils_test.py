@@ -9,12 +9,12 @@ import tempfile
 
 from dataclasses import dataclass, astuple
 
+from toffy import settings
+from toffy import test_utils
 from toffy import tiling_utils
 from toffy import tiling_utils_test_cases as test_cases
-from toffy import settings
 
 from ark.utils import misc_utils
-from ark.utils import test_utils
 
 parametrize = pytest.mark.parametrize
 
