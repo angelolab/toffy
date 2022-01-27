@@ -376,7 +376,7 @@ def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_
 
     # generate a sample FOVs list
     # NOTE: extra_coords and extra_names are used to ensure failures
-    # if the TMA spec file has more than 4 FOVS
+    # if the TMA spec file does not have 4 FOVS
     fov_coords = [astuple(top_left), astuple(top_right),
                   astuple(bottom_left), astuple(bottom_right)] + extra_coords
     fov_names = ["TheFirstFOV"] * 4 + extra_names
@@ -567,6 +567,14 @@ def test_generate_fov_circles():
             assert np.all(sample_slide_img[x, y, :] == np.array([162, 197, 255]))
 
 
+@parametrize_with_cases('manual_to_auto_map, actual_bad_dist_list',
+                        cases=test_cases.MappingDistanceCases)
+def test_find_manual_auto_invalid_dist(manual_to_auto_map, actual_bad_dist_list):
+    generated_bad_dist_list = tiling_utils.find_manual_auto_invalid_dist(manual_to_auto_map)
+
+    assert generated_bad_dist_list == actual_bad_dist_list
+
+
 @parametrize_with_cases('manual_to_auto_map, actual_duplicate_list',
                         cases=test_cases.MappingDuplicateCases)
 def test_find_duplicate_auto_mappings(manual_to_auto_map, actual_duplicate_list):
@@ -581,6 +589,19 @@ def test_find_manual_auto_name_mismatches(manual_to_auto_map, actual_mismatch_li
     generated_mismatch_list = tiling_utils.find_manual_auto_name_mismatches(manual_to_auto_map)
 
     assert generated_mismatch_list == actual_mismatch_list
+
+
+@parametrize('check_dist', [None, 50])
+@parametrize('check_duplicates', [False, True])
+@parametrize('check_mismatches', [False, True])
+def test_generate_validation_annot(check_dist, check_duplicates, check_mismatches):
+    generated_annot = tiling_utils.generate_validation_annot(
+        test_cases._ANNOT_SAMPLE_MAPPING, check_dist, check_duplicates, check_mismatches
+    )
+
+    actual_annot = test_cases.generate_sample_annot(check_dist, check_duplicates, check_mismatches)
+
+    assert generated_annot == actual_annot
 
 
 @parametrize('randomize_setting', [False, True])

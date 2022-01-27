@@ -300,6 +300,74 @@ class RhombusCoordInputCases:
         return coords, actual_pairs
 
 
+# testing manual and auto FOVs too far apart validation
+class MappingDistanceCases:
+    def case_no_bad_dist(self):
+        manual_to_auto_map = {
+            'R0C0': {
+                'closest_auto_fov': 'R0C0',
+                'distance': 5.0
+            },
+            'R0C1': {
+                'closest_auto_fov': 'R0C1',
+                'distance': 2.0
+            },
+            'R0C2': {
+                'closest_auto_fov': 'R0C3',
+                'distance': 49.0
+            },
+            'R1C0': {
+                'closest_auto_fov': 'R1C0',
+                'distance': 50.0  # NOTE: error only thrown if STRICTLY GREATER than dist_threshold
+            },
+            'R1C1': {
+                'closest_auto_fov': 'R1C2',
+                'distance': 49.99
+            },
+            'R1C2': {
+                'closest_auto_fov': 'R1C4',
+                'distance': 35.0
+            }
+        }
+
+        bad_dist_list = []
+
+        return manual_to_auto_map, bad_dist_list
+
+    def case_bad_dist(self):
+        manual_to_auto_map = {
+            'R0C0': {
+                'closest_auto_fov': 'R0C0',
+                'distance': 5.0
+            },
+            'R0C1': {
+                'closest_auto_fov': 'R0C1',
+                'distance': 55.7
+            },
+            'R0C2': {
+                'closest_auto_fov': 'R0C3',
+                'distance': 49.0
+            },
+            'R1C0': {
+                'closest_auto_fov': 'R1C0',
+                'distance': 50.1
+            },
+            'R1C1': {
+                'closest_auto_fov': 'R1C2',
+                'distance': 75.0
+            },
+            'R1C2': {
+                'closest_auto_fov': 'R1C4',
+                'distance': 35.0
+            }
+        }
+
+        # this list will always be sorted by distance descending
+        bad_dist_list = [('R1C1', 'R1C2', 75.00), ('R0C1', 'R0C1', 55.70), ('R1C0', 'R1C0', 50.10)]
+
+        return manual_to_auto_map, bad_dist_list
+
+
 # testing auto FOVs mapped to by multiple manual FOVs validation
 class MappingDuplicateCases:
     def case_no_duplicates(self):
@@ -454,9 +522,70 @@ class MappingMismatchCases:
         return manual_to_auto_map, mismatch_list
 
 
+# for the annotation test, define one manual-auto mapping
+# TODO: make one dict for all the successes above?
+_ANNOT_SAMPLE_MAPPING = manual_to_auto_map = {
+    'R0C0': {  # no errors for both manual R0C0 and auto R0C0
+        'closest_auto_fov': 'R0C0',
+        'distance': 1.5
+    },
+    'R0C1': {   # just a distance error
+        'closest_auto_fov': 'R0C1',
+        'distance': 60.0
+    },
+    'R0C2': {   # just a mismatch error
+        'closest_auto_fov': 'R1C0',
+        'distance': 49.0
+    },
+    'R1C0': {   # no mismatch or distance errors, but auto R1C0 has two manual FOVs mapping to it
+        'closest_auto_fov': 'R1C0',
+        'distance': 5.0
+    },
+    'R1C1': {   # distance and mismatch error
+        'closest_auto_fov': 'R2C0',
+        'distance': 100.0
+    },
+    'R1C2': {   # generates all 3 errors
+        'closest_auto_fov': 'R2C0',
+        'distance': 87.5
+    }
+}
+
+
+# a helper function to generate the sample annotation needed for _ANNOT_SAMPLE_MAPPING
+# NOTE: hard code so as not to duplicate logic in generate_validation_annot
+def generate_sample_annot(check_dist, check_duplicates, check_mismatches):
+    annot = ""
+
+    if check_dist is not None:
+        annot += \
+            "The following mappings are placed more than %d pixels apart:\n\n" % check_dist
+        annot += "User-defined FOV R1C1 to TMA-grid FOV R2C0 (distance: 100.00)\n"
+        annot += "User-defined FOV R1C2 to TMA-grid FOV R2C0 (distance: 87.50)\n"
+        annot += "User-defined FOV R0C1 to TMA-grid FOV R0C1 (distance: 60.00)"
+        annot += "\n\n"
+
+    if check_duplicates:
+        annot += \
+            "The following TMA-grid FOVs have more than one user-defined FOV mapping to it:\n\n"
+        annot += "TMA-grid FOV R1C0: mapped with user-defined FOVs R0C2, R1C0\n"
+        annot += "TMA-grid FOV R2C0: mapped with user-defined FOVs R1C1, R1C2"
+        annot += "\n\n"
+
+    if check_mismatches:
+        annot += \
+            "The following mappings have mismatched names:\n\n"
+        annot += "User-defined FOV R0C2: mapped with TMA-grid FOV R1C0\n"
+        annot += "User-defined FOV R1C1: mapped with TMA-grid FOV R2C0\n"
+        annot += "User-defined FOV R1C2: mapped with TMA-grid FOV R2C0"
+        annot += "\n\n"
+
+    return annot
+
+
 # testing Moly point insertion for remapping
 # NOTE: easier than enumerating these all in a class for moly interval verification
-# this one's long so better here than in directly in decorator
+# this one's long so better here than directly in decorator
 _REMAP_MOLY_INTERVAL_CASES = [
     param(True, 2.5, marks=value_err),
     param(True, 0, marks=value_err),

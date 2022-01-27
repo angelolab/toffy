@@ -1117,7 +1117,7 @@ def generate_validation_annot(manual_to_auto_map, check_dist=50,
             'The following mappings are placed more than %d pixels apart:\n\n' % check_dist
 
         warning_annot += '\n'.join([
-            'User-defined FOV %s to TMA-grid FOV %s (distance: %f)' % (mf, af, dist)
+            'User-defined FOV %s to TMA-grid FOV %s (distance: %.2f)' % (mf, af, dist)
             for (mf, af, dist) in invalid_dist
         ])
 
@@ -1194,7 +1194,9 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
         )
 
     # verify check_dist is an positive value if set as a float value
-    if (isinstance(check_dist, float) or isinstance(check_dist, int)) and check_dist <= 0:
+    # validate the distance parameter
+    dist_is_num = isinstance(check_dist, int) or isinstance(check_dist, float)
+    if check_dist is not None and (not dist_is_num or check_dist <= 0):
         raise ValueError(
             "If validating distance, check_dist must be a positive floating point value"
         )
