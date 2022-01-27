@@ -1193,13 +1193,20 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
             "please rename to a valid location" % os.path.split(mapping_path)[0]
         )
 
-    # verify check_dist is an positive value if set as a float value
-    # validate the distance parameter
+    # verify check_dist is positive if set as a numeric value
     dist_is_num = isinstance(check_dist, int) or isinstance(check_dist, float)
     if check_dist is not None and (not dist_is_num or check_dist <= 0):
         raise ValueError(
             "If validating distance, check_dist must be a positive floating point value"
         )
+
+    # verify check_duplicates is a bool
+    if not isinstance(check_duplicates, bool):
+        raise ValueError("check_duplicates needs to be set to True or False")
+
+    # verify check_mismatches is a bool
+    if not isinstance(check_mismatches, bool):
+        raise ValueError("check_mismatches needs to be set to True or False")
 
     # get the first manual fov, this will define the initial default value to display
     first_manual = list(manual_fovs_info.keys())[0]
