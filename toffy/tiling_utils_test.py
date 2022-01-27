@@ -156,15 +156,17 @@ def test_generate_region_info():
     assert sample_region_info[1]['region_rand'] == 'Y'
 
 
+@parametrize('region_corners_file', [
+        pytest.param('bad_tiled_region_corners.json', marks=[xfail]),
+        pytest.param('tiled_region_corners.json')
+    ]
+)
 @parametrize_with_cases('fov_coords, fov_names, user_inputs, base_param_values, full_param_set',
                         cases=test_cases.TiledRegionReadCases, glob='*_with_moly_param')
 @parametrize('moly_interval_val', [0, 1])
-def test_set_tiled_region_params(monkeypatch, fov_coords, fov_names, user_inputs,
-                                 base_param_values, full_param_set, moly_interval_val):
-    # bad fov list path provided
-    with pytest.raises(FileNotFoundError):
-        tiling_utils.set_tiled_region_params('bad_fov_list_path.json')
-
+def test_set_tiled_region_params(monkeypatch, region_corners_file, fov_coords, fov_names,
+                                 user_inputs, base_param_values,
+                                 full_param_set, moly_interval_val):
     # define a sample set of fovs
     sample_fovs_list = test_utils.generate_sample_fovs_list(
         fov_coords=fov_coords, fov_names=fov_names
@@ -179,12 +181,14 @@ def test_set_tiled_region_params(monkeypatch, fov_coords, fov_names, user_inputs
 
     with tempfile.TemporaryDirectory() as temp_dir:
         # write fov list
-        sample_fov_list_path = os.path.join(temp_dir, 'fov_list.json')
+        sample_fov_list_path = os.path.join(temp_dir, 'tiled_region_corners.json')
         with open(sample_fov_list_path, 'w') as fl:
             json.dump(sample_fovs_list, fl)
 
         # run tiling parameter setting process with predefined user inputs
-        sample_tiling_params = tiling_utils.set_tiled_region_params(sample_fov_list_path)
+        sample_tiling_params = tiling_utils.set_tiled_region_params(
+            os.path.join(temp_dir, region_corners_file)
+        )
 
         # assert the fovs in the tiling params are the same as in the original fovs list
         assert sample_tiling_params['fovs'] == sample_fovs_list['fovs']
@@ -359,8 +363,9 @@ def test_validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
     tiling_utils.validate_tma_corners(top_left, top_right, bottom_left, bottom_right)
 
 
-@parametrize_with_cases('tma_corners_file, extra_coords, extra_names, num_x, num_y',
-                        cases=test_cases.TMAFovListSettingsCases)
+@parametrize('tma_corners_file', test_cases._TMA_CORNER_FILE_NAME_CASES)
+@parametrize('extra_coords,extra_names', test_cases._TMA_EXTRA_COORDS_CASES)
+@parametrize('num_x,num_y', test_cases._TMA_X_Y_CASES)
 @parametrize_with_cases('coords, actual_pairs',
                         cases=test_cases.RhombusCoordInputCases)
 def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_x, num_y,
@@ -547,23 +552,10 @@ def test_generate_fov_circles():
 
 
 # NOTE: you can use this to assert test failure without needing a separate test class
-# TODO: move to tiling_utils_test_cases?
-@parametrize('moly_path', [
-    pytest.param('bad_moly_point.json', marks=[xfail]),
-    'sample_moly_point.json'
-])
+@parametrize('moly_path', [pytest.param('bad_moly_point.json', marks=[xfail]),
+                           'sample_moly_point.json'])
 @parametrize('randomize_setting', [False, True])
-@parametrize(
-    'moly_insert,moly_interval',
-    [
-        pytest.param(True, 2.5, marks=[xfail]),
-        pytest.param(True, 0, marks=[xfail]),
-        pytest.param(False, 4),
-        pytest.param(True, 4),
-        pytest.param(False, 2),
-        pytest.param(True, 2),
-    ]
-)
+@parametrize('moly_insert,moly_interval', test_cases._REMAP_MOLY_INTERVAL_CASES)
 def test_remap_and_reorder_fovs(moly_path, randomize_setting, moly_insert, moly_interval):
     # define the sample Moly point
     sample_moly_point = test_utils.generate_sample_fov_tiling_entry(

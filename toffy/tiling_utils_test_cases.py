@@ -11,7 +11,7 @@ xfail = pytest.mark.xfail
 # this function assumes that FOV 2's corresponding values are linearly spaced from
 def generate_tiled_region_params(start_x_fov_1=50, start_y_fov_1=150, num_x_fov_1=2, num_y_fov_1=4,
                                  x_size_fov_1=1, y_size_fov_1=2, num_fovs=2):
-    # we define this dictionary for testing purposes to ensure that function calls
+    # define this dictionary for testing purposes to ensure that function calls
     # equal what would be placed in param_set_values
     base_param_values = {
         'region_start_x': start_x_fov_1,
@@ -33,14 +33,13 @@ def generate_tiled_region_params(start_x_fov_1=50, start_y_fov_1=150, num_x_fov_
         for param in base_param_values
     }
 
-    # TODO: do we need to return all of these values?
+    # TODO: might want to return just one and have the test function generate the other
     return base_param_values, full_param_set
 
 
 # test tiled region parameter setting and FOV generation
 # a helper function for generating params specific to each FOV for TiledRegionReadCases
 # NOTE: the param moly_region applies across all FOVs, so it's not set here
-# TODO: potentially make a dictionary argument?
 def generate_tiled_region_cases(fov_coord_list, fov_name_list, user_input_type='none',
                                 num_x_fov_1=2, num_y_fov_1=4, x_size_fov_1=1,
                                 y_size_fov_1=2, random_fov_1='n', random_fov_2='Y'):
@@ -75,8 +74,8 @@ def generate_tiled_region_cases(fov_coord_list, fov_name_list, user_input_type='
 
 
 # define the list of region start coords and names
-TILED_REGION_FOV_COORDS = [(50, 150), (100, 300)]
-TILED_REGION_FOV_NAMES = ["TheFirstFOV", "TheSecondFOV"]
+_TILED_REGION_FOV_COORDS = [(50, 150), (100, 300)]
+_TILED_REGION_FOV_NAMES = ["TheFirstFOV", "TheSecondFOV"]
 
 
 # NOTE: because of the way the moly_interval param is handled
@@ -84,36 +83,36 @@ TILED_REGION_FOV_NAMES = ["TheFirstFOV", "TheSecondFOV"]
 class TiledRegionReadCases:
     def case_no_reentry_no_moly_param(self):
         return generate_tiled_region_cases(
-            TILED_REGION_FOV_COORDS, TILED_REGION_FOV_NAMES
+            _TILED_REGION_FOV_COORDS, _TILED_REGION_FOV_NAMES
         )
 
     def case_no_reentry_with_moly_param(self):
         fcl, fnl, ui, bpv, fps = generate_tiled_region_cases(
-            TILED_REGION_FOV_COORDS, TILED_REGION_FOV_NAMES
+            _TILED_REGION_FOV_COORDS, _TILED_REGION_FOV_NAMES
         )
 
         return fcl, fnl, ui + ['Y'], bpv, fps
 
     def case_reentry_same_type_no_moly_param(self):
         return generate_tiled_region_cases(
-            TILED_REGION_FOV_COORDS, TILED_REGION_FOV_NAMES, user_input_type='same_types'
+            _TILED_REGION_FOV_COORDS, _TILED_REGION_FOV_NAMES, user_input_type='same_types'
         )
 
     def case_reentry_same_type_with_moly_param(self):
         fcl, fnl, ui, bpv, fps = generate_tiled_region_cases(
-            TILED_REGION_FOV_COORDS, TILED_REGION_FOV_NAMES, user_input_type='same_types'
+            _TILED_REGION_FOV_COORDS, _TILED_REGION_FOV_NAMES, user_input_type='same_types'
         )
 
         return fcl, fnl, ui + ['hello', 'Y'], bpv, fps
 
     def case_reentry_different_type_no_moly_param(self):
         return generate_tiled_region_cases(
-            TILED_REGION_FOV_COORDS, TILED_REGION_FOV_NAMES, user_input_type='diff_types'
+            _TILED_REGION_FOV_COORDS, _TILED_REGION_FOV_NAMES, user_input_type='diff_types'
         )
 
     def case_reentry_different_type_with_moly_param(self):
         fcl, fnl, ui, bpv, fps = generate_tiled_region_cases(
-            TILED_REGION_FOV_COORDS, TILED_REGION_FOV_NAMES, user_input_type='diff_types'
+            _TILED_REGION_FOV_COORDS, _TILED_REGION_FOV_NAMES, user_input_type='diff_types'
         )
 
         return fcl, fnl, ui + [-2.5, 'Y'], bpv, fps
@@ -296,23 +295,29 @@ class RhombusCoordInputCases:
         return coords, actual_pairs
 
 
-# testing failures for TMA fov generation
-class TMAFovListSettingsCases:
-    @xfail(raises=FileNotFoundError, match='TMA corners file', strict=True)
-    def case_json_path_failure(self):
-        return 'bad_json.path', [], [], 3, 3
+# testing TMA fov generation params
+# NOTE: easier than enumerating these all in a class for file validation and 4 corner verification
+_TMA_CORNER_FILE_NAME_CASES = [
+    pytest.param('bad_path.json', marks=[xfail]),
+    pytest.param('sample_tma_corners.json')
+]
+_TMA_EXTRA_COORDS_CASES = [
+    pytest.param([1, 2], ["TheSecondFOV"], marks=[xfail]),
+    pytest.param([], [])
+]
+_TMA_X_Y_CASES = [
+    pytest.param(2, 3, marks=[xfail]),
+    pytest.param(3, 2, marks=[xfail]),
+    pytest.param(4, 3)
+]
 
-    @xfail(raises=ValueError, match='x-axis', strict=True)
-    def case_x_fov_failure(self):
-        return 'sample_tma_corners.json', [], [], 2, 3
-
-    @xfail(cases=ValueError, match='y-axis', strict=True)
-    def case_y_fov_failure(self):
-        return 'sample_tma_corners.json', [], [], 3, 2
-
-    @xfail(cases=ValueError, match='four FOVs', strict=True)
-    def case_four_fovs_failure(self):
-        return 'sample_tma_corners.json', [(10000, 20000)], ["TheSecondFOV"], 3, 3
-
-    def case_success(self):
-        return 'sample_tma_corners.json', [], [], 4, 3
+# testing Moly point insertion for remapping
+# NOTE: easier than enumerating these all for moly interval verification
+_REMAP_MOLY_INTERVAL_CASES = [
+    pytest.param(True, 2.5, marks=[xfail]),
+    pytest.param(True, 0, marks=[xfail]),
+    pytest.param(False, 4),
+    pytest.param(True, 4),
+    pytest.param(False, 2),
+    pytest.param(True, 2)
+]
