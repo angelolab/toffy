@@ -53,6 +53,14 @@ def generate_tiled_region_cases(user_input_type='none'):
         'region_rand': [random_fov_1.upper(), random_fov_2.upper()]
     }
 
+    # we define this dictionary for testing purposes to ensure that function calls
+    # equal what would be placed in param_set_values
+    # NOTE: only for numeric, string values are tested directly in tiling_utils_test
+    base_param_values = {
+        param: param_set_values[param][0] for param in param_set_values
+        if not isinstance(param_set_values[param], str)
+    }
+
     user_inputs = [
         num_x_fov_1, num_y_fov_1, x_size_fov_1, y_size_fov_1, random_fov_1,
         num_x_fov_2, num_y_fov_2, x_size_fov_2, y_size_fov_2, random_fov_2
@@ -68,7 +76,7 @@ def generate_tiled_region_cases(user_input_type='none'):
         for i in np.arange(0, len(user_inputs), 2):
             user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
 
-    return fov_coord_list, fov_name_list, user_inputs, param_set_values
+    return fov_coord_list, fov_name_list, user_inputs, param_set_values, base_param_values
 
 
 # NOTE: because of the way the moly_interval param is handled
@@ -78,22 +86,22 @@ class TiledRegionReadCases:
         return generate_tiled_region_cases()
 
     def case_no_reentry_with_moly_param(self):
-        fcl, fnl, ui, psv = generate_tiled_region_cases()
-        return fcl, fnl, ui + ['Y'], psv
+        fcl, fnl, ui, psv, bpv = generate_tiled_region_cases()
+        return fcl, fnl, ui + ['Y'], psv, bpv
 
     def case_reentry_same_type_no_moly_param(self):
         return generate_tiled_region_cases('same_type')
 
     def case_reentry_same_type_with_moly_param(self):
-        fcl, fnl, ui, psv = generate_tiled_region_cases('same_type')
-        return fcl, fnl, ui + ['hello', 'Y'], psv
+        fcl, fnl, ui, psv, bpv = generate_tiled_region_cases('same_type')
+        return fcl, fnl, ui + ['hello', 'Y'], psv, bpv
 
     def case_reentry_different_type_no_moly_param(self):
         return generate_tiled_region_cases('diff_type')
 
     def case_reentry_different_type_with_moly_param(self):
-        fcl, fnl, ui, psv = generate_tiled_region_cases('diff_type')
-        return fcl, fnl, ui + [-2.5, 'Y'], psv
+        fcl, fnl, ui, psv, bpv = generate_tiled_region_cases('diff_type')
+        return fcl, fnl, ui + [-2.5, 'Y'], psv, bpv
 
 
 class TiledRegionMolySettingCases:
@@ -121,7 +129,7 @@ class TiledRegionMolySettingCases:
 
 
 # TMA rhombus coordinate validation
-class ValidateRhombusCoordsTests:
+class ValidateRhombusCoordsCases:
     @xfail(raises=ValueError, strict=True)
     def case_top_left_failure(self):
         top_left = XYCoord(100, 200)
@@ -171,7 +179,7 @@ class ValidateRhombusCoordsTests:
 _TMA_RHOMBUS_X_COORDS = (1500, 1666, 1833, 2000)
 
 
-class RhombusCoordInputTests:
+class RhombusCoordInputCases:
     def case_rectangle(self):
         coords = [
             XYCoord(1500, 2000),
@@ -274,33 +282,37 @@ class RhombusCoordInputTests:
 
 
 # testing failures for TMA fov generation
-class TMAFovListFailureCases:
+class TMAFovListSettingsCases:
+    @xfail(raises=FileNotFoundError, match='TMA corners file', strict=True)
     def case_json_path_failure(self):
-        return 'bad_json.path', 3, 3, FileNotFoundError, 'TMA corners file'
+        return 'bad_json.path', [], [], 3, 3
 
+    @xfail(raises=ValueError, match='x-axis', strict=True)
     def case_x_fov_failure(self):
-        return 'sample_tma_corners.json', 2, 3, ValueError, 'x-axis'
+        return 'sample_tma_corners.json', [], [], 2, 3
 
+    @xfail(cases=ValueError, match='y-axis', strict=True)
     def case_y_fov_failure(self):
-        return 'sample_tma_corners.json', 3, 2, ValueError, 'y-axis'
+        return 'sample_tma_corners.json', [], [], 3, 2
 
+    @xfail(cases=ValueError, match='four FOVs', strict=True)
     def case_four_fovs_failure(self):
-        return 'sample_tma_corners.json', 3, 3, ValueError, 'four FOVs'
+        return 'sample_tma_corners.json', [(10000, 20000)], ["TheSecondFOV"], 3, 3
+
+    def case_success(self):
+        return 'sample_tma_corners.json', [], [], 4, 3
 
 
 # parameters for remapping
-_REMAP_FOV_ORDER_RANDOMIZE_CASES = [False, True]
-_REMAP_MOLY_INSERT_CASES = [False, True]
-_REMAP_MOLY_INTERVAL_CASES = [4, 2]
-
-
-# testing failures for remapping
 class RemappingFailureCases:
+    @xfail(raises=FileNotFoundError, strict=True)
     def case_bad_moly_path(self):
-        return 'bad_path.json', 2, FileNotFoundError, 'Moly point'
+        return 'bad_path.json', 2
 
+    @xfail(raises=ValueError, strict=True)
     def case_bad_moly_interval_type(self):
-        return 'sample_moly_point.json', 1.5, ValueError, 'moly_interval'
+        return 'sample_moly_point.json', 1.5
 
+    @xfail(raises=ValueError, strict=True)
     def case_bad_moly_interval_value(self):
-        return 'sample_moly_point.json', 0, ValueError, 'moly_interval'
+        return 'sample_moly_point.json', 0
