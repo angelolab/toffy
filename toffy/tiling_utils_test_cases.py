@@ -4,11 +4,13 @@ import pytest
 
 from toffy.tiling_utils import XYCoord
 
+param = pytest.param
 parametrize = pytest.mark.parametrize
 xfail = pytest.mark.xfail
 
 
 # this function assumes that FOV 2's corresponding values are linearly spaced from
+# TODO: do test functions need a docstring?
 def generate_tiled_region_params(start_x_fov_1=50, start_y_fov_1=150, num_x_fov_1=2, num_y_fov_1=4,
                                  x_size_fov_1=1, y_size_fov_1=2, num_fovs=2):
     # define this dictionary for testing purposes to ensure that function calls
@@ -295,29 +297,14 @@ class RhombusCoordInputCases:
         return coords, actual_pairs
 
 
-# testing TMA fov generation params
-# NOTE: easier than enumerating these all in a class for file validation and 4 corner verification
-_TMA_CORNER_FILE_NAME_CASES = [
-    pytest.param('bad_path.json', marks=[xfail]),
-    pytest.param('sample_tma_corners.json')
-]
-_TMA_EXTRA_COORDS_CASES = [
-    pytest.param([1, 2], ["TheSecondFOV"], marks=[xfail]),
-    pytest.param([], [])
-]
-_TMA_X_Y_CASES = [
-    pytest.param(2, 3, marks=[xfail]),
-    pytest.param(3, 2, marks=[xfail]),
-    pytest.param(4, 3)
-]
-
 # testing Moly point insertion for remapping
-# NOTE: easier than enumerating these all for moly interval verification
+# NOTE: easier than enumerating these all in a class for moly interval verification
+# this one's long so better here than in directly in decorator
 _REMAP_MOLY_INTERVAL_CASES = [
-    pytest.param(True, 2.5, marks=[xfail]),
-    pytest.param(True, 0, marks=[xfail]),
-    pytest.param(False, 4),
-    pytest.param(True, 4),
-    pytest.param(False, 2),
-    pytest.param(True, 2)
+    param(True, 2.5, marks=[xfail]),
+    param(True, 0, marks=[xfail]),
+    param(False, 4),
+    param(True, 4),
+    param(False, 2),
+    param(True, 2)
 ]

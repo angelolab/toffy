@@ -16,6 +16,7 @@ from toffy import tiling_utils_test_cases as test_cases
 
 from ark.utils import misc_utils
 
+param = pytest.param
 parametrize = pytest.mark.parametrize
 xfail = pytest.mark.xfail
 
@@ -60,7 +61,6 @@ def test_assign_metadata_vals():
 
 
 def test_read_tiling_param(monkeypatch):
-    # test 1: int inputs
     # test an invalid non-int response, an invalid int response, then a valid response
     user_inputs_int = iter(['N', 0, 1])
 
@@ -78,7 +78,6 @@ def test_read_tiling_param(monkeypatch):
     # assert sample_tiling_param was set to 1
     assert sample_tiling_param == 1
 
-    # test 2: str inputs
     # test an invalid non-str response, then an invalid str response, then a valid response
     user_inputs_str = iter([1, 'N', 'Y'])
 
@@ -157,8 +156,8 @@ def test_generate_region_info():
 
 
 # NOTE: you can use this to assert failures without needing a separate test class
-@parametrize('region_corners_file', [pytest.param('bad_tiled_region_corners.json', marks=[xfail]),
-                                     pytest.param('tiled_region_corners.json')])
+@parametrize('region_corners_file', [param('bad_tiled_region_corners.json', marks=[xfail]),
+                                     param('tiled_region_corners.json')])
 @parametrize_with_cases('fov_coords, fov_names, user_inputs, base_param_values, full_param_set',
                         cases=test_cases.TiledRegionReadCases, glob='*_with_moly_param')
 @parametrize('moly_interval_val', [0, 1])
@@ -359,11 +358,12 @@ def test_validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
     tiling_utils.validate_tma_corners(top_left, top_right, bottom_left, bottom_right)
 
 
-@parametrize('tma_corners_file', test_cases._TMA_CORNER_FILE_NAME_CASES)
-@parametrize('extra_coords,extra_names', test_cases._TMA_EXTRA_COORDS_CASES)
-@parametrize('num_x,num_y', test_cases._TMA_X_Y_CASES)
-@parametrize_with_cases('coords, actual_pairs',
-                        cases=test_cases.RhombusCoordInputCases)
+@parametrize('tma_corners_file', [param('bad_path.json', marks=[xfail]),
+                                  param('sample_tma_corners.json')])
+@parametrize('extra_coords,extra_names', [param([1, 2], ["TheSecondFOV"], marks=[xfail]),
+                                          param([], [])])
+@parametrize('num_x,num_y', [param(2, 3, marks=[xfail]), param(3, 2, marks=[xfail]), param(4, 3)])
+@parametrize_with_cases('coords, actual_pairs', cases=test_cases.RhombusCoordInputCases)
 def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_x, num_y,
                                coords, actual_pairs):
     # extract the coordinates
@@ -546,8 +546,7 @@ def test_generate_fov_circles():
             assert np.all(sample_slide_img[x, y, :] == np.array([162, 197, 255]))
 
 
-@parametrize('moly_path', [pytest.param('bad_moly_point.json', marks=[xfail]),
-                           'sample_moly_point.json'])
+@parametrize('moly_path', [param('bad_moly_point.json', marks=[xfail]), 'sample_moly_point.json'])
 @parametrize('randomize_setting', [False, True])
 @parametrize('moly_insert,moly_interval', test_cases._REMAP_MOLY_INTERVAL_CASES)
 def test_remap_and_reorder_fovs(moly_path, randomize_setting, moly_insert, moly_interval):
