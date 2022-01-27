@@ -20,6 +20,10 @@ param = pytest.param
 parametrize = pytest.mark.parametrize
 xfail = pytest.mark.xfail
 
+# shortcuts to make the marks arg in pytest.params easier
+file_missing_err = [xfail(raises=FileNotFoundError, strict=True)]
+value_err = [xfail(raises=ValueError, strict=True)]
+
 
 def test_assign_metadata_vals():
     example_input_dict = {
@@ -156,8 +160,7 @@ def test_generate_region_info():
 
 
 # NOTE: you can use this to assert failures without needing a separate test class
-@parametrize('region_corners_file', [param('bad_tiled_region_corners.json',
-                                           marks=[xfail(raises=FileNotFoundError, strict=True)]),
+@parametrize('region_corners_file', [param('bad_region_corners.json', marks=file_missing_err),
                                      param('tiled_region_corners.json')])
 @parametrize_with_cases('fov_coords, fov_names, user_inputs, base_param_values, full_param_set',
                         cases=test_cases.TiledRegionReadCases, glob='*_with_moly_param')
@@ -359,15 +362,12 @@ def test_validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
     tiling_utils.validate_tma_corners(top_left, top_right, bottom_left, bottom_right)
 
 
-@parametrize('extra_coords,extra_names', [param([(1, 2)], ["TheSecondFOV"],
-                                                marks=[xfail(raises=ValueError, strict=True)]),
+@parametrize('extra_coords,extra_names', [param([(1, 2)], ["TheSecondFOV"], marks=value_err),
                                           param([], [])])
-@parametrize('num_x,num_y', [param(2, 3, marks=[xfail(raises=ValueError, strict=True)]),
-                             param(3, 2, marks=[xfail(raises=ValueError, strict=True)]),
+@parametrize('num_x,num_y', [param(2, 3, marks=value_err), param(3, 2, marks=value_err),
                              param(4, 3)])
-@parametrize('tma_corners_file', [
-    param('bad_path.json', marks=[xfail(raises=FileNotFoundError, strict=True)]),
-    param('sample_tma_corners.json')])
+@parametrize('tma_corners_file', [param('bad_path.json', marks=file_missing_err),
+                                  param('sample_tma_corners.json')])
 @parametrize_with_cases('coords, actual_pairs', cases=test_cases.RhombusCoordInputCases)
 def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_x, num_y,
                                coords, actual_pairs):
@@ -553,8 +553,7 @@ def test_generate_fov_circles():
 
 @parametrize('randomize_setting', [False, True])
 @parametrize('moly_insert, moly_interval', test_cases._REMAP_MOLY_INTERVAL_CASES)
-@parametrize('moly_path', [param('bad_moly_point.json', marks=[xfail(raises=FileNotFoundError,
-                                                                     strict=True)]),
+@parametrize('moly_path', [param('bad_moly_point.json', marks=file_missing_err),
                            param('sample_moly_point.json')])
 def test_remap_and_reorder_fovs(moly_path, randomize_setting, moly_insert, moly_interval):
     # define the sample Moly point
