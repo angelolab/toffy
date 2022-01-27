@@ -133,7 +133,7 @@ def test_read_tiled_region_inputs(monkeypatch, fov_coords, fov_names, user_input
         assert sample_region_params[param] == full_param_set[param]
 
 
-# NOTE: since this is pretty much just a "copy over" function, don't need to parametrize
+# NOTE: since this is just a "copy over" function, don't need to parametrize
 def test_generate_region_info():
     # retrieve the base params and the full set of params (use the defaults for consistency)
     base_param_values, full_param_set = test_cases.generate_tiled_region_params()
@@ -141,11 +141,11 @@ def test_generate_region_info():
     # add region_rand to full_param set
     full_param_set['region_rand'] = ['N', 'Y']
 
-    # generate the region params (already set in param_values)
+    # generate the region params (full_param_set is in the sample input format so use that)
     sample_region_info = tiling_utils.generate_region_info(full_param_set)
 
     # test the individual values, using the start values of each numeric param as a base
-    # NOTE: we test region_rand separately since that is a string
+    # NOTE: we test region_rand separately since it's a string
     for i in range(len(sample_region_info)):
         for param, val in list(sample_region_info[i].items()):
             if not isinstance(val, str):
@@ -156,11 +156,9 @@ def test_generate_region_info():
     assert sample_region_info[1]['region_rand'] == 'Y'
 
 
-@parametrize('region_corners_file', [
-        pytest.param('bad_tiled_region_corners.json', marks=[xfail]),
-        pytest.param('tiled_region_corners.json')
-    ]
-)
+# NOTE: you can use this to assert failures without needing a separate test class
+@parametrize('region_corners_file', [pytest.param('bad_tiled_region_corners.json', marks=[xfail]),
+                                     pytest.param('tiled_region_corners.json')])
 @parametrize_with_cases('fov_coords, fov_names, user_inputs, base_param_values, full_param_set',
                         cases=test_cases.TiledRegionReadCases, glob='*_with_moly_param')
 @parametrize('moly_interval_val', [0, 1])
@@ -173,7 +171,6 @@ def test_set_tiled_region_params(monkeypatch, region_corners_file, fov_coords, f
     )
 
     # set the user inputs
-    # intentionally place some lowercase letters as this function should support those
     user_inputs = iter(user_inputs + [moly_interval_val])
 
     # override the default functionality of the input function
@@ -229,7 +226,6 @@ def test_generate_x_y_fov_pairs():
     assert sample_pairs == [(0, 2), (0, 4), (5, 2), (5, 4)]
 
 
-# TODO: clean up this test, something like Adam's setup might work here
 @parametrize_with_cases('coords, actual_pairs', cases=test_cases.RhombusCoordInputCases)
 def test_generate_x_y_fov_pairs_rhombus(coords, actual_pairs):
     # retrieve the coordinates defining the TMA and the number of FOVs along each axis
@@ -421,7 +417,6 @@ def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_
         assert bottom_right_fov == 'R%dC%d' % (num_y, num_x)
 
         # now assert all the FOVs in between are named correctly and in the right order
-        # TODO: might be a duplicate test for corners above, might want this to handle it alone
         for i, fov in enumerate(fov_regions.keys()):
             row_ind = (i % num_y) + 1
             col_ind = int(i / num_y) + 1
@@ -551,7 +546,6 @@ def test_generate_fov_circles():
             assert np.all(sample_slide_img[x, y, :] == np.array([162, 197, 255]))
 
 
-# NOTE: you can use this to assert test failure without needing a separate test class
 @parametrize('moly_path', [pytest.param('bad_moly_point.json', marks=[xfail]),
                            'sample_moly_point.json'])
 @parametrize('randomize_setting', [False, True])
