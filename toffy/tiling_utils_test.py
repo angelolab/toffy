@@ -546,7 +546,8 @@ def test_generate_fov_circles():
             assert np.all(sample_slide_img[x, y, :] == np.array([162, 197, 255]))
 
 
-@parametrize('moly_path', [param('bad_moly_point.json', marks=[xfail]), 'sample_moly_point.json'])
+@parametrize('moly_path', [param('bad_moly_point.json', marks=[xfail]),
+                           param('sample_moly_point.json')])
 @parametrize('randomize_setting', [False, True])
 @parametrize('moly_insert,moly_interval', test_cases._REMAP_MOLY_INTERVAL_CASES)
 def test_remap_and_reorder_fovs(moly_path, randomize_setting, moly_insert, moly_interval):
