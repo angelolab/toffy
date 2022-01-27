@@ -1240,7 +1240,7 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
     # define the textbox to display the error message
     w_err = widgets.Textarea(
         description='FOV pair validation checks:',
-        layout=widgets.Layout(height="auto", width='auto'),
+        layout=widgets.Layout(height="auto", width='50%'),
         style={'description_width': 'initial'}
     )
 
