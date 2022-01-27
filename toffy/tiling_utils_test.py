@@ -582,7 +582,7 @@ def test_find_manual_auto_name_mismatches(manual_to_auto_map, actual_mismatch_li
 
     assert generated_mismatch_list == actual_mismatch_list
 
-    
+
 @parametrize('randomize_setting', [False, True])
 @parametrize('moly_insert, moly_interval', test_cases._REMAP_MOLY_INTERVAL_CASES)
 @parametrize('moly_path', [param('bad_moly_point.json', marks=file_missing_err),
