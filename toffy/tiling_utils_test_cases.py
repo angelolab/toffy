@@ -8,6 +8,9 @@ param = pytest.param
 parametrize = pytest.mark.parametrize
 xfail = pytest.mark.xfail
 
+# shortcuts to make the marks arg in pytest.params easier
+value_err = [xfail(raises=ValueError, strict=True)]
+
 
 # this function assumes that FOV 2's corresponding values are linearly spaced from
 # TODO: do test functions need a docstring?
@@ -301,8 +304,8 @@ class RhombusCoordInputCases:
 # NOTE: easier than enumerating these all in a class for moly interval verification
 # this one's long so better here than in directly in decorator
 _REMAP_MOLY_INTERVAL_CASES = [
-    param(True, 2.5, marks=[xfail(raises=ValueError, strict=True)]),
-    param(True, 0, marks=[xfail(raises=ValueError, strict=True)]),
+    param(True, 2.5, marks=value_err),
+    param(True, 0, marks=value_err),
     param(False, 4),
     param(True, 4),
     param(False, 2),
