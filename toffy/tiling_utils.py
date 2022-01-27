@@ -979,7 +979,8 @@ def find_manual_auto_invalid_dist(manual_to_auto_map, dist_threshold=50):
             - `tuple`: the manual FOV to auto FOV pair
             - `float`: the distance between the manual and auto FOV
 
-            applies only for manual-auto pairs with distance greater than `dist_threshold`
+            applies only for manual-auto pairs with distance greater than `dist_threshold`,
+            sorted by decreasing manual-auto FOV distance
     """
 
     # define the fov pairs at a distance greater than dist_thresh
@@ -1000,22 +1001,16 @@ def find_manual_auto_invalid_dist(manual_to_auto_map, dist_threshold=50):
 def find_duplicate_auto_mappings(manual_to_auto_map):
     """Finds each auto FOV with more than one manual FOV mapping to it
 
-    TODO: need to fix the return description barf
-
     Args:
         manual_to_auto_map (dict):
             defines the mapping of manual to auto FOV names
-        manual_fovs_info (dict):
-            maps each manual FOV to its centroid coordinates
-        auto_fovs_info (dict):
-            maps each automatically-generated FOV to its centroid coordinates
 
     Returns:
         list:
             contains tuples with elements:
 
             - `str`: the name of the auto FOV
-            - `tuple`: the list of manual FOVs that map to the auto FOV
+            - `tuple`: the set of manual FOVs that map to the auto FOV
 
             only for auto FOVs with more than one manual FOV pair
     """
@@ -1058,7 +1053,7 @@ def find_manual_auto_name_mismatches(manual_to_auto_map):
             - `str`: the corresponding auto FOV
     """
 
-    # find the manual FOVs that don't match the closest_auto_fov name
+    # find the manual FOVs that don't match their corresponding closest_auto_fov name
     # NOTE: this method maintains the original manual FOV ordering which is already sorted
     manual_auto_mismatches = [
         (k, v['closest_auto_fov'])
@@ -1087,13 +1082,13 @@ def generate_validation_annot(manual_to_auto_map, check_dist=50,
             if the distance between a manual-auto FOV pair exceeds this value, it will
             be reported for a potential error, if `None` does not validate distance
         check_duplicates (bool):
-            if `True`, validate whether an auto FOV has 2 manual FOVs mapping to it
+            if `True`, report each auto FOV with 2 or more manual FOVs mapping to it
         check_mismatches (bool):
-            if `True`, validate whether the the manual auto FOV pairs have matching names
+            if `True`, report manual FOVs that map to an auto FOV with a different name
 
     Returns:
         str:
-            the warning message to display to the user
+            describes the validation failures
     """
 
     # define the potential sources of error desired by user in the mapping
@@ -1110,7 +1105,7 @@ def generate_validation_annot(manual_to_auto_map, check_dist=50,
     # generate the annotation
     warning_annot = ""
 
-    # add the manual-auto FOV pairs with invalid distances
+    # add the manual-auto FOV pairs with distances greater than check_dist
     # TODO: should we stick with pixels or should we convert to microns or stage coordinates?
     if len(invalid_dist) > 0:
         warning_annot += \
