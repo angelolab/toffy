@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import warnings
 
 import numpy as np
@@ -22,7 +23,7 @@ def create_objective_function(obj_func):
     Returns:
         function: the function which will be optimized"""
 
-    valid_funcs = ['poly_2', 'poly_3', 'poly_4', 'poly_5', 'log']
+    valid_funcs = ['poly_2', 'poly_3', 'poly_4', 'poly_5', 'log', 'exp']
     if obj_func not in valid_funcs:
         raise ValueError('Invalid function, must be one of {}'.format(valid_funcs))
 
@@ -42,8 +43,9 @@ def create_objective_function(obj_func):
         def objective(x, a, b):
             return a * np.log(x) + b
     elif obj_func == 'exp':
-        def objective(x, a, b):
-            return a * np.log(x) + b
+        def objective(x, a, b, c, d):
+            x_log = np.log(x)
+            return a * x_log + b * x_log ** 2 + c * x_log ** 3 + d
 
     return objective
 
@@ -101,24 +103,41 @@ def combine_run_metrics(run_dir, file_prefix):
     files = io_utils.list_files(run_dir, file_prefix)
     bins = io_utils.list_files(run_dir, '.bin')
 
+    if file_prefix + '_combined.csv' in files:
+        warnings.warn('removing previously generated '
+                      'combined {} file in {}'.format(file_prefix, run_dir))
+        os.remove(os.path.join(run_dir, file_prefix + '_combined.csv'))
+        files = [file for file in files if 'combined' not in file]
+
     if len(bins) != len(files):
-        raise ValueError('Not all bin files have a corresponding {} file'.format(file_prefix))
+        raise ValueError('Mismatch between the number of bins and number '
+                         'of {} files'.format(file_prefix))
+
+    if len(bins) == 0:
+        raise ValueError('No bin files found in {}'.format(run_dir))
 
     metrics = []
     for file in files:
         metrics.append(pd.read_csv(os.path.join(run_dir, file)))
+
+    # check that all files are the same length
+    if len(metrics) > 1:
+        base_len = len(metrics[0])
+        for i in range(1, len(metrics)):
+            if len(metrics[i]) != base_len:
+                raise ValueError('Not all {} files are the same length: file {} does not match'
+                                 'file {}'.format(file_prefix, files[0], files[i]))
 
     metrics = pd.concat(metrics)
 
     metrics.to_csv(os.path.join(run_dir, file_prefix + '_combined.csv'), index=False)
 
 
-def combine_fov_metrics(dir_list, num_fovs):
-    """Combines metrics for data normalization together into a single dataframe
+def combine_tuning_curve_metrics(dir_list):
+    """Combines metrics together into a single dataframe for fitting a turning curve
 
     Args:
-        dir_list (list): list of directories
-        num_fovs (int): number of fovs present within each directory
+        dir_list (list): list of directories to pull metrics from
 
     Returns:
         pd.DataFrame: dataframe containing aggregates metrics"""
@@ -128,25 +147,25 @@ def combine_fov_metrics(dir_list, num_fovs):
 
     # loop through directories, and if present, multiple fovs within directories
     for dir in dir_list:
-        all_fovs = []
-        for fov in range(1, num_fovs + 1):
-            pulse_heights = pd.read_csv(os.path.join(dir, 'pulse_heights_{}.csv'.format(fov)))
-            channel_counts = pd.read_csv(os.path.join(dir, 'channel_counts_{}.csv'.format(fov)))
 
-            if not np.all(pulse_heights['masses'] == channel_counts['masses']):
-                raise ValueError("Pulse counts and channel counts must be generated for the same"
-                                 "mass range. However, the following data contain different"
-                                 "masses: directory {}, fov {}".format(dir, fov))
+        # generate aggregated table if it doesn't already exist
+        for prefix in ['pulse_heights', 'channel_counts']:
+            if not os.path.exists(os.path.join(dir, prefix + '_combined.csv')):
+                combine_run_metrics(dir, prefix)
 
-            # combine into single df per fov, and add to list for entire directory
-            pulse_heights['channel_counts'] = channel_counts['counts']
-            pulse_heights['fov'] = fov
-            all_fovs.append(pulse_heights)
+        # combine tables together
+        pulse_heights = pd.read_csv(os.path.join(dir, 'pulse_heights_combined.csv'))
+        channel_counts = pd.read_csv(os.path.join(dir, 'channel_counts_combined.csv'))
+        combined = pulse_heights.merge(channel_counts, 'outer', on=['fovs', 'masses'])
 
-        # combine data from all fovs into single df, and add to list for all directories
-        fov_df = pd.concat(all_fovs)
-        fov_df['directory'] = dir
-        all_dirs.append(fov_df)
+        if len(combined) != len(pulse_heights):
+            raise ValueError("Pulse heights and channel counts must be generated for the same"
+                             "mass ranges and fovs. However, the data the following does do not "
+                             "exactly match: {}".format(dir))
+
+        # add directory label and add to list
+        combined['directory'] = dir
+        all_dirs.append(combined)
 
     # combine data from each dir together
     all_data = pd.concat(all_dirs)
@@ -194,6 +213,8 @@ def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info_p
         mass_weights = fit_calibration_curve(x=fov_pulse_heights['masses'],
                                              y=fov_pulse_heights['mphs'],
                                              obj_func='poly_2')
+
+
         mass_func = create_prediction_function(name='poly_2', weights=mass_weights)
         norm_vals = mass_func[panel_info['masses']].reshape((1, 1, 1, len(channels)))
 
