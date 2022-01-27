@@ -301,8 +301,8 @@ class RhombusCoordInputCases:
 # NOTE: easier than enumerating these all in a class for moly interval verification
 # this one's long so better here than in directly in decorator
 _REMAP_MOLY_INTERVAL_CASES = [
-    param(True, 2.5, marks=[xfail]),
-    param(True, 0, marks=[xfail]),
+    param(True, 2.5, marks=[xfail(raises=ValueError, strict=True)]),
+    param(True, 0, marks=[xfail(raises=ValueError, strict=True)]),
     param(False, 4),
     param(True, 4),
     param(False, 2),
