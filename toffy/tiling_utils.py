@@ -1205,8 +1205,13 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
     first_manual = list(manual_fovs_info.keys())[0]
 
     # define the two drop down menus, the first will define the manual fovs
+    manual_fovs_sorted = sorted(
+        list(manual_fovs_info.keys()),
+        key=lambda mf: (int(re.findall(r'\d+', mf)[0]), int(re.findall(r'\d+', mf)[1]))
+    )
+
     w_man = widgets.Dropdown(
-        options=list(manual_fovs_info.keys()),
+        options=manual_fovs_sorted,
         value=first_manual,
         description='Manually-defined FOV',
         layout=widgets.Layout(width='auto'),
@@ -1215,7 +1220,6 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
 
     # the second will define the automatically-generated fovs
     # the default value should be set to the auto fov the initial manual fov maps to
-    # these FOVs need to be sorted by increasing column, then row
     auto_fovs_sorted = sorted(
         list(auto_fovs_info.keys()),
         key=lambda af: (int(re.findall(r'\d+', af)[0]), int(re.findall(r'\d+', af)[1]))
