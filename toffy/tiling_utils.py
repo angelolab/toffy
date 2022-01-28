@@ -1205,6 +1205,7 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
     first_manual = list(manual_fovs_info.keys())[0]
 
     # define the two drop down menus, the first will define the manual fovs
+    # TODO: this assumes that the user will always define their FOVs with names R{n}C{n}
     manual_fovs_sorted = sorted(
         list(manual_fovs_info.keys()),
         key=lambda mf: (int(re.findall(r'\d+', mf)[0]), int(re.findall(r'\d+', mf)[1]))
