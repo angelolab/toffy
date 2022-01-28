@@ -511,15 +511,6 @@ def test_assign_closest_fovs():
 
 
 def test_generate_fov_circles():
-    # we'll be copying the data generated from test_assign_closest_fovs
-    sample_manual_to_auto_map = {
-        'row0_col25': 'row0_col0',
-        'row50_col25': 'row0_col0',
-        'row50_col50': 'row0_col50',
-        'row75_col50': 'row100_col50',
-        'row100_col25': 'row100_col0'
-    }
-
     sample_manual_fovs_info = {
         'row0_col25': (0, 25),
         'row50_col25': (50, 25),
