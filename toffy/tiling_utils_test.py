@@ -770,7 +770,7 @@ def test_remap_manual_to_auto_display():
         assert np.all(new_slide_img[x, y, :] == [162, 197, 255])
 
 
-# NOTE: it won't be possible to text the exact datetime the mapping was saved at
+# NOTE: it won't be possible to test the exact datetime the mapping was saved at
 @parametrize('annot', [None, plt.annotate('Mapping saved at', (10, 10))])
 def test_write_manual_to_auto_map(annot):
     # define the save annotation status
