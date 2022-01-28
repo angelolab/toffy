@@ -179,11 +179,18 @@ def test_normalize_image_data():
                                      'fov': fov_0 + fov_1,
                                       'mphs': np.concatenate([mph_0, mph_1])})
 
-        normalize.normalize_image_data(data_dir, output_dir, fovs=None, pulse_heights=pulse_heights,
-                                       panel_info=panel_info_file, norm_func_path=func_path)
+        normalize.normalize_image_data(data_dir, output_dir, fovs=None,
+                                       pulse_heights=pulse_heights, panel_info=panel_info_file,
+                                       norm_func_path=func_path)
 
         normalized = load_utils.load_imgs_from_tree(output_dir, fovs=fovs, channels=chans)
 
+        # compute expected multiplier for FOV0
         fov0_mults = mph_0 * weights[0] + weights[2]
-        assert np.mean(data_xr.values[0, :, :, 0]) == np.mean(normalized.values[0, :, :, 3])
+        fov0_mults = fov0_mults.reshape(1, 1, len(fov0_mults))
+        assert np.allclose(data_xr.values[0, :, :, :], normalized.values[0, :, :, :] * fov0_mults)
 
+        # compute expected multiplier for FOV1
+        fov1_mults = mph_1 * weights[0] + weights[2]
+        fov1_mults = fov1_mults.reshape(1, 1, len(fov1_mults))
+        assert np.allclose(data_xr.values[1, :, :, :], normalized.values[1, :, :, :] * fov1_mults)

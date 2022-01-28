@@ -211,13 +211,14 @@ def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info,
         os.makedirs(output_fov_dir)
 
         # get images and pulse heights for current fov
-        images = load_utils.load_imgs_from_tree(data_dir, fovs=[fov], channels=channels)
+        images = load_utils.load_imgs_from_tree(data_dir, fovs=[fov], channels=channels,
+                                                dtype='float32')
         fov_pulse_heights = pulse_heights.loc[pulse_heights['fov'] == fov, :]
 
         # fit a function to model pulse height as a function of mass
         mph_weights = fit_calibration_curve(x_vals=fov_pulse_heights['masses'].values,
-                                             y_vals=fov_pulse_heights['mphs'].values,
-                                             obj_func='poly_2')
+                                            y_vals=fov_pulse_heights['mphs'].values,
+                                            obj_func='poly_2')
 
         # predict mph for each mass in the panel
         mph_func = create_prediction_function(name='poly_2', weights=mph_weights)
