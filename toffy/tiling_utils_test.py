@@ -787,6 +787,15 @@ def test_write_manual_to_auto_map(annot):
         # assert the mapping file was saved
         assert os.path.exists(os.path.join(td, 'sample_mapping.json'))
 
+        # assert that the distance key has been removed and that closest_auto_fov
+        # has been condensed into the single value each manual FOV maps to
+        with open(os.path.join(td, 'sample_mapping.json')) as sm:
+            mapping = json.load(sm)
+
+        for manual_fov in test_cases._ANNOT_SAMPLE_MAPPING:
+            auto_fov = test_cases._ANNOT_SAMPLE_MAPPING[manual_fov]['closest_auto_fov']
+            assert mapping[manual_fov] == auto_fov
+
         # assert the annotation got updated
         assert save_ann['annotation'] is not None
 
