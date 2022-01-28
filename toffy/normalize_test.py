@@ -5,8 +5,10 @@ import numpy as np
 import pandas as pd
 import tempfile
 
+from pytest_cases import parametrize_with_cases
 
 from toffy import normalize
+import toffy.normalize_test_cases as test_cases
 
 parametrize = pytest.mark.parametrize
 
@@ -102,42 +104,40 @@ def test_combine_run_metrics():
             normalize.combine_run_metrics(empty_dir, 'example_metric')
 
 
-def test_combine_tuning_curve_metrics():
+@parametrize_with_cases('dir_names, mph_dfs, count_dfs', test_cases.TuningCurveFiles)
+def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
     with tempfile.TemporaryDirectory() as temp_dir:
 
-        dirs = ['dir_{}'.format(i) for i in range(1, 4)]
-        dir_paths = [os.path.join(temp_dir, dir) for dir in dirs]
+        # create csv files with data to be combined
+        for i in range(len(dir_names)):
+            full_path = os.path.join(temp_dir, dir_names[i])
+            os.makedirs(full_path)
+            mph_dfs[i].to_csv(os.path.join(full_path, 'pulse_heights_combined.csv'), index=False)
+            count_dfs[i].to_csv(os.path.join(full_path, 'channel_counts_combined.csv'), index=False)
 
-        for dir in dirs[1:3]:
-            os.makedirs(os.path.join(temp_dir, dir))
-            masses = np.random.randint(0, 10, 13)
-            masses_rev = np.flip(masses)
-            mph_vals = np.repeat(1, 13)
-            channel_counts = np.arange(3, 16)
-            fovs = np.arange(13)
-            #fovs_rev = list(range(14, 1, -1))
-            fovs_rev = np.flip(fovs)
-
-            mph_df = pd.DataFrame({'masses': masses, 'fovs': fovs, 'mph': mph_vals})
-
-            count_df = pd.DataFrame({'masses': masses_rev, 'channel_counts': channel_counts,
-                                     'fovs': fovs_rev})
-
-            mph_df.to_csv(os.path.join(temp_dir, dir, 'pulse_heights_combined.csv'), index=False)
-            count_df.to_csv(os.path.join(temp_dir, dir, 'channel_counts_combined.csv'), index=False)
-
-        combined = normalize.combine_tuning_curve_metrics(dir_paths[1:3])
+        dir_paths = [os.path.join(temp_dir, dir) for dir in dir_names]
+        combined = normalize.combine_tuning_curve_metrics(dir_paths)
 
         # data may be in a different order due to matching dfs, but all values should be present
-        #for key in ['masses', 'channel_counts', 'fovs']:
-        for key in ['channel_counts']:
+        all_mph, all_counts = [], []
+        for df in mph_dfs:
+            all_mph.extend(df['mph'])
 
-            print(key)
-            assert set(combined[key].values) == set(count_df[key].values)
+        for df in count_dfs:
+            all_counts.extend(df['channel_counts'])
 
-        assert set(combined['mph'].values) == set(mph_df['mph'].values)
+        assert set(all_mph) == set(combined['mph'])
+        assert set(all_counts) == set(combined['channel_counts'])
+        saved_dir_names = [name.split('/')[-1] for name in np.unique(combined['directory'])]
+        assert set(saved_dir_names) == set(dir_names)
 
-        # check that normalized values make sense
-        # check that multiple folders work
+        # check that normalized value is 1 for maximum in each channel
+        for mass in np.unique(combined['masses']):
+            subset = combined.loc[combined['masses'] == mass, :]
+            max = np.max(subset[['channel_counts']].values)
+            norm_vals = subset.loc[subset['channel_counts'] == max, 'norm_channel_counts'].values
+            assert np.all(norm_vals == 1)
+
+
 
 

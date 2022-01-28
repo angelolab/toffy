@@ -159,7 +159,7 @@ def combine_tuning_curve_metrics(dir_list):
         combined = pulse_heights.merge(channel_counts, 'outer', on=['fovs', 'masses'])
 
         if len(combined) != len(pulse_heights):
-            raise ValueError("Pulse heights and channel counts must be generated for the same"
+            raise ValueError("Pulse heights and channel counts must be generated for the same "
                              "mass ranges and fovs. However, the data the following does do not "
                              "exactly match: {}".format(dir))
 
@@ -213,7 +213,6 @@ def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info_p
         mass_weights = fit_calibration_curve(x=fov_pulse_heights['masses'],
                                              y=fov_pulse_heights['mphs'],
                                              obj_func='poly_2')
-
 
         mass_func = create_prediction_function(name='poly_2', weights=mass_weights)
         norm_vals = mass_func[panel_info['masses']].reshape((1, 1, 1, len(channels)))

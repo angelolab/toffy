@@ -3,26 +3,41 @@ import pytest
 import numpy as np
 import pandas as pd
 
-
 masses = np.arange(5, 20)
 
 
 class TuningCurveFiles:
-    dirs = ['dir_{}'.format(i) for i in range(1, 4)]
 
-    return_data = []
+    def case_default_combined_files(self):
+        dirs = ['dir_{}'.format(i) for i in range(1, 4)]
 
-    for dir in dirs:
-        mph_vals = np.random.randint(1, 13, len(masses))
-        channel_counts = np.random.randint(3, 16, len(masses))
-        fovs = np.arange(13)
-        # fovs_rev = list(range(14, 1, -1))
-        fovs_rev = np.flip(fovs)
+        # create lists to hold dfs from each directory
+        mph_dfs = []
+        count_dfs = []
 
-        mph_df = pd.DataFrame({'masses': masses, 'fovs': fovs, 'mph': mph_vals})
+        for dir in dirs:
 
-        count_df = pd.DataFrame({'masses': masses_rev, 'channel_counts': channel_counts,
-                                 'fovs': fovs_rev})
+            # create lists to hold values from each fov in directory
+            mph_vals = []
+            channel_counts = []
+            fovs = []
+            num_fovs = np.random.randint(1, 5)
 
-        mph_df.to_csv(os.path.join(temp_dir, dir, 'pulse_heights_combined.csv'), index=False)
-        count_df.to_csv(os.path.join(temp_dir, dir, 'channel_counts_combined.csv'), index=False)
+            for i in range(1, num_fovs + 1):
+                # initialize random columns for each fov
+                mph_vals.extend(np.random.randint(1, 200, len(masses)))
+                channel_counts.extend(np.random.randint(3, 100, len(masses)))
+                fovs.extend(np.repeat(i, len(masses)))
+
+            # create dfs from current directory
+            mph_df = pd.DataFrame({'masses': np.tile(masses, num_fovs),
+                                   'fovs': fovs, 'mph': mph_vals})
+
+            # count_df has fields in different order to check that matching is working
+            count_df = pd.DataFrame({'masses': np.tile(masses, num_fovs),
+                                     'channel_counts': channel_counts, 'fovs': fovs})
+
+            mph_dfs.append(mph_df)
+            count_dfs.append(count_df)
+
+        return dirs, mph_dfs, count_dfs
