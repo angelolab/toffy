@@ -301,6 +301,7 @@ class RhombusCoordInputCases:
 
 
 # testing manual and auto FOVs too far apart validation
+# TODO: make one mapping dict for all of the tests below?
 class MappingDistanceCases:
     def case_no_bad_dist(self):
         manual_to_auto_map = {
@@ -523,7 +524,6 @@ class MappingMismatchCases:
 
 
 # for the annotation test, define one manual-auto mapping
-# TODO: make one dict for all the successes above?
 _ANNOT_SAMPLE_MAPPING = manual_to_auto_map = {
     'R0C0': {  # no errors for both manual R0C0 and auto R0C0
         'closest_auto_fov': 'R0C0',

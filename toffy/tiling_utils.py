@@ -597,7 +597,7 @@ def assign_closest_fovs(manual_fovs, auto_fovs):
     Returns:
         tuple:
 
-        - A `dict` defining the mapping of FOV names between `manual_fovs` and `auto_fovs`
+        - A `dict` mapping each manual FOV to an auto FOV and its respective distance from it
         - A `dict` defining each FOV in `manual_fovs` mapped to its centroid coordinates
         - A `dict` defining each FOV in `auto_fovs` mapped to its centroid coordinates
     """
@@ -907,8 +907,6 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_coord
     manual_to_auto_map[w_man.value]['distance'] = updated_manual_auto_dist
 
     # define the potential sources of error in the new mapping
-    # TODO: maybe not a good idea to loop through every FOV again since we can store the results
-    # of the previous invalid_dist, duplicate_auto, and name_mismatch lists?
     manual_auto_warning = generate_validation_annot(
         manual_to_auto_map, check_dist, check_duplicates, check_mismatches
     )
@@ -976,7 +974,8 @@ def find_manual_auto_invalid_dist(manual_to_auto_map, dist_threshold=50):
         list:
             contains tuples with elements:
 
-            - `tuple`: the manual FOV to auto FOV pair
+            - `str`: the manual FOV name
+            - `str`: the auto FOV name
             - `float`: the distance between the manual and auto FOV
 
             applies only for manual-auto pairs with distance greater than `dist_threshold`,
@@ -1012,7 +1011,7 @@ def find_duplicate_auto_mappings(manual_to_auto_map):
             - `str`: the name of the auto FOV
             - `tuple`: the set of manual FOVs that map to the auto FOV
 
-            only for auto FOVs with more than one manual FOV pair
+            only for auto FOVs with more than one manual FOV mapping to it
     """
 
     # "reverse" manual_to_auto_map: for each auto FOV find the list of manual FOVs that map to it
@@ -1260,7 +1259,7 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
     # display the box with w_man and w_auto dropdown menus
     display(w_box)
 
-    # display the w_err text box
+    # display the w_err text box with validation errors
     display(w_err)
 
     # define an output context to display
