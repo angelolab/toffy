@@ -631,6 +631,9 @@ def test_update_mapping_display():
         draw_radius=1
     )
 
+    # assert w_auto has been set correctly
+    assert w_auto.value == 'row10_col10'
+
     # assert the new pairs are highlighted correctly (first manual, then auto)
     assert np.all(new_slide_img[0, 25, :] == [210, 37, 37])
     assert np.all(new_slide_img[10, 10, :] == [50, 115, 229])
@@ -658,6 +661,9 @@ def test_update_mapping_display():
         new_slide_img,
         draw_radius=1
     )
+
+    # assert w_auto has been set correctly
+    assert w_auto.value == 'row40_col10'
 
     # assert the new pairs are highlighted correctly (first manual, then auto)
     assert np.all(new_slide_img[50, 50, :] == [210, 37, 37])

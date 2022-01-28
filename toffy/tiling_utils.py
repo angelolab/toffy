@@ -958,10 +958,9 @@ def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
     save_ann['annotation'] = save_msg
 
 
+# TODO: potential type hinting candidate?
 def find_manual_auto_invalid_dist(manual_to_auto_map, dist_threshold=50):
     """Finds the manual FOVs that map to auto FOVs greater than `dist_threshold` away
-
-    TODO: potential type hinting candidate?
 
     Args:
         manual_to_auto_map (dict):
@@ -1062,6 +1061,7 @@ def find_manual_auto_name_mismatches(manual_to_auto_map):
     return manual_auto_mismatches
 
 
+# TODO: potential type hinting candidate?
 def generate_validation_annot(manual_to_auto_map, check_dist=50,
                               check_duplicates=True, check_mismatches=True):
     """Finds problematic manual-auto FOV pairs and generates a warning message to display
@@ -1071,8 +1071,6 @@ def generate_validation_annot(manual_to_auto_map, check_dist=50,
     - Manual to auto FOV pairs that are of a distance greater than `check_dist` away
     - Auto FOV names that have more than one manual FOV name mapping to it
     - Manual to auto FOV pairs that don't have the same name
-
-    TODO: potential type hinting candidate?
 
     Args:
         manual_to_auto_map (dict):
@@ -1238,8 +1236,14 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
         style={'description_width': 'initial'}
     )
 
-    # ensure the text area adjusts based on the amount of text needed
     def increase_textarea_size(args):
+        """Ensures size of `w_err` adjusts based on the amount of validation text needed
+
+        Args:
+            args (dict):
+                the handler for `w_err`,
+                only passed as a standard for `ipywidgets.Textarea` observe
+        """
         w_err.rows = w_err.value.count('\n') + 1
 
     # ensure the entire error message is displayed
