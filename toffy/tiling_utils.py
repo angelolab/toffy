@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from operator import itemgetter
 import os
+import re
 from skimage.draw import ellipse
 from sklearn.utils import shuffle
 
@@ -1205,7 +1206,7 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
 
     # define the two drop down menus, the first will define the manual fovs
     w_man = widgets.Dropdown(
-        options=[mfi for mfi in list(manual_fovs_info.keys())],
+        options=list(manual_fovs_info.keys()),
         value=first_manual,
         description='Manually-defined FOV',
         layout=widgets.Layout(width='auto'),
@@ -1214,8 +1215,14 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
 
     # the second will define the automatically-generated fovs
     # the default value should be set to the auto fov the initial manual fov maps to
+    # these FOVs need to be sorted by increasing column, then row
+    auto_fovs_sorted = sorted(
+        list(auto_fovs_info.keys()),
+        key=lambda af: (int(re.findall(r'\d+', af)[0]), int(re.findall(r'\d+', af)[1]))
+    )
+
     w_auto = widgets.Dropdown(
-        options=[afi for afi in sorted(list(auto_fovs_info.keys()))],
+        options=auto_fovs_sorted,
         value=manual_to_auto_map[first_manual]['closest_auto_fov'],
         description='Automatically-generated FOV',
         layout=widgets.Layout(width='auto'),
