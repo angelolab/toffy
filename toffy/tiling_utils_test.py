@@ -1,4 +1,5 @@
 import copy
+import ipywidgets as widgets
 import json
 import numpy as np
 import os
@@ -556,6 +557,120 @@ def test_generate_fov_circles():
             assert np.all(sample_slide_img[x, y, :] == np.array([50, 115, 229]))
         else:
             assert np.all(sample_slide_img[x, y, :] == np.array([162, 197, 255]))
+
+
+def test_update_mapping_display():
+    # define a sample mapping
+    manual_to_auto_map = {
+        'row0_col25': {
+            'closest_auto_fov': 'row0_col0',
+            'distance': 25.0
+        },
+        'row50_col25': {
+            'closest_auto_fov': 'row0_col0',
+            'distance': np.linalg.norm(np.array([50, 25]) - np.array([0, 0]))
+        },
+        'row50_col50': {
+            'closest_auto_fov': 'row0_col50',
+            'distance': 50.0
+        },
+        'row75_col50': {
+            'closest_auto_fov': 'row100_col50',
+            'distance': np.linalg.norm(np.array([75, 50]) - np.array([100, 50]))
+        },
+        'row100_col25': {
+            'closest_auto_fov': 'row100_col0',
+            'distance': 25.0
+        }
+    }
+
+    # define the manual FOVs coords and the auto FOVs coords
+    # NOTE: we intentionally define more auto coords than needed, the test should still not fail
+    manual_coords = {
+        'row0_col25': (0, 25),
+        'row50_col25': (50, 25),
+        'row50_col50': (50, 50),
+        'row75_col50': (75, 50),
+        'row100_col25': (100, 25)
+    }
+
+    auto_coords = {
+        'row0_col0': (0, 0),
+        'row0_col50': (0, 50),
+        'row100_col0': (100, 0),
+        'row100_col50': (100, 50),
+        'row100_col75': (100, 75)
+    }
+
+    # define a sample slide image
+    slide_img = np.zeros((200, 200, 3))
+
+    # test 1: select a new manual FOV that maps to the same auto FOV as the previous one
+    # define the change dict
+    change = {
+        'old': 'row50_col25',
+        'new': 'row0_col25'
+    }
+
+    # draw the old highlighted pair on the slide (first manual, then auto)
+    # assume radius of 1 for all tests
+    slide_img[50, 25, :] = [210, 37, 37]
+    slide_img[0, 0, :] = [50, 115, 229]
+
+    # draw the non-highlighted pairs on the slide (first manual, then auto)
+    for x, y in zip([0, 50, 75, 100], [25, 50, 50, 25]):
+        slide_img[x, y, :] = [255, 133, 133]
+
+    for x, y in zip([0, 100, 100, 100], [50, 0, 50, 75]):
+        slide_img[x, y, :] = [162, 197, 255]
+
+    # define an dummy automatic FOV scroller
+    w_auto = widgets.Dropdown(
+        options=[afi for afi in sorted(list(auto_coords.keys()))],
+        value=manual_to_auto_map[change['old']]['closest_auto_fov'],
+        description='Automatically-generated FOV',
+        layout=widgets.Layout(width='auto'),
+        style={'description_width': 'initial'}
+    )
+
+    # generate the new slide image
+    new_slide_img = tiling_utils.update_mapping_display(
+        change, w_auto, manual_to_auto_map, manual_coords, auto_coords, slide_img, draw_radius=1
+    )
+
+    # assert the new pairs are highlighted correctly (first manual, then auto)
+    assert np.all(new_slide_img[0, 25, :] == [210, 37, 37])
+    assert np.all(new_slide_img[0, 0, :] == [50, 115, 229])
+
+    # assert all the others aren't highlighted (first manual, then auto)
+    for x, y in zip([50, 50, 75, 100], [25, 50, 50, 25]):
+        assert np.all(slide_img[x, y, :] == [255, 133, 133])
+
+    for x, y in zip([0, 100, 100, 100], [50, 0, 50, 75]):
+        assert np.all(slide_img[x, y, :] == [162, 197, 255])
+
+    # test 2: select a new manual FOV that maps to a different auto FOV as the previous one
+    # define the change dict
+    change = {
+        'old': 'row0_col25',
+        'new': 'row50_col50'
+    }
+
+    # generate the new slide image
+    new_slide_img = tiling_utils.update_mapping_display(
+        change, w_auto, manual_to_auto_map, manual_coords, auto_coords, slide_img, draw_radius=1
+    )
+
+    # assert the new pairs are highlighted correctly (first manual, then auto)
+    assert np.all(new_slide_img[50, 50, :] == [210, 37, 37])
+    assert np.all(new_slide_img[0, 50, :] == [50, 115, 229])
+
+    # assert all the others aren't highlighted (first manual, then auto)
+    for x, y in zip([0, 50, 75, 100], [25, 25, 50, 25]):
+        assert np.all(slide_img[x, y, :] == [255, 133, 133])
+
+    for x, y in zip([0, 100, 100, 100], [0, 0, 50, 75]):
+        assert np.all(slide_img[x, y, :] == [162, 197, 255])
 
 
 @parametrize_with_cases('manual_to_auto_map, actual_bad_dist_list',
