@@ -1,3 +1,4 @@
+import json
 import os
 import pytest
 
@@ -7,6 +8,7 @@ import tempfile
 
 from pytest_cases import parametrize_with_cases
 
+from ark.utils import test_utils, load_utils
 from toffy import normalize
 import toffy.normalize_test_cases as test_cases
 
@@ -138,3 +140,50 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
             max = np.max(subset[['channel_counts']].values)
             norm_vals = subset.loc[subset['channel_counts'] == max, 'norm_channel_counts'].values
             assert np.all(norm_vals == 1)
+
+
+def test_normalize_image_data():
+    with tempfile.TemporaryDirectory() as top_level_dir:
+        data_dir = os.path.join(top_level_dir, 'data_dir')
+        os.makedirs(data_dir)
+
+        output_dir = os.path.join(top_level_dir, 'output_dir')
+        os.makedirs(output_dir)
+
+        # make fake data for testing
+        fovs, chans = test_utils.gen_fov_chan_names(num_fovs=2, num_chans=10)
+        filelocs, data_xr = test_utils.create_paired_xarray_fovs(
+            data_dir, fovs, chans, img_shape=(10, 10), fills=True)
+
+        # weights of mph to norm const func: 0.1x + 0x^2 + 0.5
+        weights = [0.1, 0, 0.5]
+        name = 'poly_2'
+        func_json = {'name': name, 'weights': weights}
+        func_path = os.path.join(top_level_dir, 'norm_func.json')
+
+        with open(func_path, 'w') as fp:
+            json.dump(func_json, fp)
+
+        masses = np.array(range(1, len(chans) + 1))
+        panel_info_file = pd.DataFrame({'masses': masses, 'targets': chans})
+
+        # fov1 mass to mph function: line with 20% slope starting at 1.2
+        mph_0 = masses * 0.2 + 1
+        fov_0 = ['fov0'] * len(chans)
+
+        # fov1 mass to mph function: line with 10% slope starting at 4
+        mph_1 = masses * .1 + 4
+        fov_1 = ['fov1'] * len(chans)
+
+        pulse_heights = pd.DataFrame({'masses': np.concatenate([masses, masses]),
+                                     'fov': fov_0 + fov_1,
+                                      'mphs': np.concatenate([mph_0, mph_1])})
+
+        normalize.normalize_image_data(data_dir, output_dir, fovs=None, pulse_heights=pulse_heights,
+                                       panel_info=panel_info_file, norm_func_path=func_path)
+
+        normalized = load_utils.load_imgs_from_tree(output_dir, fovs=fovs, channels=chans)
+
+        fov0_mults = mph_0 * weights[0] + weights[2]
+        assert np.mean(data_xr.values[0, :, :, 0]) == np.mean(normalized.values[0, :, :, 3])
+

@@ -11,7 +11,7 @@ import skimage.io as io
 import matplotlib.pyplot as plt
 import pandas as pd
 
-from ark.utils import io_utils
+from ark.utils import io_utils, load_utils
 
 
 def create_objective_function(obj_func):
@@ -178,10 +178,17 @@ def combine_tuning_curve_metrics(dir_list):
     return all_data
 
 
-def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info_path,
-                         calibration_func_path):
-    """Normalizes image data based on median pulse height
+def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info,
+                         norm_func_path):
+    """Normalizes image data based on median pulse height from the run and a tuning curve
 
+    Args:
+        data_dir (str): directory with the image data
+        output_dir (str): directory where the normalized images will be saved
+        fovs (list or None): which fovs to include in normalization. If None, uses all fovs
+        pulse_heights: file containing pulse heights per mass per fov
+        panel_info_path: file containing mapping between channels and masses
+        norm_func_path: file containing the saved weights for the normalization function
     """
 
     # get FOVs to loop over
@@ -189,40 +196,42 @@ def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info_p
         fovs = io_utils.list_folders(data_dir)
 
     # load calibration function
-    with open(calibration_func_path, 'r') as cf:
-        calibration_json = json.load(cf)
+    with open(norm_func_path, 'r') as cf:
+        norm_json = json.load(cf)
 
-    cal_weights, cal_name = calibration_json['weights'], calibration_json['name']
+    norm_weights, norm_name = norm_json['weights'], norm_json['name']
 
-    panel_info = pd.read_csv(panel_info_path)
     channels = panel_info['targets'].values
 
     # instantiate function which translates pulse height to a normalization constant
-    calibration_func = create_prediction_function(cal_name, cal_weights)
+    norm_func = create_prediction_function(norm_name, norm_weights)
 
     for fov in fovs:
-        current_fov_dir = os.path.join(data_dir, fov)
         output_fov_dir = os.path.join(output_dir, fov)
         os.makedirs(output_fov_dir)
 
         # get images and pulse heights for current fov
-        images = load_utils.load_imgs_from_dir(current_fov_dir, channels=channels)
+        images = load_utils.load_imgs_from_tree(data_dir, fovs=[fov], channels=channels)
         fov_pulse_heights = pulse_heights.loc[pulse_heights['fov'] == fov, :]
 
         # fit a function to model pulse height as a function of mass
-        mass_weights = fit_calibration_curve(x=fov_pulse_heights['masses'],
-                                             y=fov_pulse_heights['mphs'],
+        mph_weights = fit_calibration_curve(x_vals=fov_pulse_heights['masses'].values,
+                                             y_vals=fov_pulse_heights['mphs'].values,
                                              obj_func='poly_2')
 
-        mass_func = create_prediction_function(name='poly_2', weights=mass_weights)
-        norm_vals = mass_func[panel_info['masses']].reshape((1, 1, 1, len(channels)))
+        # predict mph for each mass in the panel
+        mph_func = create_prediction_function(name='poly_2', weights=mph_weights)
+        mph_vals = mph_func(panel_info['masses'].values)
 
-        if np.any(norm_vals < 0.5 or norm_vals > 1.3):
+        # predict normalization for each mph in the panel
+        norm_vals = norm_func(mph_vals)
+
+        if np.any(norm_vals < 0.5) or np.any(norm_vals > 1):
             warnings.warn('The following FOV had an extreme normalization value. Manually '
                           'inspection for accuracy is recommended: fov {}'.format(fov))
 
-        normalized_images = images / norm_vals
+        normalized_images = images / norm_vals.reshape((1, 1, 1, len(channels)))
 
-        for idx, chan in channels:
+        for idx, chan in enumerate(channels):
             io.imsave(os.path.join(output_fov_dir, chan + '.tiff'),
-                      normalized_images[0, :, :, idx])
+                      normalized_images[0, :, :, idx], check_contrast=False)
