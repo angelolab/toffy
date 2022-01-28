@@ -113,7 +113,8 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
             full_path = os.path.join(temp_dir, dir_names[i])
             os.makedirs(full_path)
             mph_dfs[i].to_csv(os.path.join(full_path, 'pulse_heights_combined.csv'), index=False)
-            count_dfs[i].to_csv(os.path.join(full_path, 'channel_counts_combined.csv'), index=False)
+            count_dfs[i].to_csv(os.path.join(full_path, 'channel_counts_combined.csv'),
+                                index=False)
 
         dir_paths = [os.path.join(temp_dir, dir) for dir in dir_names]
         combined = normalize.combine_tuning_curve_metrics(dir_paths)
@@ -137,7 +138,3 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
             max = np.max(subset[['channel_counts']].values)
             norm_vals = subset.loc[subset['channel_counts'] == max, 'norm_channel_counts'].values
             assert np.all(norm_vals == 1)
-
-
-
-

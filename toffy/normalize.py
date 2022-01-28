@@ -224,8 +224,5 @@ def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info_p
         normalized_images = images / norm_vals
 
         for idx, chan in channels:
-            io.imsave(os.path.join(output_fov_dir, chan + '.tiff'), normalized_images[0, :, :, idx])
-
-
-
-
+            io.imsave(os.path.join(output_fov_dir, chan + '.tiff'),
+                      normalized_images[0, :, :, idx])
