@@ -1,6 +1,7 @@
 import copy
 import ipywidgets as widgets
 import json
+import matplotlib.pyplot as plt
 import numpy as np
 import os
 import pytest
@@ -767,6 +768,27 @@ def test_remap_manual_to_auto_display():
 
     for x, y in zip([3, 6, 6], [3, 3, 6]):
         assert np.all(new_slide_img[x, y, :] == [162, 197, 255])
+
+
+# NOTE: it won't be possible to text the exact datetime the mapping was saved at
+@parametrize('annot', [None, plt.annotate('Mapping saved at', (10, 10))])
+def test_write_manual_to_auto_map(annot):
+    # define the save annotation status
+    save_ann = {'annotation': annot}
+
+    with tempfile.TemporaryDirectory() as td:
+        # write the mapping and update the annotation
+        tiling_utils.write_manual_to_auto_map(
+            test_cases._ANNOT_SAMPLE_MAPPING,
+            save_ann,
+            os.path.join(td, 'sample_mapping.json')
+        )
+
+        # assert the mapping file was saved
+        assert os.path.exists(os.path.join(td, 'sample_mapping.json'))
+
+        # assert the annotation got updated
+        assert save_ann['annotation'] is not None
 
 
 @parametrize_with_cases('manual_to_auto_map, actual_bad_dist_list',
