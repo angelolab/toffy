@@ -208,7 +208,7 @@ def set_tiled_region_params(region_corners_path):
         )
 
     # read in the region corners data
-    with open(region_corners_path, 'r') as flf:
+    with open(region_corners_path, 'r', encoding='utf-8') as flf:
         tiled_region_corners = json.load(flf)
 
     # define the parameter dict to return
@@ -366,7 +366,7 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
         raise FileNotFoundError("Moly point file %s does not exist" % moly_path)
 
     # read in the moly point data
-    with open(moly_path, 'r') as mpf:
+    with open(moly_path, 'r', encoding='utf-8') as mpf:
         moly_point = json.load(mpf)
 
     # define the fov_regions dict
@@ -513,7 +513,7 @@ def generate_tma_fov_list(tma_corners_path, num_fov_x, num_fov_y):
         raise ValueError("Number of FOVs along y-axis must be at least 3")
 
     # read in tma_corners_path
-    with open(tma_corners_path, 'r') as flf:
+    with open(tma_corners_path, 'r', encoding='utf-8') as flf:
         tma_corners = json.load(flf)
 
     # a TMA can only be defined by four FOVs, one for each corner
@@ -907,7 +907,7 @@ def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
     """
 
     # save the mapping
-    with open(mapping_path, 'w') as mp:
+    with open(mapping_path, 'w', encoding='utf-8') as mp:
         json.dump(manual_to_auto_map, mp)
 
     # remove the save annotation if it already exists
@@ -1139,7 +1139,7 @@ def remap_and_reorder_fovs(manual_fov_regions, manual_to_auto_map,
         raise FileNotFoundError("Moly point %s does not exist" % moly_path)
 
     # load the Moly point in
-    with open(moly_path, 'r') as mp:
+    with open(moly_path, 'r', encoding='utf-8') as mp:
         moly_point = json.load(mp)
 
     # error check: moly_interval cannot be less than or equal to 0 if moly_insert is True
