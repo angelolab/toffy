@@ -23,31 +23,35 @@ def create_objective_function(obj_func):
     Returns:
         function: the function which will be optimized"""
 
+    # input validation
     valid_funcs = ['poly_2', 'poly_3', 'poly_4', 'poly_5', 'log', 'exp']
     if obj_func not in valid_funcs:
         raise ValueError('Invalid function, must be one of {}'.format(valid_funcs))
 
-    if obj_func == 'poly_2':
-        def objective(x, a, b, c):
-            return a * x + b * x ** 2 + c
-    elif obj_func == 'poly_3':
-        def objective(x, a, b, c, d):
-            return a * x + b * x ** 2 + c * x ** 3 + d
-    elif obj_func == 'poly_4':
-        def objective(x, a, b, c, d, e):
-            return a * x + b * x ** 2 + c * x ** 3 + d * x ** 4 + e
-    elif obj_func == 'poly_5':
-        def objective(x, a, b, c, d, e, f):
-            return a * x + b * x ** 2 + c * x ** 3 + d * x ** 4 + e * x ** 5 + f
-    elif obj_func == 'log':
-        def objective(x, a, b):
-            return a * np.log(x) + b
-    elif obj_func == 'exp':
-        def objective(x, a, b, c, d):
-            x_log = np.log(x)
-            return a * x_log + b * x_log ** 2 + c * x_log ** 3 + d
+    # define objective functions
+    def poly_2(x, a, b, c):
+        return a * x + b * x ** 2 + c
 
-    return objective
+    def poly_3(x, a, b, c, d):
+        return a * x + b * x ** 2 + c * x ** 3 + d
+
+    def poly_4(x, a, b, c, d, e):
+        return a * x + b * x ** 2 + c * x ** 3 + d * x ** 4 + e
+
+    def poly_5(x, a, b, c, d, e, f):
+        return a * x + b * x ** 2 + c * x ** 3 + d * x ** 4 + e * x ** 5 + f
+
+    def log(x, a, b):
+        return a * np.log(x) + b
+
+    def exp(x, a, b, c, d):
+        x_log = np.log(x)
+        return a * x_log + b * x_log ** 2 + c * x_log ** 3 + d
+
+    objectives = {'poly_2': poly_2, 'poly_3': poly_3, 'poly_4': poly_4, 'poly_5': poly_5,
+                  'log': log, 'exp': exp}
+
+    return objectives[obj_func]
 
 
 def fit_calibration_curve(x_vals, y_vals, obj_func, plot_fit=False):
@@ -66,7 +70,7 @@ def fit_calibration_curve(x_vals, y_vals, obj_func, plot_fit=False):
     objective = create_objective_function(obj_func)
 
     # get fitted values
-    popt, pcov = curve_fit(objective, x_vals, y_vals)
+    popt, _ = curve_fit(objective, x_vals, y_vals)
 
     # plot overlay of predicted fit and real values
     if plot_fit:
@@ -100,8 +104,18 @@ def create_prediction_function(name, weights):
 
 
 def combine_run_metrics(run_dir, file_prefix):
+    """Combines the specified metrics from different FOVs into a single file
+
+    Args:
+        run_dir (str): the directory containing the files
+        file_prefix (str): the prefix of the files to be combined"""
+
     files = io_utils.list_files(run_dir, file_prefix)
     bins = io_utils.list_files(run_dir, '.bin')
+
+    # validate inputs
+    if len(bins) == 0:
+        raise ValueError('No bin files found in {}'.format(run_dir))
 
     if file_prefix + '_combined.csv' in files:
         warnings.warn('removing previously generated '
@@ -113,9 +127,7 @@ def combine_run_metrics(run_dir, file_prefix):
         raise ValueError('Mismatch between the number of bins and number '
                          'of {} files'.format(file_prefix))
 
-    if len(bins) == 0:
-        raise ValueError('No bin files found in {}'.format(run_dir))
-
+    # collect all metrics files
     metrics = []
     for file in files:
         metrics.append(pd.read_csv(os.path.join(run_dir, file)))
@@ -179,16 +191,18 @@ def combine_tuning_curve_metrics(dir_list):
 
 
 def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info,
-                         norm_func_path):
+                         norm_func_path, mph_func='poly_2', extreme_vals=(0.5, 1)):
     """Normalizes image data based on median pulse height from the run and a tuning curve
 
     Args:
         data_dir (str): directory with the image data
         output_dir (str): directory where the normalized images will be saved
         fovs (list or None): which fovs to include in normalization. If None, uses all fovs
-        pulse_heights: file containing pulse heights per mass per fov
-        panel_info_path: file containing mapping between channels and masses
-        norm_func_path: file containing the saved weights for the normalization function
+        pulse_heights (pd.DataFrame): pulse heights per mass per fov
+        panel_info (pd.DataFrame): mapping between channels and masses
+        norm_func_path (str): file containing the saved weights for the normalization function
+        mph_func (str): name of the function to use for fitting the mass vs mph curve
+        extreme_vals (tuple): determines the range for norm vals which will raise a warning
     """
 
     # get FOVs to loop over
@@ -227,7 +241,7 @@ def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info,
         # predict normalization for each mph in the panel
         norm_vals = norm_func(mph_vals)
 
-        if np.any(norm_vals < 0.5) or np.any(norm_vals > 1):
+        if np.any(norm_vals < extreme_vals[0]) or np.any(norm_vals > extreme_vals[1]):
             warnings.warn('The following FOV had an extreme normalization value. Manually '
                           'inspection for accuracy is recommended: fov {}'.format(fov))
 

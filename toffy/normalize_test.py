@@ -50,20 +50,9 @@ def test_create_prediction_function(obj_func, num_params):
     _ = pred_func(np.random.rand(10))
 
 
-def test_combine_run_metrics():
+@parametrize_with_cases('bins, metrics', cases=test_cases.CombineRunMetricFiles)
+def test_combine_run_metrics(bins, metrics):
     with tempfile.TemporaryDirectory() as temp_dir:
-
-        # create full directory of files
-        bins = []
-        metrics = []
-        for i in range(1, 5):
-            bin_name = 'example_{}.bin'.format(i)
-            bins.append(bin_name)
-            metric_name = 'example_metric_{}.csv'.format(i)
-            metric_values = {'column_1': np.random.rand(10),
-                             'column_2': np.random.rand(10),
-                             'column_3': np.random.rand(10)}
-            metrics.append([metric_name, metric_values])
 
         for bin_file in bins:
             _make_blank_file(temp_dir, bin_file)
@@ -110,25 +99,25 @@ def test_combine_run_metrics():
 def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
     with tempfile.TemporaryDirectory() as temp_dir:
 
+        # variables to hold all unique values of each metric
+        all_mph, all_counts, dir_paths = [], [], []
+
         # create csv files with data to be combined
         for i in range(len(dir_names)):
             full_path = os.path.join(temp_dir, dir_names[i])
             os.makedirs(full_path)
             mph_dfs[i].to_csv(os.path.join(full_path, 'pulse_heights_combined.csv'), index=False)
+            all_mph.extend(mph_dfs[i]['mph'])
+
             count_dfs[i].to_csv(os.path.join(full_path, 'channel_counts_combined.csv'),
                                 index=False)
+            all_counts.extend(count_dfs[i]['channel_counts'])
 
-        dir_paths = [os.path.join(temp_dir, dir) for dir in dir_names]
+            dir_paths.append(os.path.join(temp_dir, dir_names[i]))
+
         combined = normalize.combine_tuning_curve_metrics(dir_paths)
 
         # data may be in a different order due to matching dfs, but all values should be present
-        all_mph, all_counts = [], []
-        for df in mph_dfs:
-            all_mph.extend(df['mph'])
-
-        for df in count_dfs:
-            all_counts.extend(df['channel_counts'])
-
         assert set(all_mph) == set(combined['mph'])
         assert set(all_counts) == set(combined['channel_counts'])
         saved_dir_names = [name.split('/')[-1] for name in np.unique(combined['directory'])]
@@ -185,12 +174,10 @@ def test_normalize_image_data():
 
         normalized = load_utils.load_imgs_from_tree(output_dir, fovs=fovs, channels=chans)
 
-        # compute expected multiplier for FOV0
-        fov0_mults = mph_0 * weights[0] + weights[2]
-        fov0_mults = fov0_mults.reshape(1, 1, len(fov0_mults))
-        assert np.allclose(data_xr.values[0, :, :, :], normalized.values[0, :, :, :] * fov0_mults)
+        # compute expected multipliers for each mass in each fov
+        mults = [mph_array * weights[0] + weights[2] for mph_array in [mph_0, mph_1]]
 
-        # compute expected multiplier for FOV1
-        fov1_mults = mph_1 * weights[0] + weights[2]
-        fov1_mults = fov1_mults.reshape(1, 1, len(fov1_mults))
-        assert np.allclose(data_xr.values[1, :, :, :], normalized.values[1, :, :, :] * fov1_mults)
+        for idx, mult in enumerate(mults):
+            mult = mult.reshape(1, 1, len(mult))
+            assert np.allclose(data_xr.values[idx, :, :, :],
+                               normalized.values[idx, :, :, :] * mult)
