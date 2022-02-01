@@ -4,6 +4,7 @@ import json
 import matplotlib.pyplot as plt
 import numpy as np
 import os
+import pandas as pd
 import pytest
 from pytest_cases import parametrize_with_cases
 import random
@@ -460,56 +461,34 @@ def test_assign_closest_fovs():
     )
 
     # generate the mapping from manual to automatically-generated
-    manual_to_auto_map, manual_fovs_info, auto_fovs_info = \
+    manual_to_auto_map, manual_auto_dist = \
         tiling_utils.assign_closest_fovs(
             manual_sample_fovs, auto_sample_fovs
         )
 
-    # for each manual fov, ensure the centroids are the same in manual_fovs_info
-    for fov in manual_sample_fovs['fovs']:
-        manual_centroid = tiling_utils.convert_microns_to_pixels(
-            tuple(fov['centerPointMicrons'].values())
-        )
-
-        assert manual_fovs_info[fov['name']] == manual_centroid
-
-    # same for automatically-generated fovs
-    for fov in auto_sample_fovs:
-        auto_centroid = tiling_utils.convert_microns_to_pixels(
-            auto_sample_fovs[fov]
-        )
-
-        assert auto_fovs_info[fov] == auto_centroid
+    print(manual_auto_dist)
 
     # assert the mapping is correct, this covers 2 other test cases:
-    # 1. Not all auto fovs (ex. row150_col100 and row150_col150) will be mapped to
+    # 1. Not all auto fovs (ex. row0_col10000, row_10000_col10000) will be mapped to
     # 2. Multiple manual fovs can map to one auto fov (ex. row0_col25 and row50_col25 to row0_col0)
+    # NOTE: in the case of a tie (ex. row0_col2500 to row0_col0 or row0_col5000), the first
+    # alphabetically is chosen
     actual_map = {
-        'row0_col2500': {
-            'closest_auto_fov': 'row0_col5000',
-            'distance': 36.0
-        },
-        'row5000_col2500': {
-            'closest_auto_fov': 'row0_col5000',
-            'distance': np.linalg.norm(
-                np.array([1089, 471]) - np.array([1053, 398])  # micron to pixel converted coords
-            )
-        },
-        'row5000_col5000': {
-            'closest_auto_fov': 'row0_col5000',
-            'distance': 73.0
-        },
-        'row7500_col5000': {
-            'closest_auto_fov': 'row10000_col5000',
-            'distance': 37.0
-        },
-        'row10000_col2500': {
-            'closest_auto_fov': 'row10000_col5000',
-            'distance': 36.0
-        }
+        'row0_col2500': 'row0_col0',
+        'row5000_col2500': 'row0_col0',
+        'row5000_col5000': 'row0_col5000',
+        'row7500_col5000': 'row10000_col5000',
+        'row10000_col2500': 'row10000_col0'
     }
 
     assert manual_to_auto_map == actual_map
+
+    # define the actual dist table, assert the fov_dist_table returned is correct
+    actual_dist = np.linalg.norm(
+        np.array(manual_coords)[:, np.newaxis] - np.array(auto_coords), axis=2
+    )
+
+    assert np.all(actual_dist == manual_auto_dist.values)
 
 
 def test_generate_fov_circles():
@@ -562,22 +541,10 @@ def test_generate_fov_circles():
 
 def test_update_mapping_display():
     manual_to_auto_map = {
-        'row0_col25': {
-            'closest_auto_fov': 'row10_col10',
-            'distance': np.linalg.norm(np.array([0, 25]) - np.array([10, 10]))
-        },
-        'row50_col25': {
-            'closest_auto_fov': 'row10_col10',
-            'distance': np.linalg.norm(np.array([50, 25]) - np.array([10, 10]))
-        },
-        'row50_col50': {
-            'closest_auto_fov': 'row40_col10',
-            'distance': np.linalg.norm(np.array([50, 50]) - np.array([40, 10]))
-        },
-        'row75_col50': {
-            'closest_auto_fov': 'row40_col40',
-            'distance': np.linalg.norm(np.array([75, 50]) - np.array([40, 40]))
-        }
+        'row0_col25': 'row10_col10',
+        'row50_col25': 'row10_col10',
+        'row50_col50': 'row40_col10',
+        'row75_col50': 'row40_col40'
     }
 
     manual_coords = {
@@ -618,7 +585,7 @@ def test_update_mapping_display():
     # define a dummy automatic FOV scroller
     w_auto = widgets.Dropdown(
         options=[afi for afi in sorted(list(auto_coords.keys()))],
-        value=manual_to_auto_map[change['old']]['closest_auto_fov']
+        value=manual_to_auto_map[change['old']]
     )
 
     # generate the new slide image
@@ -682,22 +649,10 @@ def test_update_mapping_display():
 # only the mapping update and the visualization updates are tested here
 def test_remap_manual_to_auto_display():
     manual_to_auto_map = {
-        'row0_col0': {
-            'closest_auto_fov': 'row3_col3',
-            'distance': np.linalg.norm(np.array([0, 0]) - np.array([3, 3]))
-        },
-        'row0_col5': {
-            'closest_auto_fov': 'row3_col3',
-            'distance': np.linalg.norm(np.array([0, 5]) - np.array([3, 3]))
-        },
-        'row5_col0': {
-            'closest_auto_fov': 'row6_col3',
-            'distance': np.linalg.norm(np.array([5, 0]) - np.array([6, 3]))
-        },
-        'row5_col5': {
-            'closest_auto_fov': 'row6_col6',
-            'distance': np.linalg.norm(np.array([5, 5]) - np.array([6, 6]))
-        }
+        'row0_col0': 'row3_col3',
+        'row0_col5': 'row3_col3',
+        'row5_col0': 'row6_col3',
+        'row5_col5': 'row6_col6'
     }
 
     manual_coords = {
@@ -713,6 +668,17 @@ def test_remap_manual_to_auto_display():
         'row6_col3': (6, 3),
         'row6_col6': (6, 6)
     }
+
+    manual_auto_dist = np.zeros((4, 4))
+    for i, mc in enumerate(manual_coords.values()):
+        for j, ac in enumerate(auto_coords.values()):
+            manual_auto_dist[i, j] = np.linalg.norm(np.array(mc) - np.array(ac))
+
+    manual_auto_dist = pd.DataFrame(
+        manual_auto_dist,
+        index=list(manual_coords.keys()),
+        columns=list(auto_coords.keys())
+    )
 
     # define a sample slide image
     slide_img = np.zeros((200, 200, 3))
@@ -746,17 +712,14 @@ def test_remap_manual_to_auto_display():
         change,
         w_man,
         manual_to_auto_map,
-        manual_coords,
+        manual_auto_dist,
         auto_coords,
         slide_img,
         draw_radius=1
     )
 
-    # assert the new mapping has been made with updated distance
-    assert manual_to_auto_map['row0_col0']['closest_auto_fov'] == 'row3_col6'
-    assert manual_to_auto_map['row0_col0']['distance'] == np.linalg.norm(
-        np.array([0, 0]) - np.array([3, 6])
-    )
+    # assert the new mapping has been made
+    assert manual_to_auto_map['row0_col0'] == 'row3_col6'
 
     # assert the new pairs are highlighted correctly (first manual, then auto)
     assert np.all(new_slide_img[0, 0, :] == [210, 37, 37])
@@ -787,23 +750,16 @@ def test_write_manual_to_auto_map(annot):
         # assert the mapping file was saved
         assert os.path.exists(os.path.join(td, 'sample_mapping.json'))
 
-        # assert that the distance key has been removed and that closest_auto_fov
-        # has been condensed into the single value each manual FOV maps to
-        with open(os.path.join(td, 'sample_mapping.json')) as sm:
-            mapping = json.load(sm)
-
-        for manual_fov in test_cases._ANNOT_SAMPLE_MAPPING:
-            auto_fov = test_cases._ANNOT_SAMPLE_MAPPING[manual_fov]['closest_auto_fov']
-            assert mapping[manual_fov] == auto_fov
-
         # assert the annotation got updated
         assert save_ann['annotation'] is not None
 
 
-@parametrize_with_cases('manual_to_auto_map, actual_bad_dist_list',
+@parametrize_with_cases('manual_to_auto_map, manual_auto_dist, actual_bad_dist_list',
                         cases=test_cases.MappingDistanceCases)
-def test_find_manual_auto_invalid_dist(manual_to_auto_map, actual_bad_dist_list):
-    generated_bad_dist_list = tiling_utils.find_manual_auto_invalid_dist(manual_to_auto_map)
+def test_find_manual_auto_invalid_dist(manual_to_auto_map, manual_auto_dist, actual_bad_dist_list):
+    generated_bad_dist_list = tiling_utils.find_manual_auto_invalid_dist(
+        manual_to_auto_map, manual_auto_dist
+    )
 
     assert generated_bad_dist_list == actual_bad_dist_list
 
@@ -829,7 +785,8 @@ def test_find_manual_auto_name_mismatches(manual_to_auto_map, actual_mismatch_li
 @parametrize('check_mismatches', [False, True])
 def test_generate_validation_annot(check_dist, check_duplicates, check_mismatches):
     generated_annot = tiling_utils.generate_validation_annot(
-        test_cases._ANNOT_SAMPLE_MAPPING, check_dist, check_duplicates, check_mismatches
+        test_cases._ANNOT_SAMPLE_MAPPING, test_cases._ANNOT_SAMPLE_DIST,
+        check_dist, check_duplicates, check_mismatches
     )
 
     actual_annot = test_cases.generate_sample_annot(check_dist, check_duplicates, check_mismatches)

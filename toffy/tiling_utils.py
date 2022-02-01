@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from operator import itemgetter
 import os
+import pandas as pd
 import re
 from skimage.draw import ellipse
 from sklearn.utils import shuffle
@@ -599,47 +600,24 @@ def assign_closest_fovs(manual_fovs, auto_fovs):
         tuple:
 
         - A `dict` mapping each manual FOV to an auto FOV and its respective distance from it
-        - A `dict` defining each FOV in `manual_fovs` mapped to its centroid coordinates
-        - A `dict` defining each FOV in `auto_fovs` mapped to its centroid coordinates
+        - A `pandas.DataFrame` defining the distance from each manual FOV to each auto FOV,
+          indexed by manual FOVs with auto FOVs as columns
     """
 
-    # define the converted centroid info for manual_fovs and auto_fovs
-    # NOTE: manual FOVs is defined as a normal run file would, but auto FOVs
-    # is defined as simply the FOV name to its centroid coordinate
-    manual_fovs_info = {
-        fov['name']: convert_microns_to_pixels(
-            (fov['centerPointMicrons']['x'], fov['centerPointMicrons']['y'])
-        )
+    # condense the manual FOVs JSON list into just a mapping between name and coordinate
+    manual_fovs_name_coord = {
+        fov['name']: tuple(list(fov['centerPointMicrons'].values()))
 
         for fov in manual_fovs['fovs']
     }
 
-    auto_fovs_info = {
-        fov: convert_microns_to_pixels(
-            (auto_fovs[fov][0], auto_fovs[fov][1])
-        )
-
-        for fov in auto_fovs
-    }
-
-    # we define these "reverse" dicts to map from centroid back to fov name
-    # this makes it easier to use numpy broadcasting to help find the closest fov pairs
-    manual_centroid_to_fov = {
-        (manual_fovs_info[fov][0], manual_fovs_info[fov][1]): fov
-        for fov in manual_fovs_info
-    }
-
-    auto_centroid_to_fov = {
-        (auto_fovs_info[fov][0], auto_fovs_info[fov][1]): fov
-        for fov in auto_fovs_info
-    }
-
-    # define numpy arrays of the manual and auto centroids
+    # now retrieve the centroids in array format for distance calculation
     manual_centroids = np.array(
-        [list(centroid) for centroid in manual_centroid_to_fov]
+        [list(centroid) for centroid in manual_fovs_name_coord.values()]
     )
+
     auto_centroids = np.array(
-        [list(centroid) for centroid in auto_centroid_to_fov]
+        [list(centroid) for centroid in auto_fovs.values()]
     )
 
     # define the mapping dict from manual to auto
@@ -659,17 +637,21 @@ def assign_closest_fovs(manual_fovs, auto_fovs):
         manual_coords = tuple(manual_centroids[manual_index])
         auto_coords = tuple(auto_centroids[auto_index])
 
-        # use the coordinates as keys to get the fov names
-        man_name = manual_centroid_to_fov[manual_coords]
-        auto_name = auto_centroid_to_fov[auto_coords]
+        # get the corresponding fov names
+        man_name = list(manual_fovs_name_coord.keys())[manual_index]
+        auto_name = list(auto_fovs.keys())[auto_index]
 
-        # map the manual fov name to its closest auto fov name and corresponding distance
-        manual_to_auto_map[man_name] = {
-            'closest_auto_fov': auto_name,
-            'distance': manual_auto_dist[manual_index, auto_index]
-        }
+        # map the manual fov name to its closest auto fov name
+        manual_to_auto_map[man_name] = auto_name
 
-    return manual_to_auto_map, manual_fovs_info, auto_fovs_info
+    # convert manual_auto_dist into a Pandas DataFrame, this makes it easier to index
+    manual_auto_dist = pd.DataFrame(
+        manual_auto_dist,
+        index=list(manual_fovs_name_coord.keys()),
+        columns=list(auto_fovs.keys())
+    )
+
+    return manual_to_auto_map, manual_auto_dist
 
 
 def generate_fov_circles(manual_fovs_info, auto_fovs_info,
@@ -678,9 +660,9 @@ def generate_fov_circles(manual_fovs_info, auto_fovs_info,
 
     Args:
         manual_fovs_info (dict):
-            maps each manual FOV to its centroid coordinates and size
+            maps each manual FOV to its centroid coordinates
         auto_fovs_info (dict):
-            maps each automatically-generated FOV to its centroid coordinates and size
+            maps each automatically-generated FOV to its centroid coordinates
         manual_name (str):
             the name of the manual FOV to highlight
         auto_name (str):
@@ -814,7 +796,7 @@ def update_mapping_display(change, w_auto, manual_to_auto_map, manual_coords, au
     slide_img[new_mr_x, new_mr_y, 2] = 37
 
     # retrieve the new auto centroid
-    new_auto_x, new_auto_y = auto_coords[manual_to_auto_map[change['new']]['closest_auto_fov']]
+    new_auto_x, new_auto_y = auto_coords[manual_to_auto_map[change['new']]]
 
     # redraw the new auto centroid on the slide_img
     new_ar_x, new_ar_y = ellipse(
@@ -826,14 +808,14 @@ def update_mapping_display(change, w_auto, manual_to_auto_map, manual_coords, au
     slide_img[new_ar_x, new_ar_y, 2] = 229
 
     # set the mapped auto value according to the new manual value
-    w_auto.value = manual_to_auto_map[change['new']]['closest_auto_fov']
+    w_auto.value = manual_to_auto_map[change['new']]
 
     return slide_img
 
 
-def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_coords, auto_coords,
-                                 slide_img, draw_radius=7, check_dist=50,
-                                 check_duplicates=True, check_mismatches=True):
+def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_auto_dist,
+                                 auto_coords, slide_img, draw_radius=7,
+                                 check_dist=50, check_duplicates=True, check_mismatches=True):
     """Changes the bolded automatically-generated FOV to new value selected for manual FOV
     and updates the mapping in `manual_to_auto_map`
 
@@ -846,8 +828,8 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_coord
             the dropdown menu handler for the manual FOVs
         manual_to_auto_map (dict):
             defines the mapping of manual to auto FOV names
-        manual_coords (dict):
-            maps each manually-defined FOV to its annotation coordinate
+        manual_auto_dist (pandas.DataFrame):
+            defines the distance between each manual FOV from each auto FOV
         auto_coords (dict):
             maps each automatically-generated FOV to its annotation coordinate
         slide_img (numpy.ndarray):
@@ -899,17 +881,11 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_coord
     slide_img[new_ar_x, new_ar_y, 2] = 229
 
     # remap the manual fov to the changed value
-    manual_to_auto_map[w_man.value]['closest_auto_fov'] = change['new']
-
-    # update the distance between the manual FOV and its changed value in manual_to_auto_map
-    manual_coord = manual_coords[w_man.value]
-    new_auto_coord = auto_coords[change['new']]
-    updated_manual_auto_dist = np.linalg.norm(np.array(manual_coord) - np.array(new_auto_coord))
-    manual_to_auto_map[w_man.value]['distance'] = updated_manual_auto_dist
+    manual_to_auto_map[w_man.value] = change['new']
 
     # define the potential sources of error in the new mapping
     manual_auto_warning = generate_validation_annot(
-        manual_to_auto_map, check_dist, check_duplicates, check_mismatches
+        manual_to_auto_map, manual_auto_dist, check_dist, check_duplicates, check_mismatches
     )
 
     return slide_img, manual_auto_warning
@@ -929,14 +905,9 @@ def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
             the path to the file to save the mapping to
     """
 
-    # we can remove the distance key from the mapping
-    manual_to_auto_map_trim = {
-        k: v['closest_auto_fov'] for (k, v) in manual_to_auto_map.items()
-    }
-
     # save the mapping
     with open(mapping_path, 'w') as mp:
-        json.dump(manual_to_auto_map_trim, mp)
+        json.dump(manual_to_auto_map, mp)
 
     # remove the save annotation if it already exists
     # clears up some space if the user decides to save several times
@@ -960,12 +931,14 @@ def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
 
 
 # TODO: potential type hinting candidate?
-def find_manual_auto_invalid_dist(manual_to_auto_map, dist_threshold=50):
+def find_manual_auto_invalid_dist(manual_to_auto_map, manual_auto_dist, dist_threshold=50):
     """Finds the manual FOVs that map to auto FOVs greater than `dist_threshold` away
 
     Args:
         manual_to_auto_map (dict):
             defines the mapping of manual to auto FOV names
+        manual_auto_dist (pandas.DataFrame):
+            defines the distance between each manual FOV from each auto FOV
         dist_threshold (float):
             if the distance between a manual-auto FOV pair exceeds this value, it will
             be reported for a potential error
@@ -984,9 +957,9 @@ def find_manual_auto_invalid_dist(manual_to_auto_map, dist_threshold=50):
 
     # define the fov pairs at a distance greater than dist_thresh
     manual_auto_invalid_dist_pairs = [
-        (mf, mf_data['closest_auto_fov'], mf_data['distance'])
-        for (mf, mf_data) in manual_to_auto_map.items()
-        if mf_data['distance'] > dist_threshold
+        (mf, af, manual_auto_dist.loc[mf, af])
+        for (mf, af) in manual_to_auto_map.items()
+        if manual_auto_dist.loc[mf, af] > dist_threshold
     ]
 
     # sort these fov pairs by distance descending
@@ -1019,7 +992,7 @@ def find_duplicate_auto_mappings(manual_to_auto_map):
 
     # good ol' incremental dict building!
     for mf in manual_to_auto_map:
-        closest_auto_fov = manual_to_auto_map[mf]['closest_auto_fov']
+        closest_auto_fov = manual_to_auto_map[mf]
 
         if closest_auto_fov not in auto_fov_mappings:
             auto_fov_mappings[closest_auto_fov] = []
@@ -1055,15 +1028,15 @@ def find_manual_auto_name_mismatches(manual_to_auto_map):
     # find the manual FOVs that don't match their corresponding closest_auto_fov name
     # NOTE: this method maintains the original manual FOV ordering which is already sorted
     manual_auto_mismatches = [
-        (k, v['closest_auto_fov'])
-        for (k, v) in manual_to_auto_map.items() if k != v['closest_auto_fov']
+        (k, v)
+        for (k, v) in manual_to_auto_map.items() if k != v
     ]
 
     return manual_auto_mismatches
 
 
 # TODO: potential type hinting candidate?
-def generate_validation_annot(manual_to_auto_map, check_dist=50,
+def generate_validation_annot(manual_to_auto_map, manual_auto_dist, check_dist=50,
                               check_duplicates=True, check_mismatches=True):
     """Finds problematic manual-auto FOV pairs and generates a warning message to display
 
@@ -1076,6 +1049,8 @@ def generate_validation_annot(manual_to_auto_map, check_dist=50,
     Args:
         manual_to_auto_map (dict):
             defines the mapping of manual to auto FOV names
+        manual_auto_dist (pandas.DataFrame):
+            defines the distance between each manual FOV from each auto FOV
         check_dist (float):
             if the distance between a manual-auto FOV pair exceeds this value, it will
             be reported for a potential error, if `None` does not validate distance
@@ -1091,7 +1066,7 @@ def generate_validation_annot(manual_to_auto_map, check_dist=50,
 
     # define the potential sources of error desired by user in the mapping
     invalid_dist = find_manual_auto_invalid_dist(
-        manual_to_auto_map, check_dist
+        manual_to_auto_map, manual_auto_dist, check_dist
     ) if check_dist is not None else []
     duplicate_auto = find_duplicate_auto_mappings(
         manual_to_auto_map
@@ -1104,10 +1079,9 @@ def generate_validation_annot(manual_to_auto_map, check_dist=50,
     warning_annot = ""
 
     # add the manual-auto FOV pairs with distances greater than check_dist
-    # TODO: should we stick with pixels or should we convert to microns or stage coordinates?
     if len(invalid_dist) > 0:
         warning_annot += \
-            'The following mappings are placed more than %d pixels apart:\n\n' % check_dist
+            'The following mappings are placed more than %d microns apart:\n\n' % check_dist
 
         warning_annot += '\n'.join([
             'User-defined FOV %s to TMA-grid FOV %s (distance: %.2f)' % (mf, af, dist)
@@ -1143,36 +1117,31 @@ def generate_validation_annot(manual_to_auto_map, check_dist=50,
     return warning_annot
 
 
-def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
-                          auto_fovs_info, slide_img, mapping_path,
-                          draw_radius=7, figsize=(7, 7), check_dist=50,
-                          check_duplicates=True, check_mismatches=True):
+def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
+                          draw_radius=7, figsize=(7, 7),
+                          check_dist=50, check_duplicates=True, check_mismatches=True):
     """Creates the remapping interactive interface for manually-defined
     to automatically-generated FOVs
 
     # TODO: potential type hinting candidate?
 
     Args:
-        manual_to_auto_map (dict):
-            defines the mapping of manual to auto FOV names
-        manual_fovs_info (dict):
-            maps each manual FOV to its centroid coordinates
-        auto_fovs_info (dict):
-            maps each automatically-generated FOV to its centroid coordinates
+        manual_fovs (dict):
+            The list of FOVs proposed by the user
+        auto_fovs (dict):
+            The list of FOVs generated by `generate_tma_fov_list` run in
+            `autolabel_tma_cores.ipynb`
         slide_img (numpy.ndarray):
             the image to overlay
         mapping_path (str):
             the path to the file to save the mapping to
         draw_radius (int):
             the radius to draw each circle on the slide
-        check_dist (float):
-            if the distance between a manual-auto FOV pair exceeds this value, it will
-            be reported for a potential error, if `None` distance will not be validated
         figsize (tuple):
             the size of the interactive figure to display
         check_dist (float):
-            the distance threshold between FOVs to use for validation
-            if `None`, don't validate distance
+            if the distance between a manual-auto FOV pair exceeds this value, it will
+            be reported for a potential error, if `None` distance will not be validated
         check_duplicates (bool):
             if `True`, validate whether an auto FOV has 2 manual FOVs mapping to it
         check_mismatches (bool):
@@ -1201,16 +1170,27 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
     if not isinstance(check_mismatches, bool):
         raise ValueError("check_mismatches needs to be set to True or False")
 
-    # get the first manual fov, this will define the initial default value to display
-    first_manual = list(manual_fovs_info.keys())[0]
+    # define the initial mapping and a distance lookup table between manual and auto FOVs
+    manual_to_auto_map, manual_auto_dist = assign_closest_fovs(manual_fovs, auto_fovs)
 
-    # define the two drop down menus, the first will define the manual fovs
-    # TODO: this assumes that the user will always define their FOVs with names R{n}C{n}
+    # condense manual_fovs to include just the name mapped to its coordinate
+    # NOTE: convert to pixels for visualization, let manual_auto_dist handle microns distance
+    manual_fovs_info = {
+        fov['name']: convert_microns_to_pixels(tuple(fov['centerPointMicrons'].values()))
+
+        for fov in manual_fovs['fovs']
+    }
+
+    # sort FOVs alphabetically, TODO: assumes user will always define their FOVs as R{n}C{n}
     manual_fovs_sorted = sorted(
         list(manual_fovs_info.keys()),
         key=lambda mf: (int(re.findall(r'\d+', mf)[0]), int(re.findall(r'\d+', mf)[1]))
     )
 
+    # get the first FOV to display
+    first_manual = manual_fovs_sorted[0]
+
+    # define the drop down menu for the manual fovs
     w_man = widgets.Dropdown(
         options=manual_fovs_sorted,
         value=first_manual,
@@ -1219,16 +1199,24 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
         style={'description_width': 'initial'}
     )
 
-    # the second will define the automatically-generated fovs
-    # the default value should be set to the auto fov the initial manual fov maps to
+    # NOTE: convert to pixels for visualization, let fov_dist-table handle microns distance
+    auto_fovs_info = {
+        fov: convert_microns_to_pixels(auto_fovs[fov])
+
+        for fov in auto_fovs
+    }
+
+    # sort FOVs alphabetically
     auto_fovs_sorted = sorted(
-        list(auto_fovs_info.keys()),
+        list(auto_fovs.keys()),
         key=lambda af: (int(re.findall(r'\d+', af)[0]), int(re.findall(r'\d+', af)[1]))
     )
 
+    # define the drop down menu for the auto fovs
+    # the default value should be set to the auto fov the initial manual fov maps to
     w_auto = widgets.Dropdown(
         options=auto_fovs_sorted,
-        value=manual_to_auto_map[first_manual]['closest_auto_fov'],
+        value=manual_to_auto_map[first_manual],
         description='Automatically-generated FOV',
         layout=widgets.Layout(width='auto'),
         style={'description_width': 'initial'}
@@ -1311,7 +1299,7 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
         # 2. two manual FOVs map to the same auto FOV
         # 3. a manual FOV name does not match its auto FOV name
         manual_auto_warning = generate_validation_annot(
-            manual_to_auto_map, check_dist, check_duplicates, check_mismatches
+            manual_to_auto_map, manual_auto_dist, check_dist, check_duplicates, check_mismatches
         )
 
         # display the errors in the text box
@@ -1358,8 +1346,9 @@ def tma_interactive_remap(manual_to_auto_map, manual_fovs_info,
             # need to be in the output widget context to update
             with out:
                 new_slide_img, manual_auto_warning = remap_manual_to_auto_display(
-                    change, w_man, manual_to_auto_map, manual_fovs_info, auto_fovs_info,
-                    slide_img, draw_radius, check_dist, check_duplicates, check_mismatches
+                    change, w_man, manual_to_auto_map, manual_auto_dist,
+                    auto_fovs_info, slide_img, draw_radius,
+                    check_dist, check_duplicates, check_mismatches
                 )
 
                 # set the new slide img in the plot

@@ -1,5 +1,6 @@
 from copy import deepcopy
 import numpy as np
+import pandas as pd
 import pytest
 
 from toffy.tiling_utils import XYCoord
@@ -305,98 +306,70 @@ class RhombusCoordInputCases:
 class MappingDistanceCases:
     def case_no_bad_dist(self):
         manual_to_auto_map = {
-            'R0C0': {
-                'closest_auto_fov': 'R0C0',
-                'distance': 5.0
-            },
-            'R0C1': {
-                'closest_auto_fov': 'R0C1',
-                'distance': 2.0
-            },
-            'R0C2': {
-                'closest_auto_fov': 'R0C3',
-                'distance': 49.0
-            },
-            'R1C0': {
-                'closest_auto_fov': 'R1C0',
-                'distance': 50.0  # NOTE: error only thrown if STRICTLY GREATER than dist_threshold
-            },
-            'R1C1': {
-                'closest_auto_fov': 'R1C2',
-                'distance': 49.99
-            },
-            'R1C2': {
-                'closest_auto_fov': 'R1C4',
-                'distance': 35.0
-            }
+            'R0C0': 'R0C0',
+            'R0C1': 'R0C1',
+            'R0C2': 'R0C1',
+            'R1C0': 'R1C0',
+            'R1C1': 'R1C2',
+            'R1C2': 'R1C2'
         }
+
+        manual_auto_dist = pd.DataFrame(
+            np.vstack([
+                [5.0, 0, 0, 0, 0, 0],
+                [0, 2.0, 0, 0, 0, 0],
+                [0, 49.0, 0, 0, 0, 0],
+                [0, 0, 0, 50.0, 0, 0],   # NOTE: error only if STRICTLY GREATER than dist_threshold
+                [0, 0, 0, 0, 0, 49.99],
+                [0, 0, 0, 0, 0, 35.0]
+            ]),
+            index=list(manual_to_auto_map.keys()),
+            columns=['R0C0', 'R0C1', 'R0C2', 'R1C0', 'R1C1', 'R1C2']
+        )
 
         bad_dist_list = []
 
-        return manual_to_auto_map, bad_dist_list
+        return manual_to_auto_map, manual_auto_dist, bad_dist_list
 
     def case_bad_dist(self):
         manual_to_auto_map = {
-            'R0C0': {
-                'closest_auto_fov': 'R0C0',
-                'distance': 5.0
-            },
-            'R0C1': {
-                'closest_auto_fov': 'R0C1',
-                'distance': 55.7
-            },
-            'R0C2': {
-                'closest_auto_fov': 'R0C3',
-                'distance': 49.0
-            },
-            'R1C0': {
-                'closest_auto_fov': 'R1C0',
-                'distance': 50.1
-            },
-            'R1C1': {
-                'closest_auto_fov': 'R1C2',
-                'distance': 75.0
-            },
-            'R1C2': {
-                'closest_auto_fov': 'R1C4',
-                'distance': 35.0
-            }
+            'R0C0': 'R0C0',
+            'R0C1': 'R0C1',
+            'R0C2': 'R0C1',
+            'R1C0': 'R1C0',
+            'R1C1': 'R1C2',
+            'R1C2': 'R1C2'
         }
+
+        manual_auto_dist = pd.DataFrame(
+            np.vstack([
+                [5.0, 0, 0, 0, 0, 0],
+                [0, 55.7, 0, 0, 0, 0],
+                [0, 49.0, 0, 0, 0, 0],
+                [0, 0, 0, 50.1, 0, 0],   # NOTE: error only if STRICTLY GREATER than dist_threshold
+                [0, 0, 0, 0, 0, 75.0],
+                [0, 0, 0, 0, 0, 35.0]
+            ]),
+            index=list(manual_to_auto_map.keys()),
+            columns=['R0C0', 'R0C1', 'R0C2', 'R1C0', 'R1C1', 'R1C2']
+        )
 
         # this list will always be sorted by distance descending
         bad_dist_list = [('R1C1', 'R1C2', 75.00), ('R0C1', 'R0C1', 55.70), ('R1C0', 'R1C0', 50.10)]
 
-        return manual_to_auto_map, bad_dist_list
+        return manual_to_auto_map, manual_auto_dist, bad_dist_list
 
 
 # testing auto FOVs mapped to by multiple manual FOVs validation
 class MappingDuplicateCases:
     def case_no_duplicates(self):
         manual_to_auto_map = {
-            'R0C0': {
-                'closest_auto_fov': 'R0C0',
-                'distance': 1.5
-            },
-            'R0C1': {
-                'closest_auto_fov': 'R0C1',
-                'distance': 3.0
-            },
-            'R0C2': {
-                'closest_auto_fov': 'R0C3',
-                'distance': 3.0
-            },
-            'R1C0': {
-                'closest_auto_fov': 'R1C0',
-                'distance': 1.0
-            },
-            'R1C1': {
-                'closest_auto_fov': 'R1C2',
-                'distance': 1.0
-            },
-            'R1C2': {
-                'closest_auto_fov': 'R1C4',
-                'distance': 1.0
-            }
+            'R0C0': 'R0C0',
+            'R0C1': 'R0C1',
+            'R0C2': 'R0C3',
+            'R1C0': 'R1C0',
+            'R1C1': 'R1C2',
+            'R1C2': 'R1C4'
         }
 
         duplicate_list = []
@@ -405,30 +378,12 @@ class MappingDuplicateCases:
 
     def case_at_most_one_duplicate(self):
         manual_to_auto_map = {
-            'R0C0': {
-                'closest_auto_fov': 'R0C0',
-                'distance': 1.5
-            },
-            'R0C1': {
-                'closest_auto_fov': 'R0C1',
-                'distance': 3.0
-            },
-            'R0C2': {
-                'closest_auto_fov': 'R0C3',
-                'distance': 3.0
-            },
-            'R1C0': {
-                'closest_auto_fov': 'R0C1',
-                'distance': 1.0
-            },
-            'R1C1': {
-                'closest_auto_fov': 'R1C2',
-                'distance': 1.0
-            },
-            'R1C2': {
-                'closest_auto_fov': 'R1C2',
-                'distance': 1.0
-            }
+            'R0C0': 'R0C0',
+            'R0C1': 'R0C1',
+            'R0C2': 'R0C3',
+            'R1C0': 'R0C1',
+            'R1C1': 'R1C2',
+            'R1C2': 'R1C2'
         }
 
         duplicate_list = [
@@ -439,30 +394,12 @@ class MappingDuplicateCases:
 
     def case_more_than_one_duplicate(self):
         manual_to_auto_map = {
-            'R0C0': {
-                'closest_auto_fov': 'R0C1',
-                'distance': 1.5
-            },
-            'R0C1': {
-                'closest_auto_fov': 'R0C1',
-                'distance': 3.0
-            },
-            'R0C2': {
-                'closest_auto_fov': 'R0C3',
-                'distance': 3.0
-            },
-            'R1C0': {
-                'closest_auto_fov': 'R0C1',
-                'distance': 1.0
-            },
-            'R1C1': {
-                'closest_auto_fov': 'R1C2',
-                'distance': 1.0
-            },
-            'R1C2': {
-                'closest_auto_fov': 'R1C2',
-                'distance': 1.0
-            }
+            'R0C0': 'R0C1',
+            'R0C1': 'R0C1',
+            'R0C2': 'R0C3',
+            'R1C0': 'R0C1',
+            'R1C1': 'R1C2',
+            'R1C2': 'R1C2'
         }
 
         duplicate_list = [
@@ -476,22 +413,10 @@ class MappingDuplicateCases:
 class MappingMismatchCases:
     def case_no_mismatches(self):
         manual_to_auto_map = {
-            'R0C0': {
-                'closest_auto_fov': 'R0C0',
-                'distance': 1.5
-            },
-            'R0C1': {
-                'closest_auto_fov': 'R0C1',
-                'distance': 3.0
-            },
-            'R1C0': {
-                'closest_auto_fov': 'R1C0',
-                'distance': 1.0
-            },
-            'R1C1': {
-                'closest_auto_fov': 'R1C1',
-                'distance': 1.0
-            }
+            'R0C0': 'R0C0',
+            'R0C1': 'R0C1',
+            'R1C0': 'R1C0',
+            'R1C1': 'R1C1'
         }
 
         mismatch_list = []
@@ -500,22 +425,10 @@ class MappingMismatchCases:
 
     def case_mismatches(self):
         manual_to_auto_map = {
-            'R0C0': {
-                'closest_auto_fov': 'R0C0',
-                'distance': 1.5
-            },
-            'R0C1': {
-                'closest_auto_fov': 'R0C2',
-                'distance': 3.0
-            },
-            'R1C0': {
-                'closest_auto_fov': 'R1C1',
-                'distance': 1.0
-            },
-            'R1C1': {
-                'closest_auto_fov': 'R1C1',
-                'distance': 1.0
-            }
+            'R0C0': 'R0C0',
+            'R0C1': 'R0C2',
+            'R1C0': 'R1C1',
+            'R1C1': 'R1C1'
         }
 
         mismatch_list = [('R0C1', 'R0C2'), ('R1C0', 'R1C1')]
@@ -523,33 +436,27 @@ class MappingMismatchCases:
         return manual_to_auto_map, mismatch_list
 
 
-# for the annotation test, define one manual-auto mapping
-_ANNOT_SAMPLE_MAPPING = manual_to_auto_map = {
-    'R0C0': {  # no errors for both manual R0C0 and auto R0C0
-        'closest_auto_fov': 'R0C0',
-        'distance': 1.5
-    },
-    'R0C1': {   # just a distance error
-        'closest_auto_fov': 'R0C1',
-        'distance': 60.0
-    },
-    'R0C2': {   # just a mismatch error
-        'closest_auto_fov': 'R1C0',
-        'distance': 49.0
-    },
-    'R1C0': {   # no mismatch or distance errors, but auto R1C0 has two manual FOVs mapping to it
-        'closest_auto_fov': 'R1C0',
-        'distance': 5.0
-    },
-    'R1C1': {   # distance and mismatch error
-        'closest_auto_fov': 'R2C0',
-        'distance': 100.0
-    },
-    'R1C2': {   # generates all 3 errors
-        'closest_auto_fov': 'R2C0',
-        'distance': 87.5
-    }
+_ANNOT_SAMPLE_MAPPING = {
+    'R0C0': 'R0C0',
+    'R0C1': 'R0C1',
+    'R0C2': 'R1C0',
+    'R1C0': 'R1C0',
+    'R1C1': 'R0C2',
+    'R1C2': 'R0C2'
 }
+
+_ANNOT_SAMPLE_DIST = pd.DataFrame(
+    np.vstack([
+        [1.5, 0, 0, 0, 0, 0],
+        [0, 60.0, 0, 0, 0, 0],
+        [0, 0, 0, 49.0, 0, 0],
+        [0, 0, 0, 5.0, 0, 0],
+        [0, 0, 100.0, 0, 0, 0],
+        [0, 0, 87.5, 0, 0, 0]
+    ]),
+    index=list(_ANNOT_SAMPLE_MAPPING.keys()),
+    columns=['R0C0', 'R0C1', 'R0C2', 'R1C0', 'R1C1', 'R1C2']
+)
 
 
 # a helper function to generate the sample annotation needed for _ANNOT_SAMPLE_MAPPING
@@ -559,25 +466,25 @@ def generate_sample_annot(check_dist, check_duplicates, check_mismatches):
 
     if check_dist is not None:
         annot += \
-            "The following mappings are placed more than %d pixels apart:\n\n" % check_dist
-        annot += "User-defined FOV R1C1 to TMA-grid FOV R2C0 (distance: 100.00)\n"
-        annot += "User-defined FOV R1C2 to TMA-grid FOV R2C0 (distance: 87.50)\n"
+            "The following mappings are placed more than %d microns apart:\n\n" % check_dist
+        annot += "User-defined FOV R1C1 to TMA-grid FOV R0C2 (distance: 100.00)\n"
+        annot += "User-defined FOV R1C2 to TMA-grid FOV R0C2 (distance: 87.50)\n"
         annot += "User-defined FOV R0C1 to TMA-grid FOV R0C1 (distance: 60.00)"
         annot += "\n\n"
 
     if check_duplicates:
         annot += \
             "The following TMA-grid FOVs have more than one user-defined FOV mapping to it:\n\n"
-        annot += "TMA-grid FOV R1C0: mapped with user-defined FOVs R0C2, R1C0\n"
-        annot += "TMA-grid FOV R2C0: mapped with user-defined FOVs R1C1, R1C2"
+        annot += "TMA-grid FOV R0C2: mapped with user-defined FOVs R1C1, R1C2\n"
+        annot += "TMA-grid FOV R1C0: mapped with user-defined FOVs R0C2, R1C0"
         annot += "\n\n"
 
     if check_mismatches:
         annot += \
             "The following mappings have mismatched names:\n\n"
         annot += "User-defined FOV R0C2: mapped with TMA-grid FOV R1C0\n"
-        annot += "User-defined FOV R1C1: mapped with TMA-grid FOV R2C0\n"
-        annot += "User-defined FOV R1C2: mapped with TMA-grid FOV R2C0"
+        annot += "User-defined FOV R1C1: mapped with TMA-grid FOV R0C2\n"
+        annot += "User-defined FOV R1C2: mapped with TMA-grid FOV R0C2"
         annot += "\n\n"
 
     return annot
