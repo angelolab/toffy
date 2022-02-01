@@ -466,8 +466,6 @@ def test_assign_closest_fovs():
             manual_sample_fovs, auto_sample_fovs
         )
 
-    print(manual_auto_dist)
-
     # assert the mapping is correct, this covers 2 other test cases:
     # 1. Not all auto fovs (ex. row0_col10000, row_10000_col10000) will be mapped to
     # 2. Multiple manual fovs can map to one auto fov (ex. row0_col25 and row50_col25 to row0_col0)
