@@ -346,7 +346,7 @@ class MappingDistanceCases:
                 [5.0, 0, 0, 0, 0, 0],
                 [0, 55.7, 0, 0, 0, 0],
                 [0, 49.0, 0, 0, 0, 0],
-                [0, 0, 0, 50.1, 0, 0],   # NOTE: error only if STRICTLY GREATER than dist_threshold
+                [0, 0, 0, 50.1, 0, 0],
                 [0, 0, 0, 0, 0, 75.0],
                 [0, 0, 0, 0, 0, 35.0]
             ]),
@@ -447,12 +447,12 @@ _ANNOT_SAMPLE_MAPPING = {
 
 _ANNOT_SAMPLE_DIST = pd.DataFrame(
     np.vstack([
-        [1.5, 0, 0, 0, 0, 0],
-        [0, 60.0, 0, 0, 0, 0],
-        [0, 0, 0, 49.0, 0, 0],
-        [0, 0, 0, 5.0, 0, 0],
-        [0, 0, 100.0, 0, 0, 0],
-        [0, 0, 87.5, 0, 0, 0]
+        [1.5, 0, 0, 0, 0, 0],  # no errors
+        [0, 60.0, 0, 0, 0, 0],   # just a distance error
+        [0, 0, 0, 49.0, 0, 0],   # just a name mismatch error
+        [0, 0, 0, 5.0, 0, 0],   # since it's the 2nd FOV mapped to R1C0, throws a duplicate error
+        [0, 0, 100.0, 0, 0, 0],  # distance error and name mismatch error
+        [0, 0, 87.5, 0, 0, 0]   # generates all 3 errors
     ]),
     index=list(_ANNOT_SAMPLE_MAPPING.keys()),
     columns=['R0C0', 'R0C1', 'R0C2', 'R1C0', 'R1C1', 'R1C2']
@@ -460,7 +460,7 @@ _ANNOT_SAMPLE_DIST = pd.DataFrame(
 
 
 # a helper function to generate the sample annotation needed for _ANNOT_SAMPLE_MAPPING
-# NOTE: hard code so as not to duplicate logic in generate_validation_annot
+# NOTE: based on distance values in _ANNOT_SAMPLE_DIST
 def generate_sample_annot(check_dist, check_duplicates, check_mismatches):
     annot = ""
 
@@ -490,9 +490,7 @@ def generate_sample_annot(check_dist, check_duplicates, check_mismatches):
     return annot
 
 
-# testing Moly point insertion for remapping
-# NOTE: easier than enumerating these all in a class for moly interval verification
-# this one's long so better here than directly in decorator
+# testing Moly point insertion for remapping, this one's long so don't put directly in decorator
 _REMAP_MOLY_INTERVAL_CASES = [
     param(True, 2.5, marks=value_err),
     param(True, 0, marks=value_err),

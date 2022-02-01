@@ -332,7 +332,6 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
             )
 
             # however, fov 2 sorted entries should NOT equal fov 2 random entries
-            # NOTE: due to randomization, this test will fail once in a blue moon
             assert center_points[fov_1_end_pos:] != actual_center_points_sorted[fov_1_end_pos:]
         # if both fovs are randomized
         elif randomize_setting == ['Y', 'Y']:
@@ -344,7 +343,6 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
             )
 
             # however, fov 1 sorted entries should NOT equal fov 1 random entries
-            # NOTE: due to randomization, this test will fail once in a blue moon
             assert center_points[:fov_1_end_pos] != actual_center_points_sorted[:fov_1_end_pos]
 
             # ensure the random center points for fov 2 contain the same elements
@@ -355,7 +353,6 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
             )
 
             # however, fov 2 sorted entries should NOT equal fov 2 random entries
-            # NOTE: due to randomization, this test will fail once in a blue moon
             assert center_points[fov_1_end_pos:] != actual_center_points_sorted[fov_1_end_pos:]
 
 
@@ -410,8 +407,7 @@ def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_
 
         # specific tests for the corners: assert they are named correctly
         # NOTE: because of slanting, the coords may not match the originals in sample_fovs_list
-        # we leave test_generate_x_y_fov_pairs_rhombus to test the
-        # correctness of the coord assignment
+        # we leave test_generate_x_y_fov_pairs_rhombus to test the coord assignment
         top_left_fov = fov_names[0]
         assert top_left_fov == 'R1C1'
 
@@ -466,11 +462,10 @@ def test_assign_closest_fovs():
             manual_sample_fovs, auto_sample_fovs
         )
 
-    # assert the mapping is correct, this covers 2 other test cases:
+    # assert the mapping is correct, this covers 2 test cases:
     # 1. Not all auto fovs (ex. row0_col10000, row_10000_col10000) will be mapped to
     # 2. Multiple manual fovs can map to one auto fov (ex. row0_col25 and row50_col25 to row0_col0)
-    # NOTE: in the case of a tie (ex. row0_col2500 to row0_col0 or row0_col5000), the first
-    # alphabetically is chosen
+    # NOTE: if tied (ex. row0_col2500 to row0_col0 or row0_col5000), get the first alphabetically
     actual_map = {
         'row0_col2500': 'row0_col0',
         'row5000_col2500': 'row0_col0',
@@ -481,7 +476,7 @@ def test_assign_closest_fovs():
 
     assert manual_to_auto_map == actual_map
 
-    # define the actual dist table, assert the fov_dist_table returned is correct
+    # define the actual distance table, assert manual_auto_dist returned is correct
     actual_dist = np.linalg.norm(
         np.array(manual_coords)[:, np.newaxis] - np.array(auto_coords), axis=2
     )
@@ -870,7 +865,6 @@ def test_remap_and_reorder_fovs(moly_path, randomize_setting, moly_insert, moly_
         )
 
         # enforce order–or not–depending on if randomization is added or not
-        # NOTE: the randomization test fails once in a blue moon due to how randomization works
         if randomize_setting:
             assert scrambled_coords != manual_coords
         else:
