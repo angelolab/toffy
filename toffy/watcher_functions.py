@@ -2,7 +2,7 @@ import numpy as np
 import pandas as pd
 import os
 
-from mibi_bin_tools import bin_files
+from mibi_bin_tools.bin_files import extract_bin_files, get_histograms_per_tof
 
 
 def write_counts_per_mass(base_dir, fov, masses, integration_window=(-0.5, 0.5)):
@@ -29,11 +29,11 @@ def write_counts_per_mass(base_dir, fov, masses, integration_window=(-0.5, 0.5))
         'Stop': mass_stops
     })
 
-    array = bin_files.extract_bin_files(data_dir=base_dir, include_fovs=[fov], panel=panel,
+    array = extract_bin_files(data_dir=base_dir, include_fovs=[fov], panel=panel,
                                         write_tiffs=False)
     # we only care about counts, not intensities
     array = array[0, ...]
-    channel_sums = np.sum(array, axis=-1)
+    channel_sums = np.sum(array, axis=(0, 1))
 
     # create df to hold output
     fovs = np.repeat(fov, len(masses))
@@ -52,5 +52,18 @@ def write_mph_per_mass(base_dir, fov, masses, integration_window=(-0.5, 0.5)):
         masses (list): the list of masses to extract MPH from
         integration_window (tuple): start and stop offset for integrating mass peak
     """
+    start_offset, stop_offset = integration_window
+
+    # create mass-specific values
+    mass_starts = [mass + start_offset for mass in masses]
+    mass_stops = [mass + stop_offset for mass in masses]
+
+    # hold computed values
+    mph_vals = []
+
+    for i in range(len(masses)):
+        mph_vals.append(get_histograms_per_tof(data_dir=base_dir, mass))
+
+
 
     
