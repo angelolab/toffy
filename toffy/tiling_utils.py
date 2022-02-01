@@ -21,7 +21,7 @@ from ark.utils import misc_utils
 
 def assign_metadata_vals(input_dict, output_dict, keys_ignore):
     """Copy the `str`, `int`, `float`, and `bool` metadata keys of
-    `input_dict` over to `output_dict`
+    `input_dict` over to `output_dict`, ignoring `keys_ignore` metadata keys
 
     Args:
         input_dict (dict):
@@ -190,9 +190,9 @@ def read_tiled_region_inputs(region_corners, region_params):
 
 
 def set_tiled_region_params(region_corners_path):
-    """Given a file specifying FOV regions, set the MIBI tiling parameters
+    """Given a file specifying FOV regions, set the MIBI tiling parameters.
 
-    User inputs will be required for many values.
+    User inputs will be required for many values. Units used are microns.
 
     Args:
         region_corners_path (str):
@@ -287,7 +287,7 @@ def generate_x_y_fov_pairs(x_range, y_range):
 
 
 def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_right, num_x, num_y):
-    """Generates coordinates of FOVs as defined by corners of a rhombus
+    """Generates coordinates (in microns) of FOVs as defined by corners of a rhombus
 
     Args:
         top_left (XYCoord): coordinate of top left corner
