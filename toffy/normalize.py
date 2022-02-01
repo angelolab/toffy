@@ -191,7 +191,7 @@ def combine_tuning_curve_metrics(dir_list):
 
 
 def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info,
-                         norm_func_path, mph_func='poly_2', extreme_vals=(0.5, 1)):
+                         norm_func_path, mph_func_type='poly_2', extreme_vals=(0.5, 1)):
     """Normalizes image data based on median pulse height from the run and a tuning curve
 
     Args:
@@ -201,7 +201,7 @@ def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info,
         pulse_heights (pd.DataFrame): pulse heights per mass per fov
         panel_info (pd.DataFrame): mapping between channels and masses
         norm_func_path (str): file containing the saved weights for the normalization function
-        mph_func (str): name of the function to use for fitting the mass vs mph curve
+        mph_func_type (str): name of the function to use for fitting the mass vs mph curve
         extreme_vals (tuple): determines the range for norm vals which will raise a warning
     """
 
@@ -232,10 +232,10 @@ def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info,
         # fit a function to model pulse height as a function of mass
         mph_weights = fit_calibration_curve(x_vals=fov_pulse_heights['masses'].values,
                                             y_vals=fov_pulse_heights['mphs'].values,
-                                            obj_func=mph_func)
+                                            obj_func=mph_func_type)
 
         # predict mph for each mass in the panel
-        mph_func = create_prediction_function(name='poly_2', weights=mph_weights)
+        mph_func = create_prediction_function(name=mph_func_type, weights=mph_weights)
         mph_vals = mph_func(panel_info['masses'].values)
 
         # predict normalization for each mph in the panel
