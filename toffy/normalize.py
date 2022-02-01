@@ -232,7 +232,7 @@ def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info,
         # fit a function to model pulse height as a function of mass
         mph_weights = fit_calibration_curve(x_vals=fov_pulse_heights['masses'].values,
                                             y_vals=fov_pulse_heights['mphs'].values,
-                                            obj_func='poly_2')
+                                            obj_func=mph_func)
 
         # predict mph for each mass in the panel
         mph_func = create_prediction_function(name='poly_2', weights=mph_weights)
