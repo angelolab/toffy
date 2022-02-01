@@ -260,7 +260,8 @@ def set_tiled_region_params(region_corners_path):
 
 
 def generate_x_y_fov_pairs(x_range, y_range):
-    """Given all x and y coordinates a FOV can take, generate all possible `(x, y)` pairings
+    """Given all x and y coordinates (in microns) a FOV can take,
+    generate all possible `(x, y)` pairings
 
     Args:
         x_range (list):
@@ -452,10 +453,10 @@ def validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
     """Ensures that the provided TMA corners match assumptions
 
     Args:
-        top_left (XYCoord): coordinate of top left corner
-        top_right (XYCoord): coordinate of top right corner
-        bottom_left (XYCoord): coordinate of bottom right corner
-        bottom_right (XYCoord): coordiante of bottom right corner
+        top_left (XYCoord): coordinate (in microns) of top left corner
+        top_right (XYCoord): coordinate (in microns) of top right corner
+        bottom_left (XYCoord): coordinate (in microns) of bottom right corner
+        bottom_right (XYCoord): coordinate (in microns)of bottom right corner
 
     """
     # TODO: should we programmatically validate all pairwise comparisons?
@@ -487,7 +488,8 @@ def generate_tma_fov_list(tma_corners_path, num_fov_x, num_fov_y):
     """Generate the list of FOVs on the image using the TMA input file in `tma_corners_path`
 
     NOTE: unlike tiled regions, the returned list of FOVs is just an intermediate step to the
-    interactive remapping process. So the result will just be each FOV name mapped to its centroid.
+    interactive remapping process. So the result will just be each FOV name mapped to its centroid
+    (in microns).
 
     Args:
         tma_corners_path (dict):
@@ -598,9 +600,10 @@ def assign_closest_fovs(manual_fovs, auto_fovs):
     Returns:
         tuple:
 
-        - A `dict` mapping each manual FOV to an auto FOV and its respective distance from it
-        - A `pandas.DataFrame` defining the distance from each manual FOV to each auto FOV,
-          row indeices are manual FOVs, column names are auto FOVs
+        - A `dict` mapping each manual FOV to an auto FOV and its respective distance
+          (in microns) from it
+        - A `pandas.DataFrame` defining the distance (in microns) from each manual FOV
+          to each auto FOV, row indices are manual FOVs, column names are auto FOVs
     """
 
     # condense the manual FOVs JSON list into just a mapping between name and coordinate
@@ -655,13 +658,13 @@ def assign_closest_fovs(manual_fovs, auto_fovs):
 
 def generate_fov_circles(manual_fovs_info, auto_fovs_info,
                          manual_name, auto_name, slide_img, draw_radius=7):
-    """Draw the circles defining each FOV (manually-specified and automatically-generated)
+    """Draw the circles defining each FOV (manual and auto) on `slide_img`
 
     Args:
         manual_fovs_info (dict):
-            maps each manual FOV to its centroid coordinates
+            maps each manual FOV to its centroid coordinates (in pixels)
         auto_fovs_info (dict):
-            maps each automatically-generated FOV to its centroid coordinates
+            maps each auto FOV to its centroid coordinates (in pixels)
         manual_name (str):
             the name of the manual FOV to highlight
         auto_name (str):
@@ -669,7 +672,7 @@ def generate_fov_circles(manual_fovs_info, auto_fovs_info,
         slide_img (numpy.ndarray):
             the image to overlay
         draw_radius (int):
-            the radius of the circle to overlay for each FOV, will be centered at the centroid
+            the radius (in pixels) of the circle to overlay for each FOV
 
     Returns:
         numpy.ndarray:
@@ -742,13 +745,13 @@ def update_mapping_display(change, w_auto, manual_to_auto_map, manual_coords, au
         manual_to_auto_map (dict):
             defines the mapping of manual to auto FOV names
         manual_coords (dict):
-            maps each manually-defined FOV to its coordinate
+            maps each manually-defined FOV to its coordinate (in pixels)
         auto_coords (dict):
-            maps each automatically-generated FOV to its coordinate
+            maps each automatically-generated FOV to its coordinate (in pixels)
         slide_img (numpy.ndarray):
             the image to overlay
         draw_radius (int):
-            the radius to draw each circle on the slide
+            the radius (in pixels) to draw each circle on the slide
 
     Returns:
         numpy.ndarray:
@@ -828,13 +831,13 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_auto_
         manual_to_auto_map (dict):
             defines the mapping of manual to auto FOV names
         manual_auto_dist (pandas.DataFrame):
-            defines the distance between each manual FOV from each auto FOV
+            defines the distance (in microns) between each manual FOV from each auto FOV
         auto_coords (dict):
-            maps each automatically-generated FOV to its annotation coordinate
+            maps each automatically-generated FOV to its coordinate (in pixels)
         slide_img (numpy.ndarray):
             the image to overlay
         draw_radius (int):
-            the radius to draw each circle on the slide
+            the radius (in pixels) to draw each circle on the slide
         check_dist (float):
             if the distance (in microns) between a manual-auto FOV pair exceeds this value, it will
             be reported for a potential error, if `None` does not validate distance
@@ -931,13 +934,13 @@ def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
 
 # TODO: potential type hinting candidate?
 def find_manual_auto_invalid_dist(manual_to_auto_map, manual_auto_dist, dist_threshold=2000):
-    """Finds the manual FOVs that map to auto FOVs greater than `dist_threshold` away
+    """Finds the manual FOVs that map to auto FOVs greater than `dist_threshold` away (in microns)
 
     Args:
         manual_to_auto_map (dict):
             defines the mapping of manual to auto FOV names
         manual_auto_dist (pandas.DataFrame):
-            defines the distance between each manual FOV from each auto FOV
+            defines the distance (in microns) between each manual FOV from each auto FOV
         dist_threshold (float):
             if the distance (in microns) between a manual-auto FOV pair exceeds this value, it will
             be reported for a potential error
@@ -948,10 +951,10 @@ def find_manual_auto_invalid_dist(manual_to_auto_map, manual_auto_dist, dist_thr
 
             - `str`: the manual FOV name
             - `str`: the auto FOV name
-            - `float`: the distance between the manual and auto FOV
+            - `float`: the distance (in microns) between the manual and auto FOV
 
-            applies only for manual-auto pairs with distance greater than `dist_threshold`,
-            sorted by decreasing manual-auto FOV distance
+            applies only for manual-auto pairs with distance greater than `dist_threshold`
+            (in microns), sorted by decreasing manual-auto FOV distance
     """
 
     # define the fov pairs at a distance greater than dist_thresh
@@ -1041,7 +1044,7 @@ def generate_validation_annot(manual_to_auto_map, manual_auto_dist, check_dist=2
 
     The following potential sources of error can be requested by the user:
 
-    - Manual to auto FOV pairs that are of a distance greater than `check_dist` away
+    - Manual to auto FOV pairs that are of a distance greater than `check_dist` away (in microns)
     - Auto FOV names that have more than one manual FOV name mapping to it
     - Manual to auto FOV pairs that don't have the same name
 
@@ -1049,7 +1052,7 @@ def generate_validation_annot(manual_to_auto_map, manual_auto_dist, check_dist=2
         manual_to_auto_map (dict):
             defines the mapping of manual to auto FOV names
         manual_auto_dist (pandas.DataFrame):
-            defines the distance between each manual FOV from each auto FOV
+            defines the distance (in microns) between each manual FOV from each auto FOV
         check_dist (float):
             if the distance (in microns) between a manual-auto FOV pair exceeds this value, it will
             be reported for a potential error, if `None` does not validate distance
@@ -1132,7 +1135,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
         mapping_path (str):
             the path to the file to save the mapping to
         draw_radius (int):
-            the radius to draw each circle on the slide
+            the radius (in pixels) to draw each circle on the slide
         figsize (tuple):
             the size of the interactive figure to display
         check_dist (float):
