@@ -758,7 +758,7 @@ def test_write_manual_to_auto_map(annot):
                         cases=test_cases.MappingDistanceCases)
 def test_find_manual_auto_invalid_dist(manual_to_auto_map, manual_auto_dist, actual_bad_dist_list):
     generated_bad_dist_list = tiling_utils.find_manual_auto_invalid_dist(
-        manual_to_auto_map, manual_auto_dist
+        manual_to_auto_map, manual_auto_dist, dist_threshold=50
     )
 
     assert generated_bad_dist_list == actual_bad_dist_list
