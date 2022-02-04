@@ -286,7 +286,8 @@ def generate_x_y_fov_pairs(x_range, y_range):
     return all_pairs
 
 
-def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_right, num_x, num_y):
+def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_right,
+                                   num_row, num_col):
     """Generates coordinates (in microns) of FOVs as defined by corners of a rhombus
 
     Args:
@@ -294,43 +295,43 @@ def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_righ
         top_right (XYCoord): coordinate of top right corner
         bottom_left (XYCoord): coordinate of bottom right corner
         bottom_right (XYCoord): coordiante of bottom right corner
-        num_x (int): number of fovs on x dimension
-        num_y (int): number of fovs on x dimension
+        num_row (int): number of fovs on row dimension
+        num_col (int): number of fovs on column dimension
 
     Returns:
         list: coordinates for all FOVs defined by region"""
 
-    # compute shift in y across the top and bottom of the TMA
-    top_y_shift = top_right.y - top_left.y
-    bottom_y_shift = bottom_right.y - bottom_left.y
+    # compute the vertical shift in the top and bottom row of the TMA
+    top_row_shift = top_right.y - top_left.y
+    bottom_row_shift = bottom_right.y - bottom_left.y
 
     # average between the two will be used to increment indices
-    avg_y_shift = (top_y_shift + bottom_y_shift) / 2
+    avg_row_shift = (top_row_shift + bottom_row_shift) / 2
 
-    # compute shift in x across the sides of the tma
-    left_x_shift = bottom_left.x - top_left.x
-    right_x_shift = bottom_right.x - top_right.x
+    # compute horizontal shift in the left and right column of the TMA
+    left_col_shift = bottom_left.x - top_left.x
+    right_col_shift = bottom_right.x - top_right.x
 
     # average between the two will be used to increment indices
-    avg_x_shift = (left_x_shift + right_x_shift) / 2
+    avg_col_shift = (left_col_shift + right_col_shift) / 2
 
     # compute per-FOV adjustment
-    x_increment = avg_x_shift / (num_y - 1)
-    y_increment = avg_y_shift / (num_x - 1)
+    row_increment = avg_row_shift / (num_col - 1)
+    col_increment = avg_col_shift / (num_row - 1)
 
     # compute baseline indices for a rectangle with same coords
-    x_dif = top_right.x - top_left.x
-    y_dif = bottom_left.y - top_left.y
+    row_dif = bottom_left.y - top_left.y
+    col_dif = top_right.x - top_left.x
 
-    x_baseline = x_dif / (num_x - 1)
-    y_baseline = y_dif / (num_y - 1)
+    row_baseline = row_dif / (num_row - 1)
+    col_baseline = col_dif / (num_col - 1)
 
     pairs = []
 
-    for i in range(num_x):
-        for j in range(num_y):
-            x_coord = top_left.x + x_baseline * i + x_increment * j
-            y_coord = top_left.y + y_baseline * j + y_increment * i
+    for i in range(num_col):
+        for j in range(num_row):
+            x_coord = top_left.x + col_baseline * i + col_increment * j
+            y_coord = top_left.y + row_baseline * j + row_increment * i
             pairs.append((int(x_coord), int(y_coord)))
 
     return pairs
@@ -484,7 +485,7 @@ class XYCoord:
     y: float
 
 
-def generate_tma_fov_list(tma_corners_path, num_fov_x, num_fov_y):
+def generate_tma_fov_list(tma_corners_path, num_fov_row, num_fov_col):
     """Generate the list of FOVs on the image using the TMA input file in `tma_corners_path`
 
     NOTE: unlike tiled regions, the returned list of FOVs is just an intermediate step to the
@@ -494,10 +495,10 @@ def generate_tma_fov_list(tma_corners_path, num_fov_x, num_fov_y):
     Args:
         tma_corners_path (dict):
             Path to the JSON file containing the FOVs used to define the tiled TMA region
-        num_fov_x (int):
-            Number of FOVs to define along the x-axis
-        num_fov_y (int):
-            Number of FOVs to define along the y-axis
+        num_fov_row (int):
+            Number of FOVs along the row dimension
+        num_fov_col (int):
+            Number of FOVs along the column dimension
 
     Returns:
         dict:
@@ -511,11 +512,11 @@ def generate_tma_fov_list(tma_corners_path, num_fov_x, num_fov_y):
         )
 
     # user needs to define at least 3 FOVs along the x- and y-axes
-    if num_fov_x < 3:
-        raise ValueError("Number of FOVs along x-axis must be at least 3")
+    if num_fov_row < 3:
+        raise ValueError("Number of TMA-grid rows must be at least 3")
 
-    if num_fov_y < 3:
-        raise ValueError("Number of FOVs along y-axis must be at least 3")
+    if num_fov_col < 3:
+        raise ValueError("Number of TMA-grid columns must be at least 3")
 
     # read in tma_corners_path
     with open(tma_corners_path, 'r', encoding='utf-8') as flf:
@@ -536,10 +537,10 @@ def generate_tma_fov_list(tma_corners_path, num_fov_x, num_fov_y):
 
     # create all x_y coordinates
     x_y_pairs = generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_right,
-                                               num_fov_x, num_fov_y)
+                                               num_fov_row, num_fov_col)
 
     # name the FOVs according to MIBI conventions
-    fov_names = ['R%dC%d' % (y + 1, x + 1) for x in range(num_fov_x) for y in range(num_fov_y)]
+    fov_names = ['R%dC%d' % (y + 1, x + 1) for x in range(num_fov_col) for y in range(num_fov_row)]
 
     # define the fov_regions dict
     fov_regions = {}

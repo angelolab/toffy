@@ -239,7 +239,7 @@ def test_generate_x_y_fov_pairs_rhombus(coords, actual_pairs):
 
     # generate the FOV-coordinate pairs
     pairs = tiling_utils.generate_x_y_fov_pairs_rhombus(
-        top_left, top_right, bottom_left, bottom_right, 4, 3
+        top_left, top_right, bottom_left, bottom_right, 3, 4
     )
 
     assert pairs == actual_pairs
@@ -364,12 +364,12 @@ def test_validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
 
 @parametrize('extra_coords,extra_names', [param([(1, 2)], ["TheSecondFOV"], marks=value_err),
                                           param([], [])])
-@parametrize('num_x,num_y', [param(2, 3, marks=value_err), param(3, 2, marks=value_err),
-                             param(4, 3)])
+@parametrize('num_row,num_col', [param(2, 3, marks=value_err), param(3, 2, marks=value_err),
+                                 param(3, 4)])
 @parametrize('tma_corners_file', [param('bad_path.json', marks=file_missing_err),
                                   param('sample_tma_corners.json')])
 @parametrize_with_cases('coords, actual_pairs', cases=test_cases.RhombusCoordInputCases)
-def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_x, num_y,
+def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_row, num_col,
                                coords, actual_pairs):
     # extract the coordinates
     top_left, top_right, bottom_left, bottom_right = coords
@@ -396,11 +396,11 @@ def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_
 
         # create the FOV regions
         fov_regions = tiling_utils.generate_tma_fov_list(
-            os.path.join(td, tma_corners_file), num_x, num_y
+            os.path.join(td, tma_corners_file), num_row, num_col
         )
 
         # assert the correct number of fovs were created
-        assert len(fov_regions) == num_x * num_y
+        assert len(fov_regions) == num_row * num_col
 
         # get the list of fov names
         fov_names = list(fov_regions.keys())
@@ -411,19 +411,19 @@ def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_
         top_left_fov = fov_names[0]
         assert top_left_fov == 'R1C1'
 
-        top_right_fov = fov_names[num_x * num_y - num_y]
-        assert top_right_fov == 'R1C%d' % num_x
+        top_right_fov = fov_names[num_row * num_col - num_row]
+        assert top_right_fov == 'R1C%d' % num_col
 
-        bottom_left_fov = fov_names[num_y - 1]
-        assert bottom_left_fov == 'R%dC1' % num_y
+        bottom_left_fov = fov_names[num_row - 1]
+        assert bottom_left_fov == 'R%dC1' % num_row
 
-        bottom_right_fov = fov_names[(num_x * num_y) - 1]
-        assert bottom_right_fov == 'R%dC%d' % (num_y, num_x)
+        bottom_right_fov = fov_names[(num_row * num_col) - 1]
+        assert bottom_right_fov == 'R%dC%d' % (num_row, num_col)
 
         # now assert all the FOVs in between are named correctly and in the right order
         for i, fov in enumerate(fov_regions.keys()):
-            row_ind = (i % num_y) + 1
-            col_ind = int(i / num_y) + 1
+            row_ind = (i % num_row) + 1
+            col_ind = int(i / num_row) + 1
 
             assert fov == 'R%dC%d' % (row_ind, col_ind)
 
