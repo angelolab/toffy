@@ -23,7 +23,7 @@ cache: pip
 
 script:
   - python -m pip install --editable .
-  - python -m pytest --cov=toffy --pycodestyle toffy
+  - python -m pytest --randomly-seed=42 --randomly-dont-reorganize --cov=toffy --pycodestyle toffy
 
 after_success:
   - coveralls
