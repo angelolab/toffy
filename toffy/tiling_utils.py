@@ -301,7 +301,7 @@ def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_righ
     Returns:
         list: coordinates for all FOVs defined by region"""
 
-    # compute shift in the top and bottom row of the TMA
+    # compute the vertical shift in the top and bottom row of the TMA
     top_row_shift = top_right.y - top_left.y
     bottom_row_shift = bottom_right.y - bottom_left.y
 
