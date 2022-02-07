@@ -1,5 +1,6 @@
 import os
 import json
+import shutil
 
 import numpy as np
 import pandas as pd
@@ -8,7 +9,7 @@ import skimage.io as io
 from scipy.ndimage import gaussian_filter
 
 from ark.utils.load_utils import load_imgs_from_tree, load_imgs_from_dir
-from ark.utils.io_utils import list_folders, validate_paths
+from ark.utils.io_utils import list_folders, validate_paths, list_files
 from ark.utils.misc_utils import verify_same_elements, verify_in_list
 
 
@@ -213,6 +214,74 @@ def create_tiled_comparison(input_dir_list, output_dir):
 
         io.imsave(os.path.join(output_dir, first_dir.channels.values[j] + '_comparison.tiff'),
                   tiled_image)
+
+
+def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, source_channel):
+    """Adds the specified source_channel to the first row of previously generated tiled images
+
+    Args:
+        raw_img_dir (str): path to directory containing the raw images
+        tiled_img_dir (str): path to directory contained the tiled images
+        output_dir (str): path to directory where outputs will be saved
+        source_channel (str): the channel which will be prepended to the tiled images"""
+
+    # load source images
+    source_imgs = load_imgs_from_tree(raw_img_dir, channels=[source_channel])
+
+    # convert stacked images to concatenated row
+    source_list = [source_imgs.values[fov, :, :, 0] for fov in range(source_imgs.shape[0])]
+    source_row = np.concatenate(source_list, axis=1)
+
+    # confirm tiled images have expected shape
+    tiled_images = list_files(tiled_img_dir)
+    test_file = io.imread(os.path.join(tiled_img_dir, tiled_images[0]))
+    if test_file.shape[1] != source_row.shape[1]:
+        raise ValueError('Tiled image {} has shape {}, but source image {} has'
+                         'shape {}'.format(tiled_images[0], test_file.shape, source_channel,
+                                           source_row.shape))
+
+    # loop through each tiled image, prepend source row, and save
+    for tile_name in tiled_images:
+        current_tile = io.imread(os.path.join(tiled_img_dir, tile_name))
+        combined_tile = np.concatenate([source_row, current_tile])
+        save_name = tile_name.split('.tiff')[0] + '_source_' + source_channel + '.tiff'
+        io.imsave(os.path.join(output_dir, save_name), combined_tile)
+
+
+def replace_with_intensity_image(base_dir, channel, replace=True, folders=None):
+    """Replaces the specified channel with the intensity image of that channel
+
+    Args:
+        base_dir (str): directory containing folders of extracted runs
+        channel (str): the channel whose intensity image will be copied over
+        folders (list or None): the subset of folders within base_dir which will have their
+            intensity image copied over. If None, applies to all folders
+        replace (bool): controls whether intensity image is copied over with a different name"""
+
+    all_folders = list_folders(base_dir)
+
+    # ensure supplied folders are valid
+    if folders is not None:
+        verify_in_list(specified_folders=folders, all_folders=all_folders)
+        all_folders = folders
+
+    # ensure channel is valid
+    test_fov = list_folders(os.path.join(base_dir, folders[0]))[0]
+    test_file = os.path.join(base_dir, folders[0], test_fov, channel + '.tiff')
+    if not os.path.exists(test_file):
+        raise ValueError('Could not find specified file {}'.format(test_file))
+    
+    # loop through each run in directory
+    for folder in all_folders:
+        fovs = list_folders(os.path.join(base_dir, folder))
+        for fov in fovs:
+            # control whether intensity image overwrites previous image or is copied with new name
+            if replace:
+                suffix = '.tiff'
+            else:
+                suffix = '_intensity.tiff'
+            shutil.copy(os.path.join(base_dir, folder, fov, 'intensity_images', channel + '.tiff'),
+                        os.path.join(base_dir, folder, fov, channel + suffix))
 
 
 def create_rosetta_matrices(default_matrix, multipliers=[0.5, 1, 1.5], channels=None):

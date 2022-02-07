@@ -145,3 +145,41 @@ def test_create_tiled_comparison(dir_num):
             os.remove(os.path.join(top_level_dir, dir_names[0], 'fov{}'.format(i), 'chan0.tiff'))
         with pytest.raises(ValueError):
             rosetta.create_tiled_comparison(paths, output_dir)
+
+
+def test_add_source_channel_to_tiled_image():
+    with tempfile.TemporaryDirectory() as top_level_dir:
+        num_fovs = 5
+        num_chans = 4
+        im_size = 10
+
+        # create directory containing raw images
+        raw_dir = os.path.join(top_level_dir, 'raw_dir')
+        os.makedirs(raw_dir)
+
+        fovs, chans = test_utils.gen_fov_chan_names(num_fovs=num_fovs, num_chans=num_chans)
+        filelocs, data_xr = test_utils.create_paired_xarray_fovs(
+            raw_dir, fovs, chans, img_shape=(im_size, im_size), fills=True)
+
+        # create directory containing stitched images
+        tiled_shape = (im_size * 3, im_size * num_fovs)
+        tiled_dir = os.path.join(top_level_dir, 'tiled_dir')
+        os.makedirs(tiled_dir)
+        for i in range(2):
+            vals = np.random.rand(im_size * 3 * im_size * num_fovs).reshape(tiled_shape)
+            io.imsave(os.path.join(tiled_dir, 'tiled_image_{}.tiff'.format(i)), vals)
+
+        output_dir = os.path.join(top_level_dir, 'output_dir')
+        os.makedirs(output_dir)
+        rosetta.add_source_channel_to_tiled_image(raw_img_dir=raw_dir, tiled_img_dir=tiled_dir,
+                                                  output_dir=output_dir, source_channel='chan1')
+        # get vals of row that was added to top
+        vals = data_xr.loc[:, :, :, 'chan1'].values
+        vals_list = [vals[i, ...] for i in range(vals.shape[0])]
+        vals_row = np.concatenate(vals_list, axis=1)
+
+        # top portion of each image should be the same
+        tiled_images = list_files(output_dir)
+        for im_name in tiled_images:
+            image = io.imread(os.path.join(output_dir, im_name))
+            assert np.array_equal(image[:im_size, :], vals_row)
