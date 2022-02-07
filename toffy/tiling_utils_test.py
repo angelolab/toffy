@@ -103,13 +103,14 @@ def test_read_tiling_param(monkeypatch):
     assert sample_tiling_param == 'Y'
 
 
-@parametrize_with_cases('fov_coords, fov_names, user_inputs, base_param_values, full_param_set',
-                        cases=test_cases.TiledRegionReadCases, glob='*_no_moly_param')
-def test_read_tiled_region_inputs(monkeypatch, fov_coords, fov_names, user_inputs,
+@parametrize_with_cases(
+    'fov_coords, fov_names, fov_sizes, user_inputs, base_param_values, full_param_set',
+    cases=test_cases.TiledRegionReadCases, glob='*_no_moly_param')
+def test_read_tiled_region_inputs(monkeypatch, fov_coords, fov_names, fov_sizes, user_inputs,
                                   base_param_values, full_param_set):
     # define a sample fovs list
     sample_fovs_list = test_utils.generate_sample_fovs_list(
-        fov_coords=fov_coords, fov_names=fov_names
+        fov_coords=fov_coords, fov_names=fov_names, fov_sizes=fov_sizes
     )
 
     # define sample region_params to read data into
@@ -165,15 +166,17 @@ def test_generate_region_info():
 # NOTE: you can use this to assert failures without needing a separate test class
 @parametrize('region_corners_file', [param('bad_region_corners.json', marks=file_missing_err),
                                      param('tiled_region_corners.json')])
-@parametrize_with_cases('fov_coords, fov_names, user_inputs, base_param_values, full_param_set',
-                        cases=test_cases.TiledRegionReadCases, glob='*_with_moly_param')
+@parametrize_with_cases(
+    'fov_coords, fov_names, fov_sizes, user_inputs, base_param_values,full_param_set',
+    cases=test_cases.TiledRegionReadCases, glob='*_with_moly_param'
+)
 @parametrize('moly_interval_val', [0, 1])
 def test_set_tiled_region_params(monkeypatch, region_corners_file, fov_coords, fov_names,
-                                 user_inputs, base_param_values,
+                                 fov_sizes, user_inputs, base_param_values,
                                  full_param_set, moly_interval_val):
     # define a sample set of fovs
     sample_fovs_list = test_utils.generate_sample_fovs_list(
-        fov_coords=fov_coords, fov_names=fov_names
+        fov_coords=fov_coords, fov_names=fov_names, fov_sizes=fov_sizes
     )
 
     # set the user inputs
@@ -199,7 +202,7 @@ def test_set_tiled_region_params(monkeypatch, region_corners_file, fov_coords, f
         # assert region start x and region start y values are correct
         sample_region_info = sample_tiling_params['region_params']
 
-        # test the value of each tiling param for both regions
+        # test the value of each numeric tiling param for both regions
         for i in range(len(sample_region_info)):
             for param, val in list(sample_region_info[i].items()):
                 if not isinstance(val, str):
@@ -254,7 +257,8 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
                                         moly_interval_setting, moly_interval_value,
                                         moly_insert_indices, fov_1_end_pos, randomize_setting):
     sample_fovs_list = test_utils.generate_sample_fovs_list(
-        fov_coords=[(0, 0), (100, 100)], fov_names=["TheFirstFOV", "TheSecondFOV"]
+        fov_coords=[(0, 0), (100, 100)], fov_names=["TheFirstFOV", "TheSecondFOV"],
+        fov_sizes=[5, 10]
     )
 
     sample_region_inputs = {
@@ -263,7 +267,7 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
         'fov_num_x': [2, 4],
         'fov_num_y': [4, 2],
         'x_fov_size': [5, 10],
-        'y_fov_size': [10, 5],
+        'y_fov_size': [5, 10],
         'region_rand': ['N', 'N']
     }
 
@@ -277,7 +281,7 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
 
     with tempfile.TemporaryDirectory() as td:
         sample_moly_point = test_utils.generate_sample_fov_tiling_entry(
-            coord=(14540, -10830), name="MoQC"
+            coord=(14540, -10830), name="MoQC", size=10000
         )
         sample_moly_path = os.path.join(td, 'sample_moly_point.json')
 
@@ -308,9 +312,9 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
 
         # define the center points sorted
         actual_center_points_sorted = [
-            (x, y) for x in np.arange(0, 10, 5) for y in list(reversed(np.arange(70, 110, 10)))
+            (x, y) for x in np.arange(0, 10, 5) for y in list(reversed(np.arange(85, 105, 5)))
         ] + [
-            (x, y) for x in np.arange(50, 90, 10) for y in list(reversed(np.arange(145, 155, 5)))
+            (x, y) for x in np.arange(50, 90, 10) for y in list(reversed(np.arange(140, 160, 10)))
         ]
 
         for mi in moly_insert_indices:
@@ -383,7 +387,8 @@ def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_
 
     sample_fovs_list = test_utils.generate_sample_fovs_list(
         fov_coords=fov_coords,
-        fov_names=fov_names
+        fov_names=fov_names,
+        fov_sizes=[5] * len(fov_coords)
     )
 
     with tempfile.TemporaryDirectory() as td:
@@ -453,7 +458,7 @@ def test_assign_closest_fovs():
 
     # generate the list of manual fovs
     manual_sample_fovs = test_utils.generate_sample_fovs_list(
-        manual_coords, manual_fov_names
+        manual_coords, manual_fov_names, fov_sizes=[5] * len(manual_coords)
     )
 
     # generate the mapping from manual to automatically-generated
@@ -794,7 +799,7 @@ def test_generate_validation_annot(check_dist, check_duplicates, check_mismatche
 def test_remap_and_reorder_fovs(moly_path, randomize_setting, moly_insert, moly_interval):
     # define the sample Moly point
     sample_moly_point = test_utils.generate_sample_fov_tiling_entry(
-        coord=(14540, -10830), name="MoQC"
+        coord=(14540, -10830), name="MoQC", size=10000
     )
 
     # save the Moly point
@@ -810,7 +815,7 @@ def test_remap_and_reorder_fovs(moly_path, randomize_setting, moly_insert, moly_
 
         # generate the list of manual fovs
         manual_sample_fovs = test_utils.generate_sample_fovs_list(
-            manual_coords, manual_fov_names
+            manual_coords, manual_fov_names, fov_sizes=[5] * len(manual_coords)
         )
 
         # define a sample mapping

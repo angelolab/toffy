@@ -137,8 +137,18 @@ def read_tiled_region_inputs(region_corners, region_params):
 
     # read in the data for each fov (region_start from region_corners_path, all others from user)
     for fov in region_corners['fovs']:
+        # append the starting x and y coordinates
         region_params['region_start_x'].append(fov['centerPointMicrons']['x'])
         region_params['region_start_y'].append(fov['centerPointMicrons']['y'])
+
+        # verify that the micron size specified is valid
+        if fov['fovSizeMicrons'] <= 0:
+            raise ValueError("The fovSizeMicrons field for region %s must be positive"
+                             % fov['name'])
+
+        # use fovSizeMicrons as the step size along both axes
+        region_params['x_fov_size'].append(fov['fovSizeMicrons'])
+        region_params['y_fov_size'].append(fov['fovSizeMicrons'])
 
         # allow the user to specify the number of fovs along each dimension
         num_x = read_tiling_param(
@@ -157,24 +167,6 @@ def read_tiled_region_inputs(region_corners, region_params):
 
         region_params['fov_num_x'].append(num_x)
         region_params['fov_num_y'].append(num_y)
-
-        # allow the user to specify the step size along each dimension
-        size_x = read_tiling_param(
-            "Enter the x step size for region %s (in microns): " % fov['name'],
-            "Error: x step size must be a positive integer",
-            lambda sx: sx >= 1,
-            dtype=int
-        )
-
-        size_y = read_tiling_param(
-            "Enter the y step size for region %s (in microns): " % fov['name'],
-            "Error: y step size must be a positive integer",
-            lambda sy: sy >= 1,
-            dtype=int
-        )
-
-        region_params['x_fov_size'].append(size_x)
-        region_params['y_fov_size'].append(size_y)
 
         # allow the user to specify if the FOVs should be randomized
         randomize = read_tiling_param(
