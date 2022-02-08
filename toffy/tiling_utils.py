@@ -111,7 +111,7 @@ def generate_region_info(region_params):
     region_params_list = []
 
     # iterate over all the region parameters, all parameter lists are the same length
-    for i in range(len(region_params['region_start_x'])):
+    for i in range(len(region_params['region_start_row'])):
         # define a dict containing all the region info for the specific FOV
         region_info = {
             rp: region_params[rp][i] for rp in region_params
@@ -137,44 +137,42 @@ def read_tiled_region_inputs(region_corners, region_params):
 
     # read in the data for each fov (region_start from region_corners_path, all others from user)
     for fov in region_corners['fovs']:
-        region_params['region_start_x'].append(fov['centerPointMicrons']['x'])
-        region_params['region_start_y'].append(fov['centerPointMicrons']['y'])
+        # append the starting row and column coordinates
+        region_params['region_start_row'].append(fov['centerPointMicrons']['y'])
+        region_params['region_start_col'].append(fov['centerPointMicrons']['x'])
+
+        print("Using start coordinates of (%d, %d) in microns for region %s"
+              % (fov['centerPointMicrons']['x'], fov['centerPointMicrons']['y'], fov['name']))
+
+        # verify that the micron size specified is valid
+        if fov['fovSizeMicrons'] <= 0:
+            raise ValueError("The fovSizeMicrons field for region %s must be positive"
+                             % fov['name'])
+
+        print("Using FOV step size of %d microns for both row (y) and column (x) axis of region %s"
+              % (fov['fovSizeMicrons'], fov['name']))
+
+        # use fovSizeMicrons as the step size along both axes
+        region_params['row_fov_size'].append(fov['fovSizeMicrons'])
+        region_params['col_fov_size'].append(fov['fovSizeMicrons'])
 
         # allow the user to specify the number of fovs along each dimension
-        num_x = read_tiling_param(
-            "Enter number of x FOVs for region %s: " % fov['name'],
-            "Error: number of x FOVs must be a positive integer",
+        num_row = read_tiling_param(
+            "Enter the number of FOVs per row for region %s: " % fov['name'],
+            "Error: number of FOVs per row must be a positive integer",
             lambda nx: nx >= 1,
             dtype=int
         )
 
-        num_y = read_tiling_param(
-            "Enter number of y FOVs for region %s: " % fov['name'],
-            "Error: number of y FOVs must be a positive integer",
+        num_col = read_tiling_param(
+            "Enter the number of FOVs per column for region %s: " % fov['name'],
+            "Error: number of FOVs per column must be a positive integer",
             lambda ny: ny >= 1,
             dtype=int
         )
 
-        region_params['fov_num_x'].append(num_x)
-        region_params['fov_num_y'].append(num_y)
-
-        # allow the user to specify the step size along each dimension
-        size_x = read_tiling_param(
-            "Enter the x step size for region %s (in microns): " % fov['name'],
-            "Error: x step size must be a positive integer",
-            lambda sx: sx >= 1,
-            dtype=int
-        )
-
-        size_y = read_tiling_param(
-            "Enter the y step size for region %s (in microns): " % fov['name'],
-            "Error: y step size must be a positive integer",
-            lambda sy: sy >= 1,
-            dtype=int
-        )
-
-        region_params['x_fov_size'].append(size_x)
-        region_params['y_fov_size'].append(size_y)
+        region_params['fov_num_row'].append(num_row)
+        region_params['fov_num_col'].append(num_col)
 
         # allow the user to specify if the FOVs should be randomized
         randomize = read_tiling_param(
@@ -395,38 +393,38 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
     # iterate through each region and append created fovs to fov_regions['fovs']
     for region_index, region_info in enumerate(tiling_params['region_params']):
         # extract start coordinates
-        start_x = region_info['region_start_x']
-        start_y = region_info['region_start_y']
+        start_row = region_info['region_start_row']
+        start_col = region_info['region_start_col']
 
         # define the range of x- and y-coordinates to use
-        x_range = list(range(region_info['fov_num_x']))
-        y_range = list(range(region_info['fov_num_y']))
+        row_range = list(range(region_info['fov_num_row']))
+        col_range = list(range(region_info['fov_num_col']))
 
         # create all pairs between two lists
-        x_y_pairs = generate_x_y_fov_pairs(x_range, y_range)
+        row_col_pairs = generate_x_y_fov_pairs(row_range, col_range)
 
         # name the FOVs according to MIBI conventions
-        fov_names = ['R%dC%d' % (y + 1, x + 1) for x in range(region_info['fov_num_x'])
-                     for y in range(region_info['fov_num_y'])]
+        fov_names = ['R%dC%d' % (y + 1, x + 1) for x in range(region_info['fov_num_row'])
+                     for y in range(region_info['fov_num_col'])]
 
         # randomize pairs list if specified
         if region_info['region_rand'] == 'Y':
             # make sure the fov_names are set in the same shuffled indices for renaming
-            x_y_pairs, fov_names = shuffle(x_y_pairs, fov_names)
+            row_col_pairs, fov_names = shuffle(row_col_pairs, fov_names)
 
         # update total_fovs, we'll prevent moly_counter from triggering the appending of
         # a Moly point at the end of a region this way
-        total_fovs += len(x_y_pairs)
+        total_fovs += len(row_col_pairs)
 
-        for index, (xi, yi) in enumerate(x_y_pairs):
+        for index, (col_i, row_i) in enumerate(row_col_pairs):
             # use the fov size to scale to the current x- and y-coordinate
-            cur_x = start_x + xi * region_info['x_fov_size']
-            cur_y = start_y - yi * region_info['y_fov_size']
+            cur_row = start_row - row_i * region_info['row_fov_size']
+            cur_col = start_col + col_i * region_info['col_fov_size']
 
             # copy the fov metadata over and add cur_x, cur_y, and name
             fov = copy.deepcopy(tiling_params['fovs'][region_index])
-            fov['centerPointMicrons']['x'] = cur_x
-            fov['centerPointMicrons']['y'] = cur_y
+            fov['centerPointMicrons']['x'] = cur_col
+            fov['centerPointMicrons']['y'] = cur_row
             fov['name'] = fov_names[index]
 
             # append value to fov_regions
