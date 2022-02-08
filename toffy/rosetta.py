@@ -213,7 +213,7 @@ def create_tiled_comparison(input_dir_list, output_dir):
                     dir_dict[key].values[i, :, :, j]
 
         io.imsave(os.path.join(output_dir, first_dir.channels.values[j] + '_comparison.tiff'),
-                  tiled_image)
+                  tiled_image, check_contrast=False)
 
 
 def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, source_channel):
@@ -287,7 +287,7 @@ def replace_with_intensity_image(base_dir, channel, replace=True, folders=None):
                         os.path.join(base_dir, folder, fov, channel + suffix))
 
 
-def create_rosetta_matrices(default_matrix, multipliers=[0.5, 1, 1.5], channels=None):
+def create_rosetta_matrices(default_matrix, save_dir, multipliers=[0.5, 1, 1.5], channels=None):
     """Creates a series of compensation matrices for evaluating coefficients
 
     Args:
