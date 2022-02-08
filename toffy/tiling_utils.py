@@ -141,7 +141,7 @@ def read_tiled_region_inputs(region_corners, region_params):
         region_params['region_start_row'].append(fov['centerPointMicrons']['y'])
         region_params['region_start_col'].append(fov['centerPointMicrons']['x'])
 
-        print("Using start coordinates of (%d, %d) for region %s"
+        print("Using start coordinates of (%d, %d) in microns for region %s"
               % (fov['centerPointMicrons']['x'], fov['centerPointMicrons']['y'], fov['name']))
 
         # verify that the micron size specified is valid
@@ -158,14 +158,14 @@ def read_tiled_region_inputs(region_corners, region_params):
 
         # allow the user to specify the number of fovs along each dimension
         num_row = read_tiling_param(
-            "Enter number of FOVs per row for region %s: " % fov['name'],
+            "Enter the number of FOVs per row for region %s: " % fov['name'],
             "Error: number of FOVs per row must be a positive integer",
             lambda nx: nx >= 1,
             dtype=int
         )
 
         num_col = read_tiling_param(
-            "Enter number of FOVs per column for region %s: " % fov['name'],
+            "Enter the number of FOVs per column for region %s: " % fov['name'],
             "Error: number of FOVs per column must be a positive integer",
             lambda ny: ny >= 1,
             dtype=int
