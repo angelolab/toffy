@@ -183,3 +183,44 @@ def test_add_source_channel_to_tiled_image():
         for im_name in tiled_images:
             image = io.imread(os.path.join(output_dir, im_name))
             assert np.array_equal(image[:im_size, :], vals_row)
+
+
+@parametrize('folders', [None, ['run_0']])
+@parametrize('overwrite', [True, False])
+def test_replace_with_intensity_image(overwrite, folders):
+    with tempfile.TemporaryDirectory() as top_level_dir:
+        num_fovs = 2
+        num_chans = 2
+        im_size = 10
+        num_dirs = 3
+
+        for dir in range(num_dirs):
+            # create directory containing raw images
+            run_dir = os.path.join(top_level_dir, 'run_{}'.format(dir))
+            os.makedirs(run_dir)
+
+            fovs, chans = test_utils.gen_fov_chan_names(num_fovs=num_fovs, num_chans=num_chans)
+            chans = [chan + '_intensity' for chan in chans]
+            filelocs, data_xr = test_utils.create_paired_xarray_fovs(
+                run_dir, fovs, chans, img_shape=(im_size, im_size), fills=True,
+                sub_dir='intensities')
+
+        rosetta.replace_with_intensity_image(base_dir=top_level_dir, channel='chan1',
+                                             replace=overwrite, folders=folders)
+
+        # loop through all fovs in all directories to check that correct image was written
+        for dir in range(num_dirs):
+            for fov in range(num_fovs):
+                if folders is not None and dir > 0:
+                    # no image should be copied over for these
+                    files = list_files(os.path.join(top_level_dir, 'run_{}'.format(dir),
+                                                    'fov{}'.format(fov)))
+                    assert len(files) == 0
+                else:
+                    if overwrite:
+                        suffix = '.tiff'
+                    else:
+                        suffix = '_intensity.tiff'
+                    file = os.path.join(top_level_dir, 'run_{}'.format(dir),
+                                        'fov{}'.format(fov), 'chan1' + suffix)
+                    assert os.path.exists(file)

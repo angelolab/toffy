@@ -256,7 +256,8 @@ def replace_with_intensity_image(base_dir, channel, replace=True, folders=None):
         channel (str): the channel whose intensity image will be copied over
         folders (list or None): the subset of folders within base_dir which will have their
             intensity image copied over. If None, applies to all folders
-        replace (bool): controls whether intensity image is copied over with a different name"""
+        replace (bool): controls whether intensity image is copied over with _intensity appended
+            or if it will overwrite existing channel"""
 
     all_folders = list_folders(base_dir)
 
@@ -266,11 +267,12 @@ def replace_with_intensity_image(base_dir, channel, replace=True, folders=None):
         all_folders = folders
 
     # ensure channel is valid
-    test_fov = list_folders(os.path.join(base_dir, folders[0]))[0]
-    test_file = os.path.join(base_dir, folders[0], test_fov, channel + '.tiff')
+    test_fov = list_folders(os.path.join(base_dir, all_folders[0]))[0]
+    test_file = os.path.join(base_dir, all_folders[0], test_fov, 'intensities',
+                             channel + '_intensity.tiff')
     if not os.path.exists(test_file):
         raise ValueError('Could not find specified file {}'.format(test_file))
-    
+
     # loop through each run in directory
     for folder in all_folders:
         fovs = list_folders(os.path.join(base_dir, folder))
@@ -280,7 +282,8 @@ def replace_with_intensity_image(base_dir, channel, replace=True, folders=None):
                 suffix = '.tiff'
             else:
                 suffix = '_intensity.tiff'
-            shutil.copy(os.path.join(base_dir, folder, fov, 'intensity_images', channel + '.tiff'),
+            shutil.copy(os.path.join(base_dir, folder, fov, 'intensities',
+                                     channel + '_intensity.tiff'),
                         os.path.join(base_dir, folder, fov, channel + suffix))
 
 
