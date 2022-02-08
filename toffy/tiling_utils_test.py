@@ -1,7 +1,10 @@
 import copy
+import ipywidgets as widgets
 import json
+import matplotlib.pyplot as plt
 import numpy as np
 import os
+import pandas as pd
 import pytest
 from pytest_cases import parametrize_with_cases
 import random
@@ -236,7 +239,7 @@ def test_generate_x_y_fov_pairs_rhombus(coords, actual_pairs):
 
     # generate the FOV-coordinate pairs
     pairs = tiling_utils.generate_x_y_fov_pairs_rhombus(
-        top_left, top_right, bottom_left, bottom_right, 4, 3
+        top_left, top_right, bottom_left, bottom_right, 3, 4
     )
 
     assert pairs == actual_pairs
@@ -329,7 +332,6 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
             )
 
             # however, fov 2 sorted entries should NOT equal fov 2 random entries
-            # NOTE: due to randomization, this test will fail once in a blue moon
             assert center_points[fov_1_end_pos:] != actual_center_points_sorted[fov_1_end_pos:]
         # if both fovs are randomized
         elif randomize_setting == ['Y', 'Y']:
@@ -341,7 +343,6 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
             )
 
             # however, fov 1 sorted entries should NOT equal fov 1 random entries
-            # NOTE: due to randomization, this test will fail once in a blue moon
             assert center_points[:fov_1_end_pos] != actual_center_points_sorted[:fov_1_end_pos]
 
             # ensure the random center points for fov 2 contain the same elements
@@ -352,7 +353,6 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
             )
 
             # however, fov 2 sorted entries should NOT equal fov 2 random entries
-            # NOTE: due to randomization, this test will fail once in a blue moon
             assert center_points[fov_1_end_pos:] != actual_center_points_sorted[fov_1_end_pos:]
 
 
@@ -364,19 +364,19 @@ def test_validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
 
 @parametrize('extra_coords,extra_names', [param([(1, 2)], ["TheSecondFOV"], marks=value_err),
                                           param([], [])])
-@parametrize('num_x,num_y', [param(2, 3, marks=value_err), param(3, 2, marks=value_err),
-                             param(4, 3)])
+@parametrize('num_row,num_col', [param(2, 3, marks=value_err), param(3, 2, marks=value_err),
+                                 param(3, 4)])
 @parametrize('tma_corners_file', [param('bad_path.json', marks=file_missing_err),
                                   param('sample_tma_corners.json')])
 @parametrize_with_cases('coords, actual_pairs', cases=test_cases.RhombusCoordInputCases)
-def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_x, num_y,
+def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_row, num_col,
                                coords, actual_pairs):
     # extract the coordinates
     top_left, top_right, bottom_left, bottom_right = coords
 
     # generate a sample FOVs list
     # NOTE: extra_coords and extra_names are used to ensure failures
-    # if the TMA spec file has more than 4 FOVS
+    # if the TMA spec file does not have 4 FOVS
     fov_coords = [astuple(top_left), astuple(top_right),
                   astuple(bottom_left), astuple(bottom_right)] + extra_coords
     fov_names = ["TheFirstFOV"] * 4 + extra_names
@@ -396,35 +396,34 @@ def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_
 
         # create the FOV regions
         fov_regions = tiling_utils.generate_tma_fov_list(
-            os.path.join(td, tma_corners_file), num_x, num_y
+            os.path.join(td, tma_corners_file), num_row, num_col
         )
 
         # assert the correct number of fovs were created
-        assert len(fov_regions) == num_x * num_y
+        assert len(fov_regions) == num_row * num_col
 
         # get the list of fov names
         fov_names = list(fov_regions.keys())
 
         # specific tests for the corners: assert they are named correctly
         # NOTE: because of slanting, the coords may not match the originals in sample_fovs_list
-        # we leave test_generate_x_y_fov_pairs_rhombus to test the
-        # correctness of the coord assignment
+        # we leave test_generate_x_y_fov_pairs_rhombus to test the coord assignment
         top_left_fov = fov_names[0]
         assert top_left_fov == 'R1C1'
 
-        top_right_fov = fov_names[num_x * num_y - num_y]
-        assert top_right_fov == 'R1C%d' % num_x
+        top_right_fov = fov_names[num_row * num_col - num_row]
+        assert top_right_fov == 'R1C%d' % num_col
 
-        bottom_left_fov = fov_names[num_y - 1]
-        assert bottom_left_fov == 'R%dC1' % num_y
+        bottom_left_fov = fov_names[num_row - 1]
+        assert bottom_left_fov == 'R%dC1' % num_row
 
-        bottom_right_fov = fov_names[(num_x * num_y) - 1]
-        assert bottom_right_fov == 'R%dC%d' % (num_y, num_x)
+        bottom_right_fov = fov_names[(num_row * num_col) - 1]
+        assert bottom_right_fov == 'R%dC%d' % (num_row, num_col)
 
         # now assert all the FOVs in between are named correctly and in the right order
         for i, fov in enumerate(fov_regions.keys()):
-            row_ind = (i % num_y) + 1
-            col_ind = int(i / num_y) + 1
+            row_ind = (i % num_row) + 1
+            col_ind = int(i / num_row) + 1
 
             assert fov == 'R%dC%d' % (row_ind, col_ind)
 
@@ -441,15 +440,15 @@ def test_assign_closest_fovs():
     # define the coordinates and fov names generated from the fov script
     # note that we intentionally define more auto fovs than manual fovs
     # to test that not all auto fovs necessarily get mapped to
-    auto_coords = [(0, 0), (0, 50), (0, 100), (100, 0), (100, 50), (100, 100),
-                   (150, 100), (150, 150)]
+    auto_coords = [(0, 0), (0, 5000), (0, 10000), (10000, 0), (10000, 5000), (10000, 10000),
+                   (15000, 10000), (15000, 15000)]
     auto_fov_names = ['row%d_col%d' % (x, y) for (x, y) in auto_coords]
 
     # generate the list of automatically-generated fovs
     auto_sample_fovs = dict(zip(auto_fov_names, auto_coords))
 
     # define the coordinates and fov names proposed by the user
-    manual_coords = [(0, 25), (50, 25), (50, 50), (75, 50), (100, 25)]
+    manual_coords = [(0, 2500), (5000, 2500), (5000, 5000), (7500, 5000), (10000, 2500)]
     manual_fov_names = ['row%d_col%d' % (x, y) for (x, y) in manual_coords]
 
     # generate the list of manual fovs
@@ -458,51 +457,34 @@ def test_assign_closest_fovs():
     )
 
     # generate the mapping from manual to automatically-generated
-    manual_to_auto_map, manual_fovs_info, auto_fovs_info = \
+    manual_to_auto_map, manual_auto_dist = \
         tiling_utils.assign_closest_fovs(
             manual_sample_fovs, auto_sample_fovs
         )
 
-    # for each manual fov, ensure the centroids are the same in manual_fovs_info
-    for fov in manual_sample_fovs['fovs']:
-        manual_centroid = tiling_utils.convert_microns_to_pixels(
-            tuple(fov['centerPointMicrons'].values())
-        )
-
-        assert manual_fovs_info[fov['name']] == manual_centroid
-
-    # same for automatically-generated fovs
-    for fov in auto_sample_fovs:
-        auto_centroid = tiling_utils.convert_microns_to_pixels(
-            auto_sample_fovs[fov]
-        )
-
-        assert auto_fovs_info[fov] == auto_centroid
-
-    # assert the mapping is correct, this covers 2 other test cases:
-    # 1. Not all auto fovs (ex. row150_col100 and row150_col150) will be mapped to
+    # assert the mapping is correct, this covers 2 test cases:
+    # 1. Not all auto fovs (ex. row0_col10000, row_10000_col10000) will be mapped to
     # 2. Multiple manual fovs can map to one auto fov (ex. row0_col25 and row50_col25 to row0_col0)
+    # NOTE: if tied (ex. row0_col2500 to row0_col0 or row0_col5000), get the first alphabetically
     actual_map = {
-        'row0_col25': 'row0_col0',
-        'row50_col25': 'row0_col0',
-        'row50_col50': 'row0_col100',
-        'row75_col50': 'row100_col100',
-        'row100_col25': 'row100_col0'
+        'row0_col2500': 'row0_col0',
+        'row5000_col2500': 'row0_col0',
+        'row5000_col5000': 'row0_col5000',
+        'row7500_col5000': 'row10000_col5000',
+        'row10000_col2500': 'row10000_col0'
     }
 
     assert manual_to_auto_map == actual_map
 
+    # define the actual distance table, assert manual_auto_dist returned is correct
+    actual_dist = np.linalg.norm(
+        np.array(manual_coords)[:, np.newaxis] - np.array(auto_coords), axis=2
+    )
+
+    assert np.all(actual_dist == manual_auto_dist.values)
+
 
 def test_generate_fov_circles():
-    # we'll be copying the data generated from test_assign_closest_fovs
-    sample_manual_to_auto_map = {
-        'row0_col25': 'row0_col0',
-        'row50_col25': 'row0_col0',
-        'row50_col50': 'row0_col50',
-        'row75_col50': 'row100_col50',
-        'row100_col25': 'row100_col0'
-    }
-
     sample_manual_fovs_info = {
         'row0_col25': (0, 25),
         'row50_col25': (50, 25),
@@ -525,8 +507,7 @@ def test_generate_fov_circles():
 
     # draw the circles
     sample_slide_img = tiling_utils.generate_fov_circles(
-        sample_manual_to_auto_map, sample_manual_fovs_info,
-        sample_auto_fovs_info, 'row0_col25', 'row0_col0',
+        sample_manual_fovs_info, sample_auto_fovs_info, 'row0_col25', 'row0_col0',
         sample_slide_img, draw_radius=1
     )
 
@@ -549,6 +530,261 @@ def test_generate_fov_circles():
             assert np.all(sample_slide_img[x, y, :] == np.array([50, 115, 229]))
         else:
             assert np.all(sample_slide_img[x, y, :] == np.array([162, 197, 255]))
+
+
+def test_update_mapping_display():
+    manual_to_auto_map = {
+        'row0_col25': 'row10_col10',
+        'row50_col25': 'row10_col10',
+        'row50_col50': 'row40_col10',
+        'row75_col50': 'row40_col40'
+    }
+
+    manual_coords = {
+        'row0_col25': (0, 25),
+        'row50_col25': (50, 25),
+        'row50_col50': (50, 50),
+        'row75_col50': (75, 50),
+    }
+
+    auto_coords = {
+        'row10_col10': (10, 10),
+        'row10_col40': (10, 40),
+        'row40_col10': (40, 10),
+        'row40_col40': (40, 40)
+    }
+
+    # define a sample slide image
+    slide_img = np.zeros((200, 200, 3))
+
+    # test 1: select a new manual FOV that maps to the same auto FOV as the previous one
+    change = {
+        'old': 'row50_col25',
+        'new': 'row0_col25'
+    }
+
+    # draw the old highlighted pair on the slide (first manual, then auto)
+    # assume radius of 1 for all tests
+    slide_img[50, 25, :] = [210, 37, 37]
+    slide_img[10, 10, :] = [50, 115, 229]
+
+    # draw the old non-highlighted pairs on the slide (first manual, then auto)
+    for x, y in zip([0, 50, 75], [25, 50, 50]):
+        slide_img[x, y, :] = [255, 133, 133]
+
+    for x, y in zip([10, 40, 40], [40, 10, 40]):
+        slide_img[x, y, :] = [162, 197, 255]
+
+    # define a dummy automatic FOV scroller
+    w_auto = widgets.Dropdown(
+        options=[afi for afi in sorted(list(auto_coords.keys()))],
+        value=manual_to_auto_map[change['old']]
+    )
+
+    # generate the new slide image
+    new_slide_img = tiling_utils.update_mapping_display(
+        change,
+        w_auto,
+        manual_to_auto_map,
+        manual_coords,
+        auto_coords,
+        slide_img,
+        draw_radius=1
+    )
+
+    # assert w_auto has been set correctly
+    assert w_auto.value == 'row10_col10'
+
+    # assert the new pairs are highlighted correctly (first manual, then auto)
+    assert np.all(new_slide_img[0, 25, :] == [210, 37, 37])
+    assert np.all(new_slide_img[10, 10, :] == [50, 115, 229])
+
+    # assert all the others aren't highlighted (first manual, then auto)
+    for x, y in zip([50, 50, 75], [25, 25, 50]):
+        assert np.all(slide_img[x, y, :] == [255, 133, 133])
+
+    for x, y in zip([10, 40, 40], [40, 10, 40]):
+        assert np.all(slide_img[x, y, :] == [162, 197, 255])
+
+    # test 2: select a new manual FOV that maps to a different auto FOV as the previous one
+    change = {
+        'old': 'row0_col25',
+        'new': 'row50_col50'
+    }
+
+    # generate the new slide image
+    new_slide_img = tiling_utils.update_mapping_display(
+        change,
+        w_auto,
+        manual_to_auto_map,
+        manual_coords,
+        auto_coords,
+        new_slide_img,
+        draw_radius=1
+    )
+
+    # assert w_auto has been set correctly
+    assert w_auto.value == 'row40_col10'
+
+    # assert the new pairs are highlighted correctly (first manual, then auto)
+    assert np.all(new_slide_img[50, 50, :] == [210, 37, 37])
+    assert np.all(new_slide_img[40, 10, :] == [50, 115, 229])
+
+    # assert all the others aren't highlighted (first manual, then auto)
+    for x, y in zip([0, 50, 75], [25, 25, 50]):
+        assert np.all(new_slide_img[x, y, :] == [255, 133, 133])
+
+    for x, y in zip([10, 10, 40], [10, 40, 40]):
+        assert np.all(new_slide_img[x, y, :] == [162, 197, 255])
+
+
+# NOTE: we allow test_generate_validation_annot to run the annotation tests
+# only the mapping update and the visualization updates are tested here
+def test_remap_manual_to_auto_display():
+    manual_to_auto_map = {
+        'row0_col0': 'row3_col3',
+        'row0_col5': 'row3_col3',
+        'row5_col0': 'row6_col3',
+        'row5_col5': 'row6_col6'
+    }
+
+    manual_coords = {
+        'row0_col0': (0, 0),
+        'row0_col5': (0, 5),
+        'row5_col0': (5, 0),
+        'row5_col5': (5, 5)
+    }
+
+    auto_coords = {
+        'row3_col3': (3, 3),
+        'row3_col6': (3, 6),
+        'row6_col3': (6, 3),
+        'row6_col6': (6, 6)
+    }
+
+    manual_auto_dist = np.zeros((4, 4))
+    for i, mc in enumerate(manual_coords.values()):
+        for j, ac in enumerate(auto_coords.values()):
+            manual_auto_dist[i, j] = np.linalg.norm(np.array(mc) - np.array(ac))
+
+    manual_auto_dist = pd.DataFrame(
+        manual_auto_dist,
+        index=list(manual_coords.keys()),
+        columns=list(auto_coords.keys())
+    )
+
+    # define a sample slide image
+    slide_img = np.zeros((200, 200, 3))
+
+    # define a dummy manual FOV scroller
+    w_man = widgets.Dropdown(
+        options=[afi for afi in sorted(list(manual_coords.keys()))],
+        value='row0_col0'
+    )
+
+    # define the old and the new auto FOV to map to
+    change = {
+        'old': 'row3_col3',
+        'new': 'row3_col6'
+    }
+
+    # draw the old highlighted pair on the slide (first manual, then auto)
+    # assume radius of 1 for all tests
+    slide_img[0, 0, :] = [210, 37, 37]
+    slide_img[3, 3, :] = [50, 115, 229]
+
+    # draw the old non-highlighted pairs on the slide (first manual, then auto)
+    for x, y in zip([0, 5, 5], [5, 0, 5]):
+        slide_img[x, y, :] = [255, 133, 133]
+
+    for x, y in zip([3, 6, 6], [6, 3, 6]):
+        slide_img[x, y, :] = [162, 197, 255]
+
+    # generate the new slide image, use default annotation params as we won't be testing that here
+    new_slide_img, _ = tiling_utils.remap_manual_to_auto_display(
+        change,
+        w_man,
+        manual_to_auto_map,
+        manual_auto_dist,
+        auto_coords,
+        slide_img,
+        draw_radius=1
+    )
+
+    # assert the new mapping has been made
+    assert manual_to_auto_map['row0_col0'] == 'row3_col6'
+
+    # assert the new pairs are highlighted correctly (first manual, then auto)
+    assert np.all(new_slide_img[0, 0, :] == [210, 37, 37])
+    assert np.all(new_slide_img[3, 6, :] == [50, 115, 229])
+
+    # assert all the others aren't highlighted (first manual, then auto)
+    for x, y in zip([0, 5, 5], [5, 0, 5]):
+        assert np.all(new_slide_img[x, y, :] == [255, 133, 133])
+
+    for x, y in zip([3, 6, 6], [3, 3, 6]):
+        assert np.all(new_slide_img[x, y, :] == [162, 197, 255])
+
+
+# NOTE: it won't be possible to test the exact datetime the mapping was saved at
+@parametrize('annot', [None, plt.annotate('Mapping saved at', (10, 10))])
+def test_write_manual_to_auto_map(annot):
+    # define the save annotation status
+    save_ann = {'annotation': annot}
+
+    with tempfile.TemporaryDirectory() as td:
+        # write the mapping and update the annotation
+        tiling_utils.write_manual_to_auto_map(
+            test_cases._ANNOT_SAMPLE_MAPPING,
+            save_ann,
+            os.path.join(td, 'sample_mapping.json')
+        )
+
+        # assert the mapping file was saved
+        assert os.path.exists(os.path.join(td, 'sample_mapping.json'))
+
+        # assert the annotation got updated
+        assert save_ann['annotation'] is not None
+
+
+@parametrize_with_cases('manual_to_auto_map, manual_auto_dist, actual_bad_dist_list',
+                        cases=test_cases.MappingDistanceCases)
+def test_find_manual_auto_invalid_dist(manual_to_auto_map, manual_auto_dist, actual_bad_dist_list):
+    generated_bad_dist_list = tiling_utils.find_manual_auto_invalid_dist(
+        manual_to_auto_map, manual_auto_dist, dist_threshold=50
+    )
+
+    assert generated_bad_dist_list == actual_bad_dist_list
+
+
+@parametrize_with_cases('manual_to_auto_map, actual_duplicate_list',
+                        cases=test_cases.MappingDuplicateCases)
+def test_find_duplicate_auto_mappings(manual_to_auto_map, actual_duplicate_list):
+    generated_duplicate_list = tiling_utils.find_duplicate_auto_mappings(manual_to_auto_map)
+
+    assert generated_duplicate_list == actual_duplicate_list
+
+
+@parametrize_with_cases('manual_to_auto_map, actual_mismatch_list',
+                        cases=test_cases.MappingMismatchCases)
+def test_find_manual_auto_name_mismatches(manual_to_auto_map, actual_mismatch_list):
+    generated_mismatch_list = tiling_utils.find_manual_auto_name_mismatches(manual_to_auto_map)
+
+    assert generated_mismatch_list == actual_mismatch_list
+
+
+@parametrize('check_dist', [None, 50])
+@parametrize('check_duplicates', [False, True])
+@parametrize('check_mismatches', [False, True])
+def test_generate_validation_annot(check_dist, check_duplicates, check_mismatches):
+    generated_annot = tiling_utils.generate_validation_annot(
+        test_cases._ANNOT_SAMPLE_MAPPING, test_cases._ANNOT_SAMPLE_DIST,
+        check_dist, check_duplicates, check_mismatches
+    )
+
+    actual_annot = test_cases.generate_sample_annot(check_dist, check_duplicates, check_mismatches)
+
+    assert generated_annot == actual_annot
 
 
 @parametrize('randomize_setting', [False, True])
@@ -629,7 +865,6 @@ def test_remap_and_reorder_fovs(moly_path, randomize_setting, moly_insert, moly_
         )
 
         # enforce order–or not–depending on if randomization is added or not
-        # NOTE: the randomization test fails once in a blue moon due to how randomization works
         if randomize_setting:
             assert scrambled_coords != manual_coords
         else:

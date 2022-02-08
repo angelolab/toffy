@@ -1,5 +1,6 @@
 from copy import deepcopy
 import numpy as np
+import pandas as pd
 import pytest
 
 from toffy.tiling_utils import XYCoord
@@ -300,9 +301,196 @@ class RhombusCoordInputCases:
         return coords, actual_pairs
 
 
-# testing Moly point insertion for remapping
-# NOTE: easier than enumerating these all in a class for moly interval verification
-# this one's long so better here than in directly in decorator
+# testing manual and auto FOVs too far apart validation
+# TODO: make one mapping dict for all of the tests below?
+class MappingDistanceCases:
+    def case_no_bad_dist(self):
+        manual_to_auto_map = {
+            'R0C0': 'R0C0',
+            'R0C1': 'R0C1',
+            'R0C2': 'R0C1',
+            'R1C0': 'R1C0',
+            'R1C1': 'R1C2',
+            'R1C2': 'R1C2'
+        }
+
+        manual_auto_dist = pd.DataFrame(
+            np.vstack([
+                [5.0, 0, 0, 0, 0, 0],
+                [0, 2.0, 0, 0, 0, 0],
+                [0, 49.0, 0, 0, 0, 0],
+                [0, 0, 0, 50.0, 0, 0],   # NOTE: error only if STRICTLY GREATER than dist_threshold
+                [0, 0, 0, 0, 0, 49.99],
+                [0, 0, 0, 0, 0, 35.0]
+            ]),
+            index=list(manual_to_auto_map.keys()),
+            columns=['R0C0', 'R0C1', 'R0C2', 'R1C0', 'R1C1', 'R1C2']
+        )
+
+        bad_dist_list = []
+
+        return manual_to_auto_map, manual_auto_dist, bad_dist_list
+
+    def case_bad_dist(self):
+        manual_to_auto_map = {
+            'R0C0': 'R0C0',
+            'R0C1': 'R0C1',
+            'R0C2': 'R0C1',
+            'R1C0': 'R1C0',
+            'R1C1': 'R1C2',
+            'R1C2': 'R1C2'
+        }
+
+        manual_auto_dist = pd.DataFrame(
+            np.vstack([
+                [5.0, 0, 0, 0, 0, 0],
+                [0, 55.7, 0, 0, 0, 0],
+                [0, 49.0, 0, 0, 0, 0],
+                [0, 0, 0, 50.1, 0, 0],
+                [0, 0, 0, 0, 0, 75.0],
+                [0, 0, 0, 0, 0, 35.0]
+            ]),
+            index=list(manual_to_auto_map.keys()),
+            columns=['R0C0', 'R0C1', 'R0C2', 'R1C0', 'R1C1', 'R1C2']
+        )
+
+        # this list will always be sorted by distance descending
+        bad_dist_list = [('R1C1', 'R1C2', 75.00), ('R0C1', 'R0C1', 55.70), ('R1C0', 'R1C0', 50.10)]
+
+        return manual_to_auto_map, manual_auto_dist, bad_dist_list
+
+
+# testing auto FOVs mapped to by multiple manual FOVs validation
+class MappingDuplicateCases:
+    def case_no_duplicates(self):
+        manual_to_auto_map = {
+            'R0C0': 'R0C0',
+            'R0C1': 'R0C1',
+            'R0C2': 'R0C3',
+            'R1C0': 'R1C0',
+            'R1C1': 'R1C2',
+            'R1C2': 'R1C4'
+        }
+
+        duplicate_list = []
+
+        return manual_to_auto_map, duplicate_list
+
+    def case_at_most_one_duplicate(self):
+        manual_to_auto_map = {
+            'R0C0': 'R0C0',
+            'R0C1': 'R0C1',
+            'R0C2': 'R0C3',
+            'R1C0': 'R0C1',
+            'R1C1': 'R1C2',
+            'R1C2': 'R1C2'
+        }
+
+        duplicate_list = [
+            ('R0C1', ('R0C1', 'R1C0')), ('R1C2', ('R1C1', 'R1C2'))
+        ]
+
+        return manual_to_auto_map, duplicate_list
+
+    def case_more_than_one_duplicate(self):
+        manual_to_auto_map = {
+            'R0C0': 'R0C1',
+            'R0C1': 'R0C1',
+            'R0C2': 'R0C3',
+            'R1C0': 'R0C1',
+            'R1C1': 'R1C2',
+            'R1C2': 'R1C2'
+        }
+
+        duplicate_list = [
+            ('R0C1', ('R0C0', 'R0C1', 'R1C0')), ('R1C2', ('R1C1', 'R1C2'))
+        ]
+
+        return manual_to_auto_map, duplicate_list
+
+
+# testing manual-auto FOV name mismatch validation
+class MappingMismatchCases:
+    def case_no_mismatches(self):
+        manual_to_auto_map = {
+            'R0C0': 'R0C0',
+            'R0C1': 'R0C1',
+            'R1C0': 'R1C0',
+            'R1C1': 'R1C1'
+        }
+
+        mismatch_list = []
+
+        return manual_to_auto_map, mismatch_list
+
+    def case_mismatches(self):
+        manual_to_auto_map = {
+            'R0C0': 'R0C0',
+            'R0C1': 'R0C2',
+            'R1C0': 'R1C1',
+            'R1C1': 'R1C1'
+        }
+
+        mismatch_list = [('R0C1', 'R0C2'), ('R1C0', 'R1C1')]
+
+        return manual_to_auto_map, mismatch_list
+
+
+_ANNOT_SAMPLE_MAPPING = {
+    'R0C0': 'R0C0',
+    'R0C1': 'R0C1',
+    'R0C2': 'R1C0',
+    'R1C0': 'R1C0',
+    'R1C1': 'R0C2',
+    'R1C2': 'R0C2'
+}
+
+_ANNOT_SAMPLE_DIST = pd.DataFrame(
+    np.vstack([
+        [1.5, 0, 0, 0, 0, 0],  # no errors
+        [0, 60.0, 0, 0, 0, 0],   # just a distance error
+        [0, 0, 0, 49.0, 0, 0],   # just a name mismatch error
+        [0, 0, 0, 5.0, 0, 0],   # since it's the 2nd FOV mapped to R1C0, throws a duplicate error
+        [0, 0, 100.0, 0, 0, 0],  # distance error and name mismatch error
+        [0, 0, 87.5, 0, 0, 0]   # generates all 3 errors
+    ]),
+    index=list(_ANNOT_SAMPLE_MAPPING.keys()),
+    columns=['R0C0', 'R0C1', 'R0C2', 'R1C0', 'R1C1', 'R1C2']
+)
+
+
+# a helper function to generate the sample annotation needed for _ANNOT_SAMPLE_MAPPING
+# NOTE: based on distance values in _ANNOT_SAMPLE_DIST
+def generate_sample_annot(check_dist, check_duplicates, check_mismatches):
+    annot = ""
+
+    if check_dist is not None:
+        annot += \
+            "The following mappings are placed more than %d microns apart:\n\n" % check_dist
+        annot += "User-defined FOV R1C1 to TMA-grid FOV R0C2 (distance: 100.00)\n"
+        annot += "User-defined FOV R1C2 to TMA-grid FOV R0C2 (distance: 87.50)\n"
+        annot += "User-defined FOV R0C1 to TMA-grid FOV R0C1 (distance: 60.00)"
+        annot += "\n\n"
+
+    if check_duplicates:
+        annot += \
+            "The following TMA-grid FOVs have more than one user-defined FOV mapping to it:\n\n"
+        annot += "TMA-grid FOV R0C2: mapped with user-defined FOVs R1C1, R1C2\n"
+        annot += "TMA-grid FOV R1C0: mapped with user-defined FOVs R0C2, R1C0"
+        annot += "\n\n"
+
+    if check_mismatches:
+        annot += \
+            "The following mappings have mismatched names:\n\n"
+        annot += "User-defined FOV R0C2: mapped with TMA-grid FOV R1C0\n"
+        annot += "User-defined FOV R1C1: mapped with TMA-grid FOV R0C2\n"
+        annot += "User-defined FOV R1C2: mapped with TMA-grid FOV R0C2"
+        annot += "\n\n"
+
+    return annot
+
+
+# testing Moly point insertion for remapping, this one's long so don't put directly in decorator
 _REMAP_MOLY_INTERVAL_CASES = [
     param(True, 2.5, marks=value_err),
     param(True, 0, marks=value_err),
