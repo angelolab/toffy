@@ -262,12 +262,12 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
     )
 
     sample_region_inputs = {
-        'region_start_x': [0, 50],
-        'region_start_y': [100, 150],
-        'fov_num_x': [2, 4],
-        'fov_num_y': [4, 2],
-        'x_fov_size': [5, 10],
-        'y_fov_size': [5, 10],
+        'region_start_row': [100, 150],
+        'region_start_col': [0, 50],
+        'fov_num_row': [2, 4],
+        'fov_num_col': [4, 2],
+        'row_fov_size': [5, 10],
+        'col_fov_size': [5, 10],
         'region_rand': ['N', 'N']
     }
 

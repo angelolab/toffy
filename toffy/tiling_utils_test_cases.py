@@ -13,19 +13,20 @@ xfail = pytest.mark.xfail
 value_err = [xfail(raises=ValueError, strict=True)]
 
 
-# this function assumes that FOV 2's corresponding values are linearly spaced from
-# TODO: do test functions need a docstring?
-def generate_tiled_region_params(start_x_fov_1=50, start_y_fov_1=150, num_x_fov_1=2, num_y_fov_1=4,
-                                 x_size_fov_1=1, y_size_fov_1=2, num_fovs=2):
+# this function assumes that FOV 2's corresponding values are linearly spaced from FOV 1's
+# NOTE: x and y correspond to column and row index respectively as specified in the JSON spec file
+def generate_tiled_region_params(start_x_fov_1=50, start_y_fov_1=150,
+                                 num_row_fov_1=4, num_col_fov_1=2,
+                                 row_size_fov_1=2, col_size_fov_1=1, num_fovs=2):
     # define this dictionary for testing purposes to ensure that function calls
     # equal what would be placed in param_set_values
     base_param_values = {
-        'region_start_x': start_x_fov_1,
-        'region_start_y': start_y_fov_1,
-        'fov_num_x': num_x_fov_1,
-        'fov_num_y': num_y_fov_1,
-        'x_fov_size': x_size_fov_1,
-        'y_fov_size': y_size_fov_1
+        'region_start_row': start_y_fov_1,
+        'region_start_col': start_x_fov_1,
+        'fov_num_row': num_row_fov_1,
+        'fov_num_col': num_col_fov_1,
+        'row_fov_size': row_size_fov_1,
+        'col_fov_size': col_size_fov_1
     }
 
     # define the values for each param that should be contained for each FOV
@@ -47,12 +48,12 @@ def generate_tiled_region_params(start_x_fov_1=50, start_y_fov_1=150, num_x_fov_
 # a helper function for generating params specific to each FOV for TiledRegionReadCases
 # NOTE: the param moly_region applies across all FOVs, so it's not set here
 def generate_tiled_region_cases(fov_coord_list, fov_name_list, fov_sizes,
-                                user_input_type='none', num_x_fov_1=2, num_y_fov_1=4,
+                                user_input_type='none', num_row_fov_1=4, num_col_fov_1=2,
                                 random_fov_1='n', random_fov_2='Y'):
     # define the base value for each parameter to use for testing
     # as well as the full set of parameters for each FOV
     base_param_values, full_param_set = generate_tiled_region_params(
-        fov_coord_list[0][0], fov_coord_list[0][1], num_x_fov_1, num_y_fov_1,
+        fov_coord_list[0][0], fov_coord_list[0][1], num_row_fov_1, num_col_fov_1,
         fov_sizes[0], fov_sizes[0], len(fov_coord_list)
     )
 
@@ -60,8 +61,8 @@ def generate_tiled_region_cases(fov_coord_list, fov_name_list, fov_sizes,
 
     # define the list of user inputs to pass into the input functions for tiled regions
     user_inputs = [
-        num_x_fov_1, num_y_fov_1, random_fov_1,
-        num_x_fov_1 * 2, num_y_fov_1 * 2, random_fov_2
+        num_row_fov_1, num_col_fov_1, random_fov_1,
+        num_row_fov_1 * 2, num_col_fov_1 * 2, random_fov_2
     ]
 
     # insert some bad inputs for the desire test type
