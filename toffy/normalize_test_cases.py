@@ -30,12 +30,12 @@ class TuningCurveFiles:
                 fovs.extend(np.repeat(i, len(masses)))
 
             # create dfs from current directory
-            mph_df = pd.DataFrame({'masses': np.tile(masses, num_fovs),
-                                   'fovs': fovs, 'mph': mph_vals})
+            mph_df = pd.DataFrame({'mass': np.tile(masses, num_fovs),
+                                   'fov': fovs, 'pulse_height': mph_vals})
 
             # count_df has fields in different order to check that matching is working
-            count_df = pd.DataFrame({'masses': np.tile(masses, num_fovs),
-                                     'channel_counts': channel_counts, 'fovs': fovs})
+            count_df = pd.DataFrame({'mass': np.tile(masses, num_fovs),
+                                     'channel_count': channel_counts, 'fov': fovs})
 
             mph_dfs.append(mph_df)
             count_dfs.append(count_df)

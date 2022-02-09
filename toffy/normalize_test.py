@@ -107,27 +107,27 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
             full_path = os.path.join(temp_dir, dir_names[i])
             os.makedirs(full_path)
             mph_dfs[i].to_csv(os.path.join(full_path, 'pulse_heights_combined.csv'), index=False)
-            all_mph.extend(mph_dfs[i]['mph'])
+            all_mph.extend(mph_dfs[i]['pulse_height'])
 
             count_dfs[i].to_csv(os.path.join(full_path, 'channel_counts_combined.csv'),
                                 index=False)
-            all_counts.extend(count_dfs[i]['channel_counts'])
+            all_counts.extend(count_dfs[i]['channel_count'])
 
             dir_paths.append(os.path.join(temp_dir, dir_names[i]))
 
         combined = normalize.combine_tuning_curve_metrics(dir_paths)
 
         # data may be in a different order due to matching dfs, but all values should be present
-        assert set(all_mph) == set(combined['mph'])
-        assert set(all_counts) == set(combined['channel_counts'])
+        assert set(all_mph) == set(combined['pulse_height'])
+        assert set(all_counts) == set(combined['channel_count'])
         saved_dir_names = [name.split('/')[-1] for name in np.unique(combined['directory'])]
         assert set(saved_dir_names) == set(dir_names)
 
         # check that normalized value is 1 for maximum in each channel
-        for mass in np.unique(combined['masses']):
-            subset = combined.loc[combined['masses'] == mass, :]
-            max = np.max(subset[['channel_counts']].values)
-            norm_vals = subset.loc[subset['channel_counts'] == max, 'norm_channel_counts'].values
+        for mass in np.unique(combined['mass']):
+            subset = combined.loc[combined['mass'] == mass, :]
+            max = np.max(subset[['channel_count']].values)
+            norm_vals = subset.loc[subset['channel_count'] == max, 'norm_channel_count'].values
             assert np.all(norm_vals == 1)
 
 
@@ -154,7 +154,7 @@ def test_normalize_image_data():
             json.dump(func_json, fp)
 
         masses = np.array(range(1, len(chans) + 1))
-        panel_info_file = pd.DataFrame({'masses': masses, 'targets': chans})
+        panel_info_file = pd.DataFrame({'Mass': masses, 'Target': chans})
 
         # fov1 mass to mph function: line with 20% slope starting at 1.2
         mph_0 = masses * 0.2 + 1
@@ -164,9 +164,9 @@ def test_normalize_image_data():
         mph_1 = masses * .1 + 4
         fov_1 = ['fov1'] * len(chans)
 
-        pulse_heights = pd.DataFrame({'masses': np.concatenate([masses, masses]),
+        pulse_heights = pd.DataFrame({'mass': np.concatenate([masses, masses]),
                                      'fov': fov_0 + fov_1,
-                                      'mphs': np.concatenate([mph_0, mph_1])})
+                                      'pulse_height': np.concatenate([mph_0, mph_1])})
 
         normalize.normalize_image_data(data_dir, output_dir, fovs=None,
                                        pulse_heights=pulse_heights, panel_info=panel_info_file,

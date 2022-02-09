@@ -168,7 +168,7 @@ def combine_tuning_curve_metrics(dir_list):
         # combine tables together
         pulse_heights = pd.read_csv(os.path.join(dir, 'pulse_heights_combined.csv'))
         channel_counts = pd.read_csv(os.path.join(dir, 'channel_counts_combined.csv'))
-        combined = pulse_heights.merge(channel_counts, 'outer', on=['fovs', 'masses'])
+        combined = pulse_heights.merge(channel_counts, 'outer', on=['fov', 'mass'])
 
         if len(combined) != len(pulse_heights):
             raise ValueError("Pulse heights and channel counts must be generated for the same "
@@ -184,8 +184,8 @@ def combine_tuning_curve_metrics(dir_list):
     all_data.reset_index()
 
     # create normalized counts column
-    subset = all_data[['channel_counts', 'masses']]
-    all_data['norm_channel_counts'] = subset.groupby('masses').transform(lambda x: (x / x.max()))
+    subset = all_data[['channel_count', 'mass']]
+    all_data['norm_channel_count'] = subset.groupby('mass').transform(lambda x: (x / x.max()))
 
     return all_data
 
@@ -215,7 +215,7 @@ def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info,
 
     norm_weights, norm_name = norm_json['weights'], norm_json['name']
 
-    channels = panel_info['targets'].values
+    channels = panel_info['Target'].values
 
     # instantiate function which translates pulse height to a normalization constant
     norm_func = create_prediction_function(norm_name, norm_weights)
@@ -230,13 +230,13 @@ def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info,
         fov_pulse_heights = pulse_heights.loc[pulse_heights['fov'] == fov, :]
 
         # fit a function to model pulse height as a function of mass
-        mph_weights = fit_calibration_curve(x_vals=fov_pulse_heights['masses'].values,
-                                            y_vals=fov_pulse_heights['mphs'].values,
+        mph_weights = fit_calibration_curve(x_vals=fov_pulse_heights['mass'].values,
+                                            y_vals=fov_pulse_heights['pulse_height'].values,
                                             obj_func=mph_func_type)
 
         # predict mph for each mass in the panel
         mph_func = create_prediction_function(name=mph_func_type, weights=mph_weights)
-        mph_vals = mph_func(panel_info['masses'].values)
+        mph_vals = mph_func(panel_info['Mass'].values)
 
         # predict normalization for each mph in the panel
         norm_vals = norm_func(mph_vals)
