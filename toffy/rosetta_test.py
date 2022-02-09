@@ -217,3 +217,9 @@ def test_replace_with_intensity_image(overwrite, folders):
                     file = os.path.join(top_level_dir, 'run_{}'.format(dir),
                                         'fov{}'.format(fov), 'chan1' + suffix)
                     assert os.path.exists(file)
+
+
+def test_create_rosetta_matrices():
+    # TODO: add test functionality for create_rosetta_matrices
+    # make sure every control flow statement and potential sources of error are tested against
+    # ex. bad file path specified, negative number specified for value requiring positive number
