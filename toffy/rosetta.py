@@ -72,7 +72,7 @@ def compensate_matrix_simple(raw_inputs, comp_coeffs):
     return outputs
 
 
-def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info_path,
+def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info,
                           save_format='normalized', batch_size=10, gaus_rad=1, norm_const=100):
     """Function to compensate MIBI data with a flow-cytometry style compensation matrix
 
@@ -80,7 +80,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         raw_data_dir: path to directory containing raw images
         comp_data_dir: path to directory where compensated images will be saved
         comp_mat_path: path to compensation matrix, nxn with channel labels
-        panel_info_path: path to panel info file with 'masses' and 'targets' as columns
+        panel_info: array with information about the panel
         save_format: flag to control how the processed tifs are saved. Must be one of:
             'raw': Direct output from the compensation matrix corresponding to number of ion events
                 detected per pixel. These will not be viewable in many image processing programs
@@ -100,7 +100,6 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
 
     # load csv files
     comp_mat = pd.read_csv(comp_mat_path, index_col=0)
-    panel_info = pd.read_csv(panel_info_path)
     acquired_masses = panel_info['Mass'].values
     acquired_targets = panel_info['Target'].values
     all_masses = comp_mat.columns.values.astype('int')
@@ -117,6 +116,11 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                                     channels=acquired_targets, dtype='float32')
 
     verify_same_elements(image_files=test_data.channels.values, listed_channels=acquired_targets)
+
+    # make sure compensation matrix has valid values
+    if comp_mat.isna().values.any():
+        raise ValueError('Compensation matrix must contain a value for every field; check to '
+                         'make sure there are no missing values')
 
     # check for valid save_formats
     allowed_formats = ['raw', 'normalized', 'both']

@@ -97,7 +97,7 @@ def test_compensate_image_data(gaus_rad, save_format, panel_info, comp_mat):
             # check that all files were created
             output_files = list_files(os.path.join(output_dir, fovs[0], folder), '.tif')
             output_files = [chan.split('.tif')[0] for chan in output_files]
-            assert set(output_files) == set(panel_info['targets'].values)
+            assert set(output_files) == set(panel_info['Target'].values)
 
             output_data = load_imgs_from_tree(data_dir=output_dir, img_sub_folder=folder)
             assert np.issubdtype(output_data.dtype, np.floating)
@@ -126,7 +126,7 @@ def test_create_tiled_comparison(dir_num):
 
             fovs, chans = test_utils.gen_fov_chan_names(num_fovs=num_fovs, num_chans=num_chans)
             filelocs, data_xr = test_utils.create_paired_xarray_fovs(
-                full_path, fovs, chans, img_shape=(10, 10), fills=True)
+                full_path, fovs, chans, img_shape=(10, 10), fills=True, sub_dir='normalized')
 
         # pass full paths to function
         paths = [os.path.join(top_level_dir, img_dir) for img_dir in dir_names]
@@ -142,7 +142,8 @@ def test_create_tiled_comparison(dir_num):
 
         # check that directories with different images raises error
         for i in range(num_fovs):
-            os.remove(os.path.join(top_level_dir, dir_names[0], 'fov{}'.format(i), 'chan0.tiff'))
+            os.remove(os.path.join(top_level_dir, dir_names[0], 'fov{}'.format(i),
+                                   'normalized/chan0.tiff'))
         with pytest.raises(ValueError):
             rosetta.create_tiled_comparison(paths, output_dir)
 
@@ -173,16 +174,12 @@ def test_add_source_channel_to_tiled_image():
         os.makedirs(output_dir)
         rosetta.add_source_channel_to_tiled_image(raw_img_dir=raw_dir, tiled_img_dir=tiled_dir,
                                                   output_dir=output_dir, source_channel='chan1')
-        # get vals of row that was added to top
-        vals = data_xr.loc[:, :, :, 'chan1'].values
-        vals_list = [vals[i, ...] for i in range(vals.shape[0])]
-        vals_row = np.concatenate(vals_list, axis=1)
 
-        # top portion of each image should be the same
+        # each image should now have an extra row added on top
         tiled_images = list_files(output_dir)
         for im_name in tiled_images:
             image = io.imread(os.path.join(output_dir, im_name))
-            assert np.array_equal(image[:im_size, :], vals_row)
+            assert image.shape == (tiled_shape[0] + im_size, tiled_shape[1])
 
 
 @parametrize('folders', [None, ['run_0']])

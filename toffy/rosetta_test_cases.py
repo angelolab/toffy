@@ -16,7 +16,7 @@ class CompensateImageDataPanel:
 
     def case_sorted_panel(self):
         # masses are sorted in numerical order, as expected
-        d = {'masses': test_mass_list, 'targets': test_chans_list}
+        d = {'Mass': test_mass_list, 'Target': test_chans_list}
         panel_info = pd.DataFrame(d)
         return panel_info
 
@@ -25,7 +25,7 @@ class CompensateImageDataPanel:
         # masses are not sorted
         masses = ['25', '101', '50']
 
-        d = {'masses': masses, 'targets': test_chans_list}
+        d = {'Mass': masses, 'Target': test_chans_list}
         panel_info = pd.DataFrame(d)
         return panel_info
 
