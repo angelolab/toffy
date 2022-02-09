@@ -309,18 +309,53 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers=[0.5, 1, 1.5],
             to get new coefficients
         channels (list | None): an optional list of channels to include in the multiplication. If
             only a subset of channels are specified, other channels will retain their values
-            in all iterations. If None, all channels are included"""
-
-    # TODO: Cameron will make this function
+            in all iterations. If None, all channels are included
+    """
 
     # step 1: read in the default matrix
+    comp_matrix = pd.read_csv(default_matrix)  # pandas DataFrame
+    comp_channels = (comp_matrix.iloc[:, 0].values).tolist()  # channels
+    matrix_rows = len(comp_matrix)
+    matrix_columns = len(comp_matrix.iloc[0])
+    column_features = list(comp_matrix.columns.values)
 
-    # step 2: figure out which channels will be modified
+    # step 2: figure out which channels will be modified (rows)
+    if channels is None:
+        channels = comp_channels
 
-    # step 3: loop over each of the multipliers
+    for i in channels:
+        if i not in comp_channels:
+            raise ValueError('Specified channel does not exist')
 
+    # step 3: loop over each of the multipliers (anything the user inputs, make an output matrix)
     # step 4: modify the appropriate channels based on mulitiplier
-
     # step 5: save the modified matrix as original_name_multiplier
+    for i in multipliers:  # returns each comp_matrix value
+        zero_matrix = np.zeros(shape=(matrix_rows, matrix_columns))
+        modified_matrix = pd.DataFrame(zero_matrix, columns=column_features)
+        for j in range(matrix_rows):
+            for k in channels:
+                if k in comp_channels:
+                    channel_index = comp_channels.index(k)
+                    modified_matrix.iloc[channel_index, 1:] = comp_matrix.iloc[channel_index, 1:] * i
+            modified_matrix.iloc[j, :] = comp_matrix.iloc[j, :]
+        df = pd.DataFrame(modified_matrix)
+        # df.to_csv(r'/Users/cameron/PycharmProjects/RosettaBetty/RosettaTitration_%s.csv' % (str(i)))
+        df.to_csv(output_directory+'/Rosetta_Titration%s.csv' % (str(i)))
+        # TODO fix bug where df.to_csv adds column of row indexes
 
-    pass
+
+"""
+def test_create_rosetta_matrices():
+    # step 1: create rosetta matrix
+    random_matrix = np.random.randint(47,48)
+    # step 2: save as csv
+    df2 = pd.DataFrame(random_matrix)
+    df2.to_csv(r'/Users/cameron/PycharmProjects/RosettaBetty/Random_matrix.csv')
+
+    # run create_rosetta_matrices using template matrix
+
+    create_rosetta_matrices('Random_matrix.csv', r'/Users/cameron/PycharmProjects/RosettaBetty', [0.5])
+
+    # check that output is correct
+"""
