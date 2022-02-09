@@ -7,7 +7,7 @@ import pytest
 xfail = pytest.mark.xfail
 
 # defaults for creating test data
-test_mass_list = ['25', '50', '101']
+test_mass_list = [25, 50, 101]
 test_chans_list = ['chan0', 'chan1', 'chan2']
 
 
@@ -23,7 +23,7 @@ class CompensateImageDataPanel:
     @xfail(raises=ValueError, strict=True)
     def case_unsorted_panel(self):
         # masses are not sorted
-        masses = ['25', '101', '50']
+        masses = [25, 101, 50]
 
         d = {'Mass': masses, 'Target': test_chans_list}
         panel_info = pd.DataFrame(d)
@@ -43,6 +43,6 @@ class CompensateImageDataMat:
     def case_non_matching_channels(self):
         # include different masses from panel_info
         comp_mat_vals = np.random.rand(len(test_mass_list), len(test_mass_list)) / 100
-        different_masses = ['25', '50', '102']
+        different_masses = [25, 50, 102]
         comp_mat = pd.DataFrame(comp_mat_vals, columns=different_masses, index=different_masses)
         return comp_mat

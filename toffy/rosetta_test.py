@@ -72,16 +72,12 @@ def test_compensate_image_data(gaus_rad, save_format, panel_info, comp_mat):
         filelocs, data_xr = test_utils.create_paired_xarray_fovs(
             data_dir, fovs, chans, img_shape=(10, 10), fills=True)
 
-        # create panel info csv
-        panel_info_path = os.path.join(data_dir, 'panel_info.csv')
-        panel_info.to_csv(panel_info_path, index=False)
-
         # create compensation matrix
         comp_mat_path = os.path.join(data_dir, 'comp_mat.csv')
         comp_mat.to_csv(comp_mat_path)
 
         # call function
-        rosetta.compensate_image_data(data_dir, output_dir, comp_mat_path, panel_info_path,
+        rosetta.compensate_image_data(data_dir, output_dir, comp_mat_path, panel_info,
                                       save_format, gaus_rad=gaus_rad)
 
         # all folders created

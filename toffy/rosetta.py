@@ -92,7 +92,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         norm_const: constant used for normalization if save_format == 'normalized'
     """
 
-    validate_paths([raw_data_dir, comp_data_dir, comp_mat_path, panel_info_path],
+    validate_paths([raw_data_dir, comp_data_dir, comp_mat_path],
                    data_prefix=False)
 
     # get list of all fovs
