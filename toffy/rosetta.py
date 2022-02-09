@@ -101,8 +101,8 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
     # load csv files
     comp_mat = pd.read_csv(comp_mat_path, index_col=0)
     panel_info = pd.read_csv(panel_info_path)
-    acquired_masses = panel_info['masses'].values
-    acquired_targets = panel_info['targets'].values
+    acquired_masses = panel_info['Mass'].values
+    acquired_targets = panel_info['Target'].values
     all_masses = comp_mat.columns.values.astype('int')
 
     # make sure panel is in increasing order
@@ -174,7 +174,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                     io.imsave(save_path, comp_data[j, :, :, k], check_contrast=False)
 
 
-def create_tiled_comparison(input_dir_list, output_dir):
+def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='normalized'):
     """Creates a tiled image comparing FOVs from all supplied runs for each channel.
 
     Args:
@@ -185,7 +185,7 @@ def create_tiled_comparison(input_dir_list, output_dir):
     dir_dict = {}
     dir_shapes = []
     for dir_name in input_dir_list:
-        dir_images = load_imgs_from_tree(dir_name)
+        dir_images = load_imgs_from_tree(dir_name, img_sub_folder=img_sub_folder)
         dir_shapes.append(dir_images.shape)
         dir_dict[dir_name] = dir_images
 
@@ -226,11 +226,13 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
         source_channel (str): the channel which will be prepended to the tiled images"""
 
     # load source images
-    source_imgs = load_imgs_from_tree(raw_img_dir, channels=[source_channel])
+    source_imgs = load_imgs_from_tree(raw_img_dir, channels=[source_channel],
+                                      dtype='float32')
 
     # convert stacked images to concatenated row
     source_list = [source_imgs.values[fov, :, :, 0] for fov in range(source_imgs.shape[0])]
     source_row = np.concatenate(source_list, axis=1)
+    perc_98_source = np.percentile(source_row, 98)
 
     # confirm tiled images have expected shape
     tiled_images = list_files(tiled_img_dir)
@@ -243,9 +245,16 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
     # loop through each tiled image, prepend source row, and save
     for tile_name in tiled_images:
         current_tile = io.imread(os.path.join(tiled_img_dir, tile_name))
-        combined_tile = np.concatenate([source_row, current_tile])
+
+        # normalize the source row to be in the same range as the current tile
+        perc_98 = np.percentile(current_tile, 98)
+        perc_ratio = perc_98_source / perc_98
+        normalized_source = source_row / perc_ratio
+
+        # combine together and save
+        combined_tile = np.concatenate([normalized_source, current_tile])
         save_name = tile_name.split('.tiff')[0] + '_source_' + source_channel + '.tiff'
-        io.imsave(os.path.join(output_dir, save_name), combined_tile)
+        io.imsave(os.path.join(output_dir, save_name), combined_tile, check_contrast=False)
 
 
 def replace_with_intensity_image(base_dir, channel, replace=True, folders=None):
