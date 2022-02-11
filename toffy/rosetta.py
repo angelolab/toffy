@@ -359,5 +359,3 @@ def test_create_rosetta_matrices():
     # step 4: check that output is correct
     test = pd.read_csv('Rosetta_Titration2.csv', index_col=0)  # pandas DataFrame
     out = test/random_matrix
-    print(out)
-
