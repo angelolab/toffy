@@ -343,19 +343,3 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers=[0.5, 1, 1.5],
         df.to_csv(save_dir+'/Rosetta_Titration%s.csv' % (str(i)))
 
 
-def test_create_rosetta_matrices():
-    # step 1: create rosetta matrix
-    random_matrix = np.random.randint(1, 100, size =[47,47])
-
-    # step 2: save as csv
-    df2 = pd.DataFrame(random_matrix)
-    df2.to_csv(r'/Users/cameron/PycharmProjects/RosettaBetty/Random_matrix.csv')
-    #test_matrix = pd.DataFrame(random_matrix[0:])
-
-
-    # step 3: run create_rosetta_matrices using template matrix
-    create_rosetta_matrices('Random_matrix.csv', r'/Users/cameron/PycharmProjects/RosettaBetty', [2])
-
-    # step 4: check that output is correct
-    test = pd.read_csv('Rosetta_Titration2.csv', index_col=0)  # pandas DataFrame
-    out = test/random_matrix
