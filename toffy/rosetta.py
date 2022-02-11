@@ -301,7 +301,7 @@ def replace_with_intensity_image(base_dir, channel, replace=True, folders=None):
 
 
 def create_rosetta_matrices(default_matrix, save_dir, multipliers=[0.5, 1, 1.5], channels=None):
-        """Creates a series of compensation matrices for evaluating coefficients
+    """Creates a series of compensation matrices for evaluating coefficients
     Args:
         default_matrix (str): path to the rosetta matrix to use as the default
         multipliers (list): the range of values to multiply the default matrix by
@@ -337,9 +337,10 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers=[0.5, 1, 1.5],
             for k in channels:
                 if k in comp_channels:
                     channel_index = comp_channels.index(k)
-                    modified_matrix.iloc[channel_index,0:] = comp_matrix.iloc[channel_index,0:] * i
-            modified_matrix.iloc[j,0:] = comp_matrix.iloc[j,0:]
+                    modified_matrix.iloc[channel_index,:] = comp_matrix.iloc[channel_index,:] * i
+            modified_matrix.iloc[j,:] = comp_matrix.iloc[j,:] * 0
         df = pd.DataFrame(modified_matrix)
         df.to_csv(save_dir+'/Rosetta_Titration%s.csv' % (str(i)))
+
 
 
