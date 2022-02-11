@@ -219,11 +219,7 @@ def test_replace_with_intensity_image(overwrite, folders):
                     assert os.path.exists(file)
 
 
-def test_create_rosetta_matrices():
-    # TODO: add test functionality for create_rosetta_matrices
-    # make sure every control flow statement and potential sources of error are tested against
-    # ex. bad file path specified, negative number specified for value requiring positive number
-    def test_create_rosetta_matrices():
+def test_create_rosetta_matrices(multipliers):
     # step 1: create rosetta matrix
     random_matrix = np.random.randint(1, 100, size =[47,47])
 
@@ -239,3 +235,9 @@ def test_create_rosetta_matrices():
     # step 4: check that output is correct
     test = pd.read_csv('Rosetta_Titration2.csv', index_col=0)  # pandas DataFrame
     out = test/random_matrix
+    matrix_rows = len(out)
+    matrix_columns = len(out.iloc[0])
+    for i in range(matrix_rows-1):
+        for j in range(matrix_columns):
+            assert out.iloc[i, j] == multipliers
+
