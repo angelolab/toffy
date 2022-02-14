@@ -334,13 +334,11 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers=[0.5, 1, 1.5],
         zero_matrix = np.zeros(shape=(matrix_rows+1, matrix_columns))
         modified_matrix = pd.DataFrame(zero_matrix[1:], index = row_labels, columns=column_features)
         for j in range(matrix_rows):
-            for k in channels:
-                if k in comp_channels:
-                    channel_index = comp_channels.index(k)
-                    modified_matrix.iloc[channel_index,:] = comp_matrix.iloc[channel_index,:] * i
-            modified_matrix.iloc[j,:] = comp_matrix.iloc[j,:] * 0
+            if comp_channels[j] in channels:
+                modified_matrix.iloc[j, :] = comp_matrix.iloc[j, :] * i
+            else:
+                modified_matrix.iloc[j, :] = comp_matrix.iloc[j, :]
         df = pd.DataFrame(modified_matrix)
         df.to_csv(save_dir+'/Rosetta_Titration%s.csv' % (str(i)))
-
 
 
