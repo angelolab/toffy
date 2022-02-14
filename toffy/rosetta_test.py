@@ -220,7 +220,7 @@ def test_replace_with_intensity_image(overwrite, folders):
 
 
 def test_create_rosetta_matrices(multipliers):
-        # step 1: create rosetta matrix
+    # step 1: create rosetta matrix
     # step 2: save as csv
     with tempfile.TemporaryDirectory() as temp_dir:
         # Pulling in channel names
@@ -230,35 +230,37 @@ def test_create_rosetta_matrices(multipliers):
 
         # Creating random matrix to test
         rand_np_matrix = np.random.randint(1, 50, size=[47, 47])
-        random_matrix = pd.DataFrame(rand_np_matrix, index = test_channels, columns = test_channels)
+        random_matrix = pd.DataFrame(rand_np_matrix, index=test_channels, columns=test_channels)
         output_path = os.path.join(temp_dir, 'Random_matrix.csv')
         random_matrix.to_csv(output_path)
 
         # Checking channels = None
         multipliers = [3]
         create_rosetta_matrices(output_path, temp_dir, multipliers)
-        rosetta_str = 'Rosetta_Titration%s.csv' % (str(multipliers[0]))
-        rosetta_path = os.path.join(temp_dir, rosetta_str)
-        test_matrix = pd.read_csv(rosetta_path, index_col=0).astype(int) # pandas DataFrame
-        validation = (test_matrix/multipliers[0])
 
+        rosetta_path = os.path.join(temp_dir, 'Rosetta_Titration%s.csv' % (str(multipliers[0])))
+        test_matrix = pd.read_csv(rosetta_path, index_col=0).astype(int)  # grabs output of create_rosetta_matrices
+        validation = (test_matrix / multipliers[0])
+
+        # confirm all channels scaled by multiplier
         assert np.array_equal(random_matrix, validation)
 
         # Checking Specific Channels
         channels = [197]
         create_rosetta_matrices(output_path, temp_dir, multipliers, channels)
-        rosetta_str_2 = 'Rosetta_Titration%s.csv' % (str(multipliers[0]))
-        rosetta_path_2 = os.path.join(temp_dir, rosetta_str_2)
-        test_matrix_2 = pd.read_csv(rosetta_path_2, index_col=0).astype(int)  # grabbing output file of create_rosetta_matrices
-        test_index = test_channels.index(channels[0]) # row index of input channel
 
-        validation  = (test_matrix_2.iloc[test_index, :] / multipliers[0]).astype(int) # divides specificed row by multiplier
-        random_matrix_channel = random_matrix.iloc[test_index] # row of random matrix at channel
+        rosetta_path_2 = os.path.join(temp_dir, 'Rosetta_Titration%s.csv' % (str(multipliers[0])))
+        test_matrix_2 = pd.read_csv(rosetta_path_2, index_col=0).astype(int)  # grabs output of create_rosetta_matrices
 
-        assert np.array_equal(random_matrix_channel, validation) # checking input channel is scaled by multiplier
+        test_index = test_channels.index(channels[0])  # row index of input channel
+        validation = (test_matrix_2.iloc[test_index, :] / multipliers[0]).astype(int)  # divides row by multiplier
+        random_matrix_channel = random_matrix.iloc[test_index]  # row of random matrix at channel
 
-        for i in test_channels: # checking non-specified channels are unchanged
+        # confirm input channel is scaled by multiplier
+        assert np.array_equal(random_matrix_channel, validation)
+
+        # confirm non-specified channels are unchanged
+        for i in test_channels:
             if i not in channels:
                 channel_index = test_channels.index(i)
                 assert np.array_equal(test_matrix_2.iloc[channel_index, :], random_matrix.iloc[channel_index, :])
-
