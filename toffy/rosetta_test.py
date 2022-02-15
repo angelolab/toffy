@@ -219,7 +219,7 @@ def test_replace_with_intensity_image(overwrite, folders):
                     assert os.path.exists(file)
 
 
-def test_create_rosetta_matrices(multipliers):
+def test_create_rosetta_matrices():
     # step 1: create rosetta matrix
     # step 2: save as csv
     with tempfile.TemporaryDirectory() as temp_dir:
