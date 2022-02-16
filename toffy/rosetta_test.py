@@ -264,3 +264,4 @@ def test_create_rosetta_matrices():
             if i not in channels:
                 channel_index = test_channels.index(i)
                 assert np.array_equal(test_matrix_2.iloc[channel_index, :], random_matrix.iloc[channel_index, :])
+
