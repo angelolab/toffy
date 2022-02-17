@@ -121,15 +121,15 @@ def read_fiducial_info():
             dtype=float
         )
 
-        pixel_x = read_tiling_param(
-            "Enter the optical x-coordinate of the %s fiducial: " % pos,
+        stage_y = read_tiling_param(
+            "Enter the stage y-coordinate of the %s fiducial: " % pos,
             "Error: all fiducial coordinates entered must be positive numbers",
             lambda fc: fc > 0,
             dtype=float
         )
 
-        stage_y = read_tiling_param(
-            "Enter the stage y-coordinate of the %s fiducial: " % pos,
+        pixel_x = read_tiling_param(
+            "Enter the optical x-coordinate of the %s fiducial: " % pos,
             "Error: all fiducial coordinates entered must be positive numbers",
             lambda fc: fc > 0,
             dtype=float

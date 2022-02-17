@@ -120,11 +120,11 @@ def test_read_fiducial_info(monkeypatch, user_inputs):
     assert fiducial_stage_x == [1.5 + 6 * i for i in np.arange(6)]
 
     fiducial_stage_y = [fiducial_info['stage'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
-    assert fiducial_stage_y == [4.5 + 6 * i for i in np.arange(6)]
+    assert fiducial_stage_y == [2 + 8 * i for i in np.arange(6)]
 
     # verify that the optical coordinates are correct
     fiducial_pixel_x = [fiducial_info['optical'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
-    assert fiducial_pixel_x == [2 + 8 * i for i in np.arange(6)]
+    assert fiducial_pixel_x == [4.5 + 6 * i for i in np.arange(6)]
 
     fiducial_pixel_y = [fiducial_info['optical'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
     assert fiducial_pixel_y == [6 + 8 * i for i in np.arange(6)]
