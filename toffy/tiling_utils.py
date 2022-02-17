@@ -13,6 +13,7 @@ import re
 from skimage.draw import ellipse
 from sklearn.linear_model import LinearRegression
 from sklearn.utils import shuffle
+import warnings
 
 from dataclasses import dataclass
 
@@ -1324,14 +1325,18 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
         for fov in manual_fovs['fovs']
     }
 
-    # sort manual FOVs by row then column, assuming the user names FOVs in R{m}c{n} format
+    # sort manual FOVs by row then column, first assume the user names FOVs in R{m}c{n} format
     try:
         manual_fovs_sorted = sorted(
             list(manual_fovs_info.keys()),
             key=lambda mf: (int(re.findall(r'\d+', mf)[0]), int(re.findall(r'\d+', mf)[1]))
         )
     # otherwise, just sort manual FOVs alphabetically, nothing else we can do
-    except ValueError as e:
+    # NOTE: this will not catch cases where the user has something like fov2_data0
+    except IndexError:
+        warnings.warn(
+            'Manual FOVs not consistently named in R{m}C{n} format, sorting alphabetically'
+        )
         manual_fovs_sorted = sorted(list(manual_fovs_info.keys()))
 
     # get the first FOV to display
