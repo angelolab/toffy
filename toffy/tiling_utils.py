@@ -98,21 +98,21 @@ def read_tiling_param(prompt, error_msg, cond, dtype):
 
 
 def read_fiducial_info():
-    """Prompt the user to input the fiducial info (in both stage and optical pixel scoordinates)
+    """Prompt the user to input the fiducial info (in both stage and optical scoordinates)
 
     Returns:
         dict:
-            Contains the stage and optical pixel coordinates of all 6 required fiducials
+            Contains the stage and optical coordinates of all 6 required fiducials
     """
 
     # define the dict to fill in
     fiducial_info = {}
 
-    # store the stage and pixel coordinates in separate keys
+    # store the stage and optical coordinates in separate keys
     fiducial_info['stage'] = {}
-    fiducial_info['pixel'] = {}
+    fiducial_info['optical'] = {}
 
-    # read the stage and pixel coordinate for each position
+    # read the stage and optical coordinate for each position
     for pos in settings.FIDUCIAL_POSITIONS:
         stage_x = read_tiling_param(
             "Enter the stage x-coordinate of the %s fiducial: " % pos,
@@ -122,7 +122,7 @@ def read_fiducial_info():
         )
 
         pixel_x = read_tiling_param(
-            "Enter the optical pixel x-coordinate of the %s fiducial: " % pos,
+            "Enter the optical x-coordinate of the %s fiducial: " % pos,
             "Error: all fiducial coordinates entered must be positive numbers",
             lambda fc: fc > 0,
             dtype=float
@@ -136,7 +136,7 @@ def read_fiducial_info():
         )
 
         pixel_y = read_tiling_param(
-            "Enter the optical pixel y-coordinate of the %s fiducial: " % pos,
+            "Enter the optical y-coordinate of the %s fiducial: " % pos,
             "Error: all fiducial coordinates entered must be positive numbers",
             lambda fc: fc > 0,
             dtype=float
@@ -145,8 +145,8 @@ def read_fiducial_info():
         # define a new stage entry for the fiducial position
         fiducial_info['stage'][pos] = {'x': stage_x, 'y': stage_y}
 
-        # ditto for pixel
-        fiducial_info['pixel'][pos] = {'x': pixel_x, 'y': pixel_y}
+        # ditto for optical
+        fiducial_info['optical'][pos] = {'x': pixel_x, 'y': pixel_y}
 
     fiducial_name = read_tiling_param(
         "Enter a name for this set of fiducials: ",
@@ -161,14 +161,14 @@ def read_fiducial_info():
 
 
 def generate_coreg_params(fiducial_info):
-    """Use linear regression from fiducial stage to pixel coordinates to define
+    """Use linear regression from fiducial stage to optical coordinates to define
     co-registration params.
 
     Separate regressions for x and y values.
 
     Args:
         fiducial_info (dict):
-            The stage and pixel coordinates of each fiducial, created by `read_fiducial_info`
+            The stage and optical coordinates of each fiducial, created by `read_fiducial_info`
 
     Returns:
         dict:
@@ -178,12 +178,12 @@ def generate_coreg_params(fiducial_info):
     # define the dict to fill in
     coreg_params = {}
 
-    # extract the data for for x-coordinate stage to pixel regression
+    # extract the data for for x-coordinate stage to optical regression
     x_stage = np.array(
         [fiducial_info['stage'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
     ).reshape(-1, 1)
     x_pixel = np.array(
-        [fiducial_info['pixel'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
+        [fiducial_info['optical'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
     ).reshape(-1, 1)
 
     # generate x regression params
@@ -192,15 +192,15 @@ def generate_coreg_params(fiducial_info):
     # add the multiplier and offset params for x
     x_multiplier = x_reg.coef_[0][0]
     x_offset = x_reg.intercept_[0] / x_multiplier
-    coreg_params['STAGE_TO_PIXEL_X_MULTIPLIER'] = x_multiplier
-    coreg_params['STAGE_TO_PIXEL_X_OFFSET'] = x_offset
+    coreg_params['STAGE_TO_OPTICAL_X_MULTIPLIER'] = x_multiplier
+    coreg_params['STAGE_TO_OPTICAL_X_OFFSET'] = x_offset
 
-    # extract the data for for y-coordinate stage to pixel regression
+    # extract the data for for y-coordinate stage to optical regression
     y_stage = np.array(
         [fiducial_info['stage'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
     ).reshape(-1, 1)
     y_pixel = np.array(
-        [fiducial_info['pixel'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
+        [fiducial_info['optical'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
     ).reshape(-1, 1)
 
     # generate y regression params
@@ -209,8 +209,8 @@ def generate_coreg_params(fiducial_info):
     # add the multiplier and offset params for y
     y_multiplier = y_reg.coef_[0][0]
     y_offset = y_reg.intercept_[0] / y_multiplier
-    coreg_params['STAGE_TO_PIXEL_Y_MULTIPLIER'] = y_multiplier
-    coreg_params['STAGE_TO_PIXEL_Y_OFFSET'] = y_offset
+    coreg_params['STAGE_TO_OPTICAL_Y_MULTIPLIER'] = y_multiplier
+    coreg_params['STAGE_TO_OPTICAL_Y_OFFSET'] = y_offset
 
     return coreg_params
 
@@ -234,7 +234,7 @@ def write_coreg_params(coreg_params, fiducial_name,
 
     with open(settings_path, 'a') as fw:
         # use fiducial_name in the comment header
-        fw.write('# %s stage to pixel co-registration conversion params\n' % fiducial_name)
+        fw.write('# %s stage to optical co-registration conversion params\n' % fiducial_name)
 
         # write each param in coreg_params to settings_path
         for cp, cpv in coreg_params.items():
@@ -696,7 +696,7 @@ def generate_tma_fov_list(tma_corners_path, num_fov_row, num_fov_col):
     return fov_regions
 
 
-def convert_microns_to_pixels(coord):
+def convert_stage_to_optical(coord):
     """Convert the coordinate in stage microns to optical pixels.
 
     In other words, co-register using the centroid of a FOV.
@@ -710,7 +710,8 @@ def convert_microns_to_pixels(coord):
 
     Returns:
         tuple:
-            The converted coordinate from microns to pixels (values truncated to `int`)
+            The converted coordinate from stage microns to optical pixels.
+            Values truncated to `int`.
     """
 
     # NOTE: all conversions are done using the fiducials
@@ -722,13 +723,13 @@ def convert_microns_to_pixels(coord):
         coord[1] * settings.MICRON_TO_STAGE_Y_MULTIPLIER - settings.MICRON_TO_STAGE_Y_OFFSET
     )
 
-    # convert from stage coordinates to pixels
+    # convert from stage coordinates to optical pixels
     pixel_coord_x = (
-        stage_coord_x + settings.STAGE_TO_PIXEL_X_OFFSET
-    ) * settings.STAGE_TO_PIXEL_X_MULTIPLIER
+        stage_coord_x + settings.STAGE_TO_OPTICAL_X_OFFSET
+    ) * settings.STAGE_TO_OPTICAL_X_MULTIPLIER
     pixel_coord_y = (
-        stage_coord_y + settings.STAGE_TO_PIXEL_Y_OFFSET
-    ) * settings.STAGE_TO_PIXEL_Y_MULTIPLIER
+        stage_coord_y + settings.STAGE_TO_OPTICAL_Y_OFFSET
+    ) * settings.STAGE_TO_OPTICAL_Y_MULTIPLIER
 
     return (int(pixel_coord_y), int(pixel_coord_x))
 
@@ -817,7 +818,7 @@ def generate_fov_circles(manual_fovs_info, auto_fovs_info,
         slide_img (numpy.ndarray):
             the image to overlay
         draw_radius (int):
-            the radius (in pixels) of the circle to overlay for each FOV
+            the radius (in optical pixels) of the circle to overlay for each FOV
 
     Returns:
         numpy.ndarray:
@@ -896,7 +897,7 @@ def update_mapping_display(change, w_auto, manual_to_auto_map, manual_coords, au
         slide_img (numpy.ndarray):
             the image to overlay
         draw_radius (int):
-            the radius (in pixels) to draw each circle on the slide
+            the radius (in optical pixels) to draw each circle on the slide
 
     Returns:
         numpy.ndarray:
@@ -982,7 +983,7 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_auto_
         slide_img (numpy.ndarray):
             the image to overlay
         draw_radius (int):
-            the radius (in pixels) to draw each circle on the slide
+            the radius (in optical pixels) to draw each circle on the slide
         check_dist (float):
             if the distance (in microns) between a manual-auto FOV pair exceeds this value, it will
             be reported for a potential error, if `None` does not validate distance
@@ -1280,7 +1281,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
         mapping_path (str):
             the path to the file to save the mapping to
         draw_radius (int):
-            the radius (in pixels) to draw each circle on the slide
+            the radius (in optical pixels) to draw each circle on the slide
         figsize (tuple):
             the size of the interactive figure to display
         check_dist (float):
@@ -1320,7 +1321,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
     # condense manual_fovs to include just the name mapped to its coordinate
     # NOTE: convert to pixels for visualization, let manual_auto_dist handle microns distance
     manual_fovs_info = {
-        fov['name']: convert_microns_to_pixels(tuple(fov['centerPointMicrons'].values()))
+        fov['name']: convert_stage_to_optical(tuple(fov['centerPointMicrons'].values()))
 
         for fov in manual_fovs['fovs']
     }
@@ -1353,7 +1354,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
 
     # NOTE: convert to pixels for visualization, let fov_dist-table handle microns distance
     auto_fovs_info = {
-        fov: convert_microns_to_pixels(auto_fovs[fov])
+        fov: convert_stage_to_optical(auto_fovs[fov])
 
         for fov in auto_fovs
     }

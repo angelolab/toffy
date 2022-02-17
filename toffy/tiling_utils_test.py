@@ -122,11 +122,11 @@ def test_read_fiducial_info(monkeypatch, user_inputs):
     fiducial_stage_y = [fiducial_info['stage'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
     assert fiducial_stage_y == [4.5 + 6 * i for i in np.arange(6)]
 
-    # verify that the pixel coordinates are correct
-    fiducial_pixel_x = [fiducial_info['pixel'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
+    # verify that the optical coordinates are correct
+    fiducial_pixel_x = [fiducial_info['optical'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
     assert fiducial_pixel_x == [2 + 8 * i for i in np.arange(6)]
 
-    fiducial_pixel_y = [fiducial_info['pixel'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
+    fiducial_pixel_y = [fiducial_info['optical'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
     assert fiducial_pixel_y == [6 + 8 * i for i in np.arange(6)]
 
     # assert the name for this fiducial set is correct
@@ -140,7 +140,7 @@ def test_generate_coreg_params():
             pos: {'x': i * 2 + 1, 'y': i * 3 + 1}
             for (i, pos) in enumerate(settings.FIDUCIAL_POSITIONS)
         },
-        'pixel': {
+        'optical': {
             pos: {'x': i * 4 + 1, 'y': i * 9 + 1}
             for (i, pos) in enumerate(settings.FIDUCIAL_POSITIONS)
         },
@@ -152,10 +152,10 @@ def test_generate_coreg_params():
 
     # assert the computed regression parameters are correct
     # NOTE: values need floating point correction due to how it's calculated
-    assert round(sample_coreg_params['STAGE_TO_PIXEL_X_MULTIPLIER'], 1) == 2
-    assert round(sample_coreg_params['STAGE_TO_PIXEL_X_OFFSET'], 1) == -0.5
-    assert round(sample_coreg_params['STAGE_TO_PIXEL_Y_MULTIPLIER'], 1) == 3
-    assert round(sample_coreg_params['STAGE_TO_PIXEL_Y_OFFSET'], 1) == -0.7
+    assert round(sample_coreg_params['STAGE_TO_OPTICAL_X_MULTIPLIER'], 1) == 2
+    assert round(sample_coreg_params['STAGE_TO_OPTICAL_X_OFFSET'], 1) == -0.5
+    assert round(sample_coreg_params['STAGE_TO_OPTICAL_Y_MULTIPLIER'], 1) == 3
+    assert round(sample_coreg_params['STAGE_TO_OPTICAL_Y_OFFSET'], 1) == -0.7
 
 
 def test_write_coreg_params():
@@ -167,10 +167,10 @@ def test_write_coreg_params():
         # define sample values to put in settings.py
         sample_settings = cleandoc(
             """# default stage to pixel co-registration conversion params\n
-            STAGE_TO_PIXEL_X_MULTIPLIER = 1 / 0.06887\n
-            STAGE_TO_PIXEL_X_OFFSET = 27.79\n
-            STAGE_TO_PIXEL_Y_MULTIPLIER = 1 / -0.06926\n
-            STAGE_TO_PIXEL_Y_OFFSET = -77.40"""
+            STAGE_TO_OPTICAL_X_MULTIPLIER = 1 / 0.06887\n
+            STAGE_TO_OPTICAL_X_OFFSET = 27.79\n
+            STAGE_TO_OPTICAL_Y_MULTIPLIER = 1 / -0.06926\n
+            STAGE_TO_OPTICAL_Y_OFFSET = -77.40"""
         ) + '\n'
 
         # define the settings.py path
@@ -182,10 +182,10 @@ def test_write_coreg_params():
 
         # define sample co-registration params
         sample_coreg_params = {
-            'STAGE_TO_PIXEL_X_MULTIPLIER': 0.5,
-            'STAGE_TO_PIXEL_X_OFFSET': 1,
-            'STAGE_TO_PIXEL_Y_MULTIPLIER': 1.5,
-            'STAGE_TO_PIXEL_Y_OFFSET': 2
+            'STAGE_TO_OPTICAL_X_MULTIPLIER': 0.5,
+            'STAGE_TO_OPTICAL_X_OFFSET': 1,
+            'STAGE_TO_OPTICAL_Y_MULTIPLIER': 1.5,
+            'STAGE_TO_OPTICAL_Y_OFFSET': 2
         }
 
         # define a sample name to give this set
@@ -200,7 +200,8 @@ def test_write_coreg_params():
             lines = fr.readlines()[-5:]
 
         # assert the comment header was added
-        assert lines[0] == '# %s stage to pixel co-registration conversion params\n' % sample_name
+        assert lines[0] == \
+            '# %s stage to optical co-registration conversion params\n' % sample_name
 
         # assert the new co-registration parameters are correct
         for i, (cp, cpv) in enumerate(sample_coreg_params.items()):
@@ -537,10 +538,10 @@ def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_
             assert fov == 'R%dC%d' % (row_ind, col_ind)
 
 
-def test_convert_microns_to_pixels():
+def test_convert_stage_to_optical():
     # just need to test it gets the right values for one coordinate in microns
     sample_coord = (25000, 35000)
-    new_coord = tiling_utils.convert_microns_to_pixels(sample_coord)
+    new_coord = tiling_utils.convert_stage_to_optical(sample_coord)
 
     assert new_coord == (612, 762)
 
