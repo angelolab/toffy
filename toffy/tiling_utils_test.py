@@ -1,4 +1,5 @@
 import copy
+from inspect import cleandoc
 import ipywidgets as widgets
 import json
 import matplotlib.pyplot as plt
@@ -101,6 +102,109 @@ def test_read_tiling_param(monkeypatch):
 
     # assert sample_tiling_param was set to 'Y'
     assert sample_tiling_param == 'Y'
+
+
+@parametrize_with_cases('user_inputs', cases=test_cases.FiducialInfoReadCases)
+def test_read_fiducial_info(monkeypatch, user_inputs):
+    # generate the user inputs
+    user_inputs = iter(user_inputs)
+
+    # override the default functionality of the input function
+    monkeypatch.setattr('builtins.input', lambda _: next(user_inputs))
+
+    # use the dummy user data to read the fiducial values
+    fiducial_info = tiling_utils.read_fiducial_info()
+
+    # verify that the stage coordinates are correct
+    fiducial_stage_x = [fiducial_info['stage'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
+    assert fiducial_stage_x == [1.5 + 6 * i for i in np.arange(6)]
+
+    fiducial_stage_y = [fiducial_info['stage'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
+    assert fiducial_stage_y == [4.5 + 6 * i for i in np.arange(6)]
+
+    # verify that the pixel coordinates are correct
+    fiducial_pixel_x = [fiducial_info['pixel'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
+    assert fiducial_pixel_x == [2 + 8 * i for i in np.arange(6)]
+
+    fiducial_pixel_y = [fiducial_info['pixel'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
+    assert fiducial_pixel_y == [6 + 8 * i for i in np.arange(6)]
+
+    # assert the name for this fiducial set is correct
+    assert fiducial_info['name'] == 'sample_name'
+
+
+def test_generate_coreg_params():
+    # define a sample fiducial info dict
+    sample_fiducial_info = {
+        'stage': {
+            pos: {'x': i * 2 + 1, 'y': i * 3 + 1}
+            for (i, pos) in enumerate(settings.FIDUCIAL_POSITIONS)
+        },
+        'pixel': {
+            pos: {'x': i * 4 + 1, 'y': i * 9 + 1}
+            for (i, pos) in enumerate(settings.FIDUCIAL_POSITIONS)
+        },
+        'name': 'sample_name'
+    }
+
+    # generate the regression parameters
+    sample_coreg_params = tiling_utils.generate_coreg_params(sample_fiducial_info)
+
+    # assert the computed regression parameters are correct
+    # NOTE: values need floating point correction due to how it's calculated
+    assert round(sample_coreg_params['STAGE_TO_PIXEL_X_MULTIPLIER'], 1) == 2
+    assert round(sample_coreg_params['STAGE_TO_PIXEL_X_OFFSET'], 1) == -0.5
+    assert round(sample_coreg_params['STAGE_TO_PIXEL_Y_MULTIPLIER'], 1) == 3
+    assert round(sample_coreg_params['STAGE_TO_PIXEL_Y_OFFSET'], 1) == -0.7
+
+
+def test_write_coreg_params():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # file path validation
+        with pytest.raises(FileNotFoundError):
+            tiling_utils.write_coreg_params({}, '', 'bad_settings_path')
+
+        # define sample values to put in settings.py
+        sample_settings = cleandoc(
+            """# default stage to pixel co-registration conversion params\n
+            STAGE_TO_PIXEL_X_MULTIPLIER = 1 / 0.06887\n
+            STAGE_TO_PIXEL_X_OFFSET = 27.79\n
+            STAGE_TO_PIXEL_Y_MULTIPLIER = 1 / -0.06926\n
+            STAGE_TO_PIXEL_Y_OFFSET = -77.40"""
+        ) + '\n'
+
+        # define the settings.py path
+        sample_settings_path = os.path.join(temp_dir, 'settings.py')
+
+        # write out the sample settings
+        with open(sample_settings_path, 'w') as fw:
+            fw.write(sample_settings)
+
+        # define sample co-registration params
+        sample_coreg_params = {
+            'STAGE_TO_PIXEL_X_MULTIPLIER': 0.5,
+            'STAGE_TO_PIXEL_X_OFFSET': 1,
+            'STAGE_TO_PIXEL_Y_MULTIPLIER': 1.5,
+            'STAGE_TO_PIXEL_Y_OFFSET': 2
+        }
+
+        # define a sample name to give this set
+        sample_name = 'new fiducial conversion'
+
+        # add the new co-registration params
+        tiling_utils.write_coreg_params(sample_coreg_params, sample_name, sample_settings_path)
+
+        # read each line of the new settings.py
+        with open(sample_settings_path, 'r') as fr:
+            # we only need to verify the last 5 lines
+            lines = fr.readlines()[-5:]
+
+        # assert the comment header was added
+        assert lines[0] == '# %s stage to pixel co-registration conversion params\n' % sample_name
+
+        # assert the new co-registration parameters are correct
+        for i, (cp, cpv) in enumerate(sample_coreg_params.items()):
+            assert lines[i + 1] == '%s = %f\n' % (cp, cpv)
 
 
 @parametrize_with_cases(

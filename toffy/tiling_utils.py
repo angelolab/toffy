@@ -11,6 +11,7 @@ import os
 import pandas as pd
 import re
 from skimage.draw import ellipse
+from sklearn.linear_model import LinearRegression
 from sklearn.utils import shuffle
 
 from dataclasses import dataclass
@@ -55,7 +56,7 @@ def assign_metadata_vals(input_dict, output_dict, keys_ignore):
 
 
 def read_tiling_param(prompt, error_msg, cond, dtype):
-    """A helper function to read in tiling input
+    """A helper function to read a tiling param from a user prompt
 
     Args:
         prompt (str):
@@ -68,14 +69,14 @@ def read_tiling_param(prompt, error_msg, cond, dtype):
             The type of variable to read
 
     Returns:
-        Union([int, str]):
-            The value to place in the variable, limited to just `int` and `str` for now
+        Union([int, float, str]):
+            The value entered by the user
     """
 
     # ensure the dtype is valid
     misc_utils.verify_in_list(
         provided_dtype=dtype,
-        acceptable_dtypes=[int, str]
+        acceptable_dtypes=[int, float, str]
     )
 
     while True:
@@ -93,6 +94,150 @@ def read_tiling_param(prompt, error_msg, cond, dtype):
 
         # otherwise, print the error message and re-prompt
         print(error_msg)
+
+
+def read_fiducial_info():
+    """Prompt the user to input the fiducial info (in both stage and optical pixel scoordinates)
+
+    Returns:
+        dict:
+            Contains the stage and optical pixel coordinates of all 6 required fiducials
+    """
+
+    # define the dict to fill in
+    fiducial_info = {}
+
+    # store the stage and pixel coordinates in separate keys
+    fiducial_info['stage'] = {}
+    fiducial_info['pixel'] = {}
+
+    # read the stage and pixel coordinate for each position
+    for pos in settings.FIDUCIAL_POSITIONS:
+        stage_x = read_tiling_param(
+            "Enter the stage x-coordinate of the %s fiducial: " % pos,
+            "Error: all fiducial coordinates entered must be positive numbers",
+            lambda fc: fc > 0,
+            dtype=float
+        )
+
+        pixel_x = read_tiling_param(
+            "Enter the optical pixel x-coordinate of the %s fiducial: " % pos,
+            "Error: all fiducial coordinates entered must be positive numbers",
+            lambda fc: fc > 0,
+            dtype=float
+        )
+
+        stage_y = read_tiling_param(
+            "Enter the stage y-coordinate of the %s fiducial: " % pos,
+            "Error: all fiducial coordinates entered must be positive numbers",
+            lambda fc: fc > 0,
+            dtype=float
+        )
+
+        pixel_y = read_tiling_param(
+            "Enter the optical pixel y-coordinate of the %s fiducial: " % pos,
+            "Error: all fiducial coordinates entered must be positive numbers",
+            lambda fc: fc > 0,
+            dtype=float
+        )
+
+        # define a new stage entry for the fiducial position
+        fiducial_info['stage'][pos] = {'x': stage_x, 'y': stage_y}
+
+        # ditto for pixel
+        fiducial_info['pixel'][pos] = {'x': pixel_x, 'y': pixel_y}
+
+    fiducial_name = read_tiling_param(
+        "Enter a name for this set of fiducials: ",
+        "Error: cannot leave the name blank",
+        lambda fn: len(fn) > 0,
+        dtype=str
+    )
+
+    fiducial_info['name'] = fiducial_name
+
+    return fiducial_info
+
+
+def generate_coreg_params(fiducial_info):
+    """Use linear regression from fiducial stage to pixel coordinates to define
+    co-registration params.
+
+    Separate regressions for x and y values.
+
+    Args:
+        fiducial_info (dict):
+            The stage and pixel coordinates of each fiducial, created by `read_fiducial_info`
+
+    Returns:
+        dict:
+            Contains the new multiplier and offset along the x- and y-axes
+    """
+
+    # define the dict to fill in
+    coreg_params = {}
+
+    # extract the data for for x-coordinate stage to pixel regression
+    x_stage = np.array(
+        [fiducial_info['stage'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
+    ).reshape(-1, 1)
+    x_pixel = np.array(
+        [fiducial_info['pixel'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
+    ).reshape(-1, 1)
+
+    # generate x regression params
+    x_reg = LinearRegression().fit(x_stage, x_pixel)
+
+    # add the multiplier and offset params for x
+    x_multiplier = x_reg.coef_[0][0]
+    x_offset = x_reg.intercept_[0] / x_multiplier
+    coreg_params['STAGE_TO_PIXEL_X_MULTIPLIER'] = x_multiplier
+    coreg_params['STAGE_TO_PIXEL_X_OFFSET'] = x_offset
+
+    # extract the data for for y-coordinate stage to pixel regression
+    y_stage = np.array(
+        [fiducial_info['stage'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
+    ).reshape(-1, 1)
+    y_pixel = np.array(
+        [fiducial_info['pixel'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
+    ).reshape(-1, 1)
+
+    # generate y regression params
+    y_reg = LinearRegression().fit(y_stage, y_pixel)
+
+    # add the multiplier and offset params for y
+    y_multiplier = y_reg.coef_[0][0]
+    y_offset = y_reg.intercept_[0] / y_multiplier
+    coreg_params['STAGE_TO_PIXEL_Y_MULTIPLIER'] = y_multiplier
+    coreg_params['STAGE_TO_PIXEL_Y_OFFSET'] = y_offset
+
+    return coreg_params
+
+
+def write_coreg_params(coreg_params, fiducial_name,
+                       settings_path=os.path.join('..', 'toffy', 'settings.py')):
+    """Write the new coregistration parameters to `settings.py`
+
+    Args:
+        coreg_params (dict):
+            The new fiducial co-registration parameters, generated by `generate_coreg_params`
+        fiducial_name (str):
+            The name of this fiducial set, placed in comment to head `coreg_params` values
+        settings_path (str):
+            The location of `settings.py`
+    """
+
+    # validate settings_path exists
+    if not os.path.exists(settings_path):
+        raise FileNotFoundError('settings_path %s does not exist' % settings_path)
+
+    with open(settings_path, 'a') as fw:
+        # use fiducial_name in the comment header
+        fw.write('# %s stage to pixel co-registration conversion params\n' % fiducial_name)
+
+        # write each param in coreg_params to settings_path
+        for cp, cpv in coreg_params.items():
+            fw.write('%s = %f\n' % (cp, cpv))
 
 
 def generate_region_info(region_params):
@@ -1179,11 +1324,15 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
         for fov in manual_fovs['fovs']
     }
 
-    # sort FOVs alphabetically, TODO: assumes user will always define their FOVs as R{n}C{n}
-    manual_fovs_sorted = sorted(
-        list(manual_fovs_info.keys()),
-        key=lambda mf: (int(re.findall(r'\d+', mf)[0]), int(re.findall(r'\d+', mf)[1]))
-    )
+    # sort manual FOVs by row then column, assuming the user names FOVs in R{m}c{n} format
+    try:
+        manual_fovs_sorted = sorted(
+            list(manual_fovs_info.keys()),
+            key=lambda mf: (int(re.findall(r'\d+', mf)[0]), int(re.findall(r'\d+', mf)[1]))
+        )
+    # otherwise, just sort manual FOVs alphabetically, nothing else we can do
+    except ValueError as e:
+        manual_fovs_sorted = sorted(list(manual_fovs_info.keys()))
 
     # get the first FOV to display
     first_manual = manual_fovs_sorted[0]
