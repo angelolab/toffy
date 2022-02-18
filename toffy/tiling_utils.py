@@ -1319,7 +1319,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
     manual_to_auto_map, manual_auto_dist = assign_closest_fovs(manual_fovs, auto_fovs)
 
     # condense manual_fovs to include just the name mapped to its coordinate
-    # NOTE: convert to optical pixels for visualization, let manual_auto_dist handle microns distance
+    # NOTE: convert to optical pixels for visualization
     manual_fovs_info = {
         fov['name']: convert_stage_to_optical(tuple(fov['centerPointMicrons'].values()))
 
@@ -1352,7 +1352,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
         style={'description_width': 'initial'}
     )
 
-    # NOTE: convert to optical pixels for visualization, let fov_dist-table handle microns distance
+    # NOTE: convert to optical pixels for visualization
     auto_fovs_info = {
         fov: convert_stage_to_optical(auto_fovs[fov])
 
