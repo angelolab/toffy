@@ -128,14 +128,14 @@ def read_fiducial_info():
             dtype=float
         )
 
-        pixel_x = read_tiling_param(
+        optical_x = read_tiling_param(
             "Enter the optical x-coordinate of the %s fiducial: " % pos,
             "Error: all fiducial coordinates entered must be positive numbers",
             lambda fc: fc > 0,
             dtype=float
         )
 
-        pixel_y = read_tiling_param(
+        optical_y = read_tiling_param(
             "Enter the optical y-coordinate of the %s fiducial: " % pos,
             "Error: all fiducial coordinates entered must be positive numbers",
             lambda fc: fc > 0,
@@ -146,7 +146,7 @@ def read_fiducial_info():
         fiducial_info['stage'][pos] = {'x': stage_x, 'y': stage_y}
 
         # ditto for optical
-        fiducial_info['optical'][pos] = {'x': pixel_x, 'y': pixel_y}
+        fiducial_info['optical'][pos] = {'x': optical_x, 'y': optical_y}
 
     fiducial_name = read_tiling_param(
         "Enter a name for this set of fiducials: ",
@@ -182,12 +182,12 @@ def generate_coreg_params(fiducial_info):
     x_stage = np.array(
         [fiducial_info['stage'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
     ).reshape(-1, 1)
-    x_pixel = np.array(
+    x_optical = np.array(
         [fiducial_info['optical'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
     ).reshape(-1, 1)
 
     # generate x regression params
-    x_reg = LinearRegression().fit(x_stage, x_pixel)
+    x_reg = LinearRegression().fit(x_stage, x_optical)
 
     # add the multiplier and offset params for x
     x_multiplier = x_reg.coef_[0][0]
@@ -199,12 +199,12 @@ def generate_coreg_params(fiducial_info):
     y_stage = np.array(
         [fiducial_info['stage'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
     ).reshape(-1, 1)
-    y_pixel = np.array(
+    y_optical = np.array(
         [fiducial_info['optical'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
     ).reshape(-1, 1)
 
     # generate y regression params
-    y_reg = LinearRegression().fit(y_stage, y_pixel)
+    y_reg = LinearRegression().fit(y_stage, y_optical)
 
     # add the multiplier and offset params for y
     y_multiplier = y_reg.coef_[0][0]
@@ -808,9 +808,9 @@ def generate_fov_circles(manual_fovs_info, auto_fovs_info,
 
     Args:
         manual_fovs_info (dict):
-            maps each manual FOV to its centroid coordinates (in pixels)
+            maps each manual FOV to its centroid coordinates (in optical pixels)
         auto_fovs_info (dict):
-            maps each auto FOV to its centroid coordinates (in pixels)
+            maps each auto FOV to its centroid coordinates (in optical pixels)
         manual_name (str):
             the name of the manual FOV to highlight
         auto_name (str):
@@ -891,9 +891,9 @@ def update_mapping_display(change, w_auto, manual_to_auto_map, manual_coords, au
         manual_to_auto_map (dict):
             defines the mapping of manual to auto FOV names
         manual_coords (dict):
-            maps each manually-defined FOV to its coordinate (in pixels)
+            maps each manually-defined FOV to its coordinate (in optical pixels)
         auto_coords (dict):
-            maps each automatically-generated FOV to its coordinate (in pixels)
+            maps each automatically-generated FOV to its coordinate (in optical pixels)
         slide_img (numpy.ndarray):
             the image to overlay
         draw_radius (int):
@@ -979,7 +979,7 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_auto_
         manual_auto_dist (pandas.DataFrame):
             defines the distance (in microns) between each manual FOV from each auto FOV
         auto_coords (dict):
-            maps each automatically-generated FOV to its coordinate (in pixels)
+            maps each automatically-generated FOV to its coordinate (in optical pixels)
         slide_img (numpy.ndarray):
             the image to overlay
         draw_radius (int):
@@ -1319,7 +1319,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
     manual_to_auto_map, manual_auto_dist = assign_closest_fovs(manual_fovs, auto_fovs)
 
     # condense manual_fovs to include just the name mapped to its coordinate
-    # NOTE: convert to pixels for visualization, let manual_auto_dist handle microns distance
+    # NOTE: convert to optical pixels for visualization, let manual_auto_dist handle microns distance
     manual_fovs_info = {
         fov['name']: convert_stage_to_optical(tuple(fov['centerPointMicrons'].values()))
 
@@ -1352,7 +1352,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
         style={'description_width': 'initial'}
     )
 
-    # NOTE: convert to pixels for visualization, let fov_dist-table handle microns distance
+    # NOTE: convert to optical pixels for visualization, let fov_dist-table handle microns distance
     auto_fovs_info = {
         fov: convert_stage_to_optical(auto_fovs[fov])
 
