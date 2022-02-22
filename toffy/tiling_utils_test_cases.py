@@ -13,6 +13,36 @@ xfail = pytest.mark.xfail
 value_err = [xfail(raises=ValueError, strict=True)]
 
 
+def generate_fiducial_read_vals(user_input_type='none'):
+    user_inputs = [1.5 * (i + 1) if i % 2 == 0 else 2 * i for i in np.arange(24)]
+    user_inputs.append('sample_name')
+
+    if user_input_type == 'same_types':
+        bad_inputs_to_insert = [-p for p in user_inputs if not isinstance(p, str)]
+        bad_inputs_to_insert.append('')
+        for i in np.arange(0, len(user_inputs), 2):
+            user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
+
+    if user_input_type == 'diff_types':
+        bad_inputs_to_insert = [str(p) + '_bad' for p in user_inputs]
+        bad_inputs_to_insert.append('')
+        for i in np.arange(0, len(user_inputs), 2):
+            user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
+
+    return user_inputs
+
+
+class FiducialInfoReadCases:
+    def case_no_reentry(self):
+        return generate_fiducial_read_vals()
+
+    def case_reentry_same_type(self):
+        return generate_fiducial_read_vals(user_input_type='same_types')
+
+    def case_reentry_different_type(self):
+        return generate_fiducial_read_vals(user_input_type='diff_types')
+
+
 # this function assumes that FOV 2's corresponding values are linearly spaced from FOV 1's
 # NOTE: x and y correspond to column and row index respectively as specified in the JSON spec file
 def generate_tiled_region_params(start_x_fov_1=50, start_y_fov_1=150,
