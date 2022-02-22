@@ -9,7 +9,7 @@ masses = np.arange(5, 20)
 class TuningCurveFiles:
 
     def case_default_combined_files(self):
-        dirs = ['dir_{}'.format(i) for i in range(1, 4)]
+        dirs = ['Detector_202{}v_2022-01-13_13-30-5{}'.format(i, i) for i in range(1, 4)]
 
         # create lists to hold dfs from each directory
         mph_dfs = []

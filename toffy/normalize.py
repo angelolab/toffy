@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from ark.utils import io_utils, load_utils
+from toffy.detector_sweep import parse_sweep_parameters
 
 
 def create_objective_function(obj_func):
@@ -125,7 +126,7 @@ def combine_run_metrics(run_dir, file_prefix):
 
     if len(bins) != len(files):
         raise ValueError('Mismatch between the number of bins and number '
-                         'of {} files'.format(file_prefix))
+                         'of {} files in {}'.format(file_prefix, run_dir))
 
     # collect all metrics files
     metrics = []
@@ -177,6 +178,9 @@ def combine_tuning_curve_metrics(dir_list):
 
         # add directory label and add to list
         combined['directory'] = dir
+        run_name = dir.split('/')[-1]
+        voltage = parse_sweep_parameters(run_name).voltage
+        combined['voltage'] = voltage
         all_dirs.append(combined)
 
     # combine data from each dir together

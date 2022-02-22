@@ -2,7 +2,7 @@ name: toffy_env
 dependencies:
   - python=3.8
   - pip:
-    - git+https://github.com/angelolab/mibi-bin-tools.git@master
+    - git+https://github.com/angelolab/mibi-bin-tools.git@d422c5a7308e78ce30b65d004a2d8cd40d02a9eb
     - git+https://github.com/angelolab/ark-analysis.git@master
     - jupyter>=1.0.0,<2
     - jupyter_contrib_nbextensions>=0.5.1,<1
