@@ -330,7 +330,7 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, channels=None
     column_features = list(comp_matrix.columns.values)
 
     # returns each comp_matrix value
-    for i in multipliers:  
+    for i in multipliers:
         zero_matrix = np.zeros(shape=(matrix_rows, matrix_columns))
         modified_matrix = pd.DataFrame(zero_matrix[0:], index=row_labels, columns=column_features)
         # multiply specified channel by multiplier
