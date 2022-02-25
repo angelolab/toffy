@@ -222,8 +222,9 @@ def test_replace_with_intensity_image(overwrite, folders):
 def test_create_rosetta_matrices():
     with tempfile.TemporaryDirectory() as temp_dir:
         # Pulling in channel names
-        test_channels = [23, 48, 56, 69, 71, 89, 113, 115, 117, 141, 142, 143, 144, 145, 146, 147, 148, 149, 150, 151]
-        test_channels += [152, 153, 154, 155, 156, 157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169]
+        test_channels = [23, 48, 56, 69, 71, 89, 113, 115, 117, 141, 142, 143]
+        test_channels += [144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156]
+        test_channels += [157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169]
         test_channels += [170, 171, 172, 173, 174, 175, 176, 181, 197]
 
         # Creating random matrix to test
@@ -232,7 +233,7 @@ def test_create_rosetta_matrices():
         output_path = os.path.join(temp_dir, 'Random_matrix.csv')
         random_matrix.to_csv(output_path)
 
-        # Checking channels = None 
+        # Checking channels = None
         multipliers = [3]
         create_rosetta_matrices(output_path, temp_dir, multipliers)
 
