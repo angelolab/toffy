@@ -6,12 +6,13 @@ import tempfile
 import skimage.io as io
 
 from toffy import rosetta
+
 import toffy.rosetta_test_cases as test_cases
 from ark.utils import test_utils
 from ark.utils.load_utils import load_imgs_from_tree
 
 from ark.utils.io_utils import list_folders, list_files
-
+from rosetta import create_rosetta_matrices 
 import pytest
 from pytest_cases import parametrize_with_cases
 
