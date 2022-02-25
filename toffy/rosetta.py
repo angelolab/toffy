@@ -311,30 +311,29 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, channels=None
             only a subset of channels are specified, other channels will retain their values
             in all iterations. If None, all channels are included
     """
-
-    # step 1: read in the default matrix
-
+    # Read input matrix
     comp_matrix = pd.read_csv(default_matrix, index_col=0)  # pandas DataFrame
     row_labels = comp_matrix.index
     comp_channels = list(row_labels)
+
+    # Check channel input
+    if channels is None:
+        channels = comp_channels
+    else:
+        for i in channels:
+            if i not in comp_channels:
+                raise ValueError('Specified channel does not exist')
+
+    # Matrix features
     matrix_rows = len(comp_matrix)
     matrix_columns = len(comp_matrix.iloc[0])
     column_features = list(comp_matrix.columns.values)
 
-    # step 2: figure out which channels will be modified (rows)
-    if channels is None:
-        channels = comp_channels
-
-    for i in channels:
-        if i not in comp_channels:
-            raise ValueError('Specified channel does not exist')
-
-    # step 3: loop over each of the multipliers (anything the user inputs, make an output matrix)
-    # step 4: modify the appropriate channels based on mulitiplier
-    # step 5: save the modified matrix as original_name_multiplier
-    for i in multipliers:  # returns each comp_matrix value
-        zero_matrix = np.zeros(shape=(matrix_rows + 1, matrix_columns))
-        modified_matrix = pd.DataFrame(zero_matrix[1:], index=row_labels, columns=column_features)
+    # returns each comp_matrix value
+    for i in multipliers:  
+        zero_matrix = np.zeros(shape=(matrix_rows, matrix_columns))
+        modified_matrix = pd.DataFrame(zero_matrix[0:], index=row_labels, columns=column_features)
+        # multiply specified channel by multiplier
         for j in range(matrix_rows):
             if comp_channels[j] in channels:
                 modified_matrix.iloc[j, :] = comp_matrix.iloc[j, :] * i
