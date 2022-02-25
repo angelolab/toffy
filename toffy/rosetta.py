@@ -342,5 +342,3 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, channels=None
                 modified_matrix.iloc[j, :] = comp_matrix.iloc[j, :]
         df = pd.DataFrame(modified_matrix)
         df.to_csv(save_dir + '/Rosetta_Titration%s.csv' % (str(i)))
-
-
