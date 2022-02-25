@@ -16,7 +16,7 @@ import pytest
 from pytest_cases import parametrize_with_cases
 
 parametrize = pytest.mark.parametrize
-
+from rosetta import * 
 
 def test_compensate_matrix_simple():
     inputs = np.ones((2, 40, 40, 4))
