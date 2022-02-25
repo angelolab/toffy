@@ -225,7 +225,7 @@ def test_create_rosetta_matrices():
     # step 2: save as csv
     with tempfile.TemporaryDirectory() as temp_dir:
         # Pulling in channel names
-        test_channels = [23, 48, 56, 69, 71, 89, 113, 115, 117, 141, 142, 143, 144, 145,
+        test_channels = [23, 48, 56, 69, 71, 89, 113, 115, 117, 141, 142, 143, 144, 145, 
                          146, 147, 148, 149, 150, 151,152, 153, 154, 155, 156, 157, 158,
                          159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169, 170,
                          171, 172, 173, 174, 175, 176, 181, 197]
@@ -253,10 +253,10 @@ def test_create_rosetta_matrices():
         channels = [197]
         create_rosetta_matrices(output_path, temp_dir, multipliers, channels)
 
-        rosetta_path_2 = os.path.join(temp_dir, 'Rosetta_Titration%s.csv'
-                                     % (str(multipliers[0])))
+        rosetta_path_2 = os.path.join(temp_dir, 'Rosetta_Titration%s.csv' 
+                                                 % (str(multipliers[0])))
         # grabs output of create_rosetta_matrices
-        test_matrix_2 = pd.read_csv(rosetta_path_2, index_col=0).astype(int)  
+        test_matrix_2 = pd.read_csv(rosetta_path_2, index_col=0).astype(int)
         # row index of input channel
         test_index = test_channels.index(channels[0])
         # divides row by multiplier
