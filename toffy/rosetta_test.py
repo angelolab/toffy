@@ -246,6 +246,7 @@ def test_create_rosetta_matrices():
         assert np.array_equal(random_matrix, validation)
 
         # Checking Specific Channels
+        multipliers = [4]
         channels = [197]
         create_rosetta_matrices(output_path, temp_dir, multipliers, channels)
 
@@ -264,4 +265,3 @@ def test_create_rosetta_matrices():
             if i not in channels:
                 channel_index = test_channels.index(i)
                 assert np.array_equal(test_matrix_2.iloc[channel_index, :], random_matrix.iloc[channel_index, :])
-
