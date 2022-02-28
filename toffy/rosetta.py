@@ -1,3 +1,4 @@
+import copy
 import os
 import json
 import shutil
@@ -312,7 +313,7 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, channels=None
             in all iterations. If None, all channels are included
     """
     # Read input matrix
-    comp_matrix = pd.read_csv(default_matrix, index_col=0)  # pandas DataFrame
+    comp_matrix = pd.read_csv(default_matrix, index_col=0)
     row_labels = comp_matrix.index
     comp_channels = list(row_labels)
 
@@ -320,24 +321,16 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, channels=None
     if channels is None:
         channels = comp_channels
     else:
-        for i in channels:
-            if i not in comp_channels:
-                raise ValueError('Specified channel does not exist')
+        verify_in_list(specified_channels=channels, rosetta_channels=comp_channels)
 
-    # Matrix features
-    matrix_rows = len(comp_matrix)
-    matrix_columns = len(comp_matrix.iloc[0])
-    column_features = list(comp_matrix.columns.values)
-
-    # returns each comp_matrix value
+    # loop over each specified multiplier and create separate compensation matrix
     for i in multipliers:
-        zero_matrix = np.zeros(shape=(matrix_rows, matrix_columns))
-        modified_matrix = pd.DataFrame(zero_matrix[0:], index=row_labels, columns=column_features)
-        # multiply specified channel by multiplier
-        for j in range(matrix_rows):
+        mult_matrix = copy.deepcopy(comp_matrix)
+
+        for j in range(len(comp_matrix)):
+            # multiply specified channel by multiplier
             if comp_channels[j] in channels:
-                modified_matrix.iloc[j, :] = comp_matrix.iloc[j, :] * i
-            else:
-                modified_matrix.iloc[j, :] = comp_matrix.iloc[j, :]
-        df = pd.DataFrame(modified_matrix)
-        df.to_csv(save_dir + '/Rosetta_Titration%s.csv' % (str(i)))
+                mult_matrix.iloc[j, :] = comp_matrix.iloc[j, :] * i
+
+        df = pd.DataFrame(mult_matrix)
+        df.to_csv(os.path.join(save_dir, 'Rosetta_Titration%s.csv' % (str(i))))

@@ -222,50 +222,43 @@ def test_replace_with_intensity_image(overwrite, folders):
 
 def test_create_rosetta_matrices():
     with tempfile.TemporaryDirectory() as temp_dir:
-        # Pulling in channel names
-        test_channels = [23, 48, 56, 69, 71, 89, 113, 115, 117, 141, 142, 143]
-        test_channels += [144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156]
-        test_channels += [157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169]
-        test_channels += [170, 171, 172, 173, 174, 175, 176, 181, 197]
 
-        # Creating random matrix to test
-        rand_np_matrix = np.random.randint(1, 50, size=[47, 47])
-        random_matrix = pd.DataFrame(rand_np_matrix, index=test_channels, columns=test_channels)
-        output_path = os.path.join(temp_dir, 'Random_matrix.csv')
-        random_matrix.to_csv(output_path)
+        # create baseline rosetta matrix
+        test_channels = [23, 71, 89, 113, 141, 142, 143]
+        base_matrix = np.random.randint(1, 50, size=[len(test_channels), len(test_channels)])
+        base_rosetta = pd.DataFrame(base_matrix, index=test_channels, columns=test_channels)
+        base_rosetta_path = os.path.join(temp_dir, 'rosetta_matrix.csv')
+        base_rosetta.to_csv(base_rosetta_path)
 
-        # Checking channels = None
-        multipliers = [3]
-        create_rosetta_matrices(output_path, temp_dir, multipliers)
+        # validate output when all channels are included
+        multipliers = [0.5, 2, 4]
+        create_rosetta_matrices(base_rosetta_path, temp_dir, multipliers)
 
-        rosetta_path = os.path.join(temp_dir, 'Rosetta_Titration%s.csv'
-                                    % (str(multipliers[0])))
-        # grabs output of create_rosetta_matrices
-        test_matrix = pd.read_csv(rosetta_path, index_col=0).astype(int)
-        validation = (test_matrix / multipliers[0])
-
-        # confirm all channels scaled by multiplier
-        assert np.array_equal(random_matrix, validation)
-
-        # Checking specific channels and multiple multipliers
-        multipliers = [4, 5]
-        channels = [115, 117]
-        create_rosetta_matrices(output_path, temp_dir, multipliers, channels)
-
-        # row index of input channel
-        test_index = []
-        for i in range(len(channels)):
-            test_index.append(test_channels.index(channels[i]))
-
-        for i in multipliers:
+        for multiplier in multipliers:
+            rosetta_path = os.path.join(temp_dir, 'Rosetta_Titration%s.csv'
+                                        % (str(multiplier)))
             # grabs output of create_rosetta_matrices
-            rosetta_path_2 = os.path.join(temp_dir, 'Rosetta_Titration%s.csv' % (str(i)))
-            test_matrix_2 = pd.read_csv(rosetta_path_2, index_col=0).astype(int)
+            test_matrix = pd.read_csv(rosetta_path, index_col=0)
+            rescaled = (test_matrix / multiplier)
 
-            # channel index is multipliers; else is 1
-            validation = test_matrix_2.div(random_matrix.values)
-            val_matrix = test_matrix_2 / test_matrix_2  # matrix of 1's
+            # confirm all channels scaled by multiplier
+            assert np.array_equal(base_rosetta, rescaled)
 
-            for j in test_index:
-                val_matrix.iloc[j, :] = val_matrix.iloc[j, :] * i
-            assert np.array_equal(validation, val_matrix)
+        # validate output for specific channels
+        mod_channels = [113, 142]
+        create_rosetta_matrices(base_rosetta_path, temp_dir, multipliers, mod_channels)
+
+        # create mask specifying which channels will change
+        change_idx = np.isin(test_channels, mod_channels)
+
+        for mult in multipliers:
+            mult_vec = np.ones(len(test_channels))
+            mult_vec[change_idx] = mult
+
+            # grabs output of create_rosetta_matrices
+            test_matrix = pd.read_csv(os.path.join(temp_dir,
+                                                   'Rosetta_Titration%s.csv' % (str(mult))),
+                                      index_col=0)
+
+            rescaled = test_matrix.divide(mult_vec, axis='index')
+            assert np.array_equal(base_rosetta, rescaled)
