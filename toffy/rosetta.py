@@ -300,27 +300,44 @@ def replace_with_intensity_image(base_dir, channel, replace=True, folders=None):
                         os.path.join(base_dir, folder, fov, channel + suffix))
 
 
-def create_rosetta_matrices(default_matrix, save_dir, multipliers=[0.5, 1, 1.5], channels=None):
+def create_rosetta_matrices(default_matrix, save_dir, multipliers, channels=None):
     """Creates a series of compensation matrices for evaluating coefficients
-
     Args:
         default_matrix (str): path to the rosetta matrix to use as the default
+        save_dir (str): output directory
         multipliers (list): the range of values to multiply the default matrix by
             to get new coefficients
         channels (list | None): an optional list of channels to include in the multiplication. If
             only a subset of channels are specified, other channels will retain their values
-            in all iterations. If None, all channels are included"""
+            in all iterations. If None, all channels are included
+    """
+    # Read input matrix
+    comp_matrix = pd.read_csv(default_matrix, index_col=0)  # pandas DataFrame
+    row_labels = comp_matrix.index
+    comp_channels = list(row_labels)
 
-    # TODO: Cameron will make this function
+    # Check channel input
+    if channels is None:
+        channels = comp_channels
+    else:
+        for i in channels:
+            if i not in comp_channels:
+                raise ValueError('Specified channel does not exist')
 
-    # step 1: read in the default matrix
+    # Matrix features
+    matrix_rows = len(comp_matrix)
+    matrix_columns = len(comp_matrix.iloc[0])
+    column_features = list(comp_matrix.columns.values)
 
-    # step 2: figure out which channels will be modified
-
-    # step 3: loop over each of the multipliers
-
-    # step 4: modify the appropriate channels based on mulitiplier
-
-    # step 5: save the modified matrix as original_name_multiplier
-
-    pass
+    # returns each comp_matrix value
+    for i in multipliers:
+        zero_matrix = np.zeros(shape=(matrix_rows, matrix_columns))
+        modified_matrix = pd.DataFrame(zero_matrix[0:], index=row_labels, columns=column_features)
+        # multiply specified channel by multiplier
+        for j in range(matrix_rows):
+            if comp_channels[j] in channels:
+                modified_matrix.iloc[j, :] = comp_matrix.iloc[j, :] * i
+            else:
+                modified_matrix.iloc[j, :] = comp_matrix.iloc[j, :]
+        df = pd.DataFrame(modified_matrix)
+        df.to_csv(save_dir + '/Rosetta_Titration%s.csv' % (str(i)))

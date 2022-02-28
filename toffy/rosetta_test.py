@@ -1,17 +1,18 @@
 import os
-
+import pandas as pd
 import numpy as np
 import tempfile
 
 import skimage.io as io
 
 from toffy import rosetta
+
 import toffy.rosetta_test_cases as test_cases
 from ark.utils import test_utils
 from ark.utils.load_utils import load_imgs_from_tree
 
 from ark.utils.io_utils import list_folders, list_files
-
+from toffy.rosetta import create_rosetta_matrices
 import pytest
 from pytest_cases import parametrize_with_cases
 
@@ -217,3 +218,54 @@ def test_replace_with_intensity_image(overwrite, folders):
                     file = os.path.join(top_level_dir, 'run_{}'.format(dir),
                                         'fov{}'.format(fov), 'chan1' + suffix)
                     assert os.path.exists(file)
+
+
+def test_create_rosetta_matrices():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # Pulling in channel names
+        test_channels = [23, 48, 56, 69, 71, 89, 113, 115, 117, 141, 142, 143]
+        test_channels += [144, 145, 146, 147, 148, 149, 150, 151, 152, 153, 154, 155, 156]
+        test_channels += [157, 158, 159, 160, 161, 162, 163, 164, 165, 166, 167, 168, 169]
+        test_channels += [170, 171, 172, 173, 174, 175, 176, 181, 197]
+
+        # Creating random matrix to test
+        rand_np_matrix = np.random.randint(1, 50, size=[47, 47])
+        random_matrix = pd.DataFrame(rand_np_matrix, index=test_channels, columns=test_channels)
+        output_path = os.path.join(temp_dir, 'Random_matrix.csv')
+        random_matrix.to_csv(output_path)
+
+        # Checking channels = None
+        multipliers = [3]
+        create_rosetta_matrices(output_path, temp_dir, multipliers)
+
+        rosetta_path = os.path.join(temp_dir, 'Rosetta_Titration%s.csv'
+                                    % (str(multipliers[0])))
+        # grabs output of create_rosetta_matrices
+        test_matrix = pd.read_csv(rosetta_path, index_col=0).astype(int)
+        validation = (test_matrix / multipliers[0])
+
+        # confirm all channels scaled by multiplier
+        assert np.array_equal(random_matrix, validation)
+
+        # Checking specific channels and multiple multipliers
+        multipliers = [4, 5]
+        channels = [115, 117]
+        create_rosetta_matrices(output_path, temp_dir, multipliers, channels)
+
+        # row index of input channel
+        test_index = []
+        for i in range(len(channels)):
+            test_index.append(test_channels.index(channels[i]))
+
+        for i in multipliers:
+            # grabs output of create_rosetta_matrices
+            rosetta_path_2 = os.path.join(temp_dir, 'Rosetta_Titration%s.csv' % (str(i)))
+            test_matrix_2 = pd.read_csv(rosetta_path_2, index_col=0).astype(int)
+
+            # channel index is multipliers; else is 1
+            validation = test_matrix_2.div(random_matrix.values)
+            val_matrix = test_matrix_2 / test_matrix_2  # matrix of 1's
+
+            for j in test_index:
+                val_matrix.iloc[j, :] = val_matrix.iloc[j, :] * i
+            assert np.array_equal(validation, val_matrix)
