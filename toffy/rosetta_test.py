@@ -219,7 +219,7 @@ def test_replace_with_intensity_image(overwrite, folders):
                                         'fov{}'.format(fov), 'chan1' + suffix)
                     assert os.path.exists(file)
 
-                    
+
 def test_create_rosetta_matrices():
     with tempfile.TemporaryDirectory() as temp_dir:
         # Pulling in channel names
@@ -238,9 +238,10 @@ def test_create_rosetta_matrices():
         multipliers = [3]
         create_rosetta_matrices(output_path, temp_dir, multipliers)
 
-        rosetta_path = os.path.join(temp_dir, 'Rosetta_Titration%s.csv' 
+        rosetta_path = os.path.join(temp_dir, 'Rosetta_Titration%s.csv'
                                     % (str(multipliers[0])))
-        test_matrix = pd.read_csv(rosetta_path, index_col=0).astype(int)  # grabs output of create_rosetta_matrices
+        # grabs output of create_rosetta_matrices
+        test_matrix = pd.read_csv(rosetta_path, index_col=0).astype(int)
         validation = (test_matrix / multipliers[0])
 
         # confirm all channels scaled by multiplier
