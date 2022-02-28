@@ -235,7 +235,7 @@ def test_create_rosetta_matrices():
         create_rosetta_matrices(base_rosetta_path, temp_dir, multipliers)
 
         for multiplier in multipliers:
-            rosetta_path = os.path.join(temp_dir, 'Rosetta_Titration%s.csv'
+            rosetta_path = os.path.join(temp_dir, 'rosetta_matrix_mult_%s.csv'
                                         % (str(multiplier)))
             # grabs output of create_rosetta_matrices
             test_matrix = pd.read_csv(rosetta_path, index_col=0)
@@ -256,9 +256,8 @@ def test_create_rosetta_matrices():
             mult_vec[change_idx] = mult
 
             # grabs output of create_rosetta_matrices
-            test_matrix = pd.read_csv(os.path.join(temp_dir,
-                                                   'Rosetta_Titration%s.csv' % (str(mult))),
-                                      index_col=0)
+            rosetta_path = os.path.join(temp_dir, 'rosetta_matrix_mult_%s.csv' % (str(mult)))
+            test_matrix = pd.read_csv(rosetta_path, index_col=0)
 
             rescaled = test_matrix.divide(mult_vec, axis='index')
             assert np.array_equal(base_rosetta, rescaled)

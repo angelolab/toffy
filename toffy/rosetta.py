@@ -314,8 +314,7 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, channels=None
     """
     # Read input matrix
     comp_matrix = pd.read_csv(default_matrix, index_col=0)
-    row_labels = comp_matrix.index
-    comp_channels = list(row_labels)
+    comp_channels = comp_matrix.index
 
     # Check channel input
     if channels is None:
@@ -331,6 +330,5 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, channels=None
             # multiply specified channel by multiplier
             if comp_channels[j] in channels:
                 mult_matrix.iloc[j, :] = comp_matrix.iloc[j, :] * i
-
-        df = pd.DataFrame(mult_matrix)
-        df.to_csv(os.path.join(save_dir, 'Rosetta_Titration%s.csv' % (str(i))))
+        base_name = os.path.basename(default_matrix).split('.csv')[0]
+        mult_matrix.to_csv(os.path.join(save_dir, base_name + '_mult_%s.csv' % (str(i))))
