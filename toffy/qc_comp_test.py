@@ -13,6 +13,8 @@ import os
 import pytest
 import tempfile
 
+parametrize = pytest.mark.parametrize
+
 
 RUN_POINT_NAMES = ['Point%d' % i for i in range(1, 13)]
 RUN_POINT_IDS = list(range(661, 673))
@@ -39,125 +41,125 @@ FOVS_CHANS_TEST_QC = [
     (['fov0', 'fov1'], ['chan0', 'chan1'], True)
 ]
 
-MIBITRACKER_EMAIL = 'qc.mibi@gmail.com'
-MIBITRACKER_PASSWORD = 'The_MIBI_Is_Down_Again1!?'
-MIBITRACKER_RUN_NAME = '191008_JG85b'
-MIBITRACKER_RUN_LABEL = 'JG85_Run2'
+# MIBITRACKER_EMAIL = 'qc.mibi@gmail.com'
+# MIBITRACKER_PASSWORD = 'The_MIBI_Is_Down_Again1!?'
+# MIBITRACKER_RUN_NAME = '191008_JG85b'
+# MIBITRACKER_RUN_LABEL = 'JG85_Run2'
 
 
-def test_create_mibitracker_request_helper():
-    # error check: bad email and/or password provided
-    mr = qc_comp.create_mibitracker_request_helper('bad_email', 'bad_password')
-    assert mr is None
+# def test_create_mibitracker_request_helper():
+#     # error check: bad email and/or password provided
+#     mr = qc_comp.create_mibitracker_request_helper('bad_email', 'bad_password')
+#     assert mr is None
 
-    # test creation works (just test the correct type returned)
-    mr = qc_comp.create_mibitracker_request_helper(MIBITRACKER_EMAIL, MIBITRACKER_PASSWORD)
-    assert type(mr) == MibiRequests
+#     # test creation works (just test the correct type returned)
+#     mr = qc_comp.create_mibitracker_request_helper(MIBITRACKER_EMAIL, MIBITRACKER_PASSWORD)
+#     assert type(mr) == MibiRequests
 
 
-@pytest.mark.parametrize(
-    "test_fovs,test_chans,test_sub_folder,actual_points,actual_ids",
-    FOVS_CHANS_TEST_MIBI
-)
-def test_download_mibitracker_data(test_fovs, test_chans, test_sub_folder,
-                                   actual_points, actual_ids):
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # error check: bad base_dir provided
-        with pytest.raises(FileNotFoundError):
-            qc_comp.download_mibitracker_data('', '', '', '', 'bad_base_dir', '', '')
+# @pytest.mark.parametrize(
+#     "test_fovs,test_chans,test_sub_folder,actual_points,actual_ids",
+#     FOVS_CHANS_TEST_MIBI
+# )
+# def test_download_mibitracker_data(test_fovs, test_chans, test_sub_folder,
+#                                    actual_points, actual_ids):
+#     with tempfile.TemporaryDirectory() as temp_dir:
+#         # error check: bad base_dir provided
+#         with pytest.raises(FileNotFoundError):
+#             qc_comp.download_mibitracker_data('', '', '', '', 'bad_base_dir', '', '')
 
-        # error check: bad run_name and/or run_label provided
-        with pytest.raises(ValueError):
-            qc_comp.download_mibitracker_data(
-                MIBITRACKER_EMAIL, MIBITRACKER_PASSWORD, 'bad_run_name', 'bad_run_label',
-                temp_dir, '', ''
-            )
+#         # error check: bad run_name and/or run_label provided
+#         with pytest.raises(ValueError):
+#             qc_comp.download_mibitracker_data(
+#                 MIBITRACKER_EMAIL, MIBITRACKER_PASSWORD, 'bad_run_name', 'bad_run_label',
+#                 temp_dir, '', ''
+#             )
 
-        # bad fovs provided
-        with pytest.raises(ValueError):
-            qc_comp.download_mibitracker_data(
-                MIBITRACKER_EMAIL, MIBITRACKER_PASSWORD,
-                MIBITRACKER_RUN_NAME, MIBITRACKER_RUN_LABEL,
-                temp_dir, '', '', fovs=['Point0', 'Point1']
-            )
+#         # bad fovs provided
+#         with pytest.raises(ValueError):
+#             qc_comp.download_mibitracker_data(
+#                 MIBITRACKER_EMAIL, MIBITRACKER_PASSWORD,
+#                 MIBITRACKER_RUN_NAME, MIBITRACKER_RUN_LABEL,
+#                 temp_dir, '', '', fovs=['Point0', 'Point1']
+#             )
 
-        # bad channels provided
-        with pytest.raises(ValueError):
-            qc_comp.download_mibitracker_data(
-                MIBITRACKER_EMAIL, MIBITRACKER_PASSWORD,
-                MIBITRACKER_RUN_NAME, MIBITRACKER_RUN_LABEL,
-                temp_dir, '', '', channels=['B', 'C']
-            )
+#         # bad channels provided
+#         with pytest.raises(ValueError):
+#             qc_comp.download_mibitracker_data(
+#                 MIBITRACKER_EMAIL, MIBITRACKER_PASSWORD,
+#                 MIBITRACKER_RUN_NAME, MIBITRACKER_RUN_LABEL,
+#                 temp_dir, '', '', channels=['B', 'C']
+#             )
 
-        # ensure test to remove tiff_dir if it already exists runs
-        os.mkdir(os.path.join(temp_dir, 'sample_tiff_dir'))
+#         # ensure test to remove tiff_dir if it already exists runs
+#         os.mkdir(os.path.join(temp_dir, 'sample_tiff_dir'))
 
-        # error check: tiff_dir that already exists provided with overwrite_tiff_dir=False
-        with pytest.raises(ValueError):
-            qc_comp.download_mibitracker_data(
-                MIBITRACKER_EMAIL, MIBITRACKER_PASSWORD,
-                MIBITRACKER_RUN_NAME, MIBITRACKER_RUN_LABEL,
-                temp_dir, 'sample_tiff_dir', overwrite_tiff_dir=False,
-                img_sub_folder=test_sub_folder, fovs=test_fovs, channels=test_chans
-            )
+#         # error check: tiff_dir that already exists provided with overwrite_tiff_dir=False
+#         with pytest.raises(ValueError):
+#             qc_comp.download_mibitracker_data(
+#                 MIBITRACKER_EMAIL, MIBITRACKER_PASSWORD,
+#                 MIBITRACKER_RUN_NAME, MIBITRACKER_RUN_LABEL,
+#                 temp_dir, 'sample_tiff_dir', overwrite_tiff_dir=False,
+#                 img_sub_folder=test_sub_folder, fovs=test_fovs, channels=test_chans
+#             )
 
-        # run the data
-        run_order = qc_comp.download_mibitracker_data(
-            MIBITRACKER_EMAIL, MIBITRACKER_PASSWORD,
-            MIBITRACKER_RUN_NAME, MIBITRACKER_RUN_LABEL,
-            temp_dir, 'sample_tiff_dir', overwrite_tiff_dir=True,
-            img_sub_folder=test_sub_folder, fovs=test_fovs, channels=test_chans
-        )
+#         # run the data
+#         run_order = qc_comp.download_mibitracker_data(
+#             MIBITRACKER_EMAIL, MIBITRACKER_PASSWORD,
+#             MIBITRACKER_RUN_NAME, MIBITRACKER_RUN_LABEL,
+#             temp_dir, 'sample_tiff_dir', overwrite_tiff_dir=True,
+#             img_sub_folder=test_sub_folder, fovs=test_fovs, channels=test_chans
+#         )
 
-        # for testing purposes, set test_fovs and test_chans to all fovs and channels
-        # if they're set to None
-        if test_fovs is None:
-            test_fovs = ['Point%d' % i for i in np.arange(1, 13)]
+#         # for testing purposes, set test_fovs and test_chans to all fovs and channels
+#         # if they're set to None
+#         if test_fovs is None:
+#             test_fovs = ['Point%d' % i for i in np.arange(1, 13)]
 
-        if test_chans is None:
-            test_chans = [
-                'CD115', 'C', 'Au', 'CCL8', 'CD11c', 'Ca', 'Background',
-                'CD11b', 'CD192', 'CD19', 'CD206', 'CD25', 'CD4', 'CD45.1',
-                'CD3', 'CD31', 'CD49b', 'CD68', 'CD45.2', 'FceRI', 'DNA', 'CD8',
-                'F4-80', 'Fe', 'IL-1B', 'Ly-6C', 'FRB', 'Lyve1', 'Ly-6G', 'MHCII',
-                'Na', 'Si', 'SMA', 'P', 'Ta', 'TREM2'
-            ]
+#         if test_chans is None:
+#             test_chans = [
+#                 'CD115', 'C', 'Au', 'CCL8', 'CD11c', 'Ca', 'Background',
+#                 'CD11b', 'CD192', 'CD19', 'CD206', 'CD25', 'CD4', 'CD45.1',
+#                 'CD3', 'CD31', 'CD49b', 'CD68', 'CD45.2', 'FceRI', 'DNA', 'CD8',
+#                 'F4-80', 'Fe', 'IL-1B', 'Ly-6C', 'FRB', 'Lyve1', 'Ly-6G', 'MHCII',
+#                 'Na', 'Si', 'SMA', 'P', 'Ta', 'TREM2'
+#             ]
 
-        # set the sub folder to a blank string if None
-        if test_sub_folder is None:
-            test_sub_folder = ""
+#         # set the sub folder to a blank string if None
+#         if test_sub_folder is None:
+#             test_sub_folder = ""
 
-        # get the contents of tiff_dir
-        tiff_dir_contents = os.listdir(os.path.join(temp_dir, 'sample_tiff_dir'))
+#         # get the contents of tiff_dir
+#         tiff_dir_contents = os.listdir(os.path.join(temp_dir, 'sample_tiff_dir'))
 
-        # assert all the fovs are contained in the dir
-        tiff_dir_fovs = [d for d in tiff_dir_contents if
-                         os.path.isdir(os.path.join(temp_dir, 'sample_tiff_dir', d))]
-        misc_utils.verify_same_elements(
-            created_fov_dirs=tiff_dir_fovs,
-            provided_fov_dirs=test_fovs
-        )
+#         # assert all the fovs are contained in the dir
+#         tiff_dir_fovs = [d for d in tiff_dir_contents if
+#                          os.path.isdir(os.path.join(temp_dir, 'sample_tiff_dir', d))]
+#         misc_utils.verify_same_elements(
+#             created_fov_dirs=tiff_dir_fovs,
+#             provided_fov_dirs=test_fovs
+#         )
 
-        # assert for each fov the channels created are correct
-        for fov in tiff_dir_fovs:
-            # list all the files in the fov folder (and sub folder)
-            # remove file extensions so raw channel names are extracted
-            channel_files = io_utils.remove_file_extensions(os.listdir(
-                os.path.join(temp_dir, 'sample_tiff_dir', fov, test_sub_folder)
-            ))
+#         # assert for each fov the channels created are correct
+#         for fov in tiff_dir_fovs:
+#             # list all the files in the fov folder (and sub folder)
+#             # remove file extensions so raw channel names are extracted
+#             channel_files = io_utils.remove_file_extensions(os.listdir(
+#                 os.path.join(temp_dir, 'sample_tiff_dir', fov, test_sub_folder)
+#             ))
 
-            # assert the channel names are the same
-            misc_utils.verify_same_elements(
-                create_channels=channel_files,
-                provided_channels=test_chans
-            )
+#             # assert the channel names are the same
+#             misc_utils.verify_same_elements(
+#                 create_channels=channel_files,
+#                 provided_channels=test_chans
+#             )
 
-        # assert that the run order created is correct for both points and ids
-        run_fov_names = [ro[0] for ro in run_order]
-        run_fov_ids = [ro[1] for ro in run_order]
+#         # assert that the run order created is correct for both points and ids
+#         run_fov_names = [ro[0] for ro in run_order]
+#         run_fov_ids = [ro[1] for ro in run_order]
 
-        assert run_fov_names == actual_points
-        assert run_fov_ids == actual_ids
+#         assert run_fov_names == actual_points
+#         assert run_fov_ids == actual_ids
 
 
 def test_compute_nonzero_mean_intensity():
@@ -178,129 +180,115 @@ def test_compute_99_9_intensity():
     assert np.allclose(sample_99_9_intensity, 5, rtol=1e-02)
 
 
-def test_compute_qc_metrics_batch():
-    # define the fovs and chans for this test batch
-    fovs = ['fov0', 'fov1', 'fov2']
-    chans = ['chan0', 'chan1', 'chan2']
-
-    # create a test batched image array
-    sample_img_arr = xr.DataArray(
-        np.random.rand(3, 10, 10, 3),
-        coords=[fovs, np.arange(10), np.arange(10), chans],
-        dims=['fov', 'x', 'y', 'channel']
+@parametrize("test_gaussian_blur", [False, True])
+@parametrize("fov_batch", [['fov0', 'fov1'], ['fov0', 'fov1', 'fov2']])
+def test_compute_qc_metrics_batch(test_gaussian_blur, fov_batch):
+    # generate sample image data
+    imgs = xr.DataArray(
+        np.random.rand(3, 1, 40, 40, 3),
+        coords=[
+            ['fov0', 'fov1', 'fov2'],
+            ['pulse'],
+            range(40),
+            range(40),
+            ['chan0', 'chan1', 'chan2']
+        ],
+        dims=['fov', 'type', 'x', 'y', 'channel']
     )
 
-    # test with Gaussian blurring turned on and off
-    for gaussian_blur in [False, True]:
-        qc_data_batch = qc_comp.compute_qc_metrics_batch(
-            sample_img_arr, fovs, chans, gaussian_blur=gaussian_blur
-        )
+    # run data on specified fov batch (tests on a subset of fovs and all fovs)
+    qc_data_batch = qc_comp.compute_qc_metrics_batch(
+        imgs, fovs=fov_batch, gaussian_blur=test_gaussian_blur
+    )
 
-        # extract the QC metric batch data separately
-        nonzero_mean_batch = qc_data_batch['nonzero_mean_batch']
-        total_intensity_batch = qc_data_batch['total_intensity_batch']
-        intensity_99_9_batch = qc_data_batch['99_9_intensity_batch']
+    # extract the data for each QC metric separately
+    nm = qc_data_batch['nonzero_mean_batch']
+    ti = qc_data_batch['total_intensity_batch']
+    p99_9 = qc_data_batch['99_9_intensity_batch']
 
-        # assert the fovs are correct
-        misc_utils.verify_same_elements(
-            provided_fovs=fovs,
-            nzm_fovs=nonzero_mean_batch['fov'].values
-        )
-        misc_utils.verify_same_elements(
-            provided_fovs=fovs,
-            ti_fovs=total_intensity_batch['fov'].values
-        )
-        misc_utils.verify_same_elements(
-            provided_fovs=fovs,
-            i99_9_fovs=intensity_99_9_batch['fov'].values
-        )
+    # assert the fovs are correct
+    assert list(nm['fov']) == fov_batch
+    assert list(nm['fov']) == list(ti['fov']) == list(p99_9['fov'])
 
-        # assert the chans are correct
-        misc_utils.verify_same_elements(
-            provided_chans=chans,
-            nzm_chans=nonzero_mean_batch.drop(columns='fov').columns.values
-        )
-        misc_utils.verify_same_elements(
-            provided_chans=chans,
-            nzm_chans=total_intensity_batch.drop(columns='fov').columns.values
-        )
-        misc_utils.verify_same_elements(
-            provided_chans=chans,
-            nzm_chans=intensity_99_9_batch.drop(columns='fov').columns.values
-        )
+    # assert the columns are correct (channel names + 'fov')
+    assert list(nm.columns) == ['chan0', 'chan1', 'chan2', 'fov']
+    assert list(nm.columns) == list(ti.columns) == list(p99_9.columns)
 
 
-@pytest.mark.parametrize("test_fovs,test_chans,test_gaussian_blur", FOVS_CHANS_TEST_QC)
-def test_compute_qc_metrics(test_fovs, test_chans, test_gaussian_blur):
+@parametrize("test_gaussian_blur", [False, True])
+def test_compute_qc_metrics(test_gaussian_blur):
     with tempfile.TemporaryDirectory() as temp_dir:
-        # define 3 fovs and 3 channels
-        fovs, chans = test_utils.gen_fov_chan_names(3, 3)
-
-        # make the sample data
-        tiff_dir = os.path.join(temp_dir, "single_channel_inputs")
-        img_sub_folder = "TIFs"
-
-        os.mkdir(tiff_dir)
-        test_utils.create_paired_xarray_fovs(
-            base_dir=tiff_dir,
-            fov_names=fovs,
-            channel_names=chans,
-            img_shape=(40, 40),
-            sub_dir=img_sub_folder,
-            fills=True,
-            dtype="int16"
+        # generate the sample image data for the initial run
+        imgs_init = xr.DataArray(
+            np.random.rand(3, 1, 40, 40, 3),
+            coords=[
+                ['fov0', 'fov1', 'fov2'],
+                ['pulse'],
+                range(40),
+                range(40),
+                ['chan0', 'chan1', 'chan2']
+            ],
+            dims=['fov', 'type', 'x', 'y', 'channel']
         )
 
-        # invalid channels provided
-        with pytest.raises(ValueError):
-            qc_comp.compute_qc_metrics(
-                tiff_dir, img_sub_folder, channels=['bad_chan']
-            )
-
-        # test sets of fovs and channels and Gaussian blur turned on or off
-        # NOTE: leave default Gaussian blur sigma at 1 (same test regardless of sigma)
-        qc_data = qc_comp.compute_qc_metrics(
-            tiff_dir, img_sub_folder, fovs=test_fovs, channels=test_chans,
-            gaussian_blur=test_gaussian_blur
+        # first time: create new files
+        qc_comp.compute_qc_metrics(
+            imgs_init, temp_dir, gaussian_blur=test_gaussian_blur
         )
 
-        nonzero_mean = qc_data['nonzero_mean']
-        total_intensity = qc_data['total_intensity']
-        intensity_99_9 = qc_data['99_9_intensity']
+        # define the paths to the QC files
+        nonzero_mean_path = os.path.join(temp_dir, 'nonzero_mean_stats.csv')
+        total_intensity_path = os.path.join(temp_dir, 'total_intensity_stats.csv')
+        percentile_99_9_path = os.path.join(temp_dir, 'percentile_99_9_stats.csv')
 
-        # assert fovs are correct (if fovs is None, set to all fovs)
-        if test_fovs is None:
-            test_fovs = fovs
+        # assert the QC files were created
+        assert os.path.exists(nonzero_mean_path)
+        assert os.path.exists(total_intensity_path)
+        assert os.path.exists(percentile_99_9_path)
 
-        misc_utils.verify_same_elements(
-            provided_fovs=test_fovs,
-            nzm_fovs=nonzero_mean['fov'].values
-        )
-        misc_utils.verify_same_elements(
-            provided_fovs=test_fovs,
-            ti_fovs=total_intensity['fov'].values
-        )
-        misc_utils.verify_same_elements(
-            provided_fovs=test_fovs,
-            i99_9_fovs=intensity_99_9['fov'].values
+        # read in the QC data
+        nm = pd.read_csv(nonzero_mean_path)
+        ti = pd.read_csv(total_intensity_path)
+        p99_9 = pd.read_csv(percentile_99_9_path)
+
+        # assert the FOVs are correct
+        assert list(nm['fov']) == ['fov0', 'fov1', 'fov2']
+        assert list(nm['fov']) == list(ti['fov']) == list(p99_9['fov'])
+
+        # assert the columns are correct (channel names + 'fov')
+        assert list(nm.columns) == ['chan0', 'chan1', 'chan2', 'fov']
+        assert list(nm.columns) == list(ti.columns) == list(p99_9.columns)
+
+        # generate the sample image data for a second run (also tests for a single FOV)
+        imgs_next = xr.DataArray(
+            np.random.rand(1, 1, 40, 40, 3),
+            coords=[
+                ['fov3'],
+                ['pulse'],
+                range(40),
+                range(40),
+                ['chan0', 'chan1', 'chan2']
+            ],
+            dims=['fov', 'type', 'x', 'y', 'channel']
         )
 
-        # assert channels are correct (if chans is None, set to all chans)
-        if test_chans is None:
-            test_chans = chans
+        # subsequent times: append to existing files
+        qc_comp.compute_qc_metrics(
+            imgs_next, temp_dir, gaussian_blur=test_gaussian_blur
+        )
 
-        misc_utils.verify_same_elements(
-            provided_chans=test_chans,
-            nzm_chans=nonzero_mean.drop(columns='fov').columns.values
-        )
-        misc_utils.verify_same_elements(
-            provided_chans=test_chans,
-            ti_chans=total_intensity.drop(columns='fov').columns.values
-        )
-        misc_utils.verify_same_elements(
-            provided_chans=test_chans,
-            i99_9_chans=intensity_99_9.drop(columns='fov').columns.values
-        )
+        # read in the updated QC data
+        nm = pd.read_csv(nonzero_mean_path)
+        ti = pd.read_csv(total_intensity_path)
+        p99_9 = pd.read_csv(percentile_99_9_path)
+
+        # assert the FOVs are correct
+        assert list(nm['fov']) == ['fov0', 'fov1', 'fov2', 'fov3']
+        assert list(nm['fov']) == list(ti['fov']) == list(p99_9['fov'])
+
+        # assert the columns are correct (channel names + 'fov')
+        assert list(nm.columns) == ['chan0', 'chan1', 'chan2', 'fov']
+        assert list(nm.columns) == list(ti.columns) == list(p99_9.columns)
 
 
 def test_visualize_qc_metrics():

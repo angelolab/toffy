@@ -246,7 +246,7 @@ def compute_99_9_intensity(image_data):
     return np.percentile(image_data, q=99.9)
 
 
-def compute_qc_metrics_batch(image_data, fovs, chans, gaussian_blur=False, blur_factor=1):
+def compute_qc_metrics_batch(image_data, fovs, gaussian_blur=False, blur_factor=1):
     """Compute the QC metric matrices for a fov batch
 
     Helper function to compute_qc_metrics
@@ -265,14 +265,13 @@ def compute_qc_metrics_batch(image_data, fovs, chans, gaussian_blur=False, blur_
             set to 0 to use raw inputs without Gaussian blurring
             ignored if gaussian_blur set to False
 
-
     Returns:
         dict:
             A mapping between each QC metric name and their respective DataFrames (batch)
     """
 
-    # subset image_data on just the channel names provided
-    image_data = image_data.loc[..., chans]
+    # subset on the fovs provided, the only values we care about are 'pulse'
+    image_data = image_data.loc[fovs, 'pulse', ...]
 
     # define a numpy array for all the metrics to extract
     # NOTE: numpy array is faster for indexing than pandas
@@ -281,8 +280,7 @@ def compute_qc_metrics_batch(image_data, fovs, chans, gaussian_blur=False, blur_
     total_intensity = copy.deepcopy(blank_arr)
     intensity_99_9 = copy.deepcopy(blank_arr)
 
-    # NOTE: looping through each fov and channel separately much faster
-    # than numpy vectorization
+    # looping through each fov and channel separately much faster than numpy vectorization
     for i in np.arange(image_data.shape[0]):
         for j in np.arange(image_data.shape[3]):
             # extract the data for the fov and channel as float
@@ -305,15 +303,15 @@ def compute_qc_metrics_batch(image_data, fovs, chans, gaussian_blur=False, blur_
 
     # convert the numpy arrays to pandas DataFrames
     df_nonzero_mean_batch = pd.DataFrame(
-        nonzero_mean_intensity, columns=chans
+        nonzero_mean_intensity, columns=image_data.channel.values
     )
 
     df_total_intensity_batch = pd.DataFrame(
-        total_intensity, columns=chans
+        total_intensity, columns=image_data.channel.values
     )
 
     df_99_9_intensity_batch = pd.DataFrame(
-        intensity_99_9, columns=chans
+        intensity_99_9, columns=image_data.channel.values
     )
 
     # append the batch_names as fovs to each DataFrame
@@ -331,19 +329,15 @@ def compute_qc_metrics_batch(image_data, fovs, chans, gaussian_blur=False, blur_
     return qc_data_batch
 
 
-def compute_qc_metrics(tiff_dir, img_sub_folder="TIFs", fovs=None, channels=None,
-                       batch_size=5, gaussian_blur=False, blur_factor=1, dtype='int16'):
-    """Compute the QC metric matrices
+def compute_qc_metrics(image_data, qc_dir, batch_size=5,
+                       gaussian_blur=False, blur_factor=1):
+    """Compute the QC metric matrices for the image data provided
 
     Args:
-        tiff_dir (str):
-            the name of the directory which contains the single_channel_inputs
-        img_sub_folder (str):
-            the name of the folder where the TIF images are located
-        fovs (list):
-            a list of fovs we wish to analyze, if None will default to all fovs
-        channels (list):
-            a list of channels we wish to subset on, if None will default to all channels
+        image_data (xarray.DataArray):
+            the data associated for the bin file(s) loaded in
+        qc_dir (str):
+            the name of the folder to write the QC metric files to
         batch_size (int):
             how large we want each of the batches of fovs to be when computing, adjust as
             necessary for speed and memory considerations
@@ -352,30 +346,14 @@ def compute_qc_metrics(tiff_dir, img_sub_folder="TIFs", fovs=None, channels=None
         blur_factor (int):
             the sigma (standard deviation) to use for Gaussian blurring
             set to 0 to use raw inputs without Gaussian blurring
-            ignored if gaussian_blur set to False
-        dtype (str/type):
-            data type of base images
-
-    Returns:
-        dict:
-            A mapping between each QC metric name and their respective DataFrames
+            ignored if `gaussian_blur` set to `False`
     """
 
-    # if no fovs are specified, then load all the fovs
-    if fovs is None:
-        fovs = io_utils.list_folders(tiff_dir)
+    # extract the FOV names from the image
+    # these are assumed to be sorted by acquisition order if multiple provided
+    fovs = image_data.fov.values
 
-    # drop file extensions
-    fovs = io_utils.remove_file_extensions(fovs)
-
-    # get full filenames from given fovs
-    filenames = io_utils.list_files(tiff_dir, substrs=fovs, exact_match=True)
-
-    # sort the fovs and filenames
-    fovs.sort()
-    filenames.sort()
-
-    # define the number of fovs specified
+    # define the number of fovs
     cohort_len = len(fovs)
 
     # create the DataFrames to store the processed data
@@ -383,32 +361,11 @@ def compute_qc_metrics(tiff_dir, img_sub_folder="TIFs", fovs=None, channels=None
     df_total_intensity = pd.DataFrame()
     df_99_9_intensity = pd.DataFrame()
 
-    # define number of fovs processed (for printing out updates to user)
-    fovs_processed = 0
-
-    # iterate over all the batches
-    for batch_names, batch_files in zip(
-        [fovs[i:i + batch_size] for i in range(0, cohort_len, batch_size)],
-        [filenames[i:i + batch_size] for i in range(0, cohort_len, batch_size)]
-    ):
-        image_data = load_utils.load_imgs_from_tree(data_dir=tiff_dir,
-                                                    img_sub_folder=img_sub_folder,
-                                                    fovs=batch_names,
-                                                    dtype=dtype)
-
-        # get the channel names directly from image_data if not specified
-        if channels is None:
-            channels = image_data.channels.values
-
-        # verify the channel names (important if the user explicitly specifies channels)
-        misc_utils.verify_in_list(
-            provided_chans=channels,
-            image_chans=image_data.channels.values
-        )
-
+    # define and iterate over batches
+    for batch_fovs in [fovs[i:i + batch_size] for i in range(0, cohort_len, batch_size)]:
         # compute the QC metrics of this batch
         qc_data_batch = compute_qc_metrics_batch(
-            image_data, batch_names, channels, gaussian_blur, blur_factor
+            image_data, batch_fovs, gaussian_blur, blur_factor
         )
 
         # append the batch QC metric data to the full processed data
@@ -422,25 +379,32 @@ def compute_qc_metrics(tiff_dir, img_sub_folder="TIFs", fovs=None, channels=None
             [df_99_9_intensity, qc_data_batch['99_9_intensity_batch']]
         )
 
-        # update number of fovs processed
-        fovs_processed += batch_size
-
-        # print fovs processed update
-        print("Number of fovs processed: %d" % fovs_processed)
-
     # reset the indices to make indexing consistent
     df_nonzero_mean = df_nonzero_mean.reset_index(drop=True)
     df_total_intensity = df_total_intensity.reset_index(drop=True)
     df_99_9_intensity = df_99_9_intensity.reset_index(drop=True)
 
-    # create a dictionary mapping the metric name to its respective DataFrame
-    qc_data = {
-        'nonzero_mean': df_nonzero_mean,
-        'total_intensity': df_total_intensity,
-        '99_9_intensity': df_99_9_intensity
-    }
+    # if output_dir doesn't contain anything then create files, otherwise append
+    # ensure that header doesn't get written on append
+    if len(io_utils.list_files(qc_dir, substrs='.csv')) == 0:
+        write_mode = 'w'
+        header = True
+    else:
+        write_mode = 'a'
+        header = False
 
-    return qc_data
+    df_nonzero_mean.to_csv(
+        os.path.join(qc_dir, 'nonzero_mean_stats.csv'),
+        index=False, mode=write_mode, header=header
+    )
+    df_total_intensity.to_csv(
+        os.path.join(qc_dir, 'total_intensity_stats.csv'),
+        index=False, mode=write_mode, header=header
+    )
+    df_99_9_intensity.to_csv(
+        os.path.join(qc_dir, 'percentile_99_9_stats.csv'),
+        index=False, mode=write_mode, header=header
+    )
 
 
 def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=None, save_dir=None):
