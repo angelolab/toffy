@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 import pandas as pd
+import re
 from requests.exceptions import HTTPError
 from scipy.ndimage import gaussian_filter
 import seaborn as sns
@@ -247,89 +248,6 @@ def compute_99_9_intensity(image_data):
     return np.percentile(image_data, q=99.9)
 
 
-def compute_qc_metrics_batch(image_data, fovs, gaussian_blur=False, blur_factor=1):
-    """Compute the QC metric matrices for a fov batch
-
-    Helper function to compute_qc_metrics
-
-    Args:
-        image_data (xarray.DataArray):
-            the data associated with the fov batch
-        fovs (list):
-            the list of fov names in the batch
-        chans (list):
-            the subset of channels specified
-        gaussian_blur (bool):
-            whether to add a Gaussian blur to each batch
-        blur_factor (int):
-            the sigma (standard deviation) to use for Gaussian blurring
-            set to 0 to use raw inputs without Gaussian blurring
-            ignored if gaussian_blur set to False
-
-    Returns:
-        dict:
-            A mapping between each QC metric name and their respective DataFrames (batch)
-    """
-
-    # subset on the fovs provided, the only values we care about are 'pulse'
-    image_data = image_data.loc[fovs, 'pulse', ...]
-
-    # define a numpy array for all the metrics to extract
-    # NOTE: numpy array is faster for indexing than pandas
-    blank_arr = np.zeros((image_data.shape[0], image_data.shape[3]), dtype='float32')
-    nonzero_mean_intensity = copy.deepcopy(blank_arr)
-    total_intensity = copy.deepcopy(blank_arr)
-    intensity_99_9 = copy.deepcopy(blank_arr)
-
-    # looping through each fov and channel separately much faster than numpy vectorization
-    for i in np.arange(image_data.shape[0]):
-        for j in np.arange(image_data.shape[3]):
-            # extract the data for the fov and channel as float
-            image_data_np = image_data[i, :, :, j].values.astype('float32')
-
-            # STEP 1: gaussian blur (if specified)
-            if gaussian_blur:
-                image_data_np = gaussian_filter(
-                    image_data_np, sigma=blur_factor, mode='nearest', truncate=2.0
-                )
-
-            # STEP 2: extract non-zero mean intensity
-            nonzero_mean_intensity[i, j] = compute_nonzero_mean_intensity(image_data_np)
-
-            # STEP 3: extract total intensity
-            total_intensity[i, j] = compute_total_intensity(image_data_np)
-
-            # STEP 4: take 99.9% value of the data and assign
-            intensity_99_9[i, j] = compute_99_9_intensity(image_data_np)
-
-    # convert the numpy arrays to pandas DataFrames
-    df_nonzero_mean_batch = pd.DataFrame(
-        nonzero_mean_intensity, columns=image_data.channel.values
-    )
-
-    df_total_intensity_batch = pd.DataFrame(
-        total_intensity, columns=image_data.channel.values
-    )
-
-    df_99_9_intensity_batch = pd.DataFrame(
-        intensity_99_9, columns=image_data.channel.values
-    )
-
-    # append the batch_names as fovs to each DataFrame
-    df_nonzero_mean_batch['fov'] = fovs
-    df_total_intensity_batch['fov'] = fovs
-    df_99_9_intensity_batch['fov'] = fovs
-
-    # create a dictionary mapping the metric name to its respective DataFrame
-    qc_data_batch = {
-        'nonzero_mean_batch': df_nonzero_mean_batch,
-        'total_intensity_batch': df_total_intensity_batch,
-        '99_9_intensity_batch': df_99_9_intensity_batch
-    }
-
-    return qc_data_batch
-
-
 def compute_qc_metrics(bin_file_path, panel_path, qc_dir, gaussian_blur=False, blur_factor=1):
     """Compute the QC metric matrices for the image data provided
 
@@ -365,8 +283,8 @@ def compute_qc_metrics(bin_file_path, panel_path, qc_dir, gaussian_blur=False, b
     )
 
     # extract the FOV names and channels from the image
-    # NOTE: mibi_bin_tools is expected to return these in run acquisition order
-    fovs = image_data.fov.values
+    # NOTE: the sorting mechanism assumes FOVs are named fov-n-scan-m
+    fovs = sorted(image_data.fov.values, key=lambda fov: re.findall(r'\d+', fov)[0])
     chans = image_data.channel.values
 
     # create the DataFrames to store the processed data (easier to write to CSV)
