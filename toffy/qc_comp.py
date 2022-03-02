@@ -202,7 +202,7 @@ def compute_nonzero_mean_intensity(image_data):
 
     Returns:
         float:
-            The nonzero mean intensity of the fov/chan pair (np.nan if the channel contains all 0s)
+            The nonzero mean intensity of the fov/chan pair (`np.nan` if channel contains all 0s)
     """
 
     # take just the non-zero pixels
@@ -227,7 +227,7 @@ def compute_total_intensity(image_data):
 
     Returns:
         float:
-            The total intensity of the fov/chan pair (np.nan if the channel contains all 0s)
+            The total intensity of the fov/chan pair (`np.nan` if channel contains all 0s)
     """
 
     return np.sum(image_data)
@@ -294,7 +294,6 @@ def compute_qc_metrics(bin_file_path, panel_path, qc_dir, gaussian_blur=False, b
     df_99_9_intensity = pd.DataFrame()
 
     # define numpy arrays for all the metrics to extract, more efficient indexing than pandas
-    # NOTE: add an extra dimension for easy coersion to pandas
     blank_arr = np.zeros((len(fovs), image_data.shape[4]), dtype='float32')
     nonzero_mean_intensity = copy.deepcopy(blank_arr)
     total_intensity = copy.deepcopy(blank_arr)
@@ -320,7 +319,7 @@ def compute_qc_metrics(bin_file_path, panel_path, qc_dir, gaussian_blur=False, b
             # STEP 4: take 99.9% value of the data and assign
             intensity_99_9[i, j] = compute_99_9_intensity(image_data_np)
 
-    # convert the numpy arrays to 1-row pandas DataFrames (easier to write to CSV)
+    # convert the numpy arrays to pandas
     df_nonzero_mean = pd.DataFrame(
         nonzero_mean_intensity, columns=chans
     )
