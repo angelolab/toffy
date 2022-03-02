@@ -283,6 +283,7 @@ def compute_qc_metrics(bin_file_path, panel_path, qc_dir, gaussian_blur=False, b
     )
 
     # extract the FOV names and channels from the image
+    # NOTE: usually, only one fov per bin file, but one of the test directories simulates two fovs
     # NOTE: the sorting mechanism assumes FOVs are named fov-n-scan-m
     fovs = sorted(image_data.fov.values, key=lambda fov: re.findall(r'\d+', fov)[0])
     chans = image_data.channel.values
