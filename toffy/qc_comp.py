@@ -184,7 +184,7 @@ def download_mibitracker_data(email, password, run_name, run_label, base_dir, ti
             # write the data to a .tiff file in the FOV directory structure
             imsave(
                 os.path.join(base_dir, tiff_dir, img['number'], img_sub_folder, chan_file),
-                chan_data
+                chan_data, check_contrast=False
             )
 
         # append the run name and run id to the list
