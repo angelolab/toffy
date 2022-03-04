@@ -165,6 +165,12 @@ def test_download_mibitracker_data(test_fovs, test_chans, test_sub_folder,
 
 
 def test_compute_nonzero_mean_intensity():
+    # test on a zero array
+    sample_img_arr = np.zeros((3, 3))
+    sample_nonzero_mean = qc_comp.compute_nonzero_mean_intensity(sample_img_arr)
+    assert sample_nonzero_mean == 0
+
+    # test on a non-zero array
     sample_img_arr = np.array([[0, 1, 2], [3, 0, 0], [0, 4, 5]])
     sample_nonzero_mean = qc_comp.compute_nonzero_mean_intensity(sample_img_arr)
     assert sample_nonzero_mean == 3
@@ -236,7 +242,7 @@ def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
         # define a sample qc_path to write to
         qc_path = os.path.join(temp_dir, 'sample_qc_dir')
 
-        # bin file error check
+        # bin folder error check
         with pytest.raises(FileNotFoundError):
             qc_comp.compute_qc_metrics(
                 'bad_bin_path', fovs[0], panel_path, gaussian_blur
@@ -280,6 +286,10 @@ def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
 @parametrize('fovs', [['fov-1-scan-1'], ['fov-1-scan-1', 'fov-2-scan-1']])
 def test_combine_qc_metrics(fovs):
     with tempfile.TemporaryDirectory() as temp_dir:
+        # bin folder error check
+        with pytest.raises(FileNotFoundError):
+            qc_comp.combine_qc_metrics('bad_bin_path')
+
         # define a dummy list of channels
         chans = ['SMA', 'Vimentin', 'Au']
 
