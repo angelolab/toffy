@@ -12,8 +12,8 @@ from skimage.io import imsave
 
 from toffy.mibitracker_utils import MibiTrackerError
 from toffy.mibitracker_utils import MibiRequests
+from toffy import settings
 
-import ark.settings as settings
 import ark.utils.io_utils as io_utils
 import ark.utils.load_utils as load_utils
 import ark.utils.misc_utils as misc_utils
@@ -248,6 +248,33 @@ def compute_99_9_intensity(image_data):
     return np.percentile(image_data, q=99.9)
 
 
+def sort_bin_file_fovs(fovs, suffix_ignore=None):
+    """Sort a list of fovs in a bin file by fov and scan number
+
+    fovs (list):
+        a list of fovs in the form `'fov-m-scan-n'`
+    suffix_ignore (str):
+        removes this at the end of each fov name, needed if sorting fov-level QC `.csv` files
+
+    Returns:
+        list:
+            fov name list sorted by ascending fov number, the ascending scan number
+    """
+
+    # set suffix_ignore to the empty string if None
+    if suffix_ignore is None:
+        suffix_ignore = ''
+
+    # TODO: if anyone can do this using a walrus operator I'd appreciate it!
+    return sorted(
+        fovs,
+        key=lambda f: (
+            int(f.replace(suffix_ignore, '').split('-')[1]),
+            int(f.replace(suffix_ignore, '').split('-')[3])
+        )
+    )
+
+
 def compute_qc_metrics(bin_file_path, fov_name, panel_path,
                        gaussian_blur=False, blur_factor=1):
     """Compute the QC metric matrices for the image data provided
@@ -319,41 +346,26 @@ def compute_qc_metrics(bin_file_path, fov_name, panel_path,
         # STEP 4: take 99.9% value of the data and assign
         intensity_99_9[i] = compute_99_9_intensity(image_data_np)
 
-    # define a pandas DataFrame for each metric
-    df_nonzero_mean = pd.DataFrame(
-        columns=['fov', 'channel', 'Non-zero mean intensity'], dtype=object
-    )
-    df_total_intensity = pd.DataFrame(
-        columns=['fov', 'channel', 'Total intensity'], dtype=object
-    )
-    df_99_9_intensity = pd.DataFrame(
-        columns=['fov', 'channel', '99.9 intensity value'], dtype=object
-    )
+    # define the list of numpy arrays for looping
+    metric_data = [nonzero_mean_intensity, total_intensity, intensity_99_9]
 
-    # append the stats
-    df_nonzero_mean['Non-zero mean intensity'] = nonzero_mean_intensity
-    df_total_intensity['Total intensity'] = total_intensity
-    df_99_9_intensity['99.9 intensity value'] = intensity_99_9
+    for ms, md, mc in zip(settings.QC_SUFFIXES, metric_data, settings.QC_COLUMNS):
+        # define the dataframe for this metric
+        metric_df = pd.DataFrame(
+            columns=['fov', 'channel', mc], dtype=object
+        )
 
-    # append the FOV name and channel name
-    df_nonzero_mean['fov'] = fov_name
-    df_total_intensity['fov'] = fov_name
-    df_99_9_intensity['fov'] = fov_name
+        # assign the metric data
+        metric_df[mc] = md
 
-    df_nonzero_mean['channel'] = chans
-    df_total_intensity['channel'] = chans
-    df_99_9_intensity['channel'] = chans
+        # assign the fov and channel names
+        metric_df['fov'] = fov_name
+        metric_df['channel'] = chans
 
-    # save the data to the qc_dir
-    df_nonzero_mean.to_csv(
-        os.path.join(bin_file_path, '%s_nonzero_mean_stats.csv') % fov_name, index=False
-    )
-    df_total_intensity.to_csv(
-        os.path.join(bin_file_path, '%s_total_intensity_stats.csv') % fov_name, index=False
-    )
-    df_99_9_intensity.to_csv(
-        os.path.join(bin_file_path, '%s_percentile_99_9_stats.csv') % fov_name, index=False
-    )
+        # write the metric data to CSV
+        metric_df.to_csv(
+            os.path.join(bin_file_path, '%s_%s.csv' % (fov_name, ms)), index=False
+        )
 
 
 def combine_qc_metrics(bin_file_path):
@@ -368,27 +380,20 @@ def combine_qc_metrics(bin_file_path):
     if not os.path.exists(bin_file_path):
         raise FileNotFoundError('bin_file_path %s does not exist' % bin_file_path)
 
-    # iterate over each metric substr
-    metric_substrs = [
-        'nonzero_mean_stats.csv', 'total_intensity_stats.csv', 'percentile_99_9_stats.csv'
-    ]
-    for ms in metric_substrs:
+    for ms in settings.QC_SUFFIXES:
         # define an aggregated metric DataFrame
         metric_df = pd.DataFrame()
 
         # list all the files corresponding to this metric
-        metric_files = io_utils.list_files(bin_file_path, substrs=ms)
+        metric_files = io_utils.list_files(bin_file_path, substrs=ms + '.csv')
 
-        # this prevents an already-existing combined .csv file from sneaking in
+        # don't consider any existing combined .csv files, just the fov-level .csv files
         metric_files = [
-            mf_match[0] + '_%s' % ms for mf in metric_files if
-            len(mf_match := re.findall(r'fov-\d+-scan-\d+', mf)) == 1
+            mf for mf in metric_files if 'combined' not in mf
         ]
 
         # sort the files to ensure consistency
-        # NOTE: all FOVs are named fov-m-scan-n, 'm' determines run acquisition order
-        # TODO: need an additional sort by scan?
-        metric_files = sorted(metric_files, key=lambda x: re.findall(r'\d+', x)[0])
+        metric_files = sort_bin_file_fovs(metric_files, suffix_ignore='_%s.csv' % ms)
 
         # iterate over each metric file and append the data to metric_df
         for mf in metric_files:
@@ -396,7 +401,7 @@ def combine_qc_metrics(bin_file_path):
 
         # write the aggregated metric data
         # NOTE: if this combined metric file already exists, it will be overwritten
-        metric_df.to_csv(os.path.join(bin_file_path, 'combined_%s' % ms), index=False)
+        metric_df.to_csv(os.path.join(bin_file_path, 'combined_%s.csv' % ms), index=False)
 
 
 def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=None, save_dir=None):
