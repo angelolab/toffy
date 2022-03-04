@@ -181,9 +181,11 @@ def test_compute_99_9_intensity():
     assert np.allclose(sample_99_9_intensity, 5, rtol=1e-02)
 
 
+# NOTE: we don't need to test iteration over multiple FOVs because
+# test_compute_qc_metrics computes on 1 FOV at a time
 @parametrize("gaussian_blur", [False, True])
 @parametrize("bin_file_folder, fovs",
-             [('moly', ['fov-1-scan-1']), ('tissue', ['fov-1-scan-1', 'fov-2-scan-1'])])
+             [('moly', ['fov-1-scan-1']), ('tissue', ['fov-1-scan-1'])])
 def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
     with tempfile.TemporaryDirectory() as temp_dir:
         # define a sample panel, leave panel correctness/incorrectness test for mibi_bin_tools
@@ -201,20 +203,43 @@ def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
         # define the full path to the bin file folder
         bin_file_path = os.path.join(Path(__file__).parent, 'data', bin_file_folder)
 
-        # make a sample QC metric folder
-        qc_path = os.path.join(temp_dir, 'qc_dir')
-        os.mkdir(qc_path)
+        # define a sample qc_path to write to
+        qc_path = os.path.join(temp_dir, 'sample_qc_dir')
 
-        # first time: create new files
+        # bin file error check
+        with pytest.raises(FileNotFoundError):
+            qc_comp.compute_qc_metrics(
+                'bad_bin_path', fovs[0], panel_path, gaussian_blur
+            )
+
+        # panel file error check
+        with pytest.raises(FileNotFoundError):
+            qc_comp.compute_qc_metrics(
+                bin_file_path, fovs[0], 'bad_panel_path', gaussian_blur
+            )
+
+        # fov error check
+        with pytest.raises(FileNotFoundError):
+            qc_comp.compute_qc_metrics(
+                bin_file_path, 'bad_fov', panel_path, gaussian_blur
+            )
+
+        # first time: create new files, also asserts qc_path is created
         qc_comp.compute_qc_metrics(
-            bin_file_path, panel_path, qc_path, gaussian_blur
+            bin_file_path, fovs[0], panel_path, gaussian_blur
         )
 
-        nonzero_mean_path = os.path.join(qc_path, 'nonzero_mean_stats.csv')
-        total_intensity_path = os.path.join(qc_path, 'total_intensity_stats.csv')
-        percentile_99_9_path = os.path.join(qc_path, 'percentile_99_9_stats.csv')
+        nonzero_mean_path = os.path.join(
+            bin_file_path, '%s_nonzero_mean_stats.csv' % fovs[0]
+        )
+        total_intensity_path = os.path.join(
+            bin_file_path, '%s_total_intensity_stats.csv' % fovs[0]
+        )
+        percentile_99_9_path = os.path.join(
+            bin_file_path, '%s_percentile_99_9_stats.csv' % fovs[0]
+        )
 
-        # assert the QC files were created
+        # assert the QC files for fov-1-scan-1 were created
         assert os.path.exists(nonzero_mean_path)
         assert os.path.exists(total_intensity_path)
         assert os.path.exists(percentile_99_9_path)
@@ -224,31 +249,102 @@ def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
         ti = pd.read_csv(total_intensity_path)
         p99_9 = pd.read_csv(percentile_99_9_path)
 
-        # assert the FOVs are correct
-        assert list(nm['fov']) == fovs
+        # assert the column names are correct
+        assert list(nm.columns.values) == ['fov', 'channel', 'Non-zero mean intensity']
+        assert list(ti.columns.values) == ['fov', 'channel', 'Total intensity']
+        assert list(p99_9.columns.values) == ['fov', 'channel', '99.9 intensity value']
+
+        # assert the correct FOV was written
+        assert list(nm['fov']) == [fovs[0]]
         assert list(nm['fov']) == list(ti['fov']) == list(p99_9['fov'])
 
-        # assert the columns are correct (channel names + 'fov')
-        assert list(nm.columns) == ['SMA', 'fov']
-        assert list(nm.columns) == list(ti.columns) == list(p99_9.columns)
+        # assert the correct channels were written
+        assert list(nm['channel']) == ['SMA']
+        assert list(nm['channel']) == list(ti['channel']) == list(p99_9['channel'])
 
-        # second time: append to files (use the same data for testing purposes)
-        qc_comp.compute_qc_metrics(
-            bin_file_path, panel_path, qc_path, gaussian_blur
-        )
+
+@parametrize('fovs', [['fov-1-scan-1'], ['fov-1-scan-1', 'fov-2-scan-1']])
+def test_combine_qc_metrics(fovs):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # define a dummy list of channels
+        chans = ['SMA', 'Vimentin', 'Au']
+
+        # define a sample bin_file_path
+        bin_file_path = os.path.join(temp_dir, 'sample_qc_dir')
+        os.mkdir(bin_file_path)
+
+        # put some random stuff in bin_file_path, test that this does not affect aggregation
+        pd.DataFrame().to_csv(os.path.join(bin_file_path, 'random.csv'))
+        Path(os.path.join(bin_file_path, 'random.txt')).touch()
+
+        # add existing combined .csv files, this also should not affect aggregation
+        pd.DataFrame().to_csv(os.path.join(bin_file_path, 'combined_nonzero_mean_stats.csv'))
+        pd.DataFrame().to_csv(os.path.join(bin_file_path, 'combined_total_intensity_stats.csv'))
+        pd.DataFrame().to_csv(os.path.join(bin_file_path, 'combined_percentile_99_9_stats.csv'))
+
+        # define sample dataframes for each fov to write to qc_path
+        for fov in fovs:
+            fov_nm_data = pd.DataFrame(
+                np.random.rand(3, 3), columns=['fov', 'channel', 'Non-zero mean intensity']
+            )
+
+            fov_ti_data = pd.DataFrame(
+                np.random.rand(3, 3), columns=['fov', 'channel', 'Total intensity']
+            )
+
+            fov_99_9_data = pd.DataFrame(
+                np.random.rand(3, 3), columns=['fov', 'channel', '99.9 intensity value']
+            )
+
+            # write the FOV names in
+            fov_nm_data['fov'] = fov
+            fov_ti_data['fov'] = fov
+            fov_99_9_data['fov'] = fov
+
+            # write the channel names in
+            fov_nm_data['channel'] = chans
+            fov_ti_data['channel'] = chans
+            fov_99_9_data['channel'] = chans
+
+            fov_nm_data.to_csv(
+                os.path.join(bin_file_path, '%s_nonzero_mean_stats.csv') % fov, index=False
+            )
+            fov_ti_data.to_csv(
+                os.path.join(bin_file_path, '%s_total_intensity_stats.csv') % fov, index=False
+            )
+            fov_99_9_data.to_csv(
+                os.path.join(bin_file_path, '%s_percentile_99_9_stats.csv') % fov, index=False
+            )
+
+        # run the aggregation function
+        qc_comp.combine_qc_metrics(bin_file_path)
+
+        # assert the correct file names were written
+        combined_nm_path = os.path.join(bin_file_path, 'combined_nonzero_mean_stats.csv')
+        combined_ti_path = os.path.join(bin_file_path, 'combined_total_intensity_stats.csv')
+        combined_p99_9_path = os.path.join(bin_file_path, 'combined_percentile_99_9_stats.csv')
+
+        assert os.path.exists(combined_nm_path)
+        assert os.path.exists(combined_ti_path)
+        assert os.path.exists(combined_p99_9_path)
 
         # read in the QC data
-        nm = pd.read_csv(nonzero_mean_path)
-        ti = pd.read_csv(total_intensity_path)
-        p99_9 = pd.read_csv(percentile_99_9_path)
+        nm = pd.read_csv(combined_nm_path)
+        ti = pd.read_csv(combined_ti_path)
+        p99_9 = pd.read_csv(combined_p99_9_path)
 
-        # assert the FOVs are correct
-        assert list(nm['fov']) == fovs * 2
+        # assert the column names are correct
+        assert list(nm.columns.values) == ['fov', 'channel', 'Non-zero mean intensity']
+        assert list(ti.columns.values) == ['fov', 'channel', 'Total intensity']
+        assert list(p99_9.columns.values) == ['fov', 'channel', '99.9 intensity value']
+
+        # assert the correct FOVs are written
+        assert list(nm['fov']) == list(np.repeat(fovs, len(chans)))
         assert list(nm['fov']) == list(ti['fov']) == list(p99_9['fov'])
 
-        # assert the columns are correct (channel names + 'fov')
-        assert list(nm.columns) == ['SMA', 'fov']
-        assert list(nm.columns) == list(ti.columns) == list(p99_9.columns)
+        # assert the correct channels are written
+        assert list(nm['channel']) == chans * len(fovs)
+        assert list(nm['channel']) == list(ti['channel']) == list(p99_9['channel'])
 
 
 def test_visualize_qc_metrics():

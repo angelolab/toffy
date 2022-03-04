@@ -248,16 +248,18 @@ def compute_99_9_intensity(image_data):
     return np.percentile(image_data, q=99.9)
 
 
-def compute_qc_metrics(bin_file_path, panel_path, qc_dir, gaussian_blur=False, blur_factor=1):
+def compute_qc_metrics(bin_file_path, fov_name, panel_path,
+                       gaussian_blur=False, blur_factor=1):
     """Compute the QC metric matrices for the image data provided
 
     Args:
         bin_file_path (str):
-            the directory to the MIBI bin files for extraction
+            the directory to the MIBI bin files for extraction,
+            also where the fov-level QC metric files will be written
+        fov_name (str):
+            the name of the FOV to extract from `bin_file_path`, needs to correspond with JSON name
         panel_path (str):
             the path to the file defining the panel info for bin file extraction
-        qc_dir (str):
-            the name of the folder to write the QC metric files to
         gaussian_blur (bool):
             whether or not to add Gaussian blurring
         blur_factor (int):
@@ -273,91 +275,128 @@ def compute_qc_metrics(bin_file_path, panel_path, qc_dir, gaussian_blur=False, b
     if not os.path.exists(panel_path):
         raise FileNotFoundError("panel_path %s does not exist" % panel_path)
 
+    if not os.path.exists(os.path.join(bin_file_path, fov_name + '.json')):
+        raise FileNotFoundError("fov file %s.json not found in bin_file_path" % fov_name)
+
     # run the bin file extraction, we'll extract all FOVs
     # the image coords should be: ['fov', 'type', 'x', 'y', 'channel']
     image_data = bin_files.extract_bin_files(
         data_dir=bin_file_path,
         out_dir=None,
-        include_fovs=None,
+        include_fovs=[fov_name],
         panel=pd.read_csv(panel_path)
     )
 
-    # extract the FOV names and channels from the image
-    # NOTE: usually, only one fov per bin file, but one of the test directories simulates two fovs
-    # NOTE: the sorting mechanism assumes FOVs are named fov-n-scan-m
-    fovs = sorted(image_data.fov.values, key=lambda fov: re.findall(r'\d+', fov)[0])
+    # there's only 1 FOV and 1 type ('pulse'), so subset on that
+    image_data = image_data.loc[fov_name, 'pulse', :, :, :]
+
+    # define the list of channels to use
     chans = image_data.channel.values
 
-    # create the DataFrames to store the processed data (easier to write to CSV)
-    df_nonzero_mean = pd.DataFrame()
-    df_total_intensity = pd.DataFrame()
-    df_99_9_intensity = pd.DataFrame()
-
     # define numpy arrays for all the metrics to extract, more efficient indexing than pandas
-    blank_arr = np.zeros((len(fovs), image_data.shape[4]), dtype='float32')
+    blank_arr = np.zeros(image_data.shape[2], dtype='float32')
     nonzero_mean_intensity = copy.deepcopy(blank_arr)
     total_intensity = copy.deepcopy(blank_arr)
     intensity_99_9 = copy.deepcopy(blank_arr)
 
-    for i, fov in enumerate(fovs):
-        for j, chan in enumerate(chans):
-            # we only care about the pulse values
-            image_data_np = image_data.loc[fov, 'pulse', :, :, chan].values
+    # it's faster to loop through the individual channels rather than broadcasting
+    for i, chan in enumerate(chans):
+        # subset on the channel, cast to float32 to prevent truncation
+        image_data_np = image_data.loc[:, :, chan].values.astype(np.float32)
 
-            # STEP 1: gaussian blur (if specified)
-            if gaussian_blur:
-                image_data_np = gaussian_filter(
-                    image_data_np, sigma=blur_factor, mode='nearest', truncate=2.0
-                )
+        # STEP 1: gaussian blur (if specified)
+        if gaussian_blur:
+            image_data_np = gaussian_filter(
+                image_data_np, sigma=blur_factor, mode='nearest', truncate=2.0
+            )
 
-            # STEP 2: extract non-zero mean intensity
-            nonzero_mean_intensity[i, j] = compute_nonzero_mean_intensity(image_data_np)
+        # STEP 2: extract non-zero mean intensity
+        nonzero_mean_intensity[i] = compute_nonzero_mean_intensity(image_data_np)
 
-            # STEP 3: extract total intensity
-            total_intensity[i, j] = compute_total_intensity(image_data_np)
+        # STEP 3: extract total intensity
+        total_intensity[i] = compute_total_intensity(image_data_np)
 
-            # STEP 4: take 99.9% value of the data and assign
-            intensity_99_9[i, j] = compute_99_9_intensity(image_data_np)
+        # STEP 4: take 99.9% value of the data and assign
+        intensity_99_9[i] = compute_99_9_intensity(image_data_np)
 
-    # convert the numpy arrays to pandas
+    # define a pandas DataFrame for each metric
     df_nonzero_mean = pd.DataFrame(
-        nonzero_mean_intensity, columns=chans
+        columns=['fov', 'channel', 'Non-zero mean intensity'], dtype=object
     )
-
     df_total_intensity = pd.DataFrame(
-        total_intensity, columns=chans
+        columns=['fov', 'channel', 'Total intensity'], dtype=object
     )
-
     df_99_9_intensity = pd.DataFrame(
-        intensity_99_9, columns=chans
+        columns=['fov', 'channel', '99.9 intensity value'], dtype=object
     )
 
-    # append the fov name
-    df_nonzero_mean['fov'] = fovs
-    df_total_intensity['fov'] = fovs
-    df_99_9_intensity['fov'] = fovs
+    # append the stats
+    df_nonzero_mean['Non-zero mean intensity'] = nonzero_mean_intensity
+    df_total_intensity['Total intensity'] = total_intensity
+    df_99_9_intensity['99.9 intensity value'] = intensity_99_9
 
-    # if output_dir doesn't contain anything then create files, otherwise append
-    # ensure that header doesn't get written on append
-    if len(io_utils.list_files(qc_dir, substrs='.csv')) == 0:
-        write_mode = 'w'
-        header = True
-    else:
-        write_mode = 'a'
-        header = False
+    # append the FOV name and channel name
+    df_nonzero_mean['fov'] = fov_name
+    df_total_intensity['fov'] = fov_name
+    df_99_9_intensity['fov'] = fov_name
 
+    df_nonzero_mean['channel'] = chans
+    df_total_intensity['channel'] = chans
+    df_99_9_intensity['channel'] = chans
+
+    # save the data to the qc_dir
     df_nonzero_mean.to_csv(
-        os.path.join(qc_dir, 'nonzero_mean_stats.csv'),
-        index=False, mode=write_mode, header=header
+        os.path.join(bin_file_path, '%s_nonzero_mean_stats.csv') % fov_name, index=False
     )
     df_total_intensity.to_csv(
-        os.path.join(qc_dir, 'total_intensity_stats.csv'),
-        index=False, mode=write_mode, header=header
+        os.path.join(bin_file_path, '%s_total_intensity_stats.csv') % fov_name, index=False
     )
     df_99_9_intensity.to_csv(
-        os.path.join(qc_dir, 'percentile_99_9_stats.csv'),
-        index=False, mode=write_mode, header=header
+        os.path.join(bin_file_path, '%s_percentile_99_9_stats.csv') % fov_name, index=False
     )
+
+
+def combine_qc_metrics(bin_file_path):
+    """Aggregates the QC results of each FOV into one `.csv`
+
+    Args:
+        bin_file_path (str):
+            the name of the folder containing the QC metric files
+    """
+
+    # path validation check
+    if not os.path.exists(bin_file_path):
+        raise FileNotFoundError('bin_file_path %s does not exist' % bin_file_path)
+
+    # iterate over each metric substr
+    metric_substrs = [
+        'nonzero_mean_stats.csv', 'total_intensity_stats.csv', 'percentile_99_9_stats.csv'
+    ]
+    for ms in metric_substrs:
+        # define an aggregated metric DataFrame
+        metric_df = pd.DataFrame()
+
+        # list all the files corresponding to this metric
+        metric_files = io_utils.list_files(bin_file_path, substrs=ms)
+
+        # this prevents an already-existing combined .csv file from sneaking in
+        metric_files = [
+            mf_match[0] + '_%s' % ms for mf in metric_files if
+            len(mf_match := re.findall(r'fov-\d+-scan-\d+', mf)) == 1
+        ]  # go walrus operators
+
+        # sort the files to ensure consistency
+        # NOTE: all FOVs are named fov-m-scan-n, 'm' determines run acquisition order
+        # TODO: need an additional sort by scan?
+        metric_files = sorted(metric_files, key=lambda x: re.findall(r'\d+', x)[0])
+
+        # iterate over each metric file and append the data to metric_df
+        for mf in metric_files:
+            metric_df = pd.concat([metric_df, pd.read_csv(os.path.join(bin_file_path, mf))])
+
+        # write the aggregated metric data
+        # NOTE: if this combined metric file already exists, it will be overwritten
+        metric_df.to_csv(os.path.join(bin_file_path, 'combined_%s' % ms), index=False)
 
 
 def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=None, save_dir=None):
@@ -365,7 +404,7 @@ def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=No
 
     Args:
         qc_metric_df (pandas.DataFrame):
-            A QC metric matrix as returned by compute_qc_metrics, melted
+            A QC metric matrix as returned by `compute_qc_metrics`, melted
         metric_name (str):
             The name of the QC metric, used as the y-axis label
         axes_size (int):
