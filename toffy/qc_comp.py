@@ -383,7 +383,7 @@ def combine_qc_metrics(bin_file_path):
         metric_files = [
             mf_match[0] + '_%s' % ms for mf in metric_files if
             len(mf_match := re.findall(r'fov-\d+-scan-\d+', mf)) == 1
-        ]  # go walrus operators
+        ]
 
         # sort the files to ensure consistency
         # NOTE: all FOVs are named fov-m-scan-n, 'm' determines run acquisition order
