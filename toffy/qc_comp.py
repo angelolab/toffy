@@ -252,7 +252,7 @@ def sort_bin_file_fovs(fovs, suffix_ignore=None):
     """Sort a list of fovs in a bin file by fov and scan number
 
     fovs (list):
-        a list of fovs in the form `'fov-m-scan-n'`
+        a list of fovs prefixed with `'fov-m-scan-n'`
     suffix_ignore (str):
         removes this at the end of each fov name, needed if sorting fov-level QC `.csv` files
 
