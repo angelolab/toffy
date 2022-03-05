@@ -5,13 +5,17 @@ import xarray as xr
 
 from toffy.mibitracker_utils import MibiRequests
 from toffy import qc_comp
+from toffy import settings
 import ark.utils.io_utils as io_utils
 import ark.utils.misc_utils as misc_utils
 import ark.utils.test_utils as test_utils
 
 import os
+from pathlib import Path
 import pytest
 import tempfile
+
+parametrize = pytest.mark.parametrize
 
 
 RUN_POINT_NAMES = ['Point%d' % i for i in range(1, 13)]
@@ -161,6 +165,12 @@ def test_download_mibitracker_data(test_fovs, test_chans, test_sub_folder,
 
 
 def test_compute_nonzero_mean_intensity():
+    # test on a zero array
+    sample_img_arr = np.zeros((3, 3))
+    sample_nonzero_mean = qc_comp.compute_nonzero_mean_intensity(sample_img_arr)
+    assert sample_nonzero_mean == 0
+
+    # test on a non-zero array
     sample_img_arr = np.array([[0, 1, 2], [3, 0, 0], [0, 4, 5]])
     sample_nonzero_mean = qc_comp.compute_nonzero_mean_intensity(sample_img_arr)
     assert sample_nonzero_mean == 3
@@ -178,129 +188,172 @@ def test_compute_99_9_intensity():
     assert np.allclose(sample_99_9_intensity, 5, rtol=1e-02)
 
 
-def test_compute_qc_metrics_batch():
-    # define the fovs and chans for this test batch
-    fovs = ['fov0', 'fov1', 'fov2']
-    chans = ['chan0', 'chan1', 'chan2']
+def test_sort_bin_file_fovs():
+    # test without suffix ignore
+    fov_list = [
+        'fov-2-scan-2', 'fov-10-scan-1', 'fov-5-scan-3', 'fov-2-scan-10', 'fov-200-scan-4'
+    ]
+    fov_list_sorted = qc_comp.sort_bin_file_fovs(fov_list)
+    assert fov_list_sorted == [
+        'fov-2-scan-2', 'fov-2-scan-10', 'fov-5-scan-3', 'fov-10-scan-1', 'fov-200-scan-4'
+    ]
 
-    # create a test batched image array
-    sample_img_arr = xr.DataArray(
-        np.random.rand(3, 10, 10, 3),
-        coords=[fovs, np.arange(10), np.arange(10), chans],
-        dims=['fov', 'x', 'y', 'channel']
-    )
+    # test with a suffix on some fovs
+    fov_list_some_suffix = fov_list[:]
+    fov_list_some_suffix[:2] = [f + '_suffix.csv' for f in fov_list[:2]]
+    fov_list_sorted = qc_comp.sort_bin_file_fovs(fov_list_some_suffix, suffix_ignore='_suffix.csv')
+    assert fov_list_sorted == [
+        'fov-2-scan-2_suffix.csv', 'fov-2-scan-10',
+        'fov-5-scan-3', 'fov-10-scan-1_suffix.csv', 'fov-200-scan-4'
+    ]
 
-    # test with Gaussian blurring turned on and off
-    for gaussian_blur in [False, True]:
-        qc_data_batch = qc_comp.compute_qc_metrics_batch(
-            sample_img_arr, fovs, chans, gaussian_blur=gaussian_blur
-        )
-
-        # extract the QC metric batch data separately
-        nonzero_mean_batch = qc_data_batch['nonzero_mean_batch']
-        total_intensity_batch = qc_data_batch['total_intensity_batch']
-        intensity_99_9_batch = qc_data_batch['99_9_intensity_batch']
-
-        # assert the fovs are correct
-        misc_utils.verify_same_elements(
-            provided_fovs=fovs,
-            nzm_fovs=nonzero_mean_batch['fov'].values
-        )
-        misc_utils.verify_same_elements(
-            provided_fovs=fovs,
-            ti_fovs=total_intensity_batch['fov'].values
-        )
-        misc_utils.verify_same_elements(
-            provided_fovs=fovs,
-            i99_9_fovs=intensity_99_9_batch['fov'].values
-        )
-
-        # assert the chans are correct
-        misc_utils.verify_same_elements(
-            provided_chans=chans,
-            nzm_chans=nonzero_mean_batch.drop(columns='fov').columns.values
-        )
-        misc_utils.verify_same_elements(
-            provided_chans=chans,
-            nzm_chans=total_intensity_batch.drop(columns='fov').columns.values
-        )
-        misc_utils.verify_same_elements(
-            provided_chans=chans,
-            nzm_chans=intensity_99_9_batch.drop(columns='fov').columns.values
-        )
+    # test with a suffix on all fovs
+    fov_list_all_suffix = [f + '_suffix.csv' for f in fov_list]
+    fov_list_sorted = qc_comp.sort_bin_file_fovs(fov_list_all_suffix, suffix_ignore='_suffix.csv')
+    assert fov_list_sorted == [
+        'fov-2-scan-2_suffix.csv', 'fov-2-scan-10_suffix.csv',
+        'fov-5-scan-3_suffix.csv', 'fov-10-scan-1_suffix.csv',
+        'fov-200-scan-4_suffix.csv'
+    ]
 
 
-@pytest.mark.parametrize("test_fovs,test_chans,test_gaussian_blur", FOVS_CHANS_TEST_QC)
-def test_compute_qc_metrics(test_fovs, test_chans, test_gaussian_blur):
+# NOTE: we don't need to test iteration over multiple FOVs because
+# test_compute_qc_metrics computes on 1 FOV at a time
+@parametrize("gaussian_blur", [False, True])
+@parametrize("bin_file_folder, fovs",
+             [('moly', ['fov-1-scan-1']), ('tissue', ['fov-1-scan-1'])])
+def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
     with tempfile.TemporaryDirectory() as temp_dir:
-        # define 3 fovs and 3 channels
-        fovs, chans = test_utils.gen_fov_chan_names(3, 3)
+        # define a sample panel, leave panel correctness/incorrectness test for mibi_bin_tools
+        panel = pd.DataFrame([{
+            'Mass': 89,
+            'Target': 'SMA',
+            'Start': 88.7,
+            'Stop': 89.0,
+        }])
 
-        # make the sample data
-        tiff_dir = os.path.join(temp_dir, "single_channel_inputs")
-        img_sub_folder = "TIFs"
+        # write the panel to csv
+        panel_path = os.path.join(temp_dir, 'sample_panel.csv')
+        panel.to_csv(panel_path, index=False)
 
-        os.mkdir(tiff_dir)
-        test_utils.create_paired_xarray_fovs(
-            base_dir=tiff_dir,
-            fov_names=fovs,
-            channel_names=chans,
-            img_shape=(40, 40),
-            sub_dir=img_sub_folder,
-            fills=True,
-            dtype="int16"
-        )
+        # define the full path to the bin file folder
+        bin_file_path = os.path.join(Path(__file__).parent, 'data', bin_file_folder)
 
-        # invalid channels provided
-        with pytest.raises(ValueError):
+        # define a sample qc_path to write to
+        qc_path = os.path.join(temp_dir, 'sample_qc_dir')
+
+        # bin folder error check
+        with pytest.raises(FileNotFoundError):
             qc_comp.compute_qc_metrics(
-                tiff_dir, img_sub_folder, channels=['bad_chan']
+                'bad_bin_path', fovs[0], panel_path, gaussian_blur
             )
 
-        # test sets of fovs and channels and Gaussian blur turned on or off
-        # NOTE: leave default Gaussian blur sigma at 1 (same test regardless of sigma)
-        qc_data = qc_comp.compute_qc_metrics(
-            tiff_dir, img_sub_folder, fovs=test_fovs, channels=test_chans,
-            gaussian_blur=test_gaussian_blur
+        # panel file error check
+        with pytest.raises(FileNotFoundError):
+            qc_comp.compute_qc_metrics(
+                bin_file_path, fovs[0], 'bad_panel_path', gaussian_blur
+            )
+
+        # fov error check
+        with pytest.raises(FileNotFoundError):
+            qc_comp.compute_qc_metrics(
+                bin_file_path, 'bad_fov', panel_path, gaussian_blur
+            )
+
+        # first time: create new files, also asserts qc_path is created
+        qc_comp.compute_qc_metrics(
+            bin_file_path, fovs[0], panel_path, gaussian_blur
         )
 
-        nonzero_mean = qc_data['nonzero_mean']
-        total_intensity = qc_data['total_intensity']
-        intensity_99_9 = qc_data['99_9_intensity']
+        for ms, mc in zip(settings.QC_SUFFIXES, settings.QC_COLUMNS):
+            # assert the file for this QC metric was created
+            metric_path = os.path.join(bin_file_path, '%s_%s.csv' % (fovs[0], ms))
+            assert os.path.exists(metric_path)
 
-        # assert fovs are correct (if fovs is None, set to all fovs)
-        if test_fovs is None:
-            test_fovs = fovs
+            # read the data for this QC metric
+            metric_data = pd.read_csv(metric_path)
 
-        misc_utils.verify_same_elements(
-            provided_fovs=test_fovs,
-            nzm_fovs=nonzero_mean['fov'].values
-        )
-        misc_utils.verify_same_elements(
-            provided_fovs=test_fovs,
-            ti_fovs=total_intensity['fov'].values
-        )
-        misc_utils.verify_same_elements(
-            provided_fovs=test_fovs,
-            i99_9_fovs=intensity_99_9['fov'].values
-        )
+            # assert the column names are correct
+            assert list(metric_data.columns.values) == ['fov', 'channel', mc]
 
-        # assert channels are correct (if chans is None, set to all chans)
-        if test_chans is None:
-            test_chans = chans
+            # assert the correct FOV was written
+            assert list(metric_data['fov']) == [fovs[0]]
 
-        misc_utils.verify_same_elements(
-            provided_chans=test_chans,
-            nzm_chans=nonzero_mean.drop(columns='fov').columns.values
-        )
-        misc_utils.verify_same_elements(
-            provided_chans=test_chans,
-            ti_chans=total_intensity.drop(columns='fov').columns.values
-        )
-        misc_utils.verify_same_elements(
-            provided_chans=test_chans,
-            i99_9_chans=intensity_99_9.drop(columns='fov').columns.values
-        )
+            # assert the correct channels were written
+            assert list(metric_data['channel']) == ['SMA']
+
+
+@parametrize('fovs', [['fov-1-scan-1'], ['fov-1-scan-1', 'fov-2-scan-1']])
+def test_combine_qc_metrics(fovs):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # bin folder error check
+        with pytest.raises(FileNotFoundError):
+            qc_comp.combine_qc_metrics('bad_bin_path')
+
+        # define a dummy list of channels
+        chans = ['SMA', 'Vimentin', 'Au']
+
+        # define a sample bin_file_path
+        bin_file_path = os.path.join(temp_dir, 'sample_qc_dir')
+        os.mkdir(bin_file_path)
+
+        # put some random stuff in bin_file_path, test that this does not affect aggregation
+        pd.DataFrame().to_csv(os.path.join(bin_file_path, 'random.csv'))
+        Path(os.path.join(bin_file_path, 'random.txt')).touch()
+
+        # the start value to generate dummy data from for each QC metric
+        metric_start_vals = [2, 3, 4]
+
+        # define sample .csv files for each QC metric
+        for ms, mv, mc in zip(settings.QC_SUFFIXES, metric_start_vals, settings.QC_COLUMNS):
+            # add existing combined .csv files, these should not be included in aggregation
+            pd.DataFrame().to_csv(os.path.join(bin_file_path, 'combined_%s.csv' % ms))
+
+            # create a sample dataframe for the QC metric
+            for i, fov in enumerate(fovs):
+                fov_qc_data = pd.DataFrame(
+                    np.zeros((3, 3)), columns=['fov', 'channel', mc]
+                )
+
+                # write the FOV name in
+                fov_qc_data['fov'] = fov
+
+                # write the channel names in
+                fov_qc_data['channel'] = chans
+
+                # write the QC metric data in, we'll include different values for each
+                fov_qc_data[mc] = np.arange(mv * (i + 1), mv * (i + 1) + 3)
+
+                # write the dummy QC data
+                fov_qc_data.to_csv(
+                    os.path.join(bin_file_path, '%s_%s.csv' % (fov, ms)), index=False
+                )
+
+        # run the aggregation function
+        qc_comp.combine_qc_metrics(bin_file_path)
+
+        for ms, mv, mc in zip(settings.QC_SUFFIXES, metric_start_vals, settings.QC_COLUMNS):
+            # assert the combined QC metric file was created
+            combined_qc_path = os.path.join(bin_file_path, 'combined_%s.csv' % ms)
+            assert os.path.exists(combined_qc_path)
+
+            # read in the combined QC data
+            metric_data = pd.read_csv(combined_qc_path)
+
+            # assert the column names are correct
+            assert list(metric_data.columns.values) == ['fov', 'channel', mc]
+
+            # assert the correct FOVs are written
+            assert list(metric_data['fov']) == list(np.repeat(fovs, len(chans)))
+
+            # assert the correct channels are written
+            assert list(metric_data['channel'] == chans * len(fovs))
+
+            # assert the correct QC metric values were written
+            qc_metric_vals = []
+            for i in range(len(fovs)):
+                qc_metric_vals.extend(range(mv * (i + 1), mv * (i + 1) + 3))
+            assert list(metric_data[mc]) == qc_metric_vals
 
 
 def test_visualize_qc_metrics():

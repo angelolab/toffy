@@ -18,3 +18,7 @@ STAGE_TO_OPTICAL_X_MULTIPLIER = 1 / 0.06887
 STAGE_TO_OPTICAL_X_OFFSET = 27.79
 STAGE_TO_OPTICAL_Y_MULTIPLIER = 1 / -0.06926
 STAGE_TO_OPTICAL_Y_OFFSET = -77.40
+
+# QC metric .csv suffix and column naming
+QC_SUFFIXES = ['nonzero_mean_stats', 'total_intensity_stats', 'percentile_99_9_stats']
+QC_COLUMNS = ['Non-zero mean intensity', 'Total intensity', '99.9% intensity value']
