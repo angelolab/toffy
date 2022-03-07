@@ -1,3 +1,4 @@
+import copy
 import os
 import pandas as pd
 import numpy as np
@@ -38,7 +39,8 @@ def test_compensate_matrix_simple():
     total_comp = (coeffs[0, 0] * inputs[0, 0, 0, 0] + coeffs[1, 0] * inputs[0, 0, 0, 1] +
                   coeffs[2, 0] * inputs[0, 0, 0, 2] + coeffs[3, 0] * inputs[0, 0, 0, 3])
 
-    out = rosetta.compensate_matrix_simple(inputs, coeffs)
+    out_indices = np.arange(inputs.shape[-1])
+    out = rosetta.compensate_matrix_simple(inputs, coeffs, out_indices)
 
     # non-affected channels are identical
     assert np.all(out[:, :, :, 1:-1] == inputs[:, :, :, 1:-1])
@@ -54,6 +56,55 @@ def test_compensate_matrix_simple():
 
     # last channel in second fov is changed by baseline * 2 * 10 due to fov and coefficient
     assert np.all(out[1, :, :, -1] == inputs[1, :, :, -1] - total_comp * 10 * 2)
+
+    # don't generate output for first channel
+    out_indices = out_indices[1:]
+    out = rosetta.compensate_matrix_simple(inputs, coeffs, out_indices)
+
+    # non-affected channels are identical
+    assert np.all(out[:, :, :, :-1] == inputs[:, :, :, 1:-1])
+
+    # last channel is changed by baseline amount * 2 due to multiplier in coefficient matrix
+    assert np.all(out[0, :, :, -1] == inputs[0, :, :, -1] - total_comp * 2)
+
+    # last channel in second fov is changed by baseline * 2 * 10 due to fov and coefficient
+    assert np.all(out[1, :, :, -1] == inputs[1, :, :, -1] - total_comp * 10 * 2)
+
+
+def test_validate_inputs():
+    with tempfile.TemporaryDirectory() as top_level_dir:
+        data_dir = os.path.join(top_level_dir, 'data_dir')
+
+        os.makedirs(data_dir)
+
+        # make fake data for testing
+        fovs, chans = test_utils.gen_fov_chan_names(num_fovs=3, num_chans=3)
+        filelocs, data_xr = test_utils.create_paired_xarray_fovs(
+            data_dir, fovs, chans, img_shape=(10, 10), fills=True)
+
+
+        masses = [71, 76, 101]
+        comp_mat_vals = np.random.rand(len(masses), len(masses)) / 100
+        comp_mat = pd.DataFrame(comp_mat_vals, columns=masses, index=masses)
+
+        acquired_masses = copy.copy(masses)
+        acquired_targets = copy.copy(chans)
+        input_masses = copy.copy(masses)
+        output_masses = copy.copy(masses)
+        all_masses = copy.copy(masses)
+        save_format = 'raw'
+        batch_size = 1
+        gaus_rad = 1
+
+    input_dict = {'raw_data_dir': data_dir, 'comp_mat': comp_mat,
+                  'acquired_masses': acquired_masses, 'acquired_targets': acquired_targets,
+                  'input_masses': input_masses,
+                  'output_masses': output_masses, 'all_masses': all_masses, 'fovs': fovs,
+                  'save_format': save_format, 'batch_size': batch_size, 'gaus_rad': gaus_rad}
+    rosetta.validate_inputs(raw_data_dir=data_dir, comp_mat=comp_mat,
+                  acquired_masses=acquired_masses, acquired_targets=acquired_targets,
+                  input_masses=input_masses,output_masses=output_masses, all_masses=all_masses, fovs=fovs,
+                  save_format=save_format, batch_size=batch_size, gaus_rad=gaus_rad)
 
 
 @parametrize('gaus_rad', [0, 1, 2])
@@ -79,7 +130,7 @@ def test_compensate_image_data(gaus_rad, save_format, panel_info, comp_mat):
 
         # call function
         rosetta.compensate_image_data(data_dir, output_dir, comp_mat_path, panel_info,
-                                      save_format, gaus_rad=gaus_rad)
+                                      save_format=save_format, gaus_rad=gaus_rad)
 
         # all folders created
         output_folders = list_folders(output_dir)

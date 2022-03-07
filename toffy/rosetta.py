@@ -39,7 +39,7 @@ def transform_compensation_json(json_path, comp_mat_path):
     comp_mat.to_csv(comp_mat_path)
 
 
-def compensate_matrix_simple(raw_inputs, comp_coeffs):
+def compensate_matrix_simple(raw_inputs, comp_coeffs, out_indices):
     """Perform compensation on the raw data using the supplied compensation values
 
     Args:
@@ -47,6 +47,8 @@ def compensate_matrix_simple(raw_inputs, comp_coeffs):
             array with shape [fovs, rows, cols, channels] containing the image data
         comp_coeffs (numpy.ndarray):
             2D array of coefficients with source channels as rows and targets as columns
+        out_indices (numpy.ndarray):
+            which indices to generate compensated outputs for
 
     returns:
         numpy.ndarray: compensated copy of the raw inputs"""
@@ -54,7 +56,7 @@ def compensate_matrix_simple(raw_inputs, comp_coeffs):
     outputs = np.copy(raw_inputs)
 
     # loop over each channel and construct compensation values
-    for chan in range(raw_inputs.shape[-1]):
+    for chan in out_indices:
         chan_coeffs = comp_coeffs[:, chan]
 
         # convert from 1D to 4D for broadcasting
@@ -70,11 +72,68 @@ def compensate_matrix_simple(raw_inputs, comp_coeffs):
     # set negative values to zero
     outputs = np.where(outputs > 0, outputs, 0)
 
+    # subset on specified indices
+    outputs = outputs[..., out_indices]
+
     return outputs
 
 
-def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info,
-                          save_format='normalized', batch_size=10, gaus_rad=1, norm_const=100):
+def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, input_masses,
+                    output_masses, all_masses, fovs, save_format, batch_size, gaus_rad):
+    """Helper function to validate inputs for compensate_image_data
+
+    Args:
+        raw_data_dir (str): path to raw data
+        comp_mat (pd.DataFrame): compensation matrix
+        acquired_masses (list): masses in the supplied panel
+        acquired_targets (list): targets in the supplied panel
+        input_masses (list): masses to use for compensation
+        output_masses (list): masses to compensate
+        all_masses (list): masses in the compensation matrix
+        fovs (list): fovs in the raw_data_dir
+        save_format (str): format to save the data
+        batch_size (int): number of images to process concurrently
+        gaus_rad (int): radius for smoothing"""
+
+    # make sure panel is in increasing order
+    if not np.all(acquired_masses == sorted(acquired_masses)):
+        raise ValueError("Masses must be sorted numerically in the panel_info file")
+
+    # make sure channels in comp matrix are same as those in panel csv
+    verify_same_elements(acquired_masses=acquired_masses, compensation_masses=all_masses)
+
+    # check first FOV to make sure all channels are present
+    test_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=fovs[0:1],
+                                    channels=acquired_targets, dtype='float32')
+
+    verify_same_elements(image_files=test_data.channels.values, listed_channels=acquired_targets)
+
+    # make sure supplied masses are present
+    if input_masses is not None:
+        verify_in_list(input_masses=input_masses, compensation_masses=all_masses)
+
+    if output_masses is not None:
+        verify_in_list(output_masses=output_masses, compensation_masses=all_masses)
+
+    # make sure compensation matrix has valid values
+    if comp_mat.isna().values.any():
+        raise ValueError('Compensation matrix must contain a value for every field; check to '
+                         'make sure there are no missing values')
+
+    # check for valid save_formats
+    allowed_formats = ['raw', 'normalized', 'both']
+    verify_in_list(save_format=save_format, allowed_formats=allowed_formats)
+
+    if batch_size < 1 or not isinstance(batch_size, int):
+        raise ValueError('batch_size parameter must be a positive integer')
+
+    if gaus_rad < 0 or not isinstance(gaus_rad, int):
+        raise ValueError('gaus_rad parameter must be a non-negative integer')
+
+
+def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info, input_masses=None,
+                          output_masses=None, save_format='normalized', batch_size=10, gaus_rad=1,
+                          norm_const=100):
     """Function to compensate MIBI data with a flow-cytometry style compensation matrix
 
     Args:
@@ -82,6 +141,10 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         comp_data_dir: path to directory where compensated images will be saved
         comp_mat_path: path to compensation matrix, nxn with channel labels
         panel_info: array with information about the panel
+        input_masses (list): masses from the compensation matrix to use for compensation. If None,
+            all masses will be used
+        output_masses (list): masses from the compensation matrix that will have tifs generated. If
+            None, all masses will be used
         save_format: flag to control how the processed tifs are saved. Must be one of:
             'raw': Direct output from the compensation matrix corresponding to number of ion events
                 detected per pixel. These will not be viewable in many image processing programs
@@ -105,33 +168,16 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
     acquired_targets = panel_info['Target'].values
     all_masses = comp_mat.columns.values.astype('int')
 
-    # make sure panel is in increasing order
-    if not np.all(acquired_masses == sorted(acquired_masses)):
-        raise ValueError("Masses must be sorted numerically in the panel_info file")
+    validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, input_masses,
+                    output_masses, all_masses, fovs, save_format, batch_size, gaus_rad)
 
-    # make sure channels in comp matrix are same as those in panel csv
-    verify_same_elements(acquired_masses=acquired_masses, compensation_masses=all_masses)
+    # set unused masses to zero
+    if input_masses is not None:
+        zero_idx = ~np.isin(all_masses, input_masses)
+        comp_mat.loc[zero_idx, :] = 0
 
-    # check first FOV to make sure all channels are present
-    test_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=fovs[0:1],
-                                    channels=acquired_targets, dtype='float32')
-
-    verify_same_elements(image_files=test_data.channels.values, listed_channels=acquired_targets)
-
-    # make sure compensation matrix has valid values
-    if comp_mat.isna().values.any():
-        raise ValueError('Compensation matrix must contain a value for every field; check to '
-                         'make sure there are no missing values')
-
-    # check for valid save_formats
-    allowed_formats = ['raw', 'normalized', 'both']
-    verify_in_list(save_format=save_format, allowed_formats=allowed_formats)
-
-    if batch_size < 1 or not isinstance(batch_size, int):
-        raise ValueError('batch_size parameter must be a positive integer')
-
-    if gaus_rad < 0 or not isinstance(gaus_rad, int):
-        raise ValueError('gaus_rad parameter must be a non-negative integer')
+    if output_masses is None:
+        out_indices = np.arange(len(all_masses))
 
     # loop over each set of FOVs in the batch
     for i in range(0, len(fovs), batch_size):
@@ -150,7 +196,8 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                                                              sigma=gaus_rad)
 
         comp_data = compensate_matrix_simple(raw_inputs=batch_data,
-                                             comp_coeffs=comp_mat.values)
+                                             comp_coeffs=comp_mat.values,
+                                             out_indices=out_indices)
 
         # save data
         for j in range(batch_data.shape[0]):
@@ -320,6 +367,10 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, channels=None
     if channels is None:
         channels = comp_channels
     else:
+        try:
+            channels = [int(x) for x in channels]
+        except ValueError:
+            raise ValueError("Channels must be provided as integers")
         verify_in_list(specified_channels=channels, rosetta_channels=comp_channels)
 
     # loop over each specified multiplier and create separate compensation matrix
