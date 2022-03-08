@@ -290,45 +290,38 @@ def test_add_source_channel_to_tiled_image():
             assert image.shape == (tiled_shape[0] + im_size, tiled_shape[1])
 
 
-@parametrize('folders', [None, ['run_0']])
-@parametrize('overwrite', [True, False])
-def test_replace_with_intensity_image(overwrite, folders):
+@parametrize('fovs', [None, ['fov1']])
+@parametrize('replace', [True, False])
+def test_replace_with_intensity_image(replace, fovs):
     with tempfile.TemporaryDirectory() as top_level_dir:
-        num_fovs = 2
-        num_chans = 2
-        im_size = 10
-        num_dirs = 3
 
-        for dir in range(num_dirs):
-            # create directory containing raw images
-            run_dir = os.path.join(top_level_dir, 'run_{}'.format(dir))
-            os.makedirs(run_dir)
+        # create directory containing raw images
+        run_dir = os.path.join(top_level_dir, 'run_dir')
+        os.makedirs(run_dir)
 
-            fovs, chans = test_utils.gen_fov_chan_names(num_fovs=num_fovs, num_chans=num_chans)
-            chans = [chan + '_intensity' for chan in chans]
-            filelocs, data_xr = test_utils.create_paired_xarray_fovs(
-                run_dir, fovs, chans, img_shape=(im_size, im_size), fills=True,
-                sub_dir='intensities')
+        fov_names, chans = test_utils.gen_fov_chan_names(num_fovs=2, num_chans=2)
+        chans = [chan + '_intensity' for chan in chans]
+        filelocs, data_xr = test_utils.create_paired_xarray_fovs(
+            run_dir, fov_names, chans, img_shape=(10, 10), fills=True,
+            sub_dir='intensities')
 
-        rosetta.replace_with_intensity_image(base_dir=top_level_dir, channel='chan1',
-                                             replace=overwrite, folders=folders)
+        rosetta.replace_with_intensity_image(run_dir=run_dir, channel='chan1',
+                                             replace=replace, fovs=fovs)
 
-        # loop through all fovs in all directories to check that correct image was written
-        for dir in range(num_dirs):
-            for fov in range(num_fovs):
-                if folders is not None and dir > 0:
-                    # no image should be copied over for these
-                    files = list_files(os.path.join(top_level_dir, 'run_{}'.format(dir),
-                                                    'fov{}'.format(fov)))
-                    assert len(files) == 0
+        # loop through all fovs to check that correct image was written
+        for current_fov in range(2):
+            if fovs is not None and current_fov == 0:
+                # this fov was skipped, no images should be present here
+                files = list_files(os.path.join(run_dir, 'fov0'))
+                assert len(files) == 0
+            else:
+                # ensure correct extension is present
+                if replace:
+                    suffix = '.tiff'
                 else:
-                    if overwrite:
-                        suffix = '.tiff'
-                    else:
-                        suffix = '_intensity.tiff'
-                    file = os.path.join(top_level_dir, 'run_{}'.format(dir),
-                                        'fov{}'.format(fov), 'chan1' + suffix)
-                    assert os.path.exists(file)
+                    suffix = '_intensity.tiff'
+                file = os.path.join(run_dir, 'fov{}'.format(current_fov), 'chan1' + suffix)
+                assert os.path.exists(file)
 
 
 def test_create_rosetta_matrices():

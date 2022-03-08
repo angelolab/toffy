@@ -313,43 +313,38 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
         io.imsave(os.path.join(output_dir, save_name), combined_tile, check_contrast=False)
 
 
-def replace_with_intensity_image(base_dir, channel, replace=True, folders=None):
+def replace_with_intensity_image(run_dir, channel='Au', replace=True, fovs=None):
     """Replaces the specified channel with the intensity image of that channel
 
     Args:
-        base_dir (str): directory containing folders of extracted runs
+        run_dir (str): directory containing extracted run data
         channel (str): the channel whose intensity image will be copied over
-        folders (list or None): the subset of folders within base_dir which will have their
-            intensity image copied over. If None, applies to all folders
+        fovs (list or None): the subset of fovs within run_dir which will have their
+            intensity image copied over. If None, applies to all fovs
         replace (bool): controls whether intensity image is copied over with _intensity appended
             or if it will overwrite existing channel"""
 
-    all_folders = list_folders(base_dir)
+    all_fovs = list_folders(run_dir)
 
     # ensure supplied folders are valid
-    if folders is not None:
-        verify_in_list(specified_folders=folders, all_folders=all_folders)
-        all_folders = folders
+    if fovs is not None:
+        verify_in_list(specified_folders=fovs, all_folders=all_fovs)
+        all_fovs = fovs
 
     # ensure channel is valid
-    test_fov = list_folders(os.path.join(base_dir, all_folders[0]))[0]
-    test_file = os.path.join(base_dir, all_folders[0], test_fov, 'intensities',
-                             channel + '_intensity.tiff')
+    test_file = os.path.join(run_dir, all_fovs[0], 'intensities', channel + '_intensity.tiff')
     if not os.path.exists(test_file):
         raise ValueError('Could not find specified file {}'.format(test_file))
 
-    # loop through each run in directory
-    for folder in all_folders:
-        fovs = list_folders(os.path.join(base_dir, folder))
-        for fov in fovs:
-            # control whether intensity image overwrites previous image or is copied with new name
-            if replace:
-                suffix = '.tiff'
-            else:
-                suffix = '_intensity.tiff'
-            shutil.copy(os.path.join(base_dir, folder, fov, 'intensities',
-                                     channel + '_intensity.tiff'),
-                        os.path.join(base_dir, folder, fov, channel + suffix))
+    # loop through each fov
+    for fov in all_fovs:
+        # control whether intensity image overwrites previous image or is copied with new name
+        if replace:
+            suffix = '.tiff'
+        else:
+            suffix = '_intensity.tiff'
+        shutil.copy(os.path.join(run_dir, fov, 'intensities', channel + '_intensity.tiff'),
+                    os.path.join(run_dir, fov, channel + suffix))
 
 
 def create_rosetta_matrices(default_matrix, save_dir, multipliers, channels=None):
