@@ -110,25 +110,25 @@ def test_validate_inputs():
         # check that all masses are present
         input_dict_missing = copy.copy(input_dict)
         input_dict_missing['acquired_masses'] = masses[1:]
-        with pytest.raises(ValueError, match='both acquired masses and compensation masses'):
+        with pytest.raises(ValueError, match='acquired masses and list compensation masses'):
             rosetta.validate_inputs(**input_dict_missing)
 
         # check that images and channels are the same
         input_dict_img_name = copy.copy(input_dict)
         input_dict_img_name['acquired_targets'] = chans + ['chan15']
-        with pytest.raises(ValueError, match='both image files and listed channels'):
+        with pytest.raises(ValueError, match='image files and list listed channels'):
             rosetta.validate_inputs(**input_dict_img_name)
 
         # check that input masses are valid
         input_dict_input_mass = copy.copy(input_dict)
         input_dict_input_mass['input_masses'] = masses + [17]
-        with pytest.raises(ValueError, match='input masses variable'):
+        with pytest.raises(ValueError, match='list input masses'):
             rosetta.validate_inputs(**input_dict_input_mass)
 
         # check that output masses are valid
         input_dict_output_mass = copy.copy(input_dict)
         input_dict_output_mass['output_masses'] = masses + [17]
-        with pytest.raises(ValueError, match='output masses variable'):
+        with pytest.raises(ValueError, match='list output masses'):
             rosetta.validate_inputs(**input_dict_output_mass)
 
         # check that comp_mat has no NAs
@@ -142,7 +142,7 @@ def test_validate_inputs():
         # check that save_format is valid
         input_dict_save_format = copy.copy(input_dict)
         input_dict_save_format['save_format'] = 'bad'
-        with pytest.raises(ValueError, match='save format variable'):
+        with pytest.raises(ValueError, match='list save format'):
             rosetta.validate_inputs(**input_dict_save_format)
 
         # check that batch_size is valid
