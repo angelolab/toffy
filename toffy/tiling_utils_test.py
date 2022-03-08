@@ -1,4 +1,5 @@
 import copy
+from inspect import cleandoc
 import ipywidgets as widgets
 import json
 import matplotlib.pyplot as plt
@@ -103,13 +104,118 @@ def test_read_tiling_param(monkeypatch):
     assert sample_tiling_param == 'Y'
 
 
-@parametrize_with_cases('fov_coords, fov_names, user_inputs, base_param_values, full_param_set',
-                        cases=test_cases.TiledRegionReadCases, glob='*_no_moly_param')
-def test_read_tiled_region_inputs(monkeypatch, fov_coords, fov_names, user_inputs,
+@parametrize_with_cases('user_inputs', cases=test_cases.FiducialInfoReadCases)
+def test_read_fiducial_info(monkeypatch, user_inputs):
+    # generate the user inputs
+    user_inputs = iter(user_inputs)
+
+    # override the default functionality of the input function
+    monkeypatch.setattr('builtins.input', lambda _: next(user_inputs))
+
+    # use the dummy user data to read the fiducial values
+    fiducial_info = tiling_utils.read_fiducial_info()
+
+    # verify that the stage coordinates are correct
+    fiducial_stage_x = [fiducial_info['stage'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
+    assert fiducial_stage_x == [1.5 + 6 * i for i in np.arange(6)]
+
+    fiducial_stage_y = [fiducial_info['stage'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
+    assert fiducial_stage_y == [2 + 8 * i for i in np.arange(6)]
+
+    # verify that the optical coordinates are correct
+    fiducial_pixel_x = [fiducial_info['optical'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
+    assert fiducial_pixel_x == [4.5 + 6 * i for i in np.arange(6)]
+
+    fiducial_pixel_y = [fiducial_info['optical'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
+    assert fiducial_pixel_y == [6 + 8 * i for i in np.arange(6)]
+
+    # assert the name for this fiducial set is correct
+    assert fiducial_info['name'] == 'sample_name'
+
+
+def test_generate_coreg_params():
+    # define a sample fiducial info dict
+    sample_fiducial_info = {
+        'stage': {
+            pos: {'x': i * 2 + 1, 'y': i * 3 + 1}
+            for (i, pos) in enumerate(settings.FIDUCIAL_POSITIONS)
+        },
+        'optical': {
+            pos: {'x': i * 4 + 1, 'y': i * 9 + 1}
+            for (i, pos) in enumerate(settings.FIDUCIAL_POSITIONS)
+        },
+        'name': 'sample_name'
+    }
+
+    # generate the regression parameters
+    sample_coreg_params = tiling_utils.generate_coreg_params(sample_fiducial_info)
+
+    # assert the computed regression parameters are correct
+    # NOTE: values need floating point correction due to how it's calculated
+    assert round(sample_coreg_params['STAGE_TO_OPTICAL_X_MULTIPLIER'], 1) == 2
+    assert round(sample_coreg_params['STAGE_TO_OPTICAL_X_OFFSET'], 1) == -0.5
+    assert round(sample_coreg_params['STAGE_TO_OPTICAL_Y_MULTIPLIER'], 1) == 3
+    assert round(sample_coreg_params['STAGE_TO_OPTICAL_Y_OFFSET'], 1) == -0.7
+
+
+def test_write_coreg_params():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # file path validation
+        with pytest.raises(FileNotFoundError):
+            tiling_utils.write_coreg_params({}, '', 'bad_settings_path')
+
+        # define sample values to put in settings.py
+        sample_settings = cleandoc(
+            """# default stage to pixel co-registration conversion params\n
+            STAGE_TO_OPTICAL_X_MULTIPLIER = 1 / 0.06887\n
+            STAGE_TO_OPTICAL_X_OFFSET = 27.79\n
+            STAGE_TO_OPTICAL_Y_MULTIPLIER = 1 / -0.06926\n
+            STAGE_TO_OPTICAL_Y_OFFSET = -77.40"""
+        ) + '\n'
+
+        # define the settings.py path
+        sample_settings_path = os.path.join(temp_dir, 'settings.py')
+
+        # write out the sample settings
+        with open(sample_settings_path, 'w') as fw:
+            fw.write(sample_settings)
+
+        # define sample co-registration params
+        sample_coreg_params = {
+            'STAGE_TO_OPTICAL_X_MULTIPLIER': 0.5,
+            'STAGE_TO_OPTICAL_X_OFFSET': 1,
+            'STAGE_TO_OPTICAL_Y_MULTIPLIER': 1.5,
+            'STAGE_TO_OPTICAL_Y_OFFSET': 2
+        }
+
+        # define a sample name to give this set
+        sample_name = 'new fiducial conversion'
+
+        # add the new co-registration params
+        tiling_utils.write_coreg_params(sample_coreg_params, sample_name, sample_settings_path)
+
+        # read each line of the new settings.py
+        with open(sample_settings_path, 'r') as fr:
+            # we only need to verify the last 5 lines
+            lines = fr.readlines()[-5:]
+
+        # assert the comment header was added
+        assert lines[0] == \
+            '# %s stage to optical co-registration conversion params\n' % sample_name
+
+        # assert the new co-registration parameters are correct
+        for i, (cp, cpv) in enumerate(sample_coreg_params.items()):
+            assert lines[i + 1] == '%s = %f\n' % (cp, cpv)
+
+
+@parametrize_with_cases(
+    'fov_coords, fov_names, fov_sizes, user_inputs, base_param_values, full_param_set',
+    cases=test_cases.TiledRegionReadCases, glob='*_no_moly_param')
+def test_read_tiled_region_inputs(monkeypatch, fov_coords, fov_names, fov_sizes, user_inputs,
                                   base_param_values, full_param_set):
     # define a sample fovs list
     sample_fovs_list = test_utils.generate_sample_fovs_list(
-        fov_coords=fov_coords, fov_names=fov_names
+        fov_coords=fov_coords, fov_names=fov_names, fov_sizes=fov_sizes
     )
 
     # define sample region_params to read data into
@@ -165,15 +271,17 @@ def test_generate_region_info():
 # NOTE: you can use this to assert failures without needing a separate test class
 @parametrize('region_corners_file', [param('bad_region_corners.json', marks=file_missing_err),
                                      param('tiled_region_corners.json')])
-@parametrize_with_cases('fov_coords, fov_names, user_inputs, base_param_values, full_param_set',
-                        cases=test_cases.TiledRegionReadCases, glob='*_with_moly_param')
+@parametrize_with_cases(
+    'fov_coords, fov_names, fov_sizes, user_inputs, base_param_values,full_param_set',
+    cases=test_cases.TiledRegionReadCases, glob='*_with_moly_param'
+)
 @parametrize('moly_interval_val', [0, 1])
 def test_set_tiled_region_params(monkeypatch, region_corners_file, fov_coords, fov_names,
-                                 user_inputs, base_param_values,
+                                 fov_sizes, user_inputs, base_param_values,
                                  full_param_set, moly_interval_val):
     # define a sample set of fovs
     sample_fovs_list = test_utils.generate_sample_fovs_list(
-        fov_coords=fov_coords, fov_names=fov_names
+        fov_coords=fov_coords, fov_names=fov_names, fov_sizes=fov_sizes
     )
 
     # set the user inputs
@@ -199,7 +307,7 @@ def test_set_tiled_region_params(monkeypatch, region_corners_file, fov_coords, f
         # assert region start x and region start y values are correct
         sample_region_info = sample_tiling_params['region_params']
 
-        # test the value of each tiling param for both regions
+        # test the value of each numeric tiling param for both regions
         for i in range(len(sample_region_info)):
             for param, val in list(sample_region_info[i].items()):
                 if not isinstance(val, str):
@@ -254,16 +362,17 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
                                         moly_interval_setting, moly_interval_value,
                                         moly_insert_indices, fov_1_end_pos, randomize_setting):
     sample_fovs_list = test_utils.generate_sample_fovs_list(
-        fov_coords=[(0, 0), (100, 100)], fov_names=["TheFirstFOV", "TheSecondFOV"]
+        fov_coords=[(0, 0), (100, 100)], fov_names=["TheFirstFOV", "TheSecondFOV"],
+        fov_sizes=[5, 10]
     )
 
     sample_region_inputs = {
-        'region_start_x': [0, 50],
-        'region_start_y': [100, 150],
-        'fov_num_x': [2, 4],
-        'fov_num_y': [4, 2],
-        'x_fov_size': [5, 10],
-        'y_fov_size': [10, 5],
+        'region_start_row': [100, 150],
+        'region_start_col': [0, 50],
+        'fov_num_row': [2, 4],
+        'fov_num_col': [4, 2],
+        'row_fov_size': [5, 10],
+        'col_fov_size': [5, 10],
         'region_rand': ['N', 'N']
     }
 
@@ -277,7 +386,7 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
 
     with tempfile.TemporaryDirectory() as td:
         sample_moly_point = test_utils.generate_sample_fov_tiling_entry(
-            coord=(14540, -10830), name="MoQC"
+            coord=(14540, -10830), name="MoQC", size=10000
         )
         sample_moly_path = os.path.join(td, 'sample_moly_point.json')
 
@@ -308,9 +417,9 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
 
         # define the center points sorted
         actual_center_points_sorted = [
-            (x, y) for x in np.arange(0, 10, 5) for y in list(reversed(np.arange(70, 110, 10)))
+            (x, y) for x in np.arange(0, 10, 5) for y in list(reversed(np.arange(85, 105, 5)))
         ] + [
-            (x, y) for x in np.arange(50, 90, 10) for y in list(reversed(np.arange(145, 155, 5)))
+            (x, y) for x in np.arange(50, 90, 10) for y in list(reversed(np.arange(140, 160, 10)))
         ]
 
         for mi in moly_insert_indices:
@@ -383,7 +492,8 @@ def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_
 
     sample_fovs_list = test_utils.generate_sample_fovs_list(
         fov_coords=fov_coords,
-        fov_names=fov_names
+        fov_names=fov_names,
+        fov_sizes=[5] * len(fov_coords)
     )
 
     with tempfile.TemporaryDirectory() as td:
@@ -428,10 +538,10 @@ def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_
             assert fov == 'R%dC%d' % (row_ind, col_ind)
 
 
-def test_convert_microns_to_pixels():
+def test_convert_stage_to_optical():
     # just need to test it gets the right values for one coordinate in microns
     sample_coord = (25000, 35000)
-    new_coord = tiling_utils.convert_microns_to_pixels(sample_coord)
+    new_coord = tiling_utils.convert_stage_to_optical(sample_coord)
 
     assert new_coord == (612, 762)
 
@@ -453,7 +563,7 @@ def test_assign_closest_fovs():
 
     # generate the list of manual fovs
     manual_sample_fovs = test_utils.generate_sample_fovs_list(
-        manual_coords, manual_fov_names
+        manual_coords, manual_fov_names, fov_sizes=[5] * len(manual_coords)
     )
 
     # generate the mapping from manual to automatically-generated
@@ -794,7 +904,7 @@ def test_generate_validation_annot(check_dist, check_duplicates, check_mismatche
 def test_remap_and_reorder_fovs(moly_path, randomize_setting, moly_insert, moly_interval):
     # define the sample Moly point
     sample_moly_point = test_utils.generate_sample_fov_tiling_entry(
-        coord=(14540, -10830), name="MoQC"
+        coord=(14540, -10830), name="MoQC", size=10000
     )
 
     # save the Moly point
@@ -810,7 +920,7 @@ def test_remap_and_reorder_fovs(moly_path, randomize_setting, moly_insert, moly_
 
         # generate the list of manual fovs
         manual_sample_fovs = test_utils.generate_sample_fovs_list(
-            manual_coords, manual_fov_names
+            manual_coords, manual_fov_names, fov_sizes=[5] * len(manual_coords)
         )
 
         # define a sample mapping
