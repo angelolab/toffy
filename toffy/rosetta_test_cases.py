@@ -20,15 +20,6 @@ class CompensateImageDataPanel:
         panel_info = pd.DataFrame(d)
         return panel_info
 
-    @xfail(raises=ValueError, strict=True)
-    def case_unsorted_panel(self):
-        # masses are not sorted
-        masses = [25, 101, 50]
-
-        d = {'Mass': masses, 'Target': test_chans_list}
-        panel_info = pd.DataFrame(d)
-        return panel_info
-
 
 class CompensateImageDataMat:
     # create image compensation matrix
@@ -37,12 +28,4 @@ class CompensateImageDataMat:
         # include same masses as panel_info
         comp_mat_vals = np.random.rand(len(test_mass_list), len(test_mass_list)) / 100
         comp_mat = pd.DataFrame(comp_mat_vals, columns=test_mass_list, index=test_mass_list)
-        return comp_mat
-
-    @xfail(raises=ValueError, strict=True)
-    def case_non_matching_channels(self):
-        # include different masses from panel_info
-        comp_mat_vals = np.random.rand(len(test_mass_list), len(test_mass_list)) / 100
-        different_masses = [25, 50, 102]
-        comp_mat = pd.DataFrame(comp_mat_vals, columns=different_masses, index=different_masses)
         return comp_mat

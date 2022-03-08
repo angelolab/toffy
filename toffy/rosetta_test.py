@@ -74,7 +74,6 @@ def test_compensate_matrix_simple():
 def test_validate_inputs():
     with tempfile.TemporaryDirectory() as top_level_dir:
         data_dir = os.path.join(top_level_dir, 'data_dir')
-
         os.makedirs(data_dir)
 
         # make fake data for testing
@@ -82,7 +81,7 @@ def test_validate_inputs():
         filelocs, data_xr = test_utils.create_paired_xarray_fovs(
             data_dir, fovs, chans, img_shape=(10, 10), fills=True)
 
-
+        # generate default, correct values for all parameters
         masses = [71, 76, 101]
         comp_mat_vals = np.random.rand(len(masses), len(masses)) / 100
         comp_mat = pd.DataFrame(comp_mat_vals, columns=masses, index=masses)
@@ -96,22 +95,77 @@ def test_validate_inputs():
         batch_size = 1
         gaus_rad = 1
 
-    input_dict = {'raw_data_dir': data_dir, 'comp_mat': comp_mat,
-                  'acquired_masses': acquired_masses, 'acquired_targets': acquired_targets,
-                  'input_masses': input_masses,
-                  'output_masses': output_masses, 'all_masses': all_masses, 'fovs': fovs,
-                  'save_format': save_format, 'batch_size': batch_size, 'gaus_rad': gaus_rad}
-    rosetta.validate_inputs(raw_data_dir=data_dir, comp_mat=comp_mat,
-                  acquired_masses=acquired_masses, acquired_targets=acquired_targets,
-                  input_masses=input_masses,output_masses=output_masses, all_masses=all_masses, fovs=fovs,
-                  save_format=save_format, batch_size=batch_size, gaus_rad=gaus_rad)
+        input_dict = {'raw_data_dir': data_dir, 'comp_mat': comp_mat,
+                      'acquired_masses': acquired_masses, 'acquired_targets': acquired_targets,
+                      'input_masses': input_masses,
+                      'output_masses': output_masses, 'all_masses': all_masses, 'fovs': fovs,
+                      'save_format': save_format, 'batch_size': batch_size, 'gaus_rad': gaus_rad}
+
+        # check that masses are sorted
+        input_dict_disorder = copy.copy(input_dict)
+        input_dict_disorder['acquired_masses'] = masses[1:] + masses[:1]
+        with pytest.raises(ValueError, match='Masses must be sorted'):
+            rosetta.validate_inputs(**input_dict_disorder)
+
+        # check that all masses are present
+        input_dict_missing = copy.copy(input_dict)
+        input_dict_missing['acquired_masses'] = masses[1:]
+        with pytest.raises(ValueError, match='both acquired masses and compensation masses'):
+            rosetta.validate_inputs(**input_dict_missing)
+
+        # check that images and channels are the same
+        input_dict_img_name = copy.copy(input_dict)
+        input_dict_img_name['acquired_targets'] = chans + ['chan15']
+        with pytest.raises(ValueError, match='both image files and listed channels'):
+            rosetta.validate_inputs(**input_dict_img_name)
+
+        # check that input masses are valid
+        input_dict_input_mass = copy.copy(input_dict)
+        input_dict_input_mass['input_masses'] = masses + [17]
+        with pytest.raises(ValueError, match='input masses variable'):
+            rosetta.validate_inputs(**input_dict_input_mass)
+
+        # check that output masses are valid
+        input_dict_output_mass = copy.copy(input_dict)
+        input_dict_output_mass['output_masses'] = masses + [17]
+        with pytest.raises(ValueError, match='output masses variable'):
+            rosetta.validate_inputs(**input_dict_output_mass)
+
+        # check that comp_mat has no NAs
+        input_dict_na = copy.copy(input_dict)
+        comp_mat_na = copy.copy(comp_mat)
+        comp_mat_na.iloc[0, 2] = np.nan
+        input_dict_na['comp_mat'] = comp_mat_na
+        with pytest.raises(ValueError, match='no missing values'):
+            rosetta.validate_inputs(**input_dict_na)
+
+        # check that save_format is valid
+        input_dict_save_format = copy.copy(input_dict)
+        input_dict_save_format['save_format'] = 'bad'
+        with pytest.raises(ValueError, match='save format variable'):
+            rosetta.validate_inputs(**input_dict_save_format)
+
+        # check that batch_size is valid
+        input_dict_batch_size = copy.copy(input_dict)
+        input_dict_batch_size['batch_size'] = 1.5
+        with pytest.raises(ValueError, match='batch_size parameter'):
+            rosetta.validate_inputs(**input_dict_batch_size)
+
+        # check that gaus_rad is valid
+        input_dict_gaus_rad = copy.copy(input_dict)
+        input_dict_gaus_rad['gaus_rad'] = -1
+        with pytest.raises(ValueError, match='gaus_rad parameter'):
+            rosetta.validate_inputs(**input_dict_gaus_rad)
 
 
+@parametrize('output_masses', [None, [25, 50, 101], [25, 50]])
+@parametrize('input_masses', [None, [25, 50, 101], [25, 50]])
 @parametrize('gaus_rad', [0, 1, 2])
 @parametrize('save_format', ['raw', 'normalized', 'both'])
 @parametrize_with_cases('panel_info', cases=test_cases.CompensateImageDataPanel)
 @parametrize_with_cases('comp_mat', cases=test_cases.CompensateImageDataMat)
-def test_compensate_image_data(gaus_rad, save_format, panel_info, comp_mat):
+def test_compensate_image_data(output_masses, input_masses, gaus_rad, save_format, panel_info,
+                               comp_mat):
     with tempfile.TemporaryDirectory() as top_level_dir:
         data_dir = os.path.join(top_level_dir, 'data_dir')
         output_dir = os.path.join(top_level_dir, 'output_dir')
@@ -130,6 +184,7 @@ def test_compensate_image_data(gaus_rad, save_format, panel_info, comp_mat):
 
         # call function
         rosetta.compensate_image_data(data_dir, output_dir, comp_mat_path, panel_info,
+                                      input_masses=input_masses, output_masses=output_masses,
                                       save_format=save_format, gaus_rad=gaus_rad)
 
         # all folders created
@@ -145,9 +200,14 @@ def test_compensate_image_data(gaus_rad, save_format, panel_info, comp_mat):
             # check that all files were created
             output_files = list_files(os.path.join(output_dir, fovs[0], folder), '.tif')
             output_files = [chan.split('.tif')[0] for chan in output_files]
-            assert set(output_files) == set(panel_info['Target'].values)
+
+            if output_masses is None or len(output_masses) == 3:
+                assert set(output_files) == set(panel_info['Target'].values)
+            else:
+                assert set(output_files) == set(panel_info['Target'].values[:-1])
 
             output_data = load_imgs_from_tree(data_dir=output_dir, img_sub_folder=folder)
+
             assert np.issubdtype(output_data.dtype, np.floating)
 
             # all channels are smaller than original

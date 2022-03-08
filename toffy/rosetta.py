@@ -131,9 +131,9 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
         raise ValueError('gaus_rad parameter must be a non-negative integer')
 
 
-def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info, input_masses=None,
-                          output_masses=None, save_format='normalized', batch_size=10, gaus_rad=1,
-                          norm_const=100):
+def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info,
+                          input_masses=None, output_masses=None, save_format='normalized',
+                          batch_size=10, gaus_rad=1, norm_const=100):
     """Function to compensate MIBI data with a flow-cytometry style compensation matrix
 
     Args:
@@ -178,6 +178,8 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
 
     if output_masses is None:
         out_indices = np.arange(len(all_masses))
+    else:
+        out_indices = np.where(np.isin(all_masses, output_masses))[0]
 
     # loop over each set of FOVs in the batch
     for i in range(0, len(fovs), batch_size):
@@ -213,17 +215,19 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                 raw_folder = os.path.join(fov_folder, 'raw')
                 os.makedirs(raw_folder)
 
-            for k in range(batch_data.shape[-1]):
-                channel_name = batch_data.channels.values[k] + '.tiff'
+            # this may be only a subset of masses, based on output_masses
+            for idx, val in enumerate(out_indices):
+                channel_name = batch_data.channels.values[val] + '.tiff'
 
                 # save tifs to appropriate directories
                 if save_format in ['normalized', 'both']:
                     save_path = os.path.join(norm_folder, channel_name)
-                    io.imsave(save_path, comp_data[j, :, :, k] / norm_const, check_contrast=False)
+                    io.imsave(save_path, comp_data[j, :, :, idx] / norm_const,
+                              check_contrast=False)
 
                 if save_format in ['raw', 'both']:
                     save_path = os.path.join(raw_folder, channel_name)
-                    io.imsave(save_path, comp_data[j, :, :, k], check_contrast=False)
+                    io.imsave(save_path, comp_data[j, :, :, idx], check_contrast=False)
 
 
 def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='normalized'):
