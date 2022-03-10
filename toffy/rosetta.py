@@ -124,10 +124,10 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
     allowed_formats = ['raw', 'normalized', 'both']
     verify_in_list(save_format=save_format, allowed_formats=allowed_formats)
 
-    if batch_size < 1 or not isinstance(batch_size, int):
+    if not isinstance(batch_size, int) or batch_size < 1:
         raise ValueError('batch_size parameter must be a positive integer')
 
-    if gaus_rad < 0 or not isinstance(gaus_rad, int):
+    if not isinstance(gaus_rad, int) or gaus_rad < 0:
         raise ValueError('gaus_rad parameter must be a non-negative integer')
 
 
