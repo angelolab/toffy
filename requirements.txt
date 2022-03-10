@@ -4,3 +4,4 @@ jupyter>=1.0.0,<2
 jupyter_contrib_nbextensions>=0.5.1,<1
 jupyterlab>=3.1.5,<4
 numpy>=1.22,<2
+watchdog>=2.1.6,<3
