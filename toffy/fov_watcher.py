@@ -17,13 +17,16 @@ class RunStructure:
     Attributes:
         completion (dict): Whether or not an expected file has been created
     """
-    def __init__(self, run_folder: str):
+    def __init__(self, run_folder: str, timeout: int = 10 * 60):
         """ initializes RunStructure by parsing run json within provided run folder
 
         Args:
             run_folder (str):
                 path to run folder
+            timeout (int):
+                number of seconds to wait for non-null filesize before raising an error
         """
+        self.timeout = timeout
         self.completion = {}
         
         # find run .json and get parameters
@@ -43,13 +46,18 @@ class RunStructure:
                 'bin': False,
             }
 
-    def check_run_condition(self, path: str) -> Tuple[bool, str]:
+    def check_run_condition(self, path: str, check_interval: int = 10) -> Tuple[bool, str]:
         """Checks if all requisite files exist and are complete
 
         Args:
             path (str):
                 path to expected file
-    
+            check_interval (int):
+                number of seconds to wait before re-checking filesize
+
+        Raises:
+            TimeoutError
+
         Returns:
             (bool, str):
                 whether or not both json and bin files exist, as well as the name of the point
@@ -58,12 +66,26 @@ class RunStructure:
         # TODO: check watchdog path depth
 
         fov_name, extension = path.split('.')[0:2]
+        wait_time = 0
         if fov_name in self.completion:
             if extension in self.completion[fov_name]:
+                while os.path.getsize(path) == 0:
+                    # consider timed out fovs complete
+                    if wait_time >= self.timeout:
+                        for ext in self.completion[fov_name].keys():
+                            self.completion[fov_name][ext] = True
+                        raise TimeoutError(f'timed out waiting for {path}...')
+                    
+                    time.sleep(check_interval)
+                    wait_time += check_interval
+                
                 self.completion[fov_name][extension] = True
 
             if all(self.completion[fov_name].values):
                 return True, fov_name
+
+        elif extension == 'bin':
+            raise KeyError(f'Found unexpected file, {path}...')
 
         return False, fov_name
 
@@ -90,12 +112,9 @@ class FOV_EventHandler(FileSystemEventHandler):
             callbacks to run on each fov
         per_run (list):
             callbacks to run over the entire run
-        panel (tuple | pd.DataFrame):
-            masses to extract
     """
     def __init__(self, run_folder: str, per_fov: List[Callable[[xr.DataArray, str], None]],
-                 per_run: List[Callable[[str, str], None]],
-                 panel: Union[Tuple, pd.DataFrame] = (0.3, 0.0)):
+                 per_run: List[Callable[[str, str], None]], timeout: int = 10 * 60):
         """Initializes FOV_EventHandler
 
         Args:
@@ -105,8 +124,8 @@ class FOV_EventHandler(FileSystemEventHandler):
                 callbacks to run on each fov
             per_run (list):
                 callbacks to run over the entire run
-            panel (tuple | pd.DataFrame):
-                masses to extract
+            timeout (int):
+                number of seconds to wait for non-null filesize before raising an error
         """
         super().__init__()
         self.run_folder = run_folder
@@ -117,11 +136,10 @@ class FOV_EventHandler(FileSystemEventHandler):
             os.makedirs(self.watcher_out)
 
         # create run structure
-        self.run_structure = RunStructure(run_folder)
+        self.run_structure = RunStructure(run_folder, timeout=timeout)
 
         self.per_fov = per_fov
         self.per_run = per_run
-        self.panel = panel
 
         for root, dirs, files in os.walk(run_folder):
             for name in files:
@@ -139,10 +157,22 @@ class FOV_EventHandler(FileSystemEventHandler):
         """
         super().on_created(event)
 
+        
+        log_file_path = os.path.join(self.watcher_out, 'log.txt')
+
         # check if what's created is in the run structure
-        fov_ready, point_name = self.run_structure.check_run_condition(event.src_path)
+        try:
+            fov_ready, point_name = self.run_structure.check_run_condition(event.src_path)
+        except TimeoutError as timeout_error:
+            print('Encountered TimeoutError error: ' + timeout_error)
+            logf = open(log_file_path, 'a')
+            logf.write(
+                f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
+                f'{event.src_path} never reached non-zero file size...'
+            )
+            self.check_complete()
+
         if fov_ready:
-            log_file_path = os.path.join(self.watcher_out, 'log.txt')
             logf = open(log_file_path, 'a')
 
             logf.write(
@@ -150,17 +180,13 @@ class FOV_EventHandler(FileSystemEventHandler):
                 f'Extracting {point_name}'
             )
 
-            # extract data
-            img_data = \
-                bin_files.extract_bin_files(self.run_folder, None, [point_name], self.panel, True)
-
             # run per_fov callbacks
             for fov_func in self.per_fov:
                 logf.write(
                     f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
                     f'Running {fov_func.__name__} on {point_name}'
                 )
-                fov_func(img_data, self.watcher_out)
+                fov_func(self.run_folder, point_name, self.watcher_out)
 
             logf.close()
             self.check_complete()
@@ -185,12 +211,12 @@ class FOV_EventHandler(FileSystemEventHandler):
                     f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
                     f'Running {run_func.__name__} on whole run'
                 )
-                run_func(self.run_folder)
+                run_func(self.run_folder, self.watcher_out)
 
 
 def start_watcher(run_folder: str, per_fov: List[Callable[[xr.DataArray, str], None]],
                   per_run: List[Callable[[str, str], None]],
-                  panel: Union[Tuple, pd.DataFrame] = (0.3, 0.0)):
+                  completion_check_time: int = 30):
     """ Passes bin files to provided callback functions as they're created
 
     Args:
@@ -200,17 +226,18 @@ def start_watcher(run_folder: str, per_fov: List[Callable[[xr.DataArray, str], N
             list of functions to pass bin files
         per_run (list):
             list of functions to pass whole run
-        panel (tuple | pd.DataFrame):
-            masses to extract
+        completion_check_time (int):
+            how long to wait before checking watcher completion, in seconds.
+            note, this doesn't effect the watcher itself, just when this wrapper function exits.
     """
     observer = Observer()
-    event_handler = FOV_EventHandler(run_folder, per_fov, per_run, panel)
+    event_handler = FOV_EventHandler(run_folder, per_fov, per_run)
     observer.schedule(event_handler, run_folder, recursive=True)
     observer.start()
 
     try:
         while not all(event_handler.run_structure.check_completion().values()):
-            time.sleep(3)
+            time.sleep(completion_check_time)
     except KeyboardInterrupt:    
         observer.stop()
     
