@@ -2,14 +2,12 @@ import os
 import time
 import json
 from datetime import datetime
-from typing import Callable, List, Union, Tuple
+from typing import Callable, List, Tuple
 from watchdog.events import FileCreatedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-import pandas as pd
 import xarray as xr
 
-from mibi_bin_tools import bin_files
 
 class RunStructure:
     """Expected bin and json files
@@ -28,18 +26,18 @@ class RunStructure:
         """
         self.timeout = timeout
         self.completion = {}
-        
+
         # find run .json and get parameters
         with open(f'{run_folder}.json', 'r') as f:
             run_metadata = json.load(f)
-    
+
         # parse run_metadata and populate expected structure
         for fov in run_metadata.get('fovs', ()):
             run_order = fov.get('runOrder', -1)
             scan = fov.get('scanCount', -1)
             if run_order * scan < 0:
                 raise KeyError(f"Could not locate keys in {run_folder}.json")
-            
+
             fov_name = f'fov-{run_order}-scan-{scan}'
             self.completion[fov_name] = {
                 'json': False,
@@ -75,10 +73,10 @@ class RunStructure:
                         for ext in self.completion[fov_name].keys():
                             self.completion[fov_name][ext] = True
                         raise TimeoutError(f'timed out waiting for {path}...')
-                    
+
                     time.sleep(check_interval)
                     wait_time += check_interval
-                
+
                 self.completion[fov_name][extension] = True
 
             if all(self.completion[fov_name].values):
@@ -157,7 +155,6 @@ class FOV_EventHandler(FileSystemEventHandler):
         """
         super().on_created(event)
 
-        
         log_file_path = os.path.join(self.watcher_out, 'log.txt')
 
         # check if what's created is in the run structure
@@ -199,7 +196,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         if all(self.run_structure.check_completion().values()):
             log_file_path = os.path.join(self.watcher_out, 'log.txt')
             logf = open(log_file_path, 'a')
-            
+
             logf.write(
                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
                 f'All FOVs finished'
@@ -220,7 +217,7 @@ def start_watcher(run_folder: str, per_fov: List[Callable[[xr.DataArray, str], N
     """ Passes bin files to provided callback functions as they're created
 
     Args:
-        run_folder (str): 
+        run_folder (str):
             path to run folder
         per_fov (list):
             list of functions to pass bin files
@@ -238,7 +235,7 @@ def start_watcher(run_folder: str, per_fov: List[Callable[[xr.DataArray, str], N
     try:
         while not all(event_handler.run_structure.check_completion().values()):
             time.sleep(completion_check_time)
-    except KeyboardInterrupt:    
+    except KeyboardInterrupt:
         observer.stop()
-    
+
     observer.join()
