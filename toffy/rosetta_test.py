@@ -324,6 +324,33 @@ def test_replace_with_intensity_image(replace, fovs):
                 assert os.path.exists(file)
 
 
+def test_remove_sub_dirs():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        fovs = ['fov1', 'fov2', 'fov3']
+        sub_dirs = ['sub1', 'sub2', 'sub3']
+
+        # make directory structure
+        for fov in fovs:
+            os.makedirs(os.path.join(temp_dir, fov))
+            for sub_dir in sub_dirs:
+                os.makedirs(os.path.join(temp_dir, fov, sub_dir))
+
+        rosetta.remove_sub_dirs(run_dir=temp_dir, sub_dirs=sub_dirs[1:], fovs=fovs[:-1])
+
+        # check that last fov has all sub_dirs, all other fovs have appropriate sub_dirs removed
+        for fov in fovs:
+            if fov == fovs[-1]:
+                expected_dirs = sub_dirs
+            else:
+                expected_dirs = sub_dirs[:1]
+
+            for sub_dir in sub_dirs:
+                if sub_dir in expected_dirs:
+                    assert os.path.exists(os.path.join(temp_dir, fov, sub_dir))
+                else:
+                    assert not os.path.exists(os.path.join(temp_dir, fov, sub_dir))
+
+
 def test_create_rosetta_matrices():
     with tempfile.TemporaryDirectory() as temp_dir:
 

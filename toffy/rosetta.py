@@ -160,7 +160,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                    data_prefix=False)
 
     # get list of all fovs
-    fovs = list_folders(raw_data_dir, substrs=['fov'])
+    fovs = list_folders(raw_data_dir)
 
     # load csv files
     comp_mat = pd.read_csv(comp_mat_path, index_col=0)
@@ -241,7 +241,8 @@ def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='normaliz
     dir_dict = {}
     dir_shapes = []
     for dir_name in input_dir_list:
-        dir_images = load_imgs_from_tree(dir_name, img_sub_folder=img_sub_folder)
+        dir_images = load_imgs_from_tree(dir_name, img_sub_folder=img_sub_folder,
+                                         dtype='float32')
         dir_shapes.append(dir_images.shape)
         dir_dict[dir_name] = dir_images
 
@@ -345,6 +346,32 @@ def replace_with_intensity_image(run_dir, channel='Au', replace=True, fovs=None)
             suffix = '_intensity.tiff'
         shutil.copy(os.path.join(run_dir, fov, 'intensities', channel + '_intensity.tiff'),
                     os.path.join(run_dir, fov, channel + suffix))
+
+
+def remove_sub_dirs(run_dir, sub_dirs, fovs=None):
+    """Removes specified sub-folders from fovs in a run
+
+    Args:
+        run_dir (str): path to directory containing fovs
+        sub_dirs (list): directories to remove from each fov
+        fovs (list): list of fovs to remove dirs from, otherwise removes from all fovs
+    """
+
+    all_fovs = list_folders(run_dir)
+
+    # ensure supplied folders are valid
+    if fovs is not None:
+        verify_in_list(specified_folders=fovs, all_folders=all_fovs)
+        all_fovs = fovs
+
+    # ensure all sub_dirs exist
+    for sub_dir in sub_dirs:
+        if not os.path.isdir(os.path.join(run_dir, all_fovs[0], sub_dir)):
+            raise ValueError("Did not find {} in {}".format(sub_dir, all_fovs[0]))
+
+    for fov in all_fovs:
+        for sub_dir in sub_dirs:
+            shutil.rmtree(os.path.join(run_dir, fov, sub_dir))
 
 
 def create_rosetta_matrices(default_matrix, save_dir, multipliers, channels=None):
