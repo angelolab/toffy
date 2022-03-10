@@ -4,7 +4,7 @@ import os
 import sys
 
 
-def generate_sample_fov_tiling_entry(coord, name):
+def generate_sample_fov_tiling_entry(coord, name, size):
     """Generates a sample fov entry to put in a sample fovs list for tiling
 
     Args:
@@ -12,6 +12,8 @@ def generate_sample_fov_tiling_entry(coord, name):
             Defines the starting x and y point for the fov
         name (str):
             Defines the name of the fov
+        size (int):
+            Defines the size along both axes of each fov
 
     Returns:
         dict:
@@ -20,6 +22,7 @@ def generate_sample_fov_tiling_entry(coord, name):
 
     sample_fov_tiling_entry = {
         "scanCount": 1,
+        "fovSizeMicrons": size,
         "centerPointMicrons": {
             "x": coord[0],
             "y": coord[1]
@@ -46,7 +49,7 @@ def generate_sample_fov_tiling_entry(coord, name):
     return sample_fov_tiling_entry
 
 
-def generate_sample_fovs_list(fov_coords, fov_names):
+def generate_sample_fovs_list(fov_coords, fov_names, fov_sizes):
     """Generate a sample dictionary of fovs for tiling
 
     Args:
@@ -54,6 +57,8 @@ def generate_sample_fovs_list(fov_coords, fov_names):
             A list of tuples listing the starting x and y coordinates of each fov
         fov_names (list):
             A list of strings identifying the name of each fov
+        fov_sizes (list):
+            A list of ints identifying the size in microns of each fov along both axes
 
     Returns:
         dict:
@@ -66,9 +71,9 @@ def generate_sample_fovs_list(fov_coords, fov_names):
         "fovs": []
     }
 
-    for coord, name in zip(fov_coords, fov_names):
+    for coord, name, size in zip(fov_coords, fov_names, fov_sizes):
         sample_fovs_list["fovs"].append(
-            generate_sample_fov_tiling_entry(coord, name)
+            generate_sample_fov_tiling_entry(coord, name, size)
         )
 
     return sample_fovs_list

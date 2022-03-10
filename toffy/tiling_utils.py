@@ -11,7 +11,9 @@ import os
 import pandas as pd
 import re
 from skimage.draw import ellipse
+from sklearn.linear_model import LinearRegression
 from sklearn.utils import shuffle
+import warnings
 
 from dataclasses import dataclass
 
@@ -55,7 +57,7 @@ def assign_metadata_vals(input_dict, output_dict, keys_ignore):
 
 
 def read_tiling_param(prompt, error_msg, cond, dtype):
-    """A helper function to read in tiling input
+    """A helper function to read a tiling param from a user prompt
 
     Args:
         prompt (str):
@@ -68,14 +70,14 @@ def read_tiling_param(prompt, error_msg, cond, dtype):
             The type of variable to read
 
     Returns:
-        Union([int, str]):
-            The value to place in the variable, limited to just `int` and `str` for now
+        Union([int, float, str]):
+            The value entered by the user
     """
 
     # ensure the dtype is valid
     misc_utils.verify_in_list(
         provided_dtype=dtype,
-        acceptable_dtypes=[int, str]
+        acceptable_dtypes=[int, float, str]
     )
 
     while True:
@@ -95,6 +97,150 @@ def read_tiling_param(prompt, error_msg, cond, dtype):
         print(error_msg)
 
 
+def read_fiducial_info():
+    """Prompt the user to input the fiducial info (in both stage and optical scoordinates)
+
+    Returns:
+        dict:
+            Contains the stage and optical coordinates of all 6 required fiducials
+    """
+
+    # define the dict to fill in
+    fiducial_info = {}
+
+    # store the stage and optical coordinates in separate keys
+    fiducial_info['stage'] = {}
+    fiducial_info['optical'] = {}
+
+    # read the stage and optical coordinate for each position
+    for pos in settings.FIDUCIAL_POSITIONS:
+        stage_x = read_tiling_param(
+            "Enter the stage x-coordinate of the %s fiducial: " % pos,
+            "Error: all fiducial coordinates entered must be positive numbers",
+            lambda fc: fc > 0,
+            dtype=float
+        )
+
+        stage_y = read_tiling_param(
+            "Enter the stage y-coordinate of the %s fiducial: " % pos,
+            "Error: all fiducial coordinates entered must be positive numbers",
+            lambda fc: fc > 0,
+            dtype=float
+        )
+
+        optical_x = read_tiling_param(
+            "Enter the optical x-coordinate of the %s fiducial: " % pos,
+            "Error: all fiducial coordinates entered must be positive numbers",
+            lambda fc: fc > 0,
+            dtype=float
+        )
+
+        optical_y = read_tiling_param(
+            "Enter the optical y-coordinate of the %s fiducial: " % pos,
+            "Error: all fiducial coordinates entered must be positive numbers",
+            lambda fc: fc > 0,
+            dtype=float
+        )
+
+        # define a new stage entry for the fiducial position
+        fiducial_info['stage'][pos] = {'x': stage_x, 'y': stage_y}
+
+        # ditto for optical
+        fiducial_info['optical'][pos] = {'x': optical_x, 'y': optical_y}
+
+    fiducial_name = read_tiling_param(
+        "Enter a name for this set of fiducials: ",
+        "Error: cannot leave the name blank",
+        lambda fn: len(fn) > 0,
+        dtype=str
+    )
+
+    fiducial_info['name'] = fiducial_name
+
+    return fiducial_info
+
+
+def generate_coreg_params(fiducial_info):
+    """Use linear regression from fiducial stage to optical coordinates to define
+    co-registration params.
+
+    Separate regressions for x and y values.
+
+    Args:
+        fiducial_info (dict):
+            The stage and optical coordinates of each fiducial, created by `read_fiducial_info`
+
+    Returns:
+        dict:
+            Contains the new multiplier and offset along the x- and y-axes
+    """
+
+    # define the dict to fill in
+    coreg_params = {}
+
+    # extract the data for for x-coordinate stage to optical regression
+    x_stage = np.array(
+        [fiducial_info['stage'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
+    ).reshape(-1, 1)
+    x_optical = np.array(
+        [fiducial_info['optical'][pos]['x'] for pos in settings.FIDUCIAL_POSITIONS]
+    ).reshape(-1, 1)
+
+    # generate x regression params
+    x_reg = LinearRegression().fit(x_stage, x_optical)
+
+    # add the multiplier and offset params for x
+    x_multiplier = x_reg.coef_[0][0]
+    x_offset = x_reg.intercept_[0] / x_multiplier
+    coreg_params['STAGE_TO_OPTICAL_X_MULTIPLIER'] = x_multiplier
+    coreg_params['STAGE_TO_OPTICAL_X_OFFSET'] = x_offset
+
+    # extract the data for for y-coordinate stage to optical regression
+    y_stage = np.array(
+        [fiducial_info['stage'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
+    ).reshape(-1, 1)
+    y_optical = np.array(
+        [fiducial_info['optical'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
+    ).reshape(-1, 1)
+
+    # generate y regression params
+    y_reg = LinearRegression().fit(y_stage, y_optical)
+
+    # add the multiplier and offset params for y
+    y_multiplier = y_reg.coef_[0][0]
+    y_offset = y_reg.intercept_[0] / y_multiplier
+    coreg_params['STAGE_TO_OPTICAL_Y_MULTIPLIER'] = y_multiplier
+    coreg_params['STAGE_TO_OPTICAL_Y_OFFSET'] = y_offset
+
+    return coreg_params
+
+
+def write_coreg_params(coreg_params, fiducial_name,
+                       settings_path=os.path.join('..', 'toffy', 'settings.py')):
+    """Write the new coregistration parameters to `settings.py`
+
+    Args:
+        coreg_params (dict):
+            The new fiducial co-registration parameters, generated by `generate_coreg_params`
+        fiducial_name (str):
+            The name of this fiducial set, placed in comment to head `coreg_params` values
+        settings_path (str):
+            The location of `settings.py`
+    """
+
+    # validate settings_path exists
+    if not os.path.exists(settings_path):
+        raise FileNotFoundError('settings_path %s does not exist' % settings_path)
+
+    with open(settings_path, 'a') as fw:
+        # use fiducial_name in the comment header
+        fw.write('# %s stage to optical co-registration conversion params\n' % fiducial_name)
+
+        # write each param in coreg_params to settings_path
+        for cp, cpv in coreg_params.items():
+            fw.write('%s = %f\n' % (cp, cpv))
+
+
 def generate_region_info(region_params):
     """Generate the `region_params` list in the tiling parameter dict
 
@@ -111,7 +257,7 @@ def generate_region_info(region_params):
     region_params_list = []
 
     # iterate over all the region parameters, all parameter lists are the same length
-    for i in range(len(region_params['region_start_x'])):
+    for i in range(len(region_params['region_start_row'])):
         # define a dict containing all the region info for the specific FOV
         region_info = {
             rp: region_params[rp][i] for rp in region_params
@@ -137,44 +283,42 @@ def read_tiled_region_inputs(region_corners, region_params):
 
     # read in the data for each fov (region_start from region_corners_path, all others from user)
     for fov in region_corners['fovs']:
-        region_params['region_start_x'].append(fov['centerPointMicrons']['x'])
-        region_params['region_start_y'].append(fov['centerPointMicrons']['y'])
+        # append the starting row and column coordinates
+        region_params['region_start_row'].append(fov['centerPointMicrons']['y'])
+        region_params['region_start_col'].append(fov['centerPointMicrons']['x'])
+
+        print("Using start coordinates of (%d, %d) in microns for region %s"
+              % (fov['centerPointMicrons']['x'], fov['centerPointMicrons']['y'], fov['name']))
+
+        # verify that the micron size specified is valid
+        if fov['fovSizeMicrons'] <= 0:
+            raise ValueError("The fovSizeMicrons field for region %s must be positive"
+                             % fov['name'])
+
+        print("Using FOV step size of %d microns for both row (y) and column (x) axis of region %s"
+              % (fov['fovSizeMicrons'], fov['name']))
+
+        # use fovSizeMicrons as the step size along both axes
+        region_params['row_fov_size'].append(fov['fovSizeMicrons'])
+        region_params['col_fov_size'].append(fov['fovSizeMicrons'])
 
         # allow the user to specify the number of fovs along each dimension
-        num_x = read_tiling_param(
-            "Enter number of x FOVs for region %s: " % fov['name'],
-            "Error: number of x FOVs must be a positive integer",
+        num_row = read_tiling_param(
+            "Enter the number of FOVs per row for region %s: " % fov['name'],
+            "Error: number of FOVs per row must be a positive integer",
             lambda nx: nx >= 1,
             dtype=int
         )
 
-        num_y = read_tiling_param(
-            "Enter number of y FOVs for region %s: " % fov['name'],
-            "Error: number of y FOVs must be a positive integer",
+        num_col = read_tiling_param(
+            "Enter the number of FOVs per column for region %s: " % fov['name'],
+            "Error: number of FOVs per column must be a positive integer",
             lambda ny: ny >= 1,
             dtype=int
         )
 
-        region_params['fov_num_x'].append(num_x)
-        region_params['fov_num_y'].append(num_y)
-
-        # allow the user to specify the step size along each dimension
-        size_x = read_tiling_param(
-            "Enter the x step size for region %s (in microns): " % fov['name'],
-            "Error: x step size must be a positive integer",
-            lambda sx: sx >= 1,
-            dtype=int
-        )
-
-        size_y = read_tiling_param(
-            "Enter the y step size for region %s (in microns): " % fov['name'],
-            "Error: y step size must be a positive integer",
-            lambda sy: sy >= 1,
-            dtype=int
-        )
-
-        region_params['x_fov_size'].append(size_x)
-        region_params['y_fov_size'].append(size_y)
+        region_params['fov_num_row'].append(num_row)
+        region_params['fov_num_col'].append(num_col)
 
         # allow the user to specify if the FOVs should be randomized
         randomize = read_tiling_param(
@@ -395,38 +539,38 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
     # iterate through each region and append created fovs to fov_regions['fovs']
     for region_index, region_info in enumerate(tiling_params['region_params']):
         # extract start coordinates
-        start_x = region_info['region_start_x']
-        start_y = region_info['region_start_y']
+        start_row = region_info['region_start_row']
+        start_col = region_info['region_start_col']
 
         # define the range of x- and y-coordinates to use
-        x_range = list(range(region_info['fov_num_x']))
-        y_range = list(range(region_info['fov_num_y']))
+        row_range = list(range(region_info['fov_num_row']))
+        col_range = list(range(region_info['fov_num_col']))
 
         # create all pairs between two lists
-        x_y_pairs = generate_x_y_fov_pairs(x_range, y_range)
+        row_col_pairs = generate_x_y_fov_pairs(row_range, col_range)
 
         # name the FOVs according to MIBI conventions
-        fov_names = ['R%dC%d' % (y + 1, x + 1) for x in range(region_info['fov_num_x'])
-                     for y in range(region_info['fov_num_y'])]
+        fov_names = ['R%dC%d' % (y + 1, x + 1) for x in range(region_info['fov_num_row'])
+                     for y in range(region_info['fov_num_col'])]
 
         # randomize pairs list if specified
         if region_info['region_rand'] == 'Y':
             # make sure the fov_names are set in the same shuffled indices for renaming
-            x_y_pairs, fov_names = shuffle(x_y_pairs, fov_names)
+            row_col_pairs, fov_names = shuffle(row_col_pairs, fov_names)
 
         # update total_fovs, we'll prevent moly_counter from triggering the appending of
         # a Moly point at the end of a region this way
-        total_fovs += len(x_y_pairs)
+        total_fovs += len(row_col_pairs)
 
-        for index, (xi, yi) in enumerate(x_y_pairs):
+        for index, (col_i, row_i) in enumerate(row_col_pairs):
             # use the fov size to scale to the current x- and y-coordinate
-            cur_x = start_x + xi * region_info['x_fov_size']
-            cur_y = start_y - yi * region_info['y_fov_size']
+            cur_row = start_row - row_i * region_info['row_fov_size']
+            cur_col = start_col + col_i * region_info['col_fov_size']
 
             # copy the fov metadata over and add cur_x, cur_y, and name
             fov = copy.deepcopy(tiling_params['fovs'][region_index])
-            fov['centerPointMicrons']['x'] = cur_x
-            fov['centerPointMicrons']['y'] = cur_y
+            fov['centerPointMicrons']['x'] = cur_col
+            fov['centerPointMicrons']['y'] = cur_row
             fov['name'] = fov_names[index]
 
             # append value to fov_regions
@@ -552,7 +696,7 @@ def generate_tma_fov_list(tma_corners_path, num_fov_row, num_fov_col):
     return fov_regions
 
 
-def convert_microns_to_pixels(coord):
+def convert_stage_to_optical(coord):
     """Convert the coordinate in stage microns to optical pixels.
 
     In other words, co-register using the centroid of a FOV.
@@ -566,7 +710,8 @@ def convert_microns_to_pixels(coord):
 
     Returns:
         tuple:
-            The converted coordinate from microns to pixels (values truncated to `int`)
+            The converted coordinate from stage microns to optical pixels.
+            Values truncated to `int`.
     """
 
     # NOTE: all conversions are done using the fiducials
@@ -578,13 +723,13 @@ def convert_microns_to_pixels(coord):
         coord[1] * settings.MICRON_TO_STAGE_Y_MULTIPLIER - settings.MICRON_TO_STAGE_Y_OFFSET
     )
 
-    # convert from stage coordinates to pixels
+    # convert from stage coordinates to optical pixels
     pixel_coord_x = (
-        stage_coord_x + settings.STAGE_TO_PIXEL_X_OFFSET
-    ) * settings.STAGE_TO_PIXEL_X_MULTIPLIER
+        stage_coord_x + settings.STAGE_TO_OPTICAL_X_OFFSET
+    ) * settings.STAGE_TO_OPTICAL_X_MULTIPLIER
     pixel_coord_y = (
-        stage_coord_y + settings.STAGE_TO_PIXEL_Y_OFFSET
-    ) * settings.STAGE_TO_PIXEL_Y_MULTIPLIER
+        stage_coord_y + settings.STAGE_TO_OPTICAL_Y_OFFSET
+    ) * settings.STAGE_TO_OPTICAL_Y_MULTIPLIER
 
     return (int(pixel_coord_y), int(pixel_coord_x))
 
@@ -663,9 +808,9 @@ def generate_fov_circles(manual_fovs_info, auto_fovs_info,
 
     Args:
         manual_fovs_info (dict):
-            maps each manual FOV to its centroid coordinates (in pixels)
+            maps each manual FOV to its centroid coordinates (in optical pixels)
         auto_fovs_info (dict):
-            maps each auto FOV to its centroid coordinates (in pixels)
+            maps each auto FOV to its centroid coordinates (in optical pixels)
         manual_name (str):
             the name of the manual FOV to highlight
         auto_name (str):
@@ -673,7 +818,7 @@ def generate_fov_circles(manual_fovs_info, auto_fovs_info,
         slide_img (numpy.ndarray):
             the image to overlay
         draw_radius (int):
-            the radius (in pixels) of the circle to overlay for each FOV
+            the radius (in optical pixels) of the circle to overlay for each FOV
 
     Returns:
         numpy.ndarray:
@@ -746,13 +891,13 @@ def update_mapping_display(change, w_auto, manual_to_auto_map, manual_coords, au
         manual_to_auto_map (dict):
             defines the mapping of manual to auto FOV names
         manual_coords (dict):
-            maps each manually-defined FOV to its coordinate (in pixels)
+            maps each manually-defined FOV to its coordinate (in optical pixels)
         auto_coords (dict):
-            maps each automatically-generated FOV to its coordinate (in pixels)
+            maps each automatically-generated FOV to its coordinate (in optical pixels)
         slide_img (numpy.ndarray):
             the image to overlay
         draw_radius (int):
-            the radius (in pixels) to draw each circle on the slide
+            the radius (in optical pixels) to draw each circle on the slide
 
     Returns:
         numpy.ndarray:
@@ -834,11 +979,11 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_auto_
         manual_auto_dist (pandas.DataFrame):
             defines the distance (in microns) between each manual FOV from each auto FOV
         auto_coords (dict):
-            maps each automatically-generated FOV to its coordinate (in pixels)
+            maps each automatically-generated FOV to its coordinate (in optical pixels)
         slide_img (numpy.ndarray):
             the image to overlay
         draw_radius (int):
-            the radius (in pixels) to draw each circle on the slide
+            the radius (in optical pixels) to draw each circle on the slide
         check_dist (float):
             if the distance (in microns) between a manual-auto FOV pair exceeds this value, it will
             be reported for a potential error, if `None` does not validate distance
@@ -1136,7 +1281,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
         mapping_path (str):
             the path to the file to save the mapping to
         draw_radius (int):
-            the radius (in pixels) to draw each circle on the slide
+            the radius (in optical pixels) to draw each circle on the slide
         figsize (tuple):
             the size of the interactive figure to display
         check_dist (float):
@@ -1174,18 +1319,26 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
     manual_to_auto_map, manual_auto_dist = assign_closest_fovs(manual_fovs, auto_fovs)
 
     # condense manual_fovs to include just the name mapped to its coordinate
-    # NOTE: convert to pixels for visualization, let manual_auto_dist handle microns distance
+    # NOTE: convert to optical pixels for visualization
     manual_fovs_info = {
-        fov['name']: convert_microns_to_pixels(tuple(fov['centerPointMicrons'].values()))
+        fov['name']: convert_stage_to_optical(tuple(fov['centerPointMicrons'].values()))
 
         for fov in manual_fovs['fovs']
     }
 
-    # sort FOVs alphabetically, TODO: assumes user will always define their FOVs as R{n}C{n}
-    manual_fovs_sorted = sorted(
-        list(manual_fovs_info.keys()),
-        key=lambda mf: (int(re.findall(r'\d+', mf)[0]), int(re.findall(r'\d+', mf)[1]))
-    )
+    # sort manual FOVs by row then column, first assume the user names FOVs in R{m}c{n} format
+    try:
+        manual_fovs_sorted = sorted(
+            list(manual_fovs_info.keys()),
+            key=lambda mf: (int(re.findall(r'\d+', mf)[0]), int(re.findall(r'\d+', mf)[1]))
+        )
+    # otherwise, just sort manual FOVs alphabetically, nothing else we can do
+    # NOTE: this will not catch cases where the user has something like fov2_data0
+    except IndexError:
+        warnings.warn(
+            'Manual FOVs not consistently named in R{m}C{n} format, sorting alphabetically'
+        )
+        manual_fovs_sorted = sorted(list(manual_fovs_info.keys()))
 
     # get the first FOV to display
     first_manual = manual_fovs_sorted[0]
@@ -1199,9 +1352,9 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
         style={'description_width': 'initial'}
     )
 
-    # NOTE: convert to pixels for visualization, let fov_dist-table handle microns distance
+    # NOTE: convert to optical pixels for visualization
     auto_fovs_info = {
-        fov: convert_microns_to_pixels(auto_fovs[fov])
+        fov: convert_stage_to_optical(auto_fovs[fov])
 
         for fov in auto_fovs
     }
