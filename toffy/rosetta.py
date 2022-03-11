@@ -39,7 +39,7 @@ def transform_compensation_json(json_path, comp_mat_path):
     comp_mat.to_csv(comp_mat_path)
 
 
-def compensate_matrix_simple(raw_inputs, comp_coeffs, out_indices):
+def _compensate_matrix_simple(raw_inputs, comp_coeffs, out_indices):
     """Perform compensation on the raw data using the supplied compensation values
 
     Args:
@@ -124,10 +124,10 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
     allowed_formats = ['raw', 'normalized', 'both']
     verify_in_list(save_format=save_format, allowed_formats=allowed_formats)
 
-    if batch_size < 1 or not isinstance(batch_size, int):
+    if not isinstance(batch_size, int) or batch_size < 1:
         raise ValueError('batch_size parameter must be a positive integer')
 
-    if gaus_rad < 0 or not isinstance(gaus_rad, int):
+    if not isinstance(gaus_rad, int) or gaus_rad < 0:
         raise ValueError('gaus_rad parameter must be a non-negative integer')
 
 
@@ -197,9 +197,9 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                     batch_data[j, :, :, k] = gaussian_filter(batch_data[j, :, :, k],
                                                              sigma=gaus_rad)
 
-        comp_data = compensate_matrix_simple(raw_inputs=batch_data,
-                                             comp_coeffs=comp_mat.values,
-                                             out_indices=out_indices)
+        comp_data = _compensate_matrix_simple(raw_inputs=batch_data,
+                                              comp_coeffs=comp_mat.values,
+                                              out_indices=out_indices)
 
         # save data
         for j in range(batch_data.shape[0]):
@@ -273,14 +273,16 @@ def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='normaliz
                   tiled_image, check_contrast=False)
 
 
-def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, source_channel):
+def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, source_channel,
+                                      percent_norm=98):
     """Adds the specified source_channel to the first row of previously generated tiled images
 
     Args:
         raw_img_dir (str): path to directory containing the raw images
         tiled_img_dir (str): path to directory contained the tiled images
         output_dir (str): path to directory where outputs will be saved
-        source_channel (str): the channel which will be prepended to the tiled images"""
+        source_channel (str): the channel which will be prepended to the tiled images
+        percent_norm (int): percentile normalization param to enable easy visualization"""
 
     # load source images
     source_imgs = load_imgs_from_tree(raw_img_dir, channels=[source_channel],
@@ -289,7 +291,7 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
     # convert stacked images to concatenated row
     source_list = [source_imgs.values[fov, :, :, 0] for fov in range(source_imgs.shape[0])]
     source_row = np.concatenate(source_list, axis=1)
-    perc_98_source = np.percentile(source_row, 98)
+    perc_source = np.percentile(source_row, percent_norm)
 
     # confirm tiled images have expected shape
     tiled_images = list_files(tiled_img_dir)
@@ -304,8 +306,8 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
         current_tile = io.imread(os.path.join(tiled_img_dir, tile_name))
 
         # normalize the source row to be in the same range as the current tile
-        perc_98 = np.percentile(current_tile, 98)
-        perc_ratio = perc_98_source / perc_98
+        perc_tile = np.percentile(current_tile, percent_norm)
+        perc_ratio = perc_source / perc_tile
         normalized_source = source_row / perc_ratio
 
         # combine together and save
@@ -335,7 +337,7 @@ def replace_with_intensity_image(run_dir, channel='Au', replace=True, fovs=None)
     # ensure channel is valid
     test_file = os.path.join(run_dir, all_fovs[0], 'intensities', channel + '_intensity.tiff')
     if not os.path.exists(test_file):
-        raise ValueError('Could not find specified file {}'.format(test_file))
+        raise FileNotFoundError('Could not find specified file {}'.format(test_file))
 
     # loop through each fov
     for fov in all_fovs:
@@ -374,30 +376,30 @@ def remove_sub_dirs(run_dir, sub_dirs, fovs=None):
             shutil.rmtree(os.path.join(run_dir, fov, sub_dir))
 
 
-def create_rosetta_matrices(default_matrix, save_dir, multipliers, channels=None):
+def create_rosetta_matrices(default_matrix, save_dir, multipliers, masses=None):
     """Creates a series of compensation matrices for evaluating coefficients
     Args:
         default_matrix (str): path to the rosetta matrix to use as the default
         save_dir (str): output directory
         multipliers (list): the range of values to multiply the default matrix by
             to get new coefficients
-        channels (list | None): an optional list of channels to include in the multiplication. If
-            only a subset of channels are specified, other channels will retain their values
-            in all iterations. If None, all channels are included
+        masses (list | None): an optional list of masses to include in the multiplication. If
+            only a subset of masses are specified, other masses will retain their values
+            in all iterations. If None, all masses are included
     """
     # Read input matrix
     comp_matrix = pd.read_csv(default_matrix, index_col=0)
-    comp_channels = comp_matrix.index
+    comp_masses = comp_matrix.index
 
     # Check channel input
-    if channels is None:
-        channels = comp_channels
+    if masses is None:
+        masses = comp_masses
     else:
         try:
-            channels = [int(x) for x in channels]
+            masses = [int(x) for x in masses]
         except ValueError:
-            raise ValueError("Channels must be provided as integers")
-        verify_in_list(specified_channels=channels, rosetta_channels=comp_channels)
+            raise ValueError("Masses must be provided as integers")
+        verify_in_list(specified_masses=masses, rosetta_masses=comp_masses)
 
     # loop over each specified multiplier and create separate compensation matrix
     for i in multipliers:
@@ -405,7 +407,7 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, channels=None
 
         for j in range(len(comp_matrix)):
             # multiply specified channel by multiplier
-            if comp_channels[j] in channels:
+            if comp_masses[j] in masses:
                 mult_matrix.iloc[j, :] = comp_matrix.iloc[j, :] * i
         base_name = os.path.basename(default_matrix).split('.csv')[0]
         mult_matrix.to_csv(os.path.join(save_dir, base_name + '_mult_%s.csv' % (str(i))))

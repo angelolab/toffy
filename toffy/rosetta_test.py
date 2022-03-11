@@ -40,7 +40,7 @@ def test_compensate_matrix_simple():
                   coeffs[2, 0] * inputs[0, 0, 0, 2] + coeffs[3, 0] * inputs[0, 0, 0, 3])
 
     out_indices = np.arange(inputs.shape[-1])
-    out = rosetta.compensate_matrix_simple(inputs, coeffs, out_indices)
+    out = rosetta._compensate_matrix_simple(inputs, coeffs, out_indices)
 
     # non-affected channels are identical
     assert np.all(out[:, :, :, 1:-1] == inputs[:, :, :, 1:-1])
@@ -59,7 +59,7 @@ def test_compensate_matrix_simple():
 
     # don't generate output for first channel
     out_indices = out_indices[1:]
-    out = rosetta.compensate_matrix_simple(inputs, coeffs, out_indices)
+    out = rosetta._compensate_matrix_simple(inputs, coeffs, out_indices)
 
     # non-affected channels are identical
     assert np.all(out[:, :, :, :-1] == inputs[:, :, :, 1:-1])

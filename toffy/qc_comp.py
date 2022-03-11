@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 import pandas as pd
+import re
 from requests.exceptions import HTTPError
 from scipy.ndimage import gaussian_filter
 import seaborn as sns
@@ -11,11 +12,12 @@ from skimage.io import imsave
 
 from toffy.mibitracker_utils import MibiTrackerError
 from toffy.mibitracker_utils import MibiRequests
+from toffy import settings
 
-import ark.settings as settings
 import ark.utils.io_utils as io_utils
 import ark.utils.load_utils as load_utils
 import ark.utils.misc_utils as misc_utils
+import mibi_bin_tools.bin_files as bin_files
 
 # needed to prevent UserWarning: low contrast image barf when saving images
 import warnings
@@ -182,7 +184,7 @@ def download_mibitracker_data(email, password, run_name, run_label, base_dir, ti
             # write the data to a .tiff file in the FOV directory structure
             imsave(
                 os.path.join(base_dir, tiff_dir, img['number'], img_sub_folder, chan_file),
-                chan_data
+                chan_data, check_contrast=False
             )
 
         # append the run name and run id to the list
@@ -200,7 +202,7 @@ def compute_nonzero_mean_intensity(image_data):
 
     Returns:
         float:
-            The nonzero mean intensity of the fov/chan pair (np.nan if the channel contains all 0s)
+            The nonzero mean intensity of the fov/chan pair (`np.nan` if channel contains all 0s)
     """
 
     # take just the non-zero pixels
@@ -225,7 +227,7 @@ def compute_total_intensity(image_data):
 
     Returns:
         float:
-            The total intensity of the fov/chan pair (np.nan if the channel contains all 0s)
+            The total intensity of the fov/chan pair (`np.nan` if channel contains all 0s)
     """
 
     return np.sum(image_data)
@@ -246,201 +248,160 @@ def compute_99_9_intensity(image_data):
     return np.percentile(image_data, q=99.9)
 
 
-def compute_qc_metrics_batch(image_data, fovs, chans, gaussian_blur=False, blur_factor=1):
-    """Compute the QC metric matrices for a fov batch
+def sort_bin_file_fovs(fovs, suffix_ignore=None):
+    """Sort a list of fovs in a bin file by fov and scan number
 
-    Helper function to compute_qc_metrics
-
-    Args:
-        image_data (xarray.DataArray):
-            the data associated with the fov batch
-        fovs (list):
-            the list of fov names in the batch
-        chans (list):
-            the subset of channels specified
-        gaussian_blur (bool):
-            whether to add a Gaussian blur to each batch
-        blur_factor (int):
-            the sigma (standard deviation) to use for Gaussian blurring
-            set to 0 to use raw inputs without Gaussian blurring
-            ignored if gaussian_blur set to False
-
+    fovs (list):
+        a list of fovs prefixed with `'fov-m-scan-n'`
+    suffix_ignore (str):
+        removes this at the end of each fov name, needed if sorting fov-level QC `.csv` files
 
     Returns:
-        dict:
-            A mapping between each QC metric name and their respective DataFrames (batch)
+        list:
+            fov name list sorted by ascending fov number, the ascending scan number
     """
 
-    # subset image_data on just the channel names provided
-    image_data = image_data.loc[..., chans]
+    # set suffix_ignore to the empty string if None
+    if suffix_ignore is None:
+        suffix_ignore = ''
 
-    # define a numpy array for all the metrics to extract
-    # NOTE: numpy array is faster for indexing than pandas
-    blank_arr = np.zeros((image_data.shape[0], image_data.shape[3]), dtype='float32')
-    nonzero_mean_intensity = copy.deepcopy(blank_arr)
-    total_intensity = copy.deepcopy(blank_arr)
-    intensity_99_9 = copy.deepcopy(blank_arr)
-
-    # NOTE: looping through each fov and channel separately much faster
-    # than numpy vectorization
-    for i in np.arange(image_data.shape[0]):
-        for j in np.arange(image_data.shape[3]):
-            # extract the data for the fov and channel as float
-            image_data_np = image_data[i, :, :, j].values.astype('float32')
-
-            # STEP 1: gaussian blur (if specified)
-            if gaussian_blur:
-                image_data_np = gaussian_filter(
-                    image_data_np, sigma=blur_factor, mode='nearest', truncate=2.0
-                )
-
-            # STEP 2: extract non-zero mean intensity
-            nonzero_mean_intensity[i, j] = compute_nonzero_mean_intensity(image_data_np)
-
-            # STEP 3: extract total intensity
-            total_intensity[i, j] = compute_total_intensity(image_data_np)
-
-            # STEP 4: take 99.9% value of the data and assign
-            intensity_99_9[i, j] = compute_99_9_intensity(image_data_np)
-
-    # convert the numpy arrays to pandas DataFrames
-    df_nonzero_mean_batch = pd.DataFrame(
-        nonzero_mean_intensity, columns=chans
+    # TODO: if anyone can do this using a walrus operator I'd appreciate it!
+    return sorted(
+        fovs,
+        key=lambda f: (
+            int(f.replace(suffix_ignore, '').split('-')[1]),
+            int(f.replace(suffix_ignore, '').split('-')[3])
+        )
     )
 
-    df_total_intensity_batch = pd.DataFrame(
-        total_intensity, columns=chans
-    )
 
-    df_99_9_intensity_batch = pd.DataFrame(
-        intensity_99_9, columns=chans
-    )
-
-    # append the batch_names as fovs to each DataFrame
-    df_nonzero_mean_batch['fov'] = fovs
-    df_total_intensity_batch['fov'] = fovs
-    df_99_9_intensity_batch['fov'] = fovs
-
-    # create a dictionary mapping the metric name to its respective DataFrame
-    qc_data_batch = {
-        'nonzero_mean_batch': df_nonzero_mean_batch,
-        'total_intensity_batch': df_total_intensity_batch,
-        '99_9_intensity_batch': df_99_9_intensity_batch
-    }
-
-    return qc_data_batch
-
-
-def compute_qc_metrics(tiff_dir, img_sub_folder="TIFs", fovs=None, channels=None,
-                       batch_size=5, gaussian_blur=False, blur_factor=1, dtype='int16'):
-    """Compute the QC metric matrices
+def compute_qc_metrics(bin_file_path, fov_name, panel_path,
+                       gaussian_blur=False, blur_factor=1):
+    """Compute the QC metric matrices for the image data provided
 
     Args:
-        tiff_dir (str):
-            the name of the directory which contains the single_channel_inputs
-        img_sub_folder (str):
-            the name of the folder where the TIF images are located
-        fovs (list):
-            a list of fovs we wish to analyze, if None will default to all fovs
-        channels (list):
-            a list of channels we wish to subset on, if None will default to all channels
-        batch_size (int):
-            how large we want each of the batches of fovs to be when computing, adjust as
-            necessary for speed and memory considerations
+        bin_file_path (str):
+            the directory to the MIBI bin files for extraction,
+            also where the fov-level QC metric files will be written
+        fov_name (str):
+            the name of the FOV to extract from `bin_file_path`, needs to correspond with JSON name
+        panel_path (str):
+            the path to the file defining the panel info for bin file extraction
         gaussian_blur (bool):
             whether or not to add Gaussian blurring
         blur_factor (int):
             the sigma (standard deviation) to use for Gaussian blurring
             set to 0 to use raw inputs without Gaussian blurring
-            ignored if gaussian_blur set to False
-        dtype (str/type):
-            data type of base images
-
-    Returns:
-        dict:
-            A mapping between each QC metric name and their respective DataFrames
+            ignored if `gaussian_blur` set to `False`
     """
 
-    # if no fovs are specified, then load all the fovs
-    if fovs is None:
-        fovs = io_utils.list_folders(tiff_dir)
+    # path validation checks
+    if not os.path.exists(bin_file_path):
+        raise FileNotFoundError("bin_file_path %s does not exist" % bin_file_path)
 
-    # drop file extensions
-    fovs = io_utils.remove_file_extensions(fovs)
+    if not os.path.exists(panel_path):
+        raise FileNotFoundError("panel_path %s does not exist" % panel_path)
 
-    # get full filenames from given fovs
-    filenames = io_utils.list_files(tiff_dir, substrs=fovs, exact_match=True)
+    if not os.path.exists(os.path.join(bin_file_path, fov_name + '.json')):
+        raise FileNotFoundError("fov file %s.json not found in bin_file_path" % fov_name)
 
-    # sort the fovs and filenames
-    fovs.sort()
-    filenames.sort()
+    # run the bin file extraction, we'll extract all FOVs
+    # the image coords should be: ['fov', 'type', 'x', 'y', 'channel']
+    image_data = bin_files.extract_bin_files(
+        data_dir=bin_file_path,
+        out_dir=None,
+        include_fovs=[fov_name],
+        panel=pd.read_csv(panel_path)
+    )
 
-    # define the number of fovs specified
-    cohort_len = len(fovs)
+    # there's only 1 FOV and 1 type ('pulse'), so subset on that
+    image_data = image_data.loc[fov_name, 'pulse', :, :, :]
 
-    # create the DataFrames to store the processed data
-    df_nonzero_mean = pd.DataFrame()
-    df_total_intensity = pd.DataFrame()
-    df_99_9_intensity = pd.DataFrame()
+    # define the list of channels to use
+    chans = image_data.channel.values
 
-    # define number of fovs processed (for printing out updates to user)
-    fovs_processed = 0
+    # define numpy arrays for all the metrics to extract, more efficient indexing than pandas
+    blank_arr = np.zeros(image_data.shape[2], dtype='float32')
+    nonzero_mean_intensity = copy.deepcopy(blank_arr)
+    total_intensity = copy.deepcopy(blank_arr)
+    intensity_99_9 = copy.deepcopy(blank_arr)
 
-    # iterate over all the batches
-    for batch_names, batch_files in zip(
-        [fovs[i:i + batch_size] for i in range(0, cohort_len, batch_size)],
-        [filenames[i:i + batch_size] for i in range(0, cohort_len, batch_size)]
-    ):
-        image_data = load_utils.load_imgs_from_tree(data_dir=tiff_dir,
-                                                    img_sub_folder=img_sub_folder,
-                                                    fovs=batch_names,
-                                                    dtype=dtype)
+    # it's faster to loop through the individual channels rather than broadcasting
+    for i, chan in enumerate(chans):
+        # subset on the channel, cast to float32 to prevent truncation
+        image_data_np = image_data.loc[:, :, chan].values.astype(np.float32)
 
-        # get the channel names directly from image_data if not specified
-        if channels is None:
-            channels = image_data.channels.values
+        # STEP 1: gaussian blur (if specified)
+        if gaussian_blur:
+            image_data_np = gaussian_filter(
+                image_data_np, sigma=blur_factor, mode='nearest', truncate=2.0
+            )
 
-        # verify the channel names (important if the user explicitly specifies channels)
-        misc_utils.verify_in_list(
-            provided_chans=channels,
-            image_chans=image_data.channels.values
+        # STEP 2: extract non-zero mean intensity
+        nonzero_mean_intensity[i] = compute_nonzero_mean_intensity(image_data_np)
+
+        # STEP 3: extract total intensity
+        total_intensity[i] = compute_total_intensity(image_data_np)
+
+        # STEP 4: take 99.9% value of the data and assign
+        intensity_99_9[i] = compute_99_9_intensity(image_data_np)
+
+    # define the list of numpy arrays for looping
+    metric_data = [nonzero_mean_intensity, total_intensity, intensity_99_9]
+
+    for ms, md, mc in zip(settings.QC_SUFFIXES, metric_data, settings.QC_COLUMNS):
+        # define the dataframe for this metric
+        metric_df = pd.DataFrame(
+            columns=['fov', 'channel', mc], dtype=object
         )
 
-        # compute the QC metrics of this batch
-        qc_data_batch = compute_qc_metrics_batch(
-            image_data, batch_names, channels, gaussian_blur, blur_factor
+        # assign the metric data
+        metric_df[mc] = md
+
+        # assign the fov and channel names
+        metric_df['fov'] = fov_name
+        metric_df['channel'] = chans
+
+        # write the metric data to CSV
+        metric_df.to_csv(
+            os.path.join(bin_file_path, '%s_%s.csv' % (fov_name, ms)), index=False
         )
 
-        # append the batch QC metric data to the full processed data
-        df_nonzero_mean = pd.concat(
-            [df_nonzero_mean, qc_data_batch['nonzero_mean_batch']]
-        )
-        df_total_intensity = pd.concat(
-            [df_total_intensity, qc_data_batch['total_intensity_batch']]
-        )
-        df_99_9_intensity = pd.concat(
-            [df_99_9_intensity, qc_data_batch['99_9_intensity_batch']]
-        )
 
-        # update number of fovs processed
-        fovs_processed += batch_size
+def combine_qc_metrics(bin_file_path):
+    """Aggregates the QC results of each FOV into one `.csv`
 
-        # print fovs processed update
-        print("Number of fovs processed: %d" % fovs_processed)
+    Args:
+        bin_file_path (str):
+            the name of the folder containing the QC metric files
+    """
 
-    # reset the indices to make indexing consistent
-    df_nonzero_mean = df_nonzero_mean.reset_index(drop=True)
-    df_total_intensity = df_total_intensity.reset_index(drop=True)
-    df_99_9_intensity = df_99_9_intensity.reset_index(drop=True)
+    # path validation check
+    if not os.path.exists(bin_file_path):
+        raise FileNotFoundError('bin_file_path %s does not exist' % bin_file_path)
 
-    # create a dictionary mapping the metric name to its respective DataFrame
-    qc_data = {
-        'nonzero_mean': df_nonzero_mean,
-        'total_intensity': df_total_intensity,
-        '99_9_intensity': df_99_9_intensity
-    }
+    for ms in settings.QC_SUFFIXES:
+        # define an aggregated metric DataFrame
+        metric_df = pd.DataFrame()
 
-    return qc_data
+        # list all the files corresponding to this metric
+        metric_files = io_utils.list_files(bin_file_path, substrs=ms + '.csv')
+
+        # don't consider any existing combined .csv files, just the fov-level .csv files
+        metric_files = [
+            mf for mf in metric_files if 'combined' not in mf
+        ]
+
+        # sort the files to ensure consistency
+        metric_files = sort_bin_file_fovs(metric_files, suffix_ignore='_%s.csv' % ms)
+
+        # iterate over each metric file and append the data to metric_df
+        for mf in metric_files:
+            metric_df = pd.concat([metric_df, pd.read_csv(os.path.join(bin_file_path, mf))])
+
+        # write the aggregated metric data
+        # NOTE: if this combined metric file already exists, it will be overwritten
+        metric_df.to_csv(os.path.join(bin_file_path, 'combined_%s.csv' % ms), index=False)
 
 
 def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=None, save_dir=None):
@@ -448,7 +409,7 @@ def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=No
 
     Args:
         qc_metric_df (pandas.DataFrame):
-            A QC metric matrix as returned by compute_qc_metrics, melted
+            A QC metric matrix as returned by `compute_qc_metrics`, melted
         metric_name (str):
             The name of the QC metric, used as the y-axis label
         axes_size (int):
