@@ -92,6 +92,7 @@ def test_validate_inputs():
         output_masses = copy.copy(masses)
         all_masses = copy.copy(masses)
         save_format = 'raw'
+        raw_data_sub_folder = ''
         batch_size = 1
         gaus_rad = 1
 
@@ -99,7 +100,8 @@ def test_validate_inputs():
                       'acquired_masses': acquired_masses, 'acquired_targets': acquired_targets,
                       'input_masses': input_masses,
                       'output_masses': output_masses, 'all_masses': all_masses, 'fovs': fovs,
-                      'save_format': save_format, 'batch_size': batch_size, 'gaus_rad': gaus_rad}
+                      'save_format': save_format, 'raw_data_sub_folder': raw_data_sub_folder,
+                      'batch_size': batch_size, 'gaus_rad': gaus_rad}
 
         # check that masses are sorted
         input_dict_disorder = copy.copy(input_dict)

@@ -79,7 +79,8 @@ def compensate_matrix_simple(raw_inputs, comp_coeffs, out_indices):
 
 
 def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, input_masses,
-                    output_masses, all_masses, fovs, save_format, batch_size, gaus_rad):
+                    output_masses, all_masses, fovs, save_format, raw_data_sub_folder, batch_size,
+                    gaus_rad):
     """Helper function to validate inputs for compensate_image_data
 
     Args:
@@ -92,6 +93,7 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
         all_masses (list): masses in the compensation matrix
         fovs (list): fovs in the raw_data_dir
         save_format (str): format to save the data
+        raw_data_sub_folder (string): sub-folder for raw images
         batch_size (int): number of images to process concurrently
         gaus_rad (int): radius for smoothing"""
 
@@ -104,7 +106,8 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
 
     # check first FOV to make sure all channels are present
     test_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=fovs[0:1],
-                                    channels=acquired_targets, dtype='float32')
+                                    channels=acquired_targets, dtype='float32',
+                                    img_sub_folder=raw_data_sub_folder)
 
     verify_same_elements(image_files=test_data.channels.values, listed_channels=acquired_targets)
 
@@ -133,7 +136,7 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
 
 def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info,
                           input_masses=None, output_masses=None, save_format='normalized',
-                          batch_size=10, gaus_rad=1, norm_const=100):
+                          raw_data_sub_folder='', batch_size=10, gaus_rad=1, norm_const=100):
     """Function to compensate MIBI data with a flow-cytometry style compensation matrix
 
     Args:
@@ -151,6 +154,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
             'normalized': all images are divided by 100 to enable visualization. This transform
                 has no effect on downstream analysis as it preserves relative expression values
             'both': saves both 'raw' and 'normalized' images
+        raw_data_sub_folder (string): sub-folder for raw images
         batch_size: number of images to process at a time
         gaus_rad: radius for blurring image data. Passing 0 will result in no blurring
         norm_const: constant used for normalization if save_format == 'normalized'
@@ -169,7 +173,8 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
     all_masses = comp_mat.columns.values.astype('int')
 
     validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, input_masses,
-                    output_masses, all_masses, fovs, save_format, batch_size, gaus_rad)
+                    output_masses, all_masses, fovs, save_format, raw_data_sub_folder, batch_size,
+                    gaus_rad)
 
     # set unused masses to zero
     if input_masses is not None:
@@ -188,7 +193,8 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         # load batch of fovs
         batch_fovs = fovs[i: i + batch_size]
         batch_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=batch_fovs,
-                                         channels=acquired_targets, dtype='float32')
+                                         channels=acquired_targets, dtype='float32',
+                                         img_sub_folder=raw_data_sub_folder)
 
         # blur data
         if gaus_rad > 0:
