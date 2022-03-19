@@ -158,56 +158,6 @@ def test_generate_coreg_params():
     assert round(sample_coreg_params['STAGE_TO_OPTICAL_Y_OFFSET'], 1) == -0.7
 
 
-def test_write_coreg_params():
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # file path validation
-        with pytest.raises(FileNotFoundError):
-            tiling_utils.write_coreg_params({}, '', 'bad_settings_path')
-
-        # define sample values to put in settings.py
-        sample_settings = cleandoc(
-            """# default stage to pixel co-registration conversion params\n
-            STAGE_TO_OPTICAL_X_MULTIPLIER = 1 / 0.06887\n
-            STAGE_TO_OPTICAL_X_OFFSET = 27.79\n
-            STAGE_TO_OPTICAL_Y_MULTIPLIER = 1 / -0.06926\n
-            STAGE_TO_OPTICAL_Y_OFFSET = -77.40"""
-        ) + '\n'
-
-        # define the settings.py path
-        sample_settings_path = os.path.join(temp_dir, 'settings.py')
-
-        # write out the sample settings
-        with open(sample_settings_path, 'w') as fw:
-            fw.write(sample_settings)
-
-        # define sample co-registration params
-        sample_coreg_params = {
-            'STAGE_TO_OPTICAL_X_MULTIPLIER': 0.5,
-            'STAGE_TO_OPTICAL_X_OFFSET': 1,
-            'STAGE_TO_OPTICAL_Y_MULTIPLIER': 1.5,
-            'STAGE_TO_OPTICAL_Y_OFFSET': 2
-        }
-
-        # define a sample name to give this set
-        sample_name = 'new fiducial conversion'
-
-        # add the new co-registration params
-        tiling_utils.write_coreg_params(sample_coreg_params, sample_name, sample_settings_path)
-
-        # read each line of the new settings.py
-        with open(sample_settings_path, 'r') as fr:
-            # we only need to verify the last 5 lines
-            lines = fr.readlines()[-5:]
-
-        # assert the comment header was added
-        assert lines[0] == \
-            '# %s stage to optical co-registration conversion params\n' % sample_name
-
-        # assert the new co-registration parameters are correct
-        for i, (cp, cpv) in enumerate(sample_coreg_params.items()):
-            assert lines[i + 1] == '%s = %f\n' % (cp, cpv)
-
-
 @parametrize_with_cases(
     'fov_coords, fov_names, fov_sizes, user_inputs, base_param_values, full_param_set',
     cases=test_cases.TiledRegionReadCases, glob='*_no_moly_param')
@@ -539,11 +489,31 @@ def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_
 
 
 def test_convert_stage_to_optical():
+    # TEST 1: no coregistration file
     # just need to test it gets the right values for one coordinate in microns
     sample_coord = (25000, 35000)
     new_coord = tiling_utils.convert_stage_to_optical(sample_coord)
 
     assert new_coord == (612, 762)
+
+    # TEST 2: coregistration file
+    with tempfile.TemporaryDirectory() as temp_dir:
+        sample_coreg = {
+            'STAGE_TO_OPTICAL_X_MULTIPLIER': 10,
+            'STAGE_TO_OPTICAL_X_OFFSET': 1,
+            'STAGE_TO_OPTICAL_Y_MULTIPLIER': 20,
+            'STAGE_TO_OPTICAL_Y_OFFSET': -4
+        }
+
+        with open(os.path.join(temp_dir, 'sample_coreg.json'), 'w') as sc:
+            json.dump(sample_coreg, sc)
+
+        new_coord = tiling_utils.convert_stage_to_optical(
+            sample_coord,
+            stage_optical_coreg_path=os.path.join(temp_dir, 'sample_coreg.json')
+        )
+
+        assert new_coord == (620, 257)
 
 
 def test_assign_closest_fovs():
