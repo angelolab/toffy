@@ -498,6 +498,10 @@ def test_convert_stage_to_optical():
 
     # TEST 2: coregistration file
     with tempfile.TemporaryDirectory() as temp_dir:
+        # error check: coreg path provided does not exist
+        with pytest.raises(FileNotFoundError):
+            tiling_utils.convert_stage_to_optical(sample_coord, 'bad_path.json')
+
         sample_coreg = {
             'STAGE_TO_OPTICAL_X_MULTIPLIER': 10,
             'STAGE_TO_OPTICAL_X_OFFSET': 1,
@@ -510,7 +514,7 @@ def test_convert_stage_to_optical():
 
         new_coord = tiling_utils.convert_stage_to_optical(
             sample_coord,
-            stage_optical_coreg_path=os.path.join(temp_dir, 'sample_coreg.json')
+            coreg_path=os.path.join(temp_dir, 'sample_coreg.json')
         )
 
         assert new_coord == (620, 257)
