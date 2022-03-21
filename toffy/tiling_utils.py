@@ -682,7 +682,8 @@ def convert_stage_to_optical(coord, coreg_path=None):
         coord (tuple):
             The coordinate in microns to convert
         coreg_path (str):
-            The path to the stage optical coregistration parameters to use
+            The path to the stage optical coregistration parameters to use.
+            If `None` use the default values found in `settings.py`.
 
     Returns:
         tuple:
@@ -1272,7 +1273,8 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path, coreg
         mapping_path (str):
             the path to the file to save the mapping to
         coreg_path (str):
-            The path to the stage optical coregistration parameters to use
+            The path to the stage optical coregistration parameters to use.
+            If `None` use the default values found in `settings.py`
         draw_radius (int):
             the radius (in optical pixels) to draw each circle on the slide
         figsize (tuple):
