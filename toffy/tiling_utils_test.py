@@ -130,7 +130,7 @@ def test_read_fiducial_info(monkeypatch, user_inputs):
     assert fiducial_pixel_y == [6 + 8 * i for i in np.arange(6)]
 
     # assert the name for this fiducial set is correct
-    assert fiducial_info['name'] == 'sample_name'
+    assert fiducial_info['name'] == 'sample_name.json'
 
 
 def test_generate_coreg_params():

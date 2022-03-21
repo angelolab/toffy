@@ -149,9 +149,9 @@ def read_fiducial_info():
         fiducial_info['optical'][pos] = {'x': optical_x, 'y': optical_y}
 
     fiducial_name = read_tiling_param(
-        "Enter a name for this set of fiducials: ",
-        "Error: cannot leave the name blank",
-        lambda fn: len(fn) > 0,
+        "Enter a JSON file name for this set of fiducials: ",
+        "Error: file name must be suffixed with .json",
+        lambda fn: os.path.splitext(fn)[1] == '.json',
         dtype=str
     )
 
