@@ -903,6 +903,110 @@ def test_generate_validation_annot(check_dist, check_duplicates, check_mismatche
     assert generated_annot == actual_annot
 
 
+# NOTE: this only tests if the visualization runs wti hvalid parameters
+# previous test functions check interactive functionality
+def test_tma_interactive_remap():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # make a dummy toffy directory and a dummy templates directory where the code is run
+        os.mkdir(os.path.join(temp_dir, 'toffy'))
+        os.mkdir(os.path.join(temp_dir, 'templates'))
+
+        # change working directory to templates to simulate actual co-registration run
+        os.chdir(os.path.join(temp_dir, 'templates'))
+
+        # define sample data for each parameter
+        sample_manual_fovs = {
+            'fovs': [
+                {
+                    'name': 'R1C1',
+                    'centerPointMicrons': {
+                        'x': 100,
+                        'y': 100
+                    }
+                },
+                {
+                    'name': 'R2C2',
+                    'centerPointMicrons': {
+                        'x': 200,
+                        'y': 200
+                    }
+                }
+            ]
+        }
+
+        sample_auto_fovs = {
+            'R1C1': (125, 125),
+            'R1C2': (125, 225),
+            'R2C1': (225, 125),
+            'R2C2': (225, 225)
+        }
+
+        sample_slide_img = np.zeros((1024, 1024, 3))
+
+        mapping_path = os.path.join('..', 'toffy', 'mapping.json')
+
+        # error check: directory path to mapping needs to be valid
+        with pytest.raises(FileNotFoundError):
+            tiling_utils.tma_interactive_remap(
+                sample_manual_fovs, sample_auto_fovs, sample_slide_img,
+                'bad/bad/bad_mapping_path.json'
+            )
+
+        # error check: check_dist needs to be numeric
+        with pytest.raises(ValueError):
+            tiling_utils.tma_interactive_remap(
+                sample_manual_fovs, sample_auto_fovs, sample_slide_img,
+                mapping_path, check_dist='bad'
+            )
+
+        # error check: check_dist needs to be greater than 0
+        with pytest.raises(ValueError):
+            tiling_utils.tma_interactive_remap(
+                sample_manual_fovs, sample_auto_fovs, sample_slide_img,
+                mapping_path, check_dist=0
+            )
+
+        # error check: check_duplicates needs to be boolean
+        with pytest.raises(ValueError):
+            tiling_utils.tma_interactive_remap(
+                sample_manual_fovs, sample_auto_fovs, sample_slide_img,
+                mapping_path, check_duplicates='bad'
+            )
+
+        # error check: check_mismatches needs to be boolean
+        with pytest.raises(ValueError):
+            tiling_utils.tma_interactive_remap(
+                sample_manual_fovs, sample_auto_fovs, sample_slide_img,
+                mapping_path, check_mismatches='bad'
+            )
+
+        # error check: no co-registration params specified
+        with pytest.raises(FileNotFoundError):
+            tiling_utils.tma_interactive_remap(
+                sample_manual_fovs, sample_auto_fovs, sample_slide_img, mapping_path
+            )
+
+        # generate sample co-registration params in toffy
+        sample_coreg_params = {
+            'coreg_params': [
+                {
+                    'STAGE_TO_OPTICAL_X_MULTIPLIER': 10,
+                    'STAGE_TO_OPTICAL_X_OFFSET': 1,
+                    'STAGE_TO_OPTICAL_Y_MULTIPLIER': 20,
+                    'STAGE_TO_OPTICAL_Y_OFFSET': -4
+                }
+            ]
+        }
+
+        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'w') as cp:
+            json.dump(sample_coreg_params, cp)
+
+        # this should now run
+        tiling_utils.tma_interactive_remap(
+            sample_manual_fovs, sample_auto_fovs, sample_slide_img, mapping_path
+        )
+
+
 @parametrize('randomize_setting', [False, True])
 @parametrize('moly_insert, moly_interval', test_cases._REMAP_MOLY_INTERVAL_CASES)
 @parametrize('moly_path', [param('bad_moly_point.json', marks=file_missing_err),
