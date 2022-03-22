@@ -129,9 +129,6 @@ def test_read_fiducial_info(monkeypatch, user_inputs):
     fiducial_pixel_y = [fiducial_info['optical'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
     assert fiducial_pixel_y == [6 + 8 * i for i in np.arange(6)]
 
-    # assert the name for this fiducial set is correct
-    assert fiducial_info['name'] == 'sample_name.json'
-
 
 def test_generate_coreg_params():
     # define a sample fiducial info dict
@@ -143,8 +140,7 @@ def test_generate_coreg_params():
         'optical': {
             pos: {'x': i * 4 + 1, 'y': i * 9 + 1}
             for (i, pos) in enumerate(settings.FIDUCIAL_POSITIONS)
-        },
-        'name': 'sample_name'
+        }
     }
 
     # generate the regression parameters
@@ -489,35 +485,20 @@ def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_
 
 
 def test_convert_stage_to_optical():
-    # TEST 1: no coregistration file
     # just need to test it gets the right values for one coordinate in microns
     sample_coord = (25000, 35000)
-    new_coord = tiling_utils.convert_stage_to_optical(sample_coord)
 
-    assert new_coord == (612, 762)
+    # also need a sample set of co-registration params
+    sample_coreg_params = {
+        'STAGE_TO_OPTICAL_X_MULTIPLIER': 10,
+        'STAGE_TO_OPTICAL_X_OFFSET': 1,
+        'STAGE_TO_OPTICAL_Y_MULTIPLIER': 20,
+        'STAGE_TO_OPTICAL_Y_OFFSET': -4
+    }
 
-    # TEST 2: coregistration file
-    with tempfile.TemporaryDirectory() as temp_dir:
-        # error check: coreg path provided does not exist
-        with pytest.raises(FileNotFoundError):
-            tiling_utils.convert_stage_to_optical(sample_coord, 'bad_path.json')
+    new_coord = tiling_utils.convert_stage_to_optical(sample_coord, sample_coreg_params)
 
-        sample_coreg = {
-            'STAGE_TO_OPTICAL_X_MULTIPLIER': 10,
-            'STAGE_TO_OPTICAL_X_OFFSET': 1,
-            'STAGE_TO_OPTICAL_Y_MULTIPLIER': 20,
-            'STAGE_TO_OPTICAL_Y_OFFSET': -4
-        }
-
-        with open(os.path.join(temp_dir, 'sample_coreg.json'), 'w') as sc:
-            json.dump(sample_coreg, sc)
-
-        new_coord = tiling_utils.convert_stage_to_optical(
-            sample_coord,
-            coreg_path=os.path.join(temp_dir, 'sample_coreg.json')
-        )
-
-        assert new_coord == (620, 257)
+    assert new_coord == (620, 257)
 
 
 def test_assign_closest_fovs():

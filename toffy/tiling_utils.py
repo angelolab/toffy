@@ -148,15 +148,6 @@ def read_fiducial_info():
         # ditto for optical
         fiducial_info['optical'][pos] = {'x': optical_x, 'y': optical_y}
 
-    fiducial_name = read_tiling_param(
-        "Enter a JSON file name for this set of fiducials: ",
-        "Error: file name must be suffixed with .json",
-        lambda fn: os.path.splitext(fn)[1] == '.json',
-        dtype=str
-    )
-
-    fiducial_info['name'] = fiducial_name
-
     return fiducial_info
 
 
@@ -670,7 +661,7 @@ def generate_tma_fov_list(tma_corners_path, num_fov_row, num_fov_col):
     return fov_regions
 
 
-def convert_stage_to_optical(coord, coreg_path=None):
+def convert_stage_to_optical(coord, stage_optical_coreg_params):
     """Convert the coordinate in stage microns to optical pixels.
 
     In other words, co-register using the centroid of a FOV.
@@ -681,9 +672,8 @@ def convert_stage_to_optical(coord, coreg_path=None):
     Args:
         coord (tuple):
             The coordinate in microns to convert
-        coreg_path (str):
-            The path to the stage optical coregistration parameters to use.
-            If `None` use the default values found in `settings.py`.
+        stage_optical_coreg_params (dict):
+            Contains the co-registration parameters to use
 
     Returns:
         tuple:
@@ -691,24 +681,10 @@ def convert_stage_to_optical(coord, coreg_path=None):
             Values truncated to `int`.
     """
 
-    # if there is a coreg_params file defined, read the stage-optical conversion factors there
-    if coreg_path:
-        if not os.path.exists(coreg_path):
-            raise FileNotFoundError("Path to coregistration params %s does not exist" % coreg_path)
-
-        with open(coreg_path, 'r') as cp:
-            stage_optical_coreg_params = json.load(cp)
-
-        stage_to_optical_x_multiplier = stage_optical_coreg_params['STAGE_TO_OPTICAL_X_MULTIPLIER']
-        stage_to_optical_x_offset = stage_optical_coreg_params['STAGE_TO_OPTICAL_X_OFFSET']
-        stage_to_optical_y_multiplier = stage_optical_coreg_params['STAGE_TO_OPTICAL_Y_MULTIPLIER']
-        stage_to_optical_y_offset = stage_optical_coreg_params['STAGE_TO_OPTICAL_Y_OFFSET']
-    # otherwise, use the predifined values in settings.py
-    else:
-        stage_to_optical_x_multiplier = settings.STAGE_TO_OPTICAL_X_MULTIPLIER
-        stage_to_optical_x_offset = settings.STAGE_TO_OPTICAL_X_OFFSET
-        stage_to_optical_y_multiplier = settings.STAGE_TO_OPTICAL_Y_MULTIPLIER
-        stage_to_optical_y_offset = settings.STAGE_TO_OPTICAL_Y_OFFSET
+    stage_to_optical_x_multiplier = stage_optical_coreg_params['STAGE_TO_OPTICAL_X_MULTIPLIER']
+    stage_to_optical_x_offset = stage_optical_coreg_params['STAGE_TO_OPTICAL_X_OFFSET']
+    stage_to_optical_y_multiplier = stage_optical_coreg_params['STAGE_TO_OPTICAL_Y_MULTIPLIER']
+    stage_to_optical_y_offset = stage_optical_coreg_params['STAGE_TO_OPTICAL_Y_OFFSET']
 
     # NOTE: all conversions are done using the fiducials
     # convert from microns to stage coordinates
@@ -1258,7 +1234,7 @@ def generate_validation_annot(manual_to_auto_map, manual_auto_dist, check_dist=2
 
 
 # TODO: potential type hinting candidate?
-def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path, coreg_path=None,
+def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
                           draw_radius=7, figsize=(7, 7),
                           check_dist=2000, check_duplicates=True, check_mismatches=True):
     """Creates the remapping interactive interface for manual to auto FOVs
@@ -1272,9 +1248,6 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path, coreg
             the image to overlay
         mapping_path (str):
             the path to the file to save the mapping to
-        coreg_path (str):
-            The path to the stage optical coregistration parameters to use.
-            If `None` use the default values found in `settings.py`
         draw_radius (int):
             the radius (in optical pixels) to draw each circle on the slide
         figsize (tuple):
@@ -1310,6 +1283,18 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path, coreg
     if not isinstance(check_mismatches, bool):
         raise ValueError("check_mismatches needs to be set to True or False")
 
+    # if there isn't a coreg_path defined, the user needs to run update_coregistration_params first
+    if not os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json')):
+        raise FileNotFoundError(
+            "You haven't co-registered your slide yet. Please run "
+            "update_coregistraion_params.ipynb first."
+        )
+
+    # load the co-registration parameters in
+    # NOTE: the last set of params in the coreg_params list is the most up-to-date
+    with open(os.path.join('..', 'toffy', 'coreg_params.json')) as cp:
+        stage_optical_coreg_params = json.load(cp)['coreg_params'][-1]
+
     # define the initial mapping and a distance lookup table between manual and auto FOVs
     manual_to_auto_map, manual_auto_dist = assign_closest_fovs(manual_fovs, auto_fovs)
 
@@ -1317,7 +1302,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path, coreg
     # NOTE: convert to optical pixels for visualization
     manual_fovs_info = {
         fov['name']: convert_stage_to_optical(
-            tuple(fov['centerPointMicrons'].values()), coreg_path
+            tuple(fov['centerPointMicrons'].values()), stage_optical_coreg_params
         )
 
         for fov in manual_fovs['fovs']
@@ -1351,7 +1336,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path, coreg
 
     # NOTE: convert to optical pixels for visualization
     auto_fovs_info = {
-        fov: convert_stage_to_optical(auto_fovs[fov], coreg_path)
+        fov: convert_stage_to_optical(auto_fovs[fov], stage_optical_coreg_params)
 
         for fov in auto_fovs
     }
