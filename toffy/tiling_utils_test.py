@@ -154,6 +154,57 @@ def test_generate_coreg_params():
     assert round(sample_coreg_params['STAGE_TO_OPTICAL_Y_OFFSET'], 1) == -0.7
 
 
+def test_save_coreg_params():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # make a dummy toffy directory and a dummy templates directory where the code is run
+        os.mkdir(os.path.join(temp_dir, 'toffy'))
+        os.mkdir(os.path.join(temp_dir, 'templates'))
+
+        # change working directory to templates to simulate actual co-registration run
+        os.chdir(os.path.join(temp_dir, 'templates'))
+
+        # test saving the first time
+        sample_coreg_params_first = {
+            'STAGE_TO_OPTICAL_X_MULTIPLIER': 2,
+            'STAGE_TO_OPTICAL_X_OFFSET': -0.5,
+            'STAGE_TO_OPTICAL_Y_MULTIPLIER': 3,
+            'STAGE_TO_OPTICAL_Y_OFFSET': -0.7,
+            'date': '22/03/2022 00:00:00'
+        }
+        tiling_utils.save_coreg_params(sample_coreg_params_first)
+
+        # assert we actually created coreg_params.json in toffy
+        assert os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json'))
+
+        # load the first co-registration save data in
+        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'r') as cp:
+            coreg_data = json.load(cp)
+
+        # assert 1 element in the coreg_params key and it contains the right coreg vals
+        assert len(coreg_data['coreg_params']) == 1
+        assert coreg_data['coreg_params'][0] == sample_coreg_params_first
+
+        # test saving the second time (should only append)
+        sample_coreg_params_second = {
+            'STAGE_TO_OPTICAL_X_MULTIPLIER': 4,
+            'STAGE_TO_OPTICAL_X_OFFSET': -1,
+            'STAGE_TO_OPTICAL_Y_MULTIPLIER': 6,
+            'STAGE_TO_OPTICAL_Y_OFFSET': -1.4,
+            'date': '23/03/2022 00:00:00'
+        }
+        tiling_utils.save_coreg_params(sample_coreg_params_second)
+
+        # load the second co-registration save data in
+        # NOTE: since the previous step only appended, coreg_params.json will not disappear
+        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'r') as cp:
+            coreg_data = json.load(cp)
+
+        # assert 2 elements in the coreg_params key and they contain the right coreg vals
+        assert len(coreg_data['coreg_params']) == 2
+        assert coreg_data['coreg_params'][0] == sample_coreg_params_first
+        assert coreg_data['coreg_params'][1] == sample_coreg_params_second
+
+
 @parametrize_with_cases(
     'fov_coords, fov_names, fov_sizes, user_inputs, base_param_values, full_param_set',
     cases=test_cases.TiledRegionReadCases, glob='*_no_moly_param')

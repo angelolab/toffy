@@ -206,6 +206,38 @@ def generate_coreg_params(fiducial_info):
     return coreg_params
 
 
+def save_coreg_params(coreg_params):
+    """Save the co-registration parameters to `coreg_params.json` in `toffy`
+
+    Args:
+        coreg_params (dict):
+            Contains the multiplier and offsets for co-registration along the x- and y-axis
+    """
+
+    # generate the time this set of co-registration parameters were generated
+    coreg_params['date'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+    # write to a new coreg_params.json file if it doesn't already exist
+    if not os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json')):
+        coreg_data = {
+            'coreg_params': [
+                coreg_params
+            ]
+        }
+
+        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'w') as cp:
+            json.dump(coreg_data, cp)
+    # append to the existing coreg_params key if coreg_params.json already exists
+    else:
+        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'r') as cp:
+            coreg_data = json.load(cp)
+
+        coreg_data['coreg_params'].append(coreg_params)
+
+        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'w') as cp:
+            json.dump(coreg_data, cp)
+
+
 def generate_region_info(region_params):
     """Generate the `region_params` list in the tiling parameter dict
 
