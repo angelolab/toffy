@@ -10,7 +10,7 @@ from toffy.qc_comp import compute_qc_metrics
 
 def build_extract_and_compute_qc_callback(panel: Union[Tuple[float, float], pd.DataFrame],
                                           extraction_dir_name: str = 'extracted', **kwargs):
-    """Genereates extraction and qc metric computation callback for given panel + parameters
+    """Generates extraction and qc metric computation callback for given panel + parameters
 
     Args:
         panel (tuple | pd.DataFrame):
