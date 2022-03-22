@@ -6,8 +6,6 @@ from typing import Callable, List, Tuple
 from watchdog.events import FileCreatedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
-import xarray as xr
-
 
 class RunStructure:
     """Expected bin and json files
@@ -111,7 +109,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         per_run (list):
             callbacks to run over the entire run
     """
-    def __init__(self, run_folder: str, per_fov: List[Callable[[xr.DataArray, str], None]],
+    def __init__(self, run_folder: str, per_fov: List[Callable[[str, str, str], None]],
                  per_run: List[Callable[[str, str], None]], timeout: int = 10 * 60):
         """Initializes FOV_EventHandler
 
@@ -211,7 +209,7 @@ class FOV_EventHandler(FileSystemEventHandler):
                 run_func(self.run_folder, self.watcher_out)
 
 
-def start_watcher(run_folder: str, per_fov: List[Callable[[xr.DataArray, str], None]],
+def start_watcher(run_folder: str, per_fov: List[Callable[[str, str, str], None]],
                   per_run: List[Callable[[str, str], None]],
                   completion_check_time: int = 30):
     """ Passes bin files to provided callback functions as they're created
