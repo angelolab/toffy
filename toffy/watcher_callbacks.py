@@ -1,5 +1,5 @@
 import os
-from typing import Union, Tuple
+from typing import Union, Tuple, Callable
 
 import pandas as pd
 
@@ -9,7 +9,8 @@ from toffy.qc_comp import compute_qc_metrics
 
 
 def build_extract_and_compute_qc_callback(panel: Union[Tuple[float, float], pd.DataFrame],
-                                          extraction_dir_name: str = 'extracted', **kwargs):
+                                          extraction_dir_name: str = 'extracted',
+                                          **kwargs) -> Callable[[str, str, str], None]:
     """Generates extraction and qc metric computation callback for given panel + parameters
 
     Args:
@@ -20,12 +21,17 @@ def build_extract_and_compute_qc_callback(panel: Union[Tuple[float, float], pd.D
         **kwargs (dict):
             Additional arguments for `mibi_bin_tools.bin_files.extract_bin_files` and
             `toffy.qc_comp.compute_qc_metrics`.  Accepted kwargs are:
-             - intensities
-             - time_res
-             - channels
-             - gaussian_blur
-             - blur_factor
-             - dtype
+
+         - intensities
+         - time_res
+         - channels
+         - gaussian_blur
+         - blur_factor
+         - dtype
+
+    Returns:
+        Callable[[str, str, str], None]:
+            Callback for fov watcher
     """
 
     intensities = kwargs.pop('intensities', False)
