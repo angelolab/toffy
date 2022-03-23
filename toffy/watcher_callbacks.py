@@ -24,10 +24,8 @@ def build_extract_and_compute_qc_callback(panel: Union[Tuple[float, float], pd.D
 
          - intensities
          - time_res
-         - channels
          - gaussian_blur
          - blur_factor
-         - dtype
 
     Returns:
         Callable[[str, str, str], None]:
@@ -45,9 +43,6 @@ def build_extract_and_compute_qc_callback(panel: Union[Tuple[float, float], pd.D
         extract_bin_files(run_folder, extraction_dir, [point_name], panel,
                           intensities, time_res)
 
-        qc_data = compute_qc_metrics(extraction_dir, img_sub_folder=None, fovs=[point_name],
-                                     **kwargs)
-        for name, metric_data in qc_data.items():
-            metric_data.to_csv(os.path.join(out_dir, f'{name}.csv'))
+        compute_qc_metrics(run_folder, point_name, None, panel, **kwargs)
 
     return extract_and_compute_qc_callback

@@ -275,7 +275,7 @@ def sort_bin_file_fovs(fovs, suffix_ignore=None):
     )
 
 
-def compute_qc_metrics(bin_file_path, fov_name, panel_path,
+def compute_qc_metrics(bin_file_path, fov_name, panel_path, manual_panel=None,
                        gaussian_blur=False, blur_factor=1):
     """Compute the QC metric matrices for the image data provided
 
@@ -287,6 +287,8 @@ def compute_qc_metrics(bin_file_path, fov_name, panel_path,
             the name of the FOV to extract from `bin_file_path`, needs to correspond with JSON name
         panel_path (str):
             the path to the file defining the panel info for bin file extraction
+        manual_panel (tuple | pd.DataFrame):
+            manual input of panel. This is used if panel_path is set to None
         gaussian_blur (bool):
             whether or not to add Gaussian blurring
         blur_factor (int):
@@ -299,8 +301,11 @@ def compute_qc_metrics(bin_file_path, fov_name, panel_path,
     if not os.path.exists(bin_file_path):
         raise FileNotFoundError("bin_file_path %s does not exist" % bin_file_path)
 
-    if not os.path.exists(panel_path):
+    if panel_path is not None and not os.path.exists(panel_path):
         raise FileNotFoundError("panel_path %s does not exist" % panel_path)
+
+    if panel_path is None and manual_panel is None:
+        raise ValueError("If panel_path is None, a panel must be provided via manual_panel...")
 
     if not os.path.exists(os.path.join(bin_file_path, fov_name + '.json')):
         raise FileNotFoundError("fov file %s.json not found in bin_file_path" % fov_name)
@@ -311,7 +316,7 @@ def compute_qc_metrics(bin_file_path, fov_name, panel_path,
         data_dir=bin_file_path,
         out_dir=None,
         include_fovs=[fov_name],
-        panel=pd.read_csv(panel_path)
+        panel=pd.read_csv(panel_path) if panel_path else manual_panel
     )
 
     # there's only 1 FOV and 1 type ('pulse'), so subset on that

@@ -1,7 +1,12 @@
-# future potential imports as this file gets built up
-import json
+from typing import List
 import os
-import sys
+from pathlib import Path
+
+import pytest
+
+import pandas as pd
+
+from toffy.settings import QC_SUFFIXES
 
 
 def generate_sample_fov_tiling_entry(coord, name, size):
@@ -77,3 +82,59 @@ def generate_sample_fovs_list(fov_coords, fov_names, fov_sizes):
         )
 
     return sample_fovs_list
+
+
+# generation parameters for the extraction/qc callback build
+# this should be limited to the panel, foldernames, and kwargs
+class ExtractionQCGenerationCases:
+    def case_default(self):
+        return (-0.3, 0.0), 'extracted', {}
+
+    def case_sample_panel(self):
+        _, name, kwargs = self.case_default()
+        panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv')
+        return pd.read_csv(panel_path), name, kwargs
+
+    def case_no_extraction_sub_folder(self):
+        panel, _, kwargs = self.case_default()
+        return panel, '', kwargs
+
+    def case_intensities(self):
+        panel, name, kwargs = self.case_default()
+        kwargs['intensities'] = True
+        return panel, name, kwargs
+
+    @pytest.mark.xfail()
+    def case_bad_kwarg(self):
+        panel, name, kwargs = self.case_default()
+        kwargs['fake kwarg'] = "i shouldn't exist :("
+        return panel, name, kwargs
+
+
+def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channels: List[str],
+                                   intensities: bool = False):
+    """checks extraction directory for minimum expected structure
+    """
+    for point in point_names:
+        for channel in channels:
+            assert(os.path.exists(os.path.join(ext_dir, point, f'{channel}.tiff')))
+
+    if intensities:
+        assert(os.path.exists(os.path.join(ext_dir, 'intensities')))
+
+
+def check_qc_dir_structure(out_dir: str, point_names: List[str]):
+    print(os.listdir(out_dir))
+    for point in point_names:
+        for ms in QC_SUFFIXES:
+            assert(os.path.exists(os.path.join(out_dir, f'{point}_{ms}.csv')))
+
+
+# calling cases for the built extraction/qc callback
+# this should be limited to folders to call; no generation parameters allowed  >:(
+class ExtractionQCCallCases:
+    def case_tissue(self):
+        return os.path.join(Path(__file__).parent, 'data', 'tissue')
+
+    def case_moly(self):
+        return os.path.join(Path(__file__).parent, 'data', 'moly')
