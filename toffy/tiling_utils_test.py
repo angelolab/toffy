@@ -903,7 +903,7 @@ def test_generate_validation_annot(check_dist, check_duplicates, check_mismatche
     assert generated_annot == actual_annot
 
 
-# NOTE: this only tests if the visualization runs wti hvalid parameters
+# NOTE: this only tests if the visualization runs with valid parameters
 # previous test functions check interactive functionality
 def test_tma_interactive_remap():
     with tempfile.TemporaryDirectory() as temp_dir:
