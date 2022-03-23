@@ -279,7 +279,8 @@ def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='normaliz
                   tiled_image, check_contrast=False)
 
 
-def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, source_channel):
+def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, source_channel,
+                                      img_sub_folder=''):
     """Adds the specified source_channel to the first row of previously generated tiled images
 
     Args:
@@ -290,7 +291,7 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
 
     # load source images
     source_imgs = load_imgs_from_tree(raw_img_dir, channels=[source_channel],
-                                      dtype='float32')
+                                      dtype='float32', img_sub_folder=img_sub_folder)
 
     # convert stacked images to concatenated row
     source_list = [source_imgs.values[fov, :, :, 0] for fov in range(source_imgs.shape[0])]
