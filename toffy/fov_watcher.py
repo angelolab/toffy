@@ -11,7 +11,7 @@ class RunStructure:
     """Expected bin and json files
 
     Attributes:
-        completion (dict): Whether or not an expected file has been created
+        fov_progress (dict): Whether or not an expected file has been created
     """
     def __init__(self, run_folder: str, timeout: int = 10 * 60):
         """ initializes RunStructure by parsing run json within provided run folder
@@ -23,7 +23,7 @@ class RunStructure:
                 number of seconds to wait for non-null filesize before raising an error
         """
         self.timeout = timeout
-        self.completion = {}
+        self.fov_progress = {}
 
         # find run .json and get parameters
         with open(f'{run_folder}.json', 'r') as f:
@@ -37,7 +37,7 @@ class RunStructure:
                 raise KeyError(f"Could not locate keys in {run_folder}.json")
 
             fov_name = f'fov-{run_order}-scan-{scan}'
-            self.completion[fov_name] = {
+            self.fov_progress[fov_name] = {
                 'json': False,
                 'bin': False,
             }
@@ -61,23 +61,30 @@ class RunStructure:
 
         # TODO: check watchdog path depth
 
-        fov_name, extension = path.split('.')[0:2]
+        if not os.path.exists(path):
+            raise FileNotFoundError(f"{path} doesn't exist but was recently created. "
+                                    "This should be unreachable...")
+
+        if len(path.split('.')) != 2:
+            return False, ''
+
+        fov_name, extension = path.split('.')
         wait_time = 0
-        if fov_name in self.completion:
-            if extension in self.completion[fov_name]:
+        if fov_name in self.fov_progress:
+            if extension in self.fov_progress[fov_name]:
                 while os.path.getsize(path) == 0:
                     # consider timed out fovs complete
                     if wait_time >= self.timeout:
-                        for ext in self.completion[fov_name].keys():
-                            self.completion[fov_name][ext] = True
+                        for ext in self.fov_progress[fov_name].keys():
+                            self.fov_progress[fov_name][ext] = True
                         raise TimeoutError(f'timed out waiting for {path}...')
 
                     time.sleep(check_interval)
                     wait_time += check_interval
 
-                self.completion[fov_name][extension] = True
+                self.fov_progress[fov_name][extension] = True
 
-            if all(self.completion[fov_name].values):
+            if all(self.fov_progress[fov_name].values):
                 return True, fov_name
 
         elif extension == 'bin':
@@ -85,13 +92,13 @@ class RunStructure:
 
         return False, fov_name
 
-    def check_completion(self) -> dict:
+    def check_fov_progress(self) -> dict:
         """Condenses internal dictionary to show which fovs have finished
 
         Returns:
             dict
         """
-        return {k: all(self.completion[k].values) for k in self.completion}
+        return {k: all(self.fov_progress[k].values) for k in self.fov_progress}
 
 
 class FOV_EventHandler(FileSystemEventHandler):
@@ -103,7 +110,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         watcher_out (str):
             folder to save all callback results + log file
         run_structure (RunStructure):
-            expected run file structure + completion status
+            expected run file structure + fov_progress status
         per_fov (list):
             callbacks to run on each fov
         per_run (list):
@@ -187,11 +194,11 @@ class FOV_EventHandler(FileSystemEventHandler):
             self.check_complete()
 
     def check_complete(self):
-        """Checks run structure completion status
+        """Checks run structure fov_progress status
 
         If run is complete, all calbacks in `per_run` will be run over the whole run.
         """
-        if all(self.run_structure.check_completion().values()):
+        if all(self.run_structure.check_fov_progress().values()):
             log_file_path = os.path.join(self.watcher_out, 'log.txt')
             logf = open(log_file_path, 'a')
 
@@ -231,7 +238,7 @@ def start_watcher(run_folder: str, per_fov: List[Callable[[str, str, str], None]
     observer.start()
 
     try:
-        while not all(event_handler.run_structure.check_completion().values()):
+        while not all(event_handler.run_structure.check_fov_progress().values()):
             time.sleep(completion_check_time)
     except KeyboardInterrupt:
         observer.stop()

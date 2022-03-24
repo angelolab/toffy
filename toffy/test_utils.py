@@ -3,6 +3,7 @@ import os
 from pathlib import Path
 
 import pytest
+from pytest_cases import case
 
 import pandas as pd
 
@@ -86,29 +87,33 @@ def generate_sample_fovs_list(fov_coords, fov_names, fov_sizes):
 
 # generation parameters for the extraction/qc callback build
 # this should be limited to the panel, foldernames, and kwargs
+DEFAULT_TAGS = ('extract', 'qc')
+
+
 class ExtractionQCGenerationCases:
+    @pytest.mark.xfail(raises=TypeError)
+    @case(tags=DEFAULT_TAGS)
+    def case_bad_global(self):
+        return (-0.3, 0.0), {}
+
+    @case(tags=DEFAULT_TAGS)
     def case_default(self):
-        return (-0.3, 0.0), 'extracted', {}
-
-    def case_sample_panel(self):
-        _, name, kwargs = self.case_default()
+        _, kwargs = self.case_bad_global()
         panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv')
-        return pd.read_csv(panel_path), name, kwargs
+        return pd.read_csv(panel_path), kwargs
 
-    def case_no_extraction_sub_folder(self):
-        panel, _, kwargs = self.case_default()
-        return panel, '', kwargs
-
-    def case_intensities(self):
-        panel, name, kwargs = self.case_default()
+    @case(tags='extract')
+    def case_extraction_intensities(self):
+        panel, kwargs = self.case_default()
         kwargs['intensities'] = True
-        return panel, name, kwargs
+        return panel, kwargs
 
     @pytest.mark.xfail()
+    @case(tags=DEFAULT_TAGS)
     def case_bad_kwarg(self):
-        panel, name, kwargs = self.case_default()
+        panel, kwargs = self.case_default()
         kwargs['fake kwarg'] = "i shouldn't exist :("
-        return panel, name, kwargs
+        return panel, kwargs
 
 
 def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channels: List[str],
@@ -119,12 +124,11 @@ def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channel
         for channel in channels:
             assert(os.path.exists(os.path.join(ext_dir, point, f'{channel}.tiff')))
 
-    if intensities:
-        assert(os.path.exists(os.path.join(ext_dir, 'intensities')))
+        if intensities:
+            assert(os.path.exists(os.path.join(ext_dir, point, 'intensities')))
 
 
 def check_qc_dir_structure(out_dir: str, point_names: List[str]):
-    print(os.listdir(out_dir))
     for point in point_names:
         for ms in QC_SUFFIXES:
             assert(os.path.exists(os.path.join(out_dir, f'{point}_{ms}.csv')))
