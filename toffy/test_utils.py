@@ -8,6 +8,10 @@ from pytest_cases import case
 import pandas as pd
 
 from toffy.settings import QC_SUFFIXES
+from toffy.watcher_callbacks import (
+    build_extract_callback,
+    build_qc_callback,
+)
 
 
 def generate_sample_fov_tiling_entry(coord, name, size):
@@ -142,3 +146,12 @@ class ExtractionQCCallCases:
 
     def case_moly(self):
         return os.path.join(Path(__file__).parent, 'data', 'moly')
+
+
+class WatcherCases:
+    def case_default(self):
+        panel = pd.read_csv(os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv'))
+        return [
+            build_extract_callback(panel),
+            build_qc_callback(panel),
+        ], []
