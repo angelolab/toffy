@@ -3,17 +3,31 @@ Scripts for interacting with and generating data from the commercial MIBIScope
 
 ## Requirements
 
-Latest version of conda (miniconda prefered)
+- You must have **C++ Build Tools** (VS19) installed. 
+For windows devices, go to  https://visualstudio.microsoft.com/visual-cpp-build-tools/ and click 'Download Build Tools'.
+Open the installer and then follow the prompts.
+
+- Also, you will need the latest version of Anaconda (**Miniconda** preferred). 
+Download here: https://docs.conda.io/en/latest/miniconda.html and select the appropriate download for your system.
+Choose "Just Me" option for installation, and do not need to select the "Tutorial" or "Getting Started" options.
+Continue with the installation.
 
 ## Setup
+After confirming you have the necessary software, you can clone the repository.
 
-Clone the repo
-
+Now, open the Anaconda powershell prompt instead of the regular powershell prompt.
+If you do not already have git installed, run
 ```
+conda install git
+```
+At this point, you will need to contact an Ionpath employee for the admin password.
+Navigate to the desired location (ex: Documents) and clone the repo.
+```
+cd .\Documents\
 git clone https://github.com/angelolab/toffy.git
 ```
 
-Move into directory and build environment
+Move into directory and build the environment
 
 ```
 cd toffy
@@ -22,7 +36,7 @@ conda env create -f environment.yml
 
 ## Usage
 
-Activate the environment
+Activate the environment:
 
 ```
 conda activate toffy_env
