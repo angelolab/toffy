@@ -79,7 +79,8 @@ def _compensate_matrix_simple(raw_inputs, comp_coeffs, out_indices):
 
 
 def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, input_masses,
-                    output_masses, all_masses, fovs, save_format, batch_size, gaus_rad):
+                    output_masses, all_masses, fovs, save_format, raw_data_sub_folder, batch_size,
+                    gaus_rad):
     """Helper function to validate inputs for compensate_image_data
 
     Args:
@@ -92,6 +93,7 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
         all_masses (list): masses in the compensation matrix
         fovs (list): fovs in the raw_data_dir
         save_format (str): format to save the data
+        raw_data_sub_folder (string): sub-folder for raw images
         batch_size (int): number of images to process concurrently
         gaus_rad (int): radius for smoothing"""
 
@@ -104,7 +106,8 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
 
     # check first FOV to make sure all channels are present
     test_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=fovs[0:1],
-                                    channels=acquired_targets, dtype='float32')
+                                    channels=acquired_targets, dtype='float32',
+                                    img_sub_folder=raw_data_sub_folder)
 
     verify_same_elements(image_files=test_data.channels.values, listed_channels=acquired_targets)
 
@@ -133,7 +136,7 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
 
 def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info,
                           input_masses=None, output_masses=None, save_format='normalized',
-                          batch_size=10, gaus_rad=1, norm_const=100):
+                          raw_data_sub_folder='', batch_size=10, gaus_rad=1, norm_const=100):
     """Function to compensate MIBI data with a flow-cytometry style compensation matrix
 
     Args:
@@ -151,6 +154,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
             'normalized': all images are divided by 100 to enable visualization. This transform
                 has no effect on downstream analysis as it preserves relative expression values
             'both': saves both 'raw' and 'normalized' images
+        raw_data_sub_folder (string): sub-folder for raw images
         batch_size: number of images to process at a time
         gaus_rad: radius for blurring image data. Passing 0 will result in no blurring
         norm_const: constant used for normalization if save_format == 'normalized'
@@ -160,7 +164,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                    data_prefix=False)
 
     # get list of all fovs
-    fovs = list_folders(raw_data_dir, substrs=['fov'])
+    fovs = list_folders(raw_data_dir)
 
     # load csv files
     comp_mat = pd.read_csv(comp_mat_path, index_col=0)
@@ -169,7 +173,8 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
     all_masses = comp_mat.columns.values.astype('int')
 
     validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, input_masses,
-                    output_masses, all_masses, fovs, save_format, batch_size, gaus_rad)
+                    output_masses, all_masses, fovs, save_format, raw_data_sub_folder, batch_size,
+                    gaus_rad)
 
     # set unused masses to zero
     if input_masses is not None:
@@ -188,7 +193,8 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         # load batch of fovs
         batch_fovs = fovs[i: i + batch_size]
         batch_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=batch_fovs,
-                                         channels=acquired_targets, dtype='float32')
+                                         channels=acquired_targets, dtype='float32',
+                                         img_sub_folder=raw_data_sub_folder)
 
         # blur data
         if gaus_rad > 0:
@@ -241,7 +247,8 @@ def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='normaliz
     dir_dict = {}
     dir_shapes = []
     for dir_name in input_dir_list:
-        dir_images = load_imgs_from_tree(dir_name, img_sub_folder=img_sub_folder)
+        dir_images = load_imgs_from_tree(dir_name, img_sub_folder=img_sub_folder,
+                                         dtype='float32')
         dir_shapes.append(dir_images.shape)
         dir_dict[dir_name] = dir_images
 
@@ -273,19 +280,20 @@ def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='normaliz
 
 
 def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, source_channel,
-                                      percent_norm=98):
+                                      img_sub_folder='', percent_norm=98):
     """Adds the specified source_channel to the first row of previously generated tiled images
 
     Args:
         raw_img_dir (str): path to directory containing the raw images
         tiled_img_dir (str): path to directory contained the tiled images
         output_dir (str): path to directory where outputs will be saved
+        img_sub_folder (str): subfolder within raw_img_dir to load images from
         source_channel (str): the channel which will be prepended to the tiled images
         percent_norm (int): percentile normalization param to enable easy visualization"""
 
     # load source images
     source_imgs = load_imgs_from_tree(raw_img_dir, channels=[source_channel],
-                                      dtype='float32')
+                                      dtype='float32', img_sub_folder=img_sub_folder)
 
     # convert stacked images to concatenated row
     source_list = [source_imgs.values[fov, :, :, 0] for fov in range(source_imgs.shape[0])]
@@ -347,6 +355,32 @@ def replace_with_intensity_image(run_dir, channel='Au', replace=True, fovs=None)
             suffix = '_intensity.tiff'
         shutil.copy(os.path.join(run_dir, fov, 'intensities', channel + '_intensity.tiff'),
                     os.path.join(run_dir, fov, channel + suffix))
+
+
+def remove_sub_dirs(run_dir, sub_dirs, fovs=None):
+    """Removes specified sub-folders from fovs in a run
+
+    Args:
+        run_dir (str): path to directory containing fovs
+        sub_dirs (list): directories to remove from each fov
+        fovs (list): list of fovs to remove dirs from, otherwise removes from all fovs
+    """
+
+    all_fovs = list_folders(run_dir)
+
+    # ensure supplied folders are valid
+    if fovs is not None:
+        verify_in_list(specified_folders=fovs, all_folders=all_fovs)
+        all_fovs = fovs
+
+    # ensure all sub_dirs exist
+    for sub_dir in sub_dirs:
+        if not os.path.isdir(os.path.join(run_dir, all_fovs[0], sub_dir)):
+            raise ValueError("Did not find {} in {}".format(sub_dir, all_fovs[0]))
+
+    for fov in all_fovs:
+        for sub_dir in sub_dirs:
+            shutil.rmtree(os.path.join(run_dir, fov, sub_dir))
 
 
 def create_rosetta_matrices(default_matrix, save_dir, multipliers, masses=None):
