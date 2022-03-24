@@ -15,17 +15,14 @@ value_err = [xfail(raises=ValueError, strict=True)]
 
 def generate_fiducial_read_vals(user_input_type='none'):
     user_inputs = [1.5 * (i + 1) if i % 2 == 0 else 2 * i for i in np.arange(24)]
-    user_inputs.append('sample_name')
 
     if user_input_type == 'same_types':
         bad_inputs_to_insert = [-p for p in user_inputs if not isinstance(p, str)]
-        bad_inputs_to_insert.append('')
         for i in np.arange(0, len(user_inputs), 2):
             user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
 
     if user_input_type == 'diff_types':
         bad_inputs_to_insert = [str(p) + '_bad' for p in user_inputs]
-        bad_inputs_to_insert.append('')
         for i in np.arange(0, len(user_inputs), 2):
             user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
 
