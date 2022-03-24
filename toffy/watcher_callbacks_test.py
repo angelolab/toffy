@@ -38,8 +38,6 @@ def test_build_extraction_callback(panel, extraction_dir_name, kwargs, data_path
         # just check SMA
         check_extraction_dir_structure(ext_path, point_names, ['SMA'], intensities)
 
-        check_qc_dir_structure(data_path, point_names)
-
 
 @parametrize_with_cases('panel,  kwargs', cases=ExtractionQCGenerationCases,
                         has_tag='qc')
