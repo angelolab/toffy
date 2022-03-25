@@ -1,5 +1,6 @@
 from typing import List
 import os
+import functools
 from pathlib import Path
 
 import pytest
@@ -152,6 +153,6 @@ class WatcherCases:
     def case_default(self):
         panel = pd.read_csv(os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv'))
         return [
-            build_extract_callback(panel),
-            build_qc_callback(panel),
+            functools.partial(build_extract_callback, panel=panel),
+            functools.partial(build_qc_callback, panel=panel),
         ], []
