@@ -175,6 +175,7 @@ class FOV_EventHandler(FileSystemEventHandler):
             self.check_complete()
 
         if fov_ready:
+            print(f'Discovered {point_name}, begining per-fov callbacks...')
             logf = open(self.log_path, 'a')
 
             logf.write(
@@ -235,7 +236,6 @@ def start_watcher(run_folder: str, log_folder: str, per_fov: List[Callable[[str,
             how long to wait before checking watcher completion, in seconds.
             note, this doesn't effect the watcher itself, just when this wrapper function exits.
     """
-    print('watcher time')
     observer = Observer()
     event_handler = FOV_EventHandler(run_folder, log_folder, per_fov, per_run)
     observer.schedule(event_handler, run_folder, recursive=True)
@@ -243,7 +243,6 @@ def start_watcher(run_folder: str, log_folder: str, per_fov: List[Callable[[str,
 
     try:
         while not all(event_handler.run_structure.check_fov_progress().values()):
-            print(event_handler.run_structure.check_fov_progress())
             time.sleep(completion_check_time)
     except KeyboardInterrupt:
         observer.stop()
