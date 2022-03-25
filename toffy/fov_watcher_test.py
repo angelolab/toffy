@@ -44,19 +44,26 @@ TISSUE_RUN_JSON_SPOOF = {
 def test_watcher(per_fov, per_run):
     with tempfile.TemporaryDirectory() as tmpdir:
 
-        tmpdir_name = Path(tmpdir).parts[-1]
-        with open(os.path.join(tmpdir, f'{tmpdir_name}.json'), 'w') as f:
+        run_data = os.path.join(tmpdir, 'test_run')
+        watch_out = os.path.join(tmpdir, 'watcher_output')
+        os.makedirs(run_data)
+        os.makedirs(watch_out)
+
+        with open(os.path.join(run_data, 'test_run.json'), 'w') as f:
             json.dump(TISSUE_RUN_JSON_SPOOF, f)
 
         with Pool(processes=4) as pool:
-            pool.apply_async(_slow_copy_sample_tissue_data, (tmpdir, 6))
-            res_scan = pool.apply_async(start_watcher, (tmpdir, per_fov, per_run, 2))
+            pool.apply_async(_slow_copy_sample_tissue_data, (run_data, 6))
+            res_scan = pool.apply_async(start_watcher, (run_data, watch_out, per_fov, per_run, 2))
 
             res_scan.get()
 
-        print(os.listdir(tmpdir))
+        outs = os.listdir(os.path.join(watch_out, 'test_run'))
 
-        with open(os.path.join(tmpdir, 'watcher_outs', 'log.txt')) as f:
+        print(outs)
+        print(os.listdir(os.path.join(watch_out, 'test_run', 'extract')))
+
+        with open(os.path.join(watch_out, 'test_run', 'log.txt')) as f:
             print(f.read())
 
     pass

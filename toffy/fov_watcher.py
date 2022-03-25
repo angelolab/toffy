@@ -120,13 +120,16 @@ class FOV_EventHandler(FileSystemEventHandler):
         per_run (list):
             callbacks to run over the entire run
     """
-    def __init__(self, run_folder: str, per_fov: List[Callable[[str, str, str], None]],
+    def __init__(self, run_folder: str, out_folder: str,
+                 per_fov: List[Callable[[str, str, str], None]],
                  per_run: List[Callable[[str, str], None]], timeout: int = 10 * 60):
         """Initializes FOV_EventHandler
 
         Args:
             run_folder (str):
                 path to run folder
+            out_folder (str):
+                path to save outputs to
             per_fov (list):
                 callbacks to run on each fov
             per_run (list):
@@ -137,7 +140,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         super().__init__()
         self.run_folder = run_folder
 
-        self.watcher_out = os.path.join(run_folder, 'watcher_outs')
+        self.watcher_out = os.path.join(out_folder, Path(run_folder).parts[-1])
 
         if not os.path.exists(self.watcher_out):
             os.makedirs(self.watcher_out)
@@ -194,7 +197,12 @@ class FOV_EventHandler(FileSystemEventHandler):
                     f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
                     f'Running {fov_func.__name__} on {point_name}\n'
                 )
-                fov_func(self.run_folder, point_name, self.watcher_out)
+
+                callback_dir = os.path.join(self.watcher_out, fov_func.__name__.split('_')[0])
+                if not os.path.exists(callback_dir):
+                    os.makedirs(callback_dir)
+
+                fov_func(self.run_folder, point_name, callback_dir)
 
             logf.close()
             self.check_complete()
@@ -219,10 +227,15 @@ class FOV_EventHandler(FileSystemEventHandler):
                     f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
                     f'Running {run_func.__name__} on whole run\n'
                 )
-                run_func(self.run_folder, self.watcher_out)
+
+                callback_dir = os.path.join(self.watcher_out, run_func.__name__.split('_')[0])
+                if not os.path.exists(callback_dir):
+                    os.makedirs(callback_dir)
+
+                run_func(self.run_folder, callback_dir)
 
 
-def start_watcher(run_folder: str, per_fov: List[Callable[[str, str, str], None]],
+def start_watcher(run_folder: str, out_dir: str, per_fov: List[Callable[[str, str, str], None]],
                   per_run: List[Callable[[str, str], None]],
                   completion_check_time: int = 30):
     """ Passes bin files to provided callback functions as they're created
@@ -240,7 +253,7 @@ def start_watcher(run_folder: str, per_fov: List[Callable[[str, str, str], None]
     """
     print('watcher time')
     observer = Observer()
-    event_handler = FOV_EventHandler(run_folder, per_fov, per_run)
+    event_handler = FOV_EventHandler(run_folder, out_dir, per_fov, per_run)
     observer.schedule(event_handler, run_folder, recursive=True)
     observer.start()
 

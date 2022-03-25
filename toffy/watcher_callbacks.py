@@ -8,7 +8,7 @@ from mibi_bin_tools.bin_files import extract_bin_files
 from toffy.qc_comp import compute_qc_metrics
 
 
-def build_extract_callback(panel: pd.DataFrame, extraction_dir_name: str = 'extracted',
+def build_extract_callback(panel: pd.DataFrame, extraction_dir_name: str = '',
                            **kwargs) -> Callable[[str, str, str], None]:
     """Generates extraction callback for given panel + parameters
 
