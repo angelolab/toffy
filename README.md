@@ -3,10 +3,10 @@ Scripts for interacting with and generating data from the commercial MIBIScope
 
 # System
 Depending on what operating system you are planning to install toffy on, the process will differ slightly.
-- [Install on Windows](#windows-users)
-- [Install on MacOS](#mac-users)
+- [Install on Windows](#windows)
+- [Install on macOS](#macos)
 
-# Windows
+# Windows 
 ## Requirements
 
 - You must have **C++ Build Tools** (VS19) installed. 
@@ -71,7 +71,7 @@ conda remove --name toffy_env --all
 conda env create -f environment.yml
 ```
 
-# MacOS
+# macOS
 ## Requirements
 You will need the latest version of Anaconda (**Miniconda** preferred). 
 Download here: https://docs.conda.io/en/latest/miniconda.html and select the appropriate download for your system.
@@ -134,4 +134,4 @@ conda env create -f environment.yml
 
 ## Questions?
 
-Feel free to open an issue on our github page
+Feel free to open an issue on our GitHub page
