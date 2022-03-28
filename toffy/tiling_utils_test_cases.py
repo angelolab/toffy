@@ -40,11 +40,18 @@ class FiducialInfoReadCases:
         return generate_fiducial_read_vals(user_input_type='diff_types')
 
 
+# define the list of region start coords and names
+_TILED_REGION_FOV_COORDS = [(50, 150), (100, 300)]
+_TILED_REGION_FOV_NAMES = ["TheFirstFOV", "TheSecondFOV"]
+_TILED_REGION_FOV_SIZES = [1000, 2000]
+
+
 # this function assumes that FOV 2's corresponding values are linearly spaced from FOV 1's
 # NOTE: x and y correspond to column and row index respectively as specified in the JSON spec file
 def generate_tiled_region_params(start_x_fov_1=50, start_y_fov_1=150,
                                  num_row_fov_1=4, num_col_fov_1=2,
-                                 row_size_fov_1=2, col_size_fov_1=1, num_fovs=2):
+                                 row_size_fov_1=2, col_size_fov_1=1, num_fovs=2,
+                                 fov_names=deepcopy(_TILED_REGION_FOV_NAMES)):
     # define this dictionary for testing purposes to ensure that function calls
     # equal what would be placed in param_set_values
     base_param_values = {
@@ -66,6 +73,9 @@ def generate_tiled_region_params(start_x_fov_1=50, start_y_fov_1=150,
 
         for param in base_param_values
     }
+
+    # set the names for each region
+    full_param_set['roi_name'] = fov_names
 
     # TODO: might want to return just one and have the test function generate the other
     return base_param_values, full_param_set
@@ -105,12 +115,6 @@ def generate_tiled_region_cases(fov_coord_list, fov_name_list, fov_sizes,
             user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
 
     return fov_coord_list, fov_name_list, fov_sizes, user_inputs, base_param_values, full_param_set
-
-
-# define the list of region start coords and names
-_TILED_REGION_FOV_COORDS = [(50, 150), (100, 300)]
-_TILED_REGION_FOV_NAMES = ["TheFirstFOV", "TheSecondFOV"]
-_TILED_REGION_FOV_SIZES = [1000, 2000]
 
 
 # NOTE: because of the way the moly_interval param is handled

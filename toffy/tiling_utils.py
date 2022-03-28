@@ -280,6 +280,9 @@ def read_tiled_region_inputs(region_corners, region_params):
 
     # read in the data for each fov (region_start from region_corners_path, all others from user)
     for fov in region_corners['fovs']:
+        # append the name of the ROI
+        region_params['roi_name'].append(fov['name'])
+
         # append the starting row and column coordinates
         region_params['region_start_row'].append(fov['centerPointMicrons']['y'])
         region_params['region_start_col'].append(fov['centerPointMicrons']['x'])
@@ -547,7 +550,8 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
         row_col_pairs = generate_x_y_fov_pairs(row_range, col_range)
 
         # name the FOVs according to MIBI conventions
-        fov_names = ['R%dC%d' % (y + 1, x + 1) for x in range(region_info['fov_num_row'])
+        fov_names = ['%s_R%dC%d' % (region_info['roi_name'], y + 1, x + 1)
+                     for x in range(region_info['fov_num_row'])
                      for y in range(region_info['fov_num_col'])]
 
         # randomize pairs list if specified

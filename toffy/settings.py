@@ -1,6 +1,6 @@
 # tiled regions
-REGION_PARAM_FIELDS = ['region_start_row', 'region_start_col', 'fov_num_row', 'fov_num_col',
-                       'row_fov_size', 'col_fov_size', 'region_rand']
+REGION_PARAM_FIELDS = ['roi_name', 'region_start_row', 'region_start_col',
+                       'fov_num_row', 'fov_num_col', 'row_fov_size', 'col_fov_size', 'region_rand']
 
 # mibitracker
 MIBITRACKER_BACKEND = 'https://backend-dot-mibitracker-angelolab.appspot.com'
