@@ -287,15 +287,15 @@ def read_tiled_region_inputs(region_corners, region_params):
         region_params['region_start_row'].append(fov['centerPointMicrons']['y'])
         region_params['region_start_col'].append(fov['centerPointMicrons']['x'])
 
-        print("Using start coordinates of (%d, %d) in microns for region %s"
+        print("Using start coordinates of (%d, %d) in microns for ROI %s"
               % (fov['centerPointMicrons']['x'], fov['centerPointMicrons']['y'], fov['name']))
 
         # verify that the micron size specified is valid
         if fov['fovSizeMicrons'] <= 0:
-            raise ValueError("The fovSizeMicrons field for region %s must be positive"
+            raise ValueError("The fovSizeMicrons field for ROI %s must be positive"
                              % fov['name'])
 
-        print("Using FOV step size of %d microns for both row (y) and column (x) axis of region %s"
+        print("Using FOV step size of %d microns for both row (y) and column (x) axis of ROI %s"
               % (fov['fovSizeMicrons'], fov['name']))
 
         # use fovSizeMicrons as the step size along both axes
@@ -304,14 +304,14 @@ def read_tiled_region_inputs(region_corners, region_params):
 
         # allow the user to specify the number of fovs along each dimension
         num_row = read_tiling_param(
-            "Enter the number of FOVs per row for region %s: " % fov['name'],
+            "Enter the number of FOVs per row for ROI %s: " % fov['name'],
             "Error: number of FOVs per row must be a positive integer",
             lambda nx: nx >= 1,
             dtype=int
         )
 
         num_col = read_tiling_param(
-            "Enter the number of FOVs per column for region %s: " % fov['name'],
+            "Enter the number of FOVs per column for ROI %s: " % fov['name'],
             "Error: number of FOVs per column must be a positive integer",
             lambda ny: ny >= 1,
             dtype=int
@@ -322,7 +322,7 @@ def read_tiled_region_inputs(region_corners, region_params):
 
         # allow the user to specify if the FOVs should be randomized
         randomize = read_tiling_param(
-            "Randomize FOVs for region %s? Y/N: " % fov['name'],
+            "Randomize FOVs for ROI %s? Y/N: " % fov['name'],
             "Error: randomize parameter must Y or N",
             lambda r: r in ['Y', 'N', 'y', 'n'],
             dtype=str
@@ -378,8 +378,8 @@ def set_tiled_region_params(region_corners_path):
 
     # whether to insert moly points between regions
     moly_region_insert = read_tiling_param(
-        "Insert a moly point between each tiled region? Y/N: ",
-        "Error: moly point region parameter must be either Y or N",
+        "Insert a moly point between each tiled ROI? Y/N: ",
+        "Error: moly point ROI parameter must be either Y or N",
         lambda mri: mri in ['Y', 'N', 'y', 'n'],
         dtype=str
     )
