@@ -278,24 +278,24 @@ def read_tiled_region_inputs(region_corners, region_params):
             A `dict` mapping each region-specific parameter to a list of values per FOV
     """
 
-    # read in the data for each fov (region_start from region_corners_path, all others from user)
+    # read in the data for each region (region_start from region_corners_path, others from user)
     for fov in region_corners['fovs']:
-        # append the name of the ROI
-        region_params['roi_name'].append(fov['name'])
+        # append the name of the region
+        region_params['region_name'].append(fov['name'])
 
         # append the starting row and column coordinates
         region_params['region_start_row'].append(fov['centerPointMicrons']['y'])
         region_params['region_start_col'].append(fov['centerPointMicrons']['x'])
 
-        print("Using start coordinates of (%d, %d) in microns for ROI %s"
+        print("Using start coordinates of (%d, %d) in microns for region %s"
               % (fov['centerPointMicrons']['x'], fov['centerPointMicrons']['y'], fov['name']))
 
         # verify that the micron size specified is valid
         if fov['fovSizeMicrons'] <= 0:
-            raise ValueError("The fovSizeMicrons field for ROI %s must be positive"
+            raise ValueError("The fovSizeMicrons field for FOVs in region %s must be positive"
                              % fov['name'])
 
-        print("Using FOV step size of %d microns for both row (y) and column (x) axis of ROI %s"
+        print("Using FOV step size of %d microns for both row (y) and column (x) axis of region %s"
               % (fov['fovSizeMicrons'], fov['name']))
 
         # use fovSizeMicrons as the step size along both axes
@@ -304,14 +304,14 @@ def read_tiled_region_inputs(region_corners, region_params):
 
         # allow the user to specify the number of fovs along each dimension
         num_row = read_tiling_param(
-            "Enter the number of FOVs per row for ROI %s: " % fov['name'],
+            "Enter the number of FOVs per row for region %s: " % fov['name'],
             "Error: number of FOVs per row must be a positive integer",
             lambda nx: nx >= 1,
             dtype=int
         )
 
         num_col = read_tiling_param(
-            "Enter the number of FOVs per column for ROI %s: " % fov['name'],
+            "Enter the number of FOVs per column for region %s: " % fov['name'],
             "Error: number of FOVs per column must be a positive integer",
             lambda ny: ny >= 1,
             dtype=int
@@ -322,7 +322,7 @@ def read_tiled_region_inputs(region_corners, region_params):
 
         # allow the user to specify if the FOVs should be randomized
         randomize = read_tiling_param(
-            "Randomize FOVs for ROI %s? Y/N: " % fov['name'],
+            "Randomize FOVs for region %s? Y/N: " % fov['name'],
             "Error: randomize parameter must Y or N",
             lambda r: r in ['Y', 'N', 'y', 'n'],
             dtype=str
@@ -334,7 +334,7 @@ def read_tiled_region_inputs(region_corners, region_params):
 
 
 def set_tiled_region_params(region_corners_path):
-    """Given a file specifying FOV regions, set the MIBI tiling parameters.
+    """Given a file specifying top-left FOVs for a set of regions, set the MIBI tiling parameters.
 
     User inputs will be required for many values. Units used are microns.
 
@@ -378,8 +378,8 @@ def set_tiled_region_params(region_corners_path):
 
     # whether to insert moly points between regions
     moly_region_insert = read_tiling_param(
-        "Insert a moly point between each tiled ROI? Y/N: ",
-        "Error: moly point ROI parameter must be either Y or N",
+        "Insert a moly point between each tiled region? Y/N: ",
+        "Error: moly point region parameter must be either Y or N",
         lambda mri: mri in ['Y', 'N', 'y', 'n'],
         dtype=str
     )
@@ -550,7 +550,7 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
         row_col_pairs = generate_x_y_fov_pairs(row_range, col_range)
 
         # name the FOVs according to MIBI conventions
-        fov_names = ['%s_R%dC%d' % (region_info['roi_name'], y + 1, x + 1)
+        fov_names = ['%s_R%dC%d' % (region_info['region_name'], y + 1, x + 1)
                      for x in range(region_info['fov_num_row'])
                      for y in range(region_info['fov_num_col'])]
 

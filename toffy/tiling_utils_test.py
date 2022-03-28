@@ -210,12 +210,12 @@ def test_save_coreg_params():
     cases=test_cases.TiledRegionReadCases, glob='*_no_moly_param')
 def test_read_tiled_region_inputs(monkeypatch, fov_coords, fov_names, fov_sizes, user_inputs,
                                   base_param_values, full_param_set):
-    # define a sample fovs list
+    # define a sample fovs list to define the top-left corners of each tiled region
     sample_fovs_list = test_utils.generate_sample_fovs_list(
         fov_coords=fov_coords, fov_names=fov_names, fov_sizes=fov_sizes
     )
 
-    # define sample region_params to read data into
+    # define sample_region_params to read data into
     sample_region_params = {rpf: [] for rpf in settings.REGION_PARAM_FIELDS}
 
     # generate the user inputs
@@ -269,14 +269,14 @@ def test_generate_region_info():
 @parametrize('region_corners_file', [param('bad_region_corners.json', marks=file_missing_err),
                                      param('tiled_region_corners.json')])
 @parametrize_with_cases(
-    'fov_coords, fov_names, fov_sizes, user_inputs, base_param_values,full_param_set',
+    'fov_coords, fov_names, fov_sizes, user_inputs, base_param_values, full_param_set',
     cases=test_cases.TiledRegionReadCases, glob='*_with_moly_param'
 )
 @parametrize('moly_interval_val', [0, 1])
 def test_set_tiled_region_params(monkeypatch, region_corners_file, fov_coords, fov_names,
                                  fov_sizes, user_inputs, base_param_values,
                                  full_param_set, moly_interval_val):
-    # define a sample set of fovs
+    # define a sample set of fovs to define the top-left corners of each tiled region
     sample_fovs_list = test_utils.generate_sample_fovs_list(
         fov_coords=fov_coords, fov_names=fov_names, fov_sizes=fov_sizes
     )
@@ -351,20 +351,21 @@ def test_generate_x_y_fov_pairs_rhombus(coords, actual_pairs):
 
 
 @parametrize_with_cases(
-    'moly_path, moly_region_setting, moly_interval_setting, moly_interval_value, '
-    'moly_insert_indices, fov_1_end_pos', cases=test_cases.TiledRegionMolySettingCases
+    'moly_path, moly_roi_setting, moly_interval_setting, moly_interval_value, '
+    'moly_insert_indices, roi_1_end_pos', cases=test_cases.TiledRegionMolySettingCases
 )
 @parametrize('randomize_setting', [['N', 'N'], ['N', 'Y'], ['Y', 'Y']])
-def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
+def test_generate_tiled_region_fov_list(moly_path, moly_roi_setting,
                                         moly_interval_setting, moly_interval_value,
-                                        moly_insert_indices, fov_1_end_pos, randomize_setting):
-    sample_fovs_list = test_utils.generate_sample_fovs_list(
-        fov_coords=[(0, 0), (100, 100)], fov_names=['TheFirstFOV', 'TheSecondFOV'],
+                                        moly_insert_indices, roi_1_end_pos, randomize_setting):
+    # define a set of fovs defining the upper-left corners of each region
+    sample_roi_fovs_list = test_utils.generate_sample_fovs_list(
+        fov_coords=[(0, 0), (100, 100)], fov_names=['TheFirstROI', 'TheSecondROI'],
         fov_sizes=[5, 10]
     )
 
     sample_region_inputs = {
-        'roi_name': ['TheFirstFOV', 'TheSecondFOV'],
+        'region_name': ['TheFirstROI', 'TheSecondROI'],
         'region_start_row': [100, 150],
         'region_start_col': [0, 50],
         'fov_num_row': [2, 4],
@@ -378,7 +379,7 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
 
     sample_tiling_params = {
         'fovFormatVersion': '1.5',
-        'fovs': sample_fovs_list['fovs'],
+        'fovs': sample_roi_fovs_list['fovs'],
         'region_params': sample_region_params
     }
 
@@ -391,7 +392,7 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
         with open(sample_moly_path, 'w') as smp:
             json.dump(sample_moly_point, smp)
 
-        sample_tiling_params['moly_region'] = moly_region_setting
+        sample_tiling_params['moly_region'] = moly_roi_setting
 
         sample_tiling_params['region_params'][0]['region_rand'] = randomize_setting[0]
         sample_tiling_params['region_params'][1]['region_rand'] = randomize_setting[1]
@@ -399,23 +400,23 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
         if moly_interval_setting:
             sample_tiling_params['moly_interval'] = moly_interval_value
 
-        fov_regions = tiling_utils.generate_tiled_region_fov_list(
+        fov_list = tiling_utils.generate_tiled_region_fov_list(
             sample_tiling_params, os.path.join(td, moly_path)
         )
 
         # assert none of the metadata keys explicitly added by set_tiling_params appear
         for k in ['region_params', 'moly_region', 'moly_interval']:
-            assert k not in fov_regions
+            assert k not in fov_list
 
         # retrieve the center points
         center_points = [
             (fov['centerPointMicrons']['x'], fov['centerPointMicrons']['y'])
-            for fov in fov_regions['fovs']
+            for fov in fov_list['fovs']
         ]
 
         # retrieve the fov names
         fov_names = [
-            fov['name'] for fov in fov_regions['fovs']
+            fov['name'] for fov in fov_list['fovs']
         ]
 
         # define the center points sorted
@@ -427,9 +428,9 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
 
         # define the corresponding FOV names
         actual_fov_names = [
-            'TheFirstFOV_R%dC%d' % (x, y) for y in np.arange(1, 3) for x in np.arange(1, 5)
+            'TheFirstROI_R%dC%d' % (x, y) for y in np.arange(1, 3) for x in np.arange(1, 5)
         ] + [
-            'TheSecondFOV_R%dC%d' % (x, y) for y in np.arange(1, 5) for x in np.arange(1, 3)
+            'TheSecondROI_R%dC%d' % (x, y) for y in np.arange(1, 5) for x in np.arange(1, 3)
         ]
 
         for mi in moly_insert_indices:
@@ -441,57 +442,57 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
             assert center_points == actual_center_points_sorted
             assert fov_names == actual_fov_names
 
-        # if only the second fov is randomized
+        # if only the second ROI is randomized
         elif randomize_setting == ['N', 'Y']:
-            # ensure the fov 1 center points and FOV names are the same for both sorted and random
-            assert center_points[:fov_1_end_pos] == actual_center_points_sorted[:fov_1_end_pos]
-            assert fov_names[:fov_1_end_pos] == actual_fov_names[:fov_1_end_pos]
+            # ensure the ROI 1 center points and FOV names are the same for both sorted and random
+            assert center_points[:roi_1_end_pos] == actual_center_points_sorted[:roi_1_end_pos]
+            assert fov_names[:roi_1_end_pos] == actual_fov_names[:roi_1_end_pos]
 
-            # ensure the random center points and fov names for roi 2 contain the same elements
+            # ensure the random center points and fov names for ROI 2 contain the same elements
             # as its sorted version
             misc_utils.verify_same_elements(
-                computed_center_points=center_points[fov_1_end_pos:],
-                actual_center_points=actual_center_points_sorted[fov_1_end_pos:]
+                computed_center_points=center_points[roi_1_end_pos:],
+                actual_center_points=actual_center_points_sorted[roi_1_end_pos:]
             )
             misc_utils.verify_same_elements(
-                computed_fov_names=fov_names[fov_1_end_pos:],
-                actual_fov_names=actual_fov_names[fov_1_end_pos:]
+                computed_fov_names=fov_names[roi_1_end_pos:],
+                actual_fov_names=actual_fov_names[roi_1_end_pos:]
             )
 
-            # however, roi 2 sorted entries should NOT equal roi 2 random entries
-            assert center_points[fov_1_end_pos:] != actual_center_points_sorted[fov_1_end_pos:]
-            assert fov_names[fov_1_end_pos:] != actual_fov_names[fov_1_end_pos:]
+            # however, ROI 2 sorted entries should NOT equal ROI 2 random entries
+            assert center_points[roi_1_end_pos:] != actual_center_points_sorted[roi_1_end_pos:]
+            assert fov_names[roi_1_end_pos:] != actual_fov_names[roi_1_end_pos:]
         # if both fovs are randomized
         elif randomize_setting == ['Y', 'Y']:
-            # ensure the random center points and fov names for roi 1 contain the same elements
+            # ensure the random center points and fov names for ROI 1 contain the same elements
             # as its sorted version
             misc_utils.verify_same_elements(
-                computed_center_points=center_points[:fov_1_end_pos],
-                actual_center_points=actual_center_points_sorted[:fov_1_end_pos]
+                computed_center_points=center_points[:roi_1_end_pos],
+                actual_center_points=actual_center_points_sorted[:roi_1_end_pos]
             )
             misc_utils.verify_same_elements(
-                computed_fov_names=fov_names[:fov_1_end_pos],
-                actual_fov_names=actual_fov_names[:fov_1_end_pos]
+                computed_fov_names=fov_names[:roi_1_end_pos],
+                actual_fov_names=actual_fov_names[:roi_1_end_pos]
             )
 
-            # however, roi 1 sorted entries should NOT equal roi 1 random entries
-            assert center_points[:fov_1_end_pos] != actual_center_points_sorted[:fov_1_end_pos]
-            assert fov_names[:fov_1_end_pos] != actual_fov_names[:fov_1_end_pos]
+            # however, ROI 1 sorted entries should NOT equal ROI 1 random entries
+            assert center_points[:roi_1_end_pos] != actual_center_points_sorted[:roi_1_end_pos]
+            assert fov_names[:roi_1_end_pos] != actual_fov_names[:roi_1_end_pos]
 
-            # ensure the random center points for roi 2 contain the same elements
+            # ensure the random center points for ROI 2 contain the same elements
             # as its sorted version
             misc_utils.verify_same_elements(
-                computed_center_points=center_points[fov_1_end_pos:],
-                actual_center_points=actual_center_points_sorted[fov_1_end_pos:]
+                computed_center_points=center_points[roi_1_end_pos:],
+                actual_center_points=actual_center_points_sorted[roi_1_end_pos:]
             )
             misc_utils.verify_same_elements(
-                computed_fov_names=fov_names[fov_1_end_pos:],
-                actual_fov_names=actual_fov_names[fov_1_end_pos:]
+                computed_fov_names=fov_names[roi_1_end_pos:],
+                actual_fov_names=actual_fov_names[roi_1_end_pos:]
             )
 
-            # however, fov 2 sorted entries should NOT equal fov 2 random entries
-            assert center_points[fov_1_end_pos:] != actual_center_points_sorted[fov_1_end_pos:]
-            assert fov_names[fov_1_end_pos:] != actual_fov_names[fov_1_end_pos:]
+            # however, ROI 2 sorted entries should NOT equal ROI 2 random entries
+            assert center_points[roi_1_end_pos:] != actual_center_points_sorted[roi_1_end_pos:]
+            assert fov_names[roi_1_end_pos:] != actual_fov_names[roi_1_end_pos:]
 
 
 @parametrize_with_cases('top_left, top_right, bottom_left, bottom_right',
