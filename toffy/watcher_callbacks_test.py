@@ -1,6 +1,5 @@
 import os
 import tempfile
-import pytest
 from pytest_cases import parametrize_with_cases
 
 from mibi_bin_tools import io_utils
@@ -16,29 +15,27 @@ from toffy.test_utils import (
 
 @parametrize_with_cases('panel,  kwargs', cases=ExtractionQCGenerationCases,
                         has_tag='extract')
-@pytest.mark.parametrize('extraction_dir_name', ['', 'extracted'])
 @parametrize_with_cases('data_path',  cases=ExtractionQCCallCases)
-def test_build_extraction_callback(panel, extraction_dir_name, kwargs, data_path):
+def test_build_extraction_callback(panel, kwargs, data_path):
 
     intensities = kwargs.get('intensities', False)
 
-    # test cb generates w/o errors
-    cb = watcher_callbacks.build_extract_callback(panel, extraction_dir_name,
-                                                  **kwargs)
-
-    point_names = io_utils.list_files(data_path, substrs=['bin'])
-    point_names = [name.split('.')[0] for name in point_names]
-
     with tempfile.TemporaryDirectory() as tmp_dir:
-        for name in point_names:
-            cb(data_path, name, tmp_dir)
 
-        ext_path = os.path.join(tmp_dir, extraction_dir_name)
+        extracted_dir = os.path.join(tmp_dir, 'extracted')
+        os.makedirs(extracted_dir)
+
+        # test cb generates w/o errors
+        cb = watcher_callbacks.build_extract_callback(extracted_dir, panel, **kwargs)
+
+        point_names = io_utils.list_files(data_path, substrs=['bin'])
+        point_names = [name.split('.')[0] for name in point_names]
+
+        for name in point_names:
+            cb(data_path, name)
 
         # just check SMA
-        check_extraction_dir_structure(ext_path, point_names, ['SMA'], intensities)
-
-        check_qc_dir_structure(data_path, point_names)
+        check_extraction_dir_structure(extracted_dir, point_names, ['SMA'], intensities)
 
 
 @parametrize_with_cases('panel,  kwargs', cases=ExtractionQCGenerationCases,
@@ -46,14 +43,18 @@ def test_build_extraction_callback(panel, extraction_dir_name, kwargs, data_path
 @parametrize_with_cases('data_path',  cases=ExtractionQCCallCases)
 def test_build_qc_callback(panel, kwargs, data_path):
 
-    # test cb generates w/o errors
-    cb = watcher_callbacks.build_qc_callback(panel, **kwargs)
-
-    point_names = io_utils.list_files(data_path, substrs=['bin'])
-    point_names = [name.split('.')[0] for name in point_names]
-
     with tempfile.TemporaryDirectory() as tmp_dir:
-        for name in point_names:
-            cb(data_path, name, tmp_dir)
 
-        check_qc_dir_structure(data_path, point_names)
+        qc_dir = os.path.join(tmp_dir, 'qc')
+        os.makedirs(qc_dir)
+
+        # test cb generates w/o errors
+        cb = watcher_callbacks.build_qc_callback(qc_dir, panel, **kwargs)
+
+        point_names = io_utils.list_files(data_path, substrs=['bin'])
+        point_names = [name.split('.')[0] for name in point_names]
+
+        for name in point_names:
+            cb(data_path, name)
+
+        check_qc_dir_structure(qc_dir, point_names)

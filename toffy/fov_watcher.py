@@ -1,4 +1,5 @@
 import os
+from pathlib import Path
 import time
 import json
 from datetime import datetime
@@ -26,7 +27,8 @@ class RunStructure:
         self.fov_progress = {}
 
         # find run .json and get parameters
-        with open(f'{run_folder}.json', 'r') as f:
+        run_name = Path(run_folder).parts[-1]
+        with open(os.path.join(run_folder, f'{run_name}.json'), 'r') as f:
             run_metadata = json.load(f)
 
         # parse run_metadata and populate expected structure
@@ -59,16 +61,16 @@ class RunStructure:
                 whether or not both json and bin files exist, as well as the name of the point
         """
 
-        # TODO: check watchdog path depth
-
         if not os.path.exists(path):
             raise FileNotFoundError(f"{path} doesn't exist but was recently created. "
                                     "This should be unreachable...")
 
-        if len(path.split('.')) != 2:
+        filename = Path(path).parts[-1]
+
+        if len(filename.split('.')) != 2:
             return False, ''
 
-        fov_name, extension = path.split('.')
+        fov_name, extension = filename.split('.')
         wait_time = 0
         if fov_name in self.fov_progress:
             if extension in self.fov_progress[fov_name]:
@@ -84,7 +86,7 @@ class RunStructure:
 
                 self.fov_progress[fov_name][extension] = True
 
-            if all(self.fov_progress[fov_name].values):
+            if all(self.fov_progress[fov_name].values()):
                 return True, fov_name
 
         elif extension == 'bin':
@@ -98,7 +100,7 @@ class RunStructure:
         Returns:
             dict
         """
-        return {k: all(self.fov_progress[k].values) for k in self.fov_progress}
+        return {k: all(self.fov_progress[k].values()) for k in self.fov_progress}
 
 
 class FOV_EventHandler(FileSystemEventHandler):
@@ -116,13 +118,16 @@ class FOV_EventHandler(FileSystemEventHandler):
         per_run (list):
             callbacks to run over the entire run
     """
-    def __init__(self, run_folder: str, per_fov: List[Callable[[str, str, str], None]],
-                 per_run: List[Callable[[str, str], None]], timeout: int = 10 * 60):
+    def __init__(self, run_folder: str, log_folder: str,
+                 per_fov: List[Callable[[str, str], None]],
+                 per_run: List[Callable[[str], None]], timeout: int = 10 * 60):
         """Initializes FOV_EventHandler
 
         Args:
             run_folder (str):
                 path to run folder
+            log_folder (str):
+                path to save outputs to
             per_fov (list):
                 callbacks to run on each fov
             per_run (list):
@@ -133,10 +138,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         super().__init__()
         self.run_folder = run_folder
 
-        self.watcher_out = os.path.join(run_folder, 'watcher_outs')
-
-        if not os.path.exists(self.watcher_out):
-            os.makedirs(self.watcher_out)
+        self.log_path = os.path.join(log_folder, f'{Path(run_folder).parts[-1]}_log.txt')
 
         # create run structure
         self.run_structure = RunStructure(run_folder, timeout=timeout)
@@ -160,35 +162,35 @@ class FOV_EventHandler(FileSystemEventHandler):
         """
         super().on_created(event)
 
-        log_file_path = os.path.join(self.watcher_out, 'log.txt')
-
         # check if what's created is in the run structure
         try:
             fov_ready, point_name = self.run_structure.check_run_condition(event.src_path)
         except TimeoutError as timeout_error:
             print('Encountered TimeoutError error: ' + timeout_error)
-            logf = open(log_file_path, 'a')
+            logf = open(self.log_path, 'a')
             logf.write(
                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
-                f'{event.src_path} never reached non-zero file size...'
+                f'{event.src_path} never reached non-zero file size...\n'
             )
             self.check_complete()
 
         if fov_ready:
-            logf = open(log_file_path, 'a')
+            print(f'Discovered {point_name}, begining per-fov callbacks...')
+            logf = open(self.log_path, 'a')
 
             logf.write(
                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
-                f'Extracting {point_name}'
+                f'Extracting {point_name}\n'
             )
 
             # run per_fov callbacks
             for fov_func in self.per_fov:
                 logf.write(
                     f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
-                    f'Running {fov_func.__name__} on {point_name}'
+                    f'Running {fov_func.__name__} on {point_name}\n'
                 )
-                fov_func(self.run_folder, point_name, self.watcher_out)
+
+                fov_func(self.run_folder, point_name)
 
             logf.close()
             self.check_complete()
@@ -199,24 +201,24 @@ class FOV_EventHandler(FileSystemEventHandler):
         If run is complete, all calbacks in `per_run` will be run over the whole run.
         """
         if all(self.run_structure.check_fov_progress().values()):
-            log_file_path = os.path.join(self.watcher_out, 'log.txt')
-            logf = open(log_file_path, 'a')
+            logf = open(self.log_path, 'a')
 
             logf.write(
                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
-                f'All FOVs finished'
+                f'All FOVs finished\n'
             )
 
             # run per_runs
             for run_func in self.per_run:
                 logf.write(
                     f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
-                    f'Running {run_func.__name__} on whole run'
+                    f'Running {run_func.__name__} on whole run\n'
                 )
-                run_func(self.run_folder, self.watcher_out)
+
+                run_func(self.run_folder)
 
 
-def start_watcher(run_folder: str, per_fov: List[Callable[[str, str, str], None]],
+def start_watcher(run_folder: str, log_folder: str, per_fov: List[Callable[[str, str], None]],
                   per_run: List[Callable[[str, str], None]],
                   completion_check_time: int = 30):
     """ Passes bin files to provided callback functions as they're created
@@ -224,6 +226,8 @@ def start_watcher(run_folder: str, per_fov: List[Callable[[str, str, str], None]
     Args:
         run_folder (str):
             path to run folder
+        log_folder (str):
+            where to create log file
         per_fov (list):
             list of functions to pass bin files
         per_run (list):
@@ -233,7 +237,7 @@ def start_watcher(run_folder: str, per_fov: List[Callable[[str, str, str], None]
             note, this doesn't effect the watcher itself, just when this wrapper function exits.
     """
     observer = Observer()
-    event_handler = FOV_EventHandler(run_folder, per_fov, per_run)
+    event_handler = FOV_EventHandler(run_folder, log_folder, per_fov, per_run)
     observer.schedule(event_handler, run_folder, recursive=True)
     observer.start()
 
@@ -243,4 +247,5 @@ def start_watcher(run_folder: str, per_fov: List[Callable[[str, str, str], None]
     except KeyboardInterrupt:
         observer.stop()
 
+    observer.stop()
     observer.join()

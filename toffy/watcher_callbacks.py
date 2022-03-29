@@ -8,15 +8,15 @@ from mibi_bin_tools.bin_files import extract_bin_files
 from toffy.qc_comp import compute_qc_metrics
 
 
-def build_extract_callback(panel: pd.DataFrame, extraction_dir_name: str = 'extracted',
-                           **kwargs) -> Callable[[str, str, str], None]:
+def build_extract_callback(out_dir: str, panel: pd.DataFrame,
+                           **kwargs) -> Callable[[str, str], None]:
     """Generates extraction callback for given panel + parameters
 
     Args:
+        out_dir (str):
+            Path where tiffs are written
         panel (pd.DataFrame):
             Target mass integration ranges
-        extraction_dir_name (str):
-            Subdirectory to place extracted TIFs into
         **kwargs (dict):
             Additional arguments for `mibi_bin_tools.bin_files.extract_bin_files`.
             Accepted kwargs are:
@@ -33,21 +33,21 @@ def build_extract_callback(panel: pd.DataFrame, extraction_dir_name: str = 'extr
         raise TypeError('Global unit mass integration is no longer support. Please provide panel '
                         'as a pandas DataFrame...')
 
-    def extract_callback(run_folder: str, point_name: str, out_dir: str):
+    def extract_callback(run_folder: str, point_name: str):
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
 
-        extraction_dir = os.path.join(out_dir, extraction_dir_name)
-        if not os.path.exists(extraction_dir):
-            os.makedirs(extraction_dir)
-
-        extract_bin_files(run_folder, extraction_dir, [point_name], panel, **kwargs)
+        extract_bin_files(run_folder, out_dir, [point_name], panel, **kwargs)
 
     return extract_callback
 
 
-def build_qc_callback(panel: pd.DataFrame, **kwargs) -> Callable[[str, str, str], None]:
+def build_qc_callback(out_dir: str, panel: pd.DataFrame, **kwargs) -> Callable[[str, str], None]:
     """Generates qc callback for given panel + parameters
 
     Args:
+        out_dir (str):
+            Path where qc metrics are written
         panel (pd.DataFrame):
             Target mass integration ranges
         **kwargs (dict):
@@ -57,7 +57,7 @@ def build_qc_callback(panel: pd.DataFrame, **kwargs) -> Callable[[str, str, str]
          - blur_factor
 
     Returns:
-        Callable[[str, str, str], None]:
+        Callable[[str, str], None]:
             Callback for fov watcher
     """
 
@@ -65,7 +65,11 @@ def build_qc_callback(panel: pd.DataFrame, **kwargs) -> Callable[[str, str, str]
         raise TypeError('Global unit mass integration is no longer support. Please provide panel '
                         'as a pandas DataFrame...')
 
-    def qc_callback(run_folder: str, point_name: str, out_dir: str):
-        compute_qc_metrics(run_folder, point_name, None, panel, **kwargs)
+    kwargs['save_csv'] = False
+
+    def qc_callback(run_folder: str, point_name: str):
+        metric_data = compute_qc_metrics(run_folder, point_name, None, panel, **kwargs)
+        for metric_name, data in metric_data.items():
+            data.to_csv(os.path.join(out_dir, metric_name), index=False)
 
     return qc_callback

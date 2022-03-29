@@ -276,7 +276,7 @@ def sort_bin_file_fovs(fovs, suffix_ignore=None):
 
 
 def compute_qc_metrics(bin_file_path, fov_name, panel_path, manual_panel=None,
-                       gaussian_blur=False, blur_factor=1):
+                       gaussian_blur=False, blur_factor=1, save_csv=True):
     """Compute the QC metric matrices for the image data provided
 
     Args:
@@ -295,6 +295,12 @@ def compute_qc_metrics(bin_file_path, fov_name, panel_path, manual_panel=None,
             the sigma (standard deviation) to use for Gaussian blurring
             set to 0 to use raw inputs without Gaussian blurring
             ignored if `gaussian_blur` set to `False`
+        save_csv (bool):
+            whether to save csvs of the qc metrics in bin_file_path
+
+    Returns:
+        None | Dict[str, pd.DataFrame]:
+            If save_csv is False, returns qc metrics. Otherwise, no return
     """
 
     # path validation checks
@@ -354,6 +360,8 @@ def compute_qc_metrics(bin_file_path, fov_name, panel_path, manual_panel=None,
     # define the list of numpy arrays for looping
     metric_data = [nonzero_mean_intensity, total_intensity, intensity_99_9]
 
+    metric_csvs = {}
+
     for ms, md, mc in zip(settings.QC_SUFFIXES, metric_data, settings.QC_COLUMNS):
         # define the dataframe for this metric
         metric_df = pd.DataFrame(
@@ -368,9 +376,15 @@ def compute_qc_metrics(bin_file_path, fov_name, panel_path, manual_panel=None,
         metric_df['channel'] = chans
 
         # write the metric data to CSV
-        metric_df.to_csv(
-            os.path.join(bin_file_path, '%s_%s.csv' % (fov_name, ms)), index=False
-        )
+        if save_csv:
+            metric_df.to_csv(
+                os.path.join(bin_file_path, '%s_%s.csv' % (fov_name, ms)), index=False
+            )
+        else:
+            metric_csvs[f'{fov_name}_{ms}.csv'] = metric_df
+
+    if not save_csv:
+        return metric_csvs
 
 
 def combine_qc_metrics(bin_file_path):
