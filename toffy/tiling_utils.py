@@ -278,8 +278,11 @@ def read_tiled_region_inputs(region_corners, region_params):
             A `dict` mapping each region-specific parameter to a list of values per FOV
     """
 
-    # read in the data for each fov (region_start from region_corners_path, all others from user)
+    # read in the data for each region (region_start from region_corners_path, others from user)
     for fov in region_corners['fovs']:
+        # append the name of the region
+        region_params['region_name'].append(fov['name'])
+
         # append the starting row and column coordinates
         region_params['region_start_row'].append(fov['centerPointMicrons']['y'])
         region_params['region_start_col'].append(fov['centerPointMicrons']['x'])
@@ -289,7 +292,7 @@ def read_tiled_region_inputs(region_corners, region_params):
 
         # verify that the micron size specified is valid
         if fov['fovSizeMicrons'] <= 0:
-            raise ValueError("The fovSizeMicrons field for region %s must be positive"
+            raise ValueError("The fovSizeMicrons field for FOVs in region %s must be positive"
                              % fov['name'])
 
         print("Using FOV step size of %d microns for both row (y) and column (x) axis of region %s"
@@ -331,7 +334,7 @@ def read_tiled_region_inputs(region_corners, region_params):
 
 
 def set_tiled_region_params(region_corners_path):
-    """Given a file specifying FOV regions, set the MIBI tiling parameters.
+    """Given a file specifying top-left FOVs for a set of regions, set the MIBI tiling parameters.
 
     User inputs will be required for many values. Units used are microns.
 
@@ -547,7 +550,8 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
         row_col_pairs = generate_x_y_fov_pairs(row_range, col_range)
 
         # name the FOVs according to MIBI conventions
-        fov_names = ['R%dC%d' % (y + 1, x + 1) for x in range(region_info['fov_num_row'])
+        fov_names = ['%s_R%dC%d' % (region_info['region_name'], y + 1, x + 1)
+                     for x in range(region_info['fov_num_row'])
                      for y in range(region_info['fov_num_col'])]
 
         # randomize pairs list if specified
