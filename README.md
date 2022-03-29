@@ -7,7 +7,7 @@ Depending on what operating system you are planning to install toffy on, the pro
 - [Install on Windows](#windows)
 - [Install on macOS](#macos)
 
-# CAC
+# CAC 
 ## Requirements
 
 - You must have **C++ Build Tools** (VS19) installed. 
