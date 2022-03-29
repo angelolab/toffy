@@ -1,7 +1,7 @@
 # toffy
 Scripts for interacting with and generating data from the commercial MIBIScope.
 
-# System
+### System
 Depending on what operating system you are planning to install toffy on, the requirements will differ slightly.
 - [Install on Windows](#windows)
 - [Install on macOS](#macos)
@@ -25,8 +25,6 @@ Choose "Just Me" option for installation, and do not need to select the "Tutoria
 Continue with the installation.
 
 ## Setup
-After confirming you have the necessary software, you can clone the repository.
-
 Now, open the Anaconda powershell prompt instead of the regular powershell prompt.
 If you do not already have git installed, run
 ```
