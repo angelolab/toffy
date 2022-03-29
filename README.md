@@ -32,6 +32,8 @@ If you do not already have git installed, run
 ```
 conda install git
 ```
+(If installing on CAC, you will now need the admin password and must contact support@ionpath.com)
+
 Navigate to the desired location (ex: Documents) and clone the repo.
 ```
 cd .\Documents\
