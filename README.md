@@ -1,5 +1,5 @@
 # toffy
-Scripts for interacting with and generating data from the commercial MIBIScope
+Scripts for interacting with and generating data from the commercial MIBIScope.
 
 # System
 Depending on what operating system you are planning to install toffy on, the process will differ slightly.
@@ -73,7 +73,7 @@ conda env create -f environment.yml
 
 # macOS
 ## Requirements
-You will need the latest version of Anaconda (**Miniconda** preferred). 
+- You will need the latest version of Anaconda (**Miniconda** preferred). 
 Download here: https://docs.conda.io/en/latest/miniconda.html and select the appropriate download for your system.
 Choose "Just Me" option for installation, and do not need to select the "Tutorial" or "Getting Started" options.
 Continue with the installation.
@@ -134,4 +134,4 @@ conda env create -f environment.yml
 
 ## Questions?
 
-Feel free to open an issue on our GitHub page
+Feel free to open an issue on our GitHub page.
