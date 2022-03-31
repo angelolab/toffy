@@ -8,6 +8,8 @@ from multiprocessing.pool import ThreadPool as Pool
 
 from pytest_cases import parametrize_with_cases
 
+from mibi_bin_tools import io_utils
+
 from toffy.test_utils import WatcherCases
 from toffy.fov_watcher import start_watcher
 
@@ -40,13 +42,16 @@ TISSUE_RUN_JSON_SPOOF = {
 }
 
 
-@parametrize_with_cases('per_fov_partial, per_run', cases=WatcherCases)
-def test_watcher(per_fov_partial, per_run):
+# TODO: add tests for per_run when per_run callbacks are created
+@parametrize_with_cases('per_fov_partial, per_run, validators', cases=WatcherCases)
+def test_watcher(per_fov_partial, per_run, validators):
     with tempfile.TemporaryDirectory() as tmpdir:
+
+        RUN_DIR_NAME = 'run_XXX'
 
         per_fov = []
         for i, func in enumerate(per_fov_partial):
-            cb_dir = os.path.join(tmpdir, f'cb_{i}', 'run_XXX')
+            cb_dir = os.path.join(tmpdir, f'cb_{i}', RUN_DIR_NAME)
             os.makedirs(cb_dir)
             per_fov.append(func(cb_dir))
 
@@ -66,5 +71,13 @@ def test_watcher(per_fov_partial, per_run):
 
         with open(os.path.join(log_out, 'test_run_log.txt')) as f:
             print(f.read())
+
+        fovs = [
+            bin_file.split('.')[0]
+            for bin_file in io_utils.list_files(TISSUE_DATA_PATH, substrs=['.bin'])
+        ]
+
+        for i, validator in enumerate(validators):
+            validator(os.path.join(tmpdir, f'cb_{i}', RUN_DIR_NAME), fovs)
 
     pass

@@ -4,7 +4,7 @@ import functools
 from pathlib import Path
 
 import pytest
-from pytest_cases import case
+from pytest_cases import case, parametrize
 
 import pandas as pd
 
@@ -150,9 +150,17 @@ class ExtractionQCCallCases:
 
 
 class WatcherCases:
-    def case_default(self):
+    @parametrize(intensity=(False, True))
+    def case_default(self, intensity):
         panel = pd.read_csv(os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv'))
+        validators = [
+            functools.partial(
+                check_extraction_dir_structure,
+                channels=list(panel['Target']),
+                intensities=intensity),
+            check_qc_dir_structure,
+        ]
         return [
-            functools.partial(build_extract_callback, panel=panel),
+            functools.partial(build_extract_callback, panel=panel, intensities=intensity),
             functools.partial(build_qc_callback, panel=panel),
-        ], []
+        ], [], validators
