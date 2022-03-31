@@ -79,4 +79,6 @@ conda env create -f environment.yml
 
 ## Questions?
 
-Feel free to open an issue on our GitHub page.
+Feel free to open an [issue](https://github.com/angelolab/toffy/issues) on our GitHub page.
+
+Before opening, please double check and see that someone else hasn't opened an issue for your question already.
