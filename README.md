@@ -11,7 +11,7 @@ Depending on what operating system you are planning to install toffy on, the req
 
 - You must have **C++ Build Tools** (VS19) installed. 
 Go to  https://visualstudio.microsoft.com/visual-cpp-build-tools/ and click 'Download Build Tools'.
-Open the installer and then follow the prompts.
+Open the installer and make sure you are installing the package labeled *C++ build tools*, then follow the prompts.
     - **(If installing on CAC, you will need the admin password and must contact support@ionpath.com)**
 
 - You will need the latest version of Anaconda (**Miniconda** preferred). 
