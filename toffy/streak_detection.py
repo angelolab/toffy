@@ -31,8 +31,8 @@ class StreakData:
         streak_df (pd.DataFrame): A dataframe, containing the location, area, and eccentricity
         of each streak.
         filtered_streak_mask (np.ndarray): A binary mask with out the false streaks.
-        filtered_streak_df (pd.DataFrame): A subset of the `streak_df` containing location, area and
-        eccentricity values of the filtered streaks.
+        filtered_streak_df (pd.DataFrame): A subset of the `streak_df` containing location, area
+        and eccentricity values of the filtered streaks.
         boxed_streaks (np.ndarray): An optional binary mask containing an outline for each
         filtered streaks.
         corrected_streak_mask (np.ndarray): An optional binary mask containing the lines used for
@@ -92,6 +92,9 @@ class StreakData:
         else:
             raise ValueError("Please enter a field name, or set `all_data` to True.")
 
+    def _save_dir(self, data_dir: Path, name: str, ext: str):
+        return Path(data_dir, name + f".{ext}")
+    
     def _save(self, name: str):
         """Helper function for saving tiff binary masks and dataframes.
 
@@ -103,17 +106,13 @@ class StreakData:
             os.makedirs(data_dir)
 
         data = getattr(self, name)
-
-        def save_dir(name, ext):
-            Path(data_dir, name + f".{ext}")
-
-        sp = partial(save_dir)
+        st = partial(self._save_dir, data_dir, name)
 
         if type(data) is np.ndarray:
-            with TiffWriter(sp(name, "tiff")) as tiff:
+            with TiffWriter(st("tiff")) as tiff:
                 tiff.write(data)
         elif type(data) is pd.DataFrame:
-            data.to_csv(sp(name, "csv"))
+            data.to_csv(st("csv"))
 
 
 def _binary_mask(
@@ -237,7 +236,7 @@ def _filtered_streak_mask(streak_data: StreakData) -> None:
     streak_data.filtered_streak_mask = np.zeros(shape=streak_data.shape, dtype=np.int8)
     for region in streak_data.filtered_streak_df.itertuples():
         streak_data.filtered_streak_mask[
-            region.min_row: region.max_row, region.min_col: region.max_col
+            region.min_row : region.max_row, region.min_col : region.max_col
         ] = 1
     return
 
@@ -276,10 +275,10 @@ def _correction_mask(streak_data: StreakData) -> None:
 
     for region in streak_data.filtered_streak_df.itertuples():
         padded_channel[
-            region.min_row, region.min_col + 1: region.max_col + 1
+            region.min_row, region.min_col + 1 : region.max_col + 1
         ] = np.ones(shape=(region.max_col - region.min_col))
         padded_channel[
-            region.max_row + 1, region.min_col + 1: region.max_col + 1
+            region.max_row + 1, region.min_col + 1 : region.max_col + 1
         ] = np.ones(shape=(region.max_col - region.min_col))
 
     streak_data.corrected_streak_mask = util.crop(padded_channel, crop_width=(1, 1))
@@ -317,7 +316,7 @@ def _streak_correction(streak_data: StreakData, channel: np.ndarray) -> np.ndarr
     corrected_channel = padded_channel.copy()
     for region in streak_data.filtered_streak_df.itertuples():
         corrected_channel[
-            region.max_row, region.min_col: region.max_col
+            region.max_row, region.min_col : region.max_col
         ] = _mean_correction(
             padded_channel,
             region.min_row,
@@ -350,8 +349,8 @@ def _mean_correction(
     """
     streak_corrected: np.ndarray = np.mean(
         [
-            channel[min_row, min_col + 1: max_col + 1],
-            channel[max_row + 1, min_col + 1: max_col + 1],
+            channel[min_row, min_col + 1 : max_col + 1],
+            channel[max_row + 1, min_col + 1 : max_col + 1],
         ],
         axis=0,
         dtype=np.int8,
