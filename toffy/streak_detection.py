@@ -58,7 +58,6 @@ class StreakData:
 
         Args:
             name (str): The field of the DataClass to be saved. Options include:
-                `all`,
                 `streak_mask`,
                 `streak_df`,
                 `filtered_streak_mask`,
