@@ -10,6 +10,7 @@ from skimage import (
     restoration,
     measure,
     draw,
+    util,
 )
 from dataclasses import dataclass
 import pandas as pd
@@ -25,13 +26,17 @@ class StreakData:
     Args:
         shape (tuple): The shape of the image / fov.
         streak_channel (str): The specific channel name used to create the masks.
-        corrected_dir (Path): The directory used to save the corrected images and optional data in.
+        corrected_dir (Path): The directory used to save the corrected tiffs and data in.
         streak_mask (np.ndarray): The first binary mask indicating candidate streaks.
-        streak_df (pd.DataFrame): A dataframe, with the location, area, and and eccentricity of each streak.
+        streak_df (pd.DataFrame): A dataframe, containing the location, area, and eccentricity
+        of each streak.
         filtered_streak_mask (np.ndarray): A binary mask with out the false streaks.
-        filtered_streak_df (np.ndarray): A subset of the `streak_df` containing location, area and eccentricity values of the filtered streaks.
-        boxed_streaks (np.ndarray): An optional binary mask containing an outline for each filtered streaks.
-        corrected_streak_mask (np.ndarray): An optional binary mask containing the lines used for correcting the streaks.
+        filtered_streak_df (np.ndarray): A subset of the `streak_df` containing location, area and
+        eccentricity values of the filtered streaks.
+        boxed_streaks (np.ndarray): An optional binary mask containing an outline for each 
+        filtered streaks.
+        corrected_streak_mask (np.ndarray): An optional binary mask containing the lines used for
+        correcting the streaks.
     """
 
     shape: tuple = None
@@ -262,14 +267,19 @@ def _correction_mask(streak_data: StreakData) -> None:
         streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
         data for streak correction.
     """
-    streak_data.corrected_streak_mask = np.zeros(shape=streak_data.shape, dtype=np.int8)
+    padded_channel = np.pad(
+        np.zeros(shape=streak_data.shape, dtype=np.int8), pad_width=(1, 1), mode="edge"
+    )
+
     for region in streak_data.filtered_streak_df.itertuples():
-        streak_data.corrected_streak_mask[
-            region.min_row - 1, region.min_col : region.max_col
+        padded_channel[
+            region.min_row, region.min_col + 1 : region.max_col + 1
         ] = np.ones(shape=(region.max_col - region.min_col))
-        streak_data.corrected_streak_mask[
-            region.max_row, region.min_col : region.max_col
+        padded_channel[
+            region.max_row + 1, region.min_col + 1 : region.max_col + 1
         ] = np.ones(shape=(region.max_col - region.min_col))
+
+    streak_data.corrected_streak_mask = util.crop(padded_channel, crop_width=(1, 1))
     return
 
 
@@ -300,14 +310,19 @@ def _streak_correction(streak_data: StreakData, channel: np.ndarray) -> np.ndarr
     Returns:
         np.ndarray: The corrected channel.
     """
-    corrected_channel = channel.copy()
+    padded_channel = np.pad(channel.copy(), pad_width=(1, 1), mode="edge")
+    corrected_channel = padded_channel.copy()
     for region in streak_data.filtered_streak_df.itertuples():
         corrected_channel[
-            region.min_row, region.min_col : region.max_col
+            region.max_row, region.min_col : region.max_col
         ] = _mean_correction(
-            channel, region.min_row, region.max_row, region.min_col, region.max_col
+            padded_channel,
+            region.min_row,
+            region.max_row,
+            region.min_col,
+            region.max_col,
         )
-    return corrected_channel
+    return util.crop(corrected_channel, crop_width=(1, 1), copy=True)
 
 
 def _mean_correction(
@@ -330,10 +345,14 @@ def _mean_correction(
         np.ndarray: Returns the corrected streak.
     """
     streak_corrected: np.ndarray = np.mean(
-        [channel[min_row - 1, min_col:max_col], channel[max_row, min_col:max_col]],
+        [
+            channel[min_row, min_col + 1 : max_col + 1],
+            channel[max_row + 1, min_col + 1 : max_col + 1],
+        ],
         axis=0,
         dtype=np.int8,
     )
+
     return streak_corrected
 
 
