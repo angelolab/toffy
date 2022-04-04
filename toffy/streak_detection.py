@@ -33,7 +33,7 @@ class StreakData:
         filtered_streak_mask (np.ndarray): A binary mask with out the false streaks.
         filtered_streak_df (np.ndarray): A subset of the `streak_df` containing location, area and
         eccentricity values of the filtered streaks.
-        boxed_streaks (np.ndarray): An optional binary mask containing an outline for each 
+        boxed_streaks (np.ndarray): An optional binary mask containing an outline for each
         filtered streaks.
         corrected_streak_mask (np.ndarray): An optional binary mask containing the lines used for
         correcting the streaks.
@@ -75,7 +75,7 @@ class StreakData:
             "boxed_streaks",
             "corrected_streak_mask",
         ]
-        if all_data == True:
+        if all_data:
             for field in fields:
                 self._save(name=field)
         elif name not in fields:
@@ -103,8 +103,11 @@ class StreakData:
             os.makedirs(data_dir)
 
         data = getattr(self, name)
-        fp = lambda name, ext: Path(data_dir, name + f".{ext}")
-        sp = partial(fp)
+
+        def save_dir(name, ext):
+            Path(data_dir, name + f".{ext}")
+
+        sp = partial(save_dir)
 
         if type(data) is np.ndarray:
             with TiffWriter(sp(name, "tiff")) as tiff:
@@ -142,27 +145,27 @@ def _binary_mask(
         np.ndarray: The binary mask containing all of the candidate strokes.
     """
     if channel is not None:
-        l: np.ndarray = channel
+        x: np.ndarray = channel
         # Denoise the Image
-        l = restoration.denoise_wavelet(
-            l, wavelet="db2", mode="hard", rescale_sigma=True
+        x = restoration.denoise_wavelet(
+            x, wavelet="db2", mode="hard", rescale_sigma=True
         )
         # Rescale the intensity using percentile ranges
-        pmin_v, pmax_v = np.percentile(l, (pmin, pmax))
-        l = exposure.rescale_intensity(l, in_range=(pmin_v, pmax_v))
+        pmin_v, pmax_v = np.percentile(x, (pmin, pmax))
+        x = exposure.rescale_intensity(x, in_range=(pmin_v, pmax_v))
         # Laplace filter to get the streaks
-        l = filters.laplace(l, ksize=3)
-        l = exposure.rescale_intensity(l, out_range=(0, 1))
+        x = filters.laplace(x, ksize=3)
+        x = exposure.rescale_intensity(x, out_range=(0, 1))
         # Smoothing
-        l = filters.gaussian(l, sigma=(0, gaussian_sigma))  # (y, x)
+        x = filters.gaussian(x, sigma=(0, gaussian_sigma))  # (y, x)
         # Exposure Adjustments
-        l = exposure.adjust_gamma(l, gamma=gamma, gain=gamma_gain)
-        l = exposure.adjust_log(l, gain=log_gain, inv=True)
-        l = exposure.rescale_intensity(l, out_range=(0, 1))
+        x = exposure.adjust_gamma(x, gamma=gamma, gain=gamma_gain)
+        x = exposure.adjust_log(x, gain=log_gain, inv=True)
+        x = exposure.rescale_intensity(x, out_range=(0, 1))
         # apply threshold
-        l = l > 0.3
+        x = x > 0.3
 
-        return l
+        return x
 
 
 def _create_mask(streak_data: StreakData, channel: np.ndarray) -> None:
@@ -339,7 +342,8 @@ def _mean_correction(
         max_row (int): The maximum row index of the streak. The y location where the streak ends.
         min_col (int): The minimum column index of the streak. The x location where the streak
         starts.
-        max_col (int): The maximum column index of the streak. The x location where the streak ends.
+        max_col (int): The maximum column index of the streak. The x location where the streak
+        ends.
 
     Returns:
         np.ndarray: Returns the corrected streak.
