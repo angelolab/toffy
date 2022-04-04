@@ -219,7 +219,7 @@ def _filter_mask(streak_data: StreakData) -> None:
     # Filter out eccentricities that are less than 0.99999 (only keep straight lines)
     # Filter out small areas (small lines)
     eccentricity_value = 0.99999
-    area_value = 70
+    area_value = 50
     streak_data.filtered_streak_df = streak_data.streak_df.query(
         f"eccentricity > {eccentricity_value} and area > {area_value}"
     )
