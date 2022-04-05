@@ -27,7 +27,7 @@ Continue with the installation.
 
 ## Setup
 * For Windows, you will need open the Anaconda powershell prompt instead of the regular powershell prompt for the following.
-![](C:\Users\Cameron Sower\Desktop\Angelo Lab\toffy\templates\img\conda_powershell.png)
+![](templates/img/conda_powershell.png)
 * If macOS user, open terminal. 
 
 If you do not already have git installed, run
