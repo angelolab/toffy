@@ -11,13 +11,14 @@ from skimage import (
     draw,
     util,
     io,
+    img_as_int,
 )
 from dataclasses import dataclass
 import pandas as pd
 from functools import partial
 
 
-@dataclass()
+@dataclass
 class StreakData:
     """Contains data for correcting the streaks consisting of binary masks, dataframes with
     location and size properties, a directory for saving, and the shape / channel for mask
@@ -109,7 +110,7 @@ class StreakData:
         st = partial(self._get_save_dir, data_dir, name)
 
         if type(data) is np.ndarray:
-            io.imsave(st("tiff"), data)
+            io.imsave(st("tiff"), data.astype(np.int8), check_contrast=False)
         elif type(data) is pd.DataFrame:
             data.to_csv(st("csv"))
 
@@ -202,6 +203,7 @@ def _filter_mask(streak_data: StreakData, min_length: int = 50) -> None:
             "bbox-3": "max_col",
         },
         axis="columns",
+        inplace=True
     )
     # Give the index column a name.
     streak_data.streak_df.index.names = ["index"]
@@ -364,7 +366,7 @@ def streak_correction(
     streak_data = StreakData(streak_channel=image_name)
 
     # Open fov directory containing all the tiff files
-    fov_data = load_utils.load_imgs_from_dir(data_dir=fov_dir)
+    fov_data = load_utils.load_imgs_from_dir(data_dir=fov_dir, dtype=np.int32)
     
     #  Open the image for mask generation.
     with fov_data.sel(fovs=image_name) as data:
@@ -384,7 +386,7 @@ def streak_correction(
     }
 
     for data in fov_data:
-        name = data.fovs.values
+        name = str(data.fovs.values)
         input_image = data.values.reshape(2048, -1)
         corrected_images[name] = _correct_streaks(
             streak_data=streak_data, input_image=input_image
@@ -398,7 +400,7 @@ def streak_correction(
     # Save the corrected tiffs
     for fn, img in corrected_images.items():
         fp = Path(streak_data.corrected_dir, fn + ".tiff")
-        io.imsave(fp, img)
+        io.imsave(fp, img.astype(np.int8), check_contrast = False)
 
     # Add mask information and return it
     if mask_data:
