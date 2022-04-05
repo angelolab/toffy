@@ -30,6 +30,7 @@ Continue with the installation.
 <p align="center">
 <img height="400" src="templates/img/conda_powershell.png" width="500"/>
 </p>
+
 * If macOS user, open terminal. 
 
 If you do not already have git installed, run
