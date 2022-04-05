@@ -11,11 +11,11 @@ from skimage import (
     draw,
     util,
     io,
-    img_as_int,
 )
 from dataclasses import dataclass
 import pandas as pd
 from functools import partial
+import xarray as xr
 
 
 @dataclass
@@ -122,7 +122,8 @@ def _make_binary_mask(
     gamma_gain: float = 0.10,
     log_gain: float = 1.00,
     pmin: int = 80,
-    pmax: int = 95,
+    pmax: float = 0.3,
+    threshold: int = 30,
 ) -> np.ndarray:
     """Performs a series of denoiseing, filtering, and exposure adjustments to create a binary
     mask for the given input image.
@@ -139,6 +140,8 @@ def _make_binary_mask(
         the intensity. Defaults to 80.
         pmax (int, optional): Upper bound for the `np.percentile` threshold, used for rescaling
         the intensity. Defaults to 95.
+        threshold(float, optional): The lower bound for pixel values used to create a binary mask.
+        Defaults to 0.30.
 
     Returns:
         np.ndarray: The binary mask containing all of the candidate strokes.
@@ -160,14 +163,16 @@ def _make_binary_mask(
     input_image = exposure.adjust_log(input_image, gain=log_gain, inv=True)
     input_image = exposure.rescale_intensity(input_image, out_range=(0, 1))
     # apply threshold
-    binary_mask = input_image > 0.3
+    binary_mask = input_image > threshold
 
     return binary_mask
 
 
-def _filter_mask(streak_data: StreakData, min_length: int = 50) -> None:
-    """Filters the streaks. Removes incorrectly masked streaks which are too short and do not have
-    a high eccentricity.
+def _make_mask_dataframe(streak_data: StreakData, min_length: int = 50) -> None:
+    """Converts the binary mask created by `_make_binary_mask` into a dataframe for
+    processing. The streaks are labeled, pixel information (min_row, min_col, max_row, max_col)
+    is evaluated and streak lengths / areas are calculated. In addition the `min_length` argument
+    allows the user to filter out streaks shorter than it.
 
     Args:
         streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
@@ -175,9 +180,7 @@ def _filter_mask(streak_data: StreakData, min_length: int = 50) -> None:
         min_length (int): The lower threshold for filtering streaks in pixels. Defaults to 50.
     """
     # Label all the candidate streaks
-    labeled_streaks = measure.label(
-        streak_data.streak_mask, connectivity=2, return_num=False
-    )
+    labeled_streaks = measure.label(streak_data.streak_mask, connectivity=2, return_num=False)
 
     # Gather properties of all the candidate streaks using regionprops.
     region_properties = measure.regionprops_table(
@@ -218,8 +221,8 @@ def _filter_mask(streak_data: StreakData, min_length: int = 50) -> None:
 
 
 def _make_filtered_mask(streak_data: StreakData) -> None:
-    """Creates the binary streak mask using the filtered streak DataFrame. These are the streaks
-    which will get corrected.
+    """Uses the filtered streak dataframe to create a binary mask, where 1 indicates the pixels
+    that will get corrected. This mask can be later saved and used for visualization purposes.
 
     Args:
         streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
@@ -228,13 +231,14 @@ def _make_filtered_mask(streak_data: StreakData) -> None:
     streak_data.filtered_streak_mask = np.zeros(shape=streak_data.shape, dtype=np.int8)
     for region in streak_data.filtered_streak_df.itertuples():
         streak_data.filtered_streak_mask[
-            region.min_row: region.max_row, region.min_col: region.max_col
+            region.min_row : region.max_row, region.min_col : region.max_col
         ] = 1
 
 
 def _make_box_outline(streak_data: StreakData) -> None:
-    """Creates a box outline for each binary streak using the filtered streak DataFrame. Outlines
-    the streaks that will get corrected. Primarily for visualization / debugging purposes.
+    """Creates a box outline for each binary streak using the filtered streak dataframe. Outlines
+    the streaks that will get corrected. This mask can be later saved and used for visualization
+    purposes.
 
     Args:
         streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
@@ -264,12 +268,12 @@ def _make_correction_mask(streak_data: StreakData) -> None:
     )
 
     for region in streak_data.filtered_streak_df.itertuples():
-        padded_image[region.min_row, region.min_col + 1: region.max_col + 1] = np.ones(
+        padded_image[region.min_row, region.min_col + 1 : region.max_col + 1] = np.ones(
             shape=(region.max_col - region.min_col)
         )
-        padded_image[
-            region.max_row + 1, region.min_col + 1: region.max_col + 1
-        ] = np.ones(shape=(region.max_col - region.min_col))
+        padded_image[region.max_row + 1, region.min_col + 1 : region.max_col + 1] = np.ones(
+            shape=(region.max_col - region.min_col)
+        )
 
     streak_data.corrected_streak_mask = util.crop(padded_image, crop_width=(1, 1))
 
@@ -292,9 +296,7 @@ def _correct_streaks(streak_data: StreakData, input_image: np.ndarray) -> np.nda
     corrected_image = padded_image.copy()
     # Correct each streak
     for region in streak_data.filtered_streak_df.itertuples():
-        corrected_image[
-            region.max_row, region.min_col: region.max_col
-        ] = _mean_correction(
+        corrected_image[region.max_row, region.min_col : region.max_col] = _mean_correction(
             padded_image,
             region.min_row,
             region.max_row,
@@ -328,9 +330,9 @@ def _mean_correction(
     streak_corrected: np.ndarray = np.mean(
         [
             # Row above
-            input_image[min_row, min_col + 1: max_col + 1],
+            input_image[min_row, min_col + 1 : max_col + 1],
             # Row below
-            input_image[max_row + 1, min_col + 1: max_col + 1],
+            input_image[max_row + 1, min_col + 1 : max_col + 1],
         ],
         axis=0,
         dtype=np.int8,
@@ -371,26 +373,23 @@ def streak_correction(
     #  Open the image for mask generation.
     with fov_data.sel(fovs=image_name) as data:
         # Reshape it from (x,x,1) to (x,x)
-        input_image = data.values.reshape(2048, -1)
+        input_image = data[:,:, 0]
         streak_data.shape = input_image.shape
         # Create and filter the binary masks
         streak_data.streak_mask = _make_binary_mask(input_image=input_image)
-        _filter_mask(streak_data=streak_data, min_length=50)
+        _make_mask_dataframe(streak_data=streak_data, min_length=50)
 
     # Get the file names.
     channel_fn = fov_data.fovs.values.tolist()
 
     # Initialize the corrected images.
-    corrected_images = {
-        fn: np.zeros(shape=streak_data.shape, dtype=np.int8) for fn in channel_fn
-    }
+    corrected_images = {fn: np.zeros(shape=streak_data.shape, dtype=np.int8) for fn in channel_fn}
 
+    
     for data in fov_data:
         name = str(data.fovs.values)
-        input_image = data.values.reshape(2048, -1)
-        corrected_images[name] = _correct_streaks(
-            streak_data=streak_data, input_image=input_image
-        )
+        input_image = data.values[:,:,0]
+        corrected_images[name] = _correct_streaks(streak_data=streak_data, input_image=input_image)
 
     # Create the directory to store the corrected tiffs
     streak_data.corrected_dir = Path(fov_dir, "corrected")
