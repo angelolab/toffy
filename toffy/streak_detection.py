@@ -203,7 +203,7 @@ def _filter_mask(streak_data: StreakData, min_length: int = 50) -> None:
             "bbox-3": "max_col",
         },
         axis="columns",
-        inplace=True
+        inplace=True,
     )
     # Give the index column a name.
     streak_data.streak_df.index.names = ["index"]
@@ -228,7 +228,7 @@ def _make_filtered_mask(streak_data: StreakData) -> None:
     streak_data.filtered_streak_mask = np.zeros(shape=streak_data.shape, dtype=np.int8)
     for region in streak_data.filtered_streak_df.itertuples():
         streak_data.filtered_streak_mask[
-            region.min_row : region.max_row, region.min_col : region.max_col
+            region.min_row: region.max_row, region.min_col: region.max_col
         ] = 1
 
 
@@ -264,11 +264,11 @@ def _make_correction_mask(streak_data: StreakData) -> None:
     )
 
     for region in streak_data.filtered_streak_df.itertuples():
+        padded_image[region.min_row, region.min_col + 1: region.max_col + 1] = np.ones(
+            shape=(region.max_col - region.min_col)
+        )
         padded_image[
-            region.min_row, region.min_col + 1 : region.max_col + 1
-        ] = np.ones(shape=(region.max_col - region.min_col))
-        padded_image[
-            region.max_row + 1, region.min_col + 1 : region.max_col + 1
+            region.max_row + 1, region.min_col + 1: region.max_col + 1
         ] = np.ones(shape=(region.max_col - region.min_col))
 
     streak_data.corrected_streak_mask = util.crop(padded_image, crop_width=(1, 1))
@@ -293,7 +293,7 @@ def _correct_streaks(streak_data: StreakData, input_image: np.ndarray) -> np.nda
     # Correct each streak
     for region in streak_data.filtered_streak_df.itertuples():
         corrected_image[
-            region.max_row, region.min_col : region.max_col
+            region.max_row, region.min_col: region.max_col
         ] = _mean_correction(
             padded_image,
             region.min_row,
@@ -328,9 +328,9 @@ def _mean_correction(
     streak_corrected: np.ndarray = np.mean(
         [
             # Row above
-            input_image[min_row, min_col + 1 : max_col + 1],
+            input_image[min_row, min_col + 1: max_col + 1],
             # Row below
-            input_image[max_row + 1, min_col + 1 : max_col + 1],
+            input_image[max_row + 1, min_col + 1: max_col + 1],
         ],
         axis=0,
         dtype=np.int8,
@@ -367,19 +367,19 @@ def streak_correction(
 
     # Open fov directory containing all the tiff files
     fov_data = load_utils.load_imgs_from_dir(data_dir=fov_dir, dtype=np.int32)
-    
+
     #  Open the image for mask generation.
     with fov_data.sel(fovs=image_name) as data:
         # Reshape it from (x,x,1) to (x,x)
-        input_image = data.values.reshape(2048,-1)
+        input_image = data.values.reshape(2048, -1)
         streak_data.shape = input_image.shape
         # Create and filter the binary masks
-        streak_data.streak_mask = _make_binary_mask(input_image = input_image)
+        streak_data.streak_mask = _make_binary_mask(input_image=input_image)
         _filter_mask(streak_data=streak_data, min_length=50)
-    
+
     # Get the file names.
     channel_fn = fov_data.fovs.values.tolist()
-    
+
     # Initialize the corrected images.
     corrected_images = {
         fn: np.zeros(shape=streak_data.shape, dtype=np.int8) for fn in channel_fn
@@ -400,7 +400,7 @@ def streak_correction(
     # Save the corrected tiffs
     for fn, img in corrected_images.items():
         fp = Path(streak_data.corrected_dir, fn + ".tiff")
-        io.imsave(fp, img.astype(np.int8), check_contrast = False)
+        io.imsave(fp, img.astype(np.int8), check_contrast=False)
 
     # Add mask information and return it
     if mask_data:
