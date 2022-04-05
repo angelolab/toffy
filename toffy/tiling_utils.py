@@ -4,11 +4,13 @@ from IPython.display import display
 import ipywidgets as widgets
 from itertools import combinations, product
 import json
+from matplotlib.patches import Rectangle
 import matplotlib.pyplot as plt
 import numpy as np
 from operator import itemgetter
 import os
 import pandas as pd
+from random import randint
 import re
 from skimage.draw import ellipse
 from sklearn.linear_model import LinearRegression
@@ -1269,11 +1271,201 @@ def generate_validation_annot(manual_to_auto_map, manual_auto_dist, check_dist=2
     return warning_annot
 
 
+class DraggableRectangle:
+    def __init__(self, coords, width, height, color, id_val, ax):
+        rect = Rectangle(coords, width, height, color=color)
+        ax.add_patch(rect)
+        self.rect = rect
+        self.id_val = id_val
+        self.press = None
+
+    def connect(self):
+        """Connect to all the events we need."""
+        self.cidpress = self.rect.figure.canvas.mpl_connect(
+            'button_press_event', self.on_press)
+        self.cidrelease = self.rect.figure.canvas.mpl_connect(
+            'button_release_event', self.on_release)
+        self.cidmotion = self.rect.figure.canvas.mpl_connect(
+            'motion_notify_event', self.on_motion)
+
+    def on_press(self, event):
+        """Check whether mouse is over us; if so, store some data."""
+        print("Pressing the rectangle")
+        if event.inaxes != self.rect.axes:
+            return
+        contains, attrd = self.rect.contains(event)
+        if not contains:
+            return
+        print('event contains', self.rect.xy)
+        self.press = self.rect.xy, (event.xdata, event.ydata), self.id_val
+
+    def on_motion(self, event):
+        """Move the rectangle if the mouse is over us."""
+        if self.press is None or event.inaxes != self.rect.axes:
+            return
+
+        # self.rect.figure.canvas.clf()
+
+        (x0, y0), (xpress, ypress), _ = self.press
+        dx = event.xdata - xpress
+        dy = event.ydata - ypress
+        print(f'x0={x0}, xpress={xpress}, event.xdata={event.xdata}, '
+              f'dx={dx}, x0+dx={x0+dx}')
+        self.rect.set_x(x0+dx)
+        self.rect.set_y(y0+dy)
+
+        self.rect.figure.canvas.draw()
+
+    def on_release(self, event):
+        """Clear button press information."""
+        print("Releasing the rectangle")
+        if self.id_val == self.press[2]:
+            # self.rect.remove()
+            if self.rect.get_facecolor() == (0.0, 0.0, 1.0, 1.0):
+                self.rect.set_color((1.0, 0.0, 0.0, 1.0))
+            else:
+                self.rect.set_color((0.0, 0.0, 1.0, 1.0))
+
+        self.press = None
+
+        with open('file.txt', 'w') as f:
+            f.write("Just finished working with rectangle ID: %d" % self.id_val)
+
+        self.rect.figure.canvas.draw()
+
+    def disconnect(self):
+        """Disconnect all callbacks."""
+        self.rect.figure.canvas.mpl_disconnect(self.cidpress)
+        self.rect.figure.canvas.mpl_disconnect(self.cidrelease)
+        self.rect.figure.canvas.mpl_disconnect(self.cidmotion)
+
+
+# TODO: potential type hinting candidate?
+def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, mapping_path,
+                                   figsize=(7, 7)):
+    """Creates the tiled region interactive interface for manual to auto FOVs
+
+    Args:
+        tiled_region_fovs (dict):
+            The list of FOVs to overlay for each tiled region
+        tiling_params (dict):
+            The tiling parameters generated for each tiled region
+        slide_img (numpy.ndarray):
+            The image to overlay
+        mapping_path (str):
+            The path to the file to save the mapping to
+        figsize (tuple):
+            The size of the interactive figure to display
+    """
+
+    # error check: ensure mapping path exists
+    if not os.path.exists(os.path.split(mapping_path)[0]):
+        raise FileNotFoundError(
+            "Path %s to mapping_path does not exist, "
+            "please rename to a valid location" % os.path.split(mapping_path)[0]
+        )
+
+    # if there isn't a coreg_path defined, the user needs to run update_coregistration_params first
+    if not os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json')):
+        raise FileNotFoundError(
+            "You haven't co-registered your slide yet. Please run "
+            "update_coregistraion_params.ipynb first."
+        )
+
+    # load the co-registraition parameters in
+    # NOTE: the last set of params in the coreg_params list is the most up-to-date
+    with open(os.path.join('..', 'toffy', 'coreg_params.json')) as cp:
+        stage_optical_coreg_params = json.load(cp)['coreg_params'][-1]
+
+    # map each region to a unique color
+    # TODO: default to tab20 discrete cma, make customizable?
+    cm = plt.get_cmap('tab20')
+    region_colors = {}
+    for index, region in enumerate(tiling_params['region_params']):
+        region_colors[region['region_name']] = cm(index)
+
+    # define an output context to display
+    out = widgets.Output()
+
+    # display the figure to plot on
+    fig, ax = plt.subplots(figsize=figsize)
+
+    # make sure the output gets displayed to the output widget so it displays properly
+    # with out:
+    # draw the image
+    img_plot = ax.imshow(slide_img)
+
+    # overwrite the default title
+    _ = plt.title('Overlay of tiled region FOVs')
+
+    # remove massive padding
+    _ = plt.tight_layout()
+
+    # define status of the save annotation, initially None, updates when user clicks w_save
+    # NOTE: ipywidget callback functions can only access dicts defined in scope
+    save_ann = {'annotation': None}
+
+    print("About to iterate over all FOVs")
+
+    # define a rectangle for each region
+    for index, fov in enumerate(tiled_region_fovs['fovs']):
+        print("Drawing for FOV %s" % fov['name'])
+        # skip Moly points
+        # TODO: will Moly points always be named MoQC?
+        if fov['name'] == 'MoQC':
+            continue
+
+        # extract the region name, this method accounts for '_' in the region name itself
+        fov_region = '_'.join(fov['name'].split('_')[:-1])
+
+        # use the region name to extract the color
+        fov_color = region_colors[fov_region]
+
+        # get the centroid coordinates
+        fov_centroid = tuple(fov['centerPointMicrons'].values())
+
+        # define the top-left corner, subtract fovSizeMicrons from x and add it to y
+        fov_size = fov['fovSizeMicrons']
+        fov_top_left_microns = (fov_centroid[0] - fov_size / 2, fov_centroid[1] + fov_size / 2)
+
+        # co-register the top-left fov corner
+        fov_top_left_pixels = convert_stage_to_optical(
+            fov_top_left_microns, stage_optical_coreg_params
+        )
+
+        # we'll also need to find the length and width of the rectangle
+        # NOTE: we do so by co-registering the bottom-left and top-right points
+        # then finding the distance from those to the top-left
+        fov_bottom_left_microns = (fov_centroid[0] - fov_size / 2, fov_centroid[1] - fov_size / 2)
+        fov_bottom_left_pixels = convert_stage_to_optical(
+            fov_bottom_left_microns, stage_optical_coreg_params
+        )
+
+        fov_top_right_microns = (fov_centroid[0] + fov_size / 2, fov_centroid[1] + fov_size / 2)
+        fov_top_right_pixels = convert_stage_to_optical(
+            fov_top_right_microns, stage_optical_coreg_params
+        )
+
+        fov_height = fov_bottom_left_pixels[0] - fov_top_left_pixels[0]
+        fov_width = fov_top_right_pixels[1] - fov_top_left_pixels[1]
+
+        print(fov_top_left_pixels)
+        print(fov_bottom_left_pixels)
+        print(fov_top_right_pixels)
+        print(fov_width)
+        print(fov_height)
+
+        # draw the rectangle defining this fov
+        dr = DraggableRectangle(
+            fov_top_left_pixels, fov_width, fov_height, fov_color, fov['name'], ax
+        )
+
+
 # TODO: potential type hinting candidate?
 def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
                           draw_radius=7, figsize=(7, 7),
                           check_dist=2000, check_duplicates=True, check_mismatches=True):
-    """Creates the remapping interactive interface for manual to auto FOVs
+    """Creates the TMA remapping interactive interface for manual to auto FOVs
 
     Args:
         manual_fovs (dict):
