@@ -6,11 +6,21 @@ This repo is currently in beta testing. None of the code has been published yet,
 ## Table of Contents
 
 - [Overview](#overview)
-- [Setup](#setup)
-- TBD once cami finishes installation update
+  - [First time using toffy](#using-toffy-for-the-first-time)
+  - [Setting up a MIBI run](#setting-up-a-mibi-run)
+  - [Monitoring a MIBI run](#monitoring-a-mibi-run)
+  - [Processing data after a MIBI run](#processing-mibi-data)
+- [Installation](#installation)
+  - [Requirements for specific operating systems](#requirements-for-specific-operating-systems)
+  - [Setting up the virtual environment](#setting-up-the-virtual-environment)
+  - [Using the repo](#using-the-repo)
+  - [Updating the repo](#updating-the-repo)
 
 ## Overview
-The repo has three main parts, with associated code and jupyter notebooks for each
+The repo has four main parts, with associated code and jupyter notebooks for each
+
+### Using toffy for the first time
+The first time you use toffy on one of the commercial instruments, you'll need to perform some basic tasks to ensure everything is working properly. The following jupyter notebook (link here) will guide you through this process
 
 ### Setting up a MIBI run 
 For large MIBI runs, it is often convenient to automatically generate the JSON file containing the individual FOVs. There are two notebooks for this task, one for large tiled regions, the second for TMAs. If you will be tiling multiple adjacent FOVs together into a single image, the [generate tiled regions](./templates/generate_tiled_regions.ipynb) notebook can automate this process. You provide the location of the top corner of the tiled region, along with the number of fovs along the rows and columns, and it will automatically create the appropriate JSON file. 
@@ -25,14 +35,13 @@ Once your run has finished, you can begin to process the data to make it ready f
 
 Following compensation, you will want to normalize your images to ensure consistent intensity across the run. This functionality is currently in the works, and we'll have a beta version available to test soon. 
 
-### System
-Depending on what operating system you are planning to install toffy on, the requirements will differ slightly.
-- [Install on Windows](#windows)
-- [Install on macOS](#macos)
+## Installation
+In order to get toffy working, you'll need to first install the repo. 
 
+### Requirements for specific operating systems
+The process of setting up is largely the same for different operating systems. However, there are a few key differences. 
 
-## Requirements
-### Windows
+#### Windows
 
 - You must have **C++ Build Tools** (VS19) installed. 
 Go to  https://visualstudio.microsoft.com/visual-cpp-build-tools/ and click 'Download Build Tools'.
@@ -44,13 +53,13 @@ Download here: https://docs.conda.io/en/latest/miniconda.html and select the app
 Choose "Just Me" option for installation, and do not need to select the "Tutorial" or "Getting Started" options.
 Continue with the installation.
 
-### macOS
+#### macOS
 - You will need the latest version of Anaconda (**Miniconda** preferred). 
 Download here: https://docs.conda.io/en/latest/miniconda.html and select the appropriate download for your system.
 Choose "Just Me" option for installation, and do not need to select the "Tutorial" or "Getting Started" options.
 Continue with the installation.
 
-## Setup
+### Setting up the virtual environment
 * For Windows, you will need open the Anaconda powershell prompt instead of the regular powershell prompt for the following.
 <p align="center">
 <img height="400" src="templates/img/conda_powershell.png" width="500"/>
@@ -75,9 +84,10 @@ cd toffy
 conda env create -f environment.yml
 ```
 
-## Usage
+### Using the repo
+Once you're ready to use the repo, enter the following commands. 
 
-Activate the environment:
+First, activate the environment:
 
 ```
 conda activate toffy_env
@@ -89,17 +99,16 @@ Once activated, notebooks can be used via this command:
 jupyter lab --allow-root
 ```
 
-## Updating
+You can leave the jupyter notebook running once you're done. If it ever gets closed or you need to reopen it, just follow the steps above.
 
-Run the command
+### Updating the repo
 
+The toffy repo is constantly being updated. In order to get those changes to your version, you'll need to tell git to update with the following command:
 ```
 git pull
 ```
 
-> The following step will probably be changed in the future
-
-You may have to rebuild the environment which can be done via:
+After performing the above command, you will sometimes need to update your environment as well:
 
 ```
 conda remove --name toffy_env --all
