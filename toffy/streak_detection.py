@@ -1,6 +1,7 @@
+from cProfile import label
 import numpy as np
 import os
-from typing import Union, Optional
+from typing import Union, Optional, Tuple
 from pathlib import Path
 from ark.utils import load_utils
 from skimage import (
@@ -11,6 +12,7 @@ from skimage import (
     draw,
     util,
     io,
+    color,
 )
 from dataclasses import dataclass
 import pandas as pd
@@ -40,7 +42,7 @@ class StreakData:
         correcting the streaks.
     """
 
-    shape: tuple = None
+    shape: Tuple[int, int] = None
     streak_channel: str = None
     corrected_dir: Path = None
     streak_mask: np.ndarray = None
@@ -53,66 +55,73 @@ class StreakData:
     def __getitem__(self, item):
         return getattr(self, item)
 
-    def save_data(self, name: Optional[str] = None, all_data: bool = True):
-        """Given a field name, it saves the data as a tiff file if it's a Numpy array, and a csv
-        if it is a Pandas DataFrame.
 
-        Args:
-            name (str): The field of the DataClass to be saved. Options include:
-                `streak_mask`,
-                `streak_df`,
-                `filtered_streak_mask`,
-                `filtered_streak_df`,
-                `boxed_streaks`,
-                `corrected_streak_mask`,
-            all_data (bool): A flag for saving all the masks and dataframes. Defaults to `True`.
-        """
-        fields = [
-            "streak_mask",
-            "streak_df",
-            "filtered_streak_mask",
-            "filtered_streak_df",
-            "boxed_streaks",
-            "corrected_streak_mask",
-        ]
-        if all_data:
-            for field in fields:
-                self._save(name=field)
-        elif name not in fields:
-            raise ValueError(
-                "Invalid field to save. Options include:\
-                \n streak_mask\
-                \n streak_df\
-                \n filtered_streak_mask\
-                \n filtered_streak_df\
-                \n boxed_streaks\
-                \n corrected_streak_mask"
-            )
-        elif name is not None:
-            self._save(name)
-        else:
-            raise ValueError("Please enter a field name, or set `all_data` to True.")
+def _get_save_dir(data_dir: Path, name: str, ext: str):
+    return Path(data_dir, name + f".{ext}")
 
-    def _get_save_dir(self, data_dir: Path, name: str, ext: str):
-        return Path(data_dir, name + f".{ext}")
 
-    def _save(self, name: str):
-        """Helper function for saving tiff binary masks and dataframes.
+def _save(streak_data: StreakData, name: str):
+    """Helper function for saving tiff binary masks and dataframes.
 
-        Args:
-            name (str): The field of the DataClass to be saved.
-        """
-        data_dir = Path(self.corrected_dir, f"streak_data_{self.streak_channel}")
-        if not os.path.exists(data_dir):
-            os.makedirs(data_dir)
+    Args:
+        streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
+        data for streak correction.
+        name (str): The field of the DataClass to be saved.
+    """
+    data_dir = Path(streak_data.corrected_dir, f"streak_data_{streak_data.streak_channel}")
+    if not os.path.exists(data_dir):
+        os.makedirs(data_dir)
 
-        data = getattr(self, name)
-        st = partial(self._get_save_dir, data_dir, name)
+    data = getattr(streak_data, name)
+    st = partial(_get_save_dir, data_dir, name)
 
-        if type(data) is np.ndarray:
-            io.imsave(st("tiff"), data.astype(np.int8), check_contrast=False)
-        elif type(data) is pd.DataFrame:
-            data.to_csv(st("csv"))
+    if type(data) is np.ndarray:
+        io.imsave(st("tiff"), data.astype(int), check_contrast=False)
+    elif type(data) is pd.DataFrame:
+        data.to_csv(st("csv"))
+
+
+def save_data(streak_data: StreakData, name: Optional[str] = None, all_data: bool = True):
+    """Given a field name, it saves the data as a tiff file if it's a Numpy array, and a csv
+    if it is a Pandas DataFrame.
+
+    Args:
+        streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
+        data for streak correction.
+        name (str): The field of the DataClass to be saved. Options include:
+            `streak_mask`,\n
+            `streak_df`,\n
+            `filtered_streak_mask`,\n
+            `filtered_streak_df`,\n
+            `boxed_streaks`,\n
+            `corrected_streak_mask`,
+        all_data (bool): A flag for saving all the masks and dataframes. Defaults to `True`.
+    """
+    fields = [
+        "streak_mask",
+        "streak_df",
+        "filtered_streak_mask",
+        "filtered_streak_df",
+        "boxed_streaks",
+        "corrected_streak_mask",
+    ]
+    if all_data:
+        for field in fields:
+            _save(streak_data, name=field)
+    elif name not in fields:
+        raise ValueError(
+            "Invalid field to save. Options include:\
+            \n streak_mask\
+            \n streak_df\
+            \n filtered_streak_mask\
+            \n filtered_streak_df\
+            \n boxed_streaks\
+            \n corrected_streak_mask"
+        )
+    elif name is not None:
+        _save(streak_data, name=name)
+    else:
+        raise ValueError("Please enter a field name, or set `all_data` to True.")
 
 
 def _make_binary_mask(
@@ -121,9 +130,9 @@ def _make_binary_mask(
     gamma: float = 3.80,
     gamma_gain: float = 0.10,
     log_gain: float = 1.00,
-    pmin: int = 80,
-    pmax: float = 0.3,
-    threshold: int = 30,
+    pmin: int = 2,
+    pmax: int = 98,
+    threshold: float = 0.30,
 ) -> np.ndarray:
     """Performs a series of denoiseing, filtering, and exposure adjustments to create a binary
     mask for the given input image.
@@ -137,9 +146,9 @@ def _make_binary_mask(
         0.10.
         log_gain (float, optional): Parameter for `skimage.exposure.adjust_log`. Defaults to 1.00.
         pmin (int, optional): Lower bound for the `np.percentile` threshold, used for rescaling
-        the intensity. Defaults to 80.
+        the intensity. Defaults to 2.
         pmax (int, optional): Upper bound for the `np.percentile` threshold, used for rescaling
-        the intensity. Defaults to 95.
+        the intensity. Defaults to 98.
         threshold(float, optional): The lower bound for pixel values used to create a binary mask.
         Defaults to 0.30.
 
@@ -228,7 +237,7 @@ def _make_filtered_mask(streak_data: StreakData) -> None:
         streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
         data for streak correction.
     """
-    streak_data.filtered_streak_mask = np.zeros(shape=streak_data.shape, dtype=np.int8)
+    streak_data.filtered_streak_mask = np.zeros(shape=streak_data.shape, dtype=np.uint8)
     for region in streak_data.filtered_streak_df.itertuples():
         streak_data.filtered_streak_mask[
             region.min_row : region.max_row, region.min_col : region.max_col
@@ -244,7 +253,7 @@ def _make_box_outline(streak_data: StreakData) -> None:
         streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
         data for streak correction.
     """
-    streak_data.boxed_streaks = np.zeros(shape=streak_data.shape, dtype=np.int8)
+    streak_data.boxed_streaks = np.zeros(shape=streak_data.shape, dtype=np.uint8)
     for region in streak_data.filtered_streak_df.itertuples():
         y, x = draw.rectangle_perimeter(
             start=(region.min_row, region.min_col),
@@ -264,7 +273,7 @@ def _make_correction_mask(streak_data: StreakData) -> None:
         data for streak correction.
     """
     padded_image = np.pad(
-        np.zeros(shape=streak_data.shape, dtype=np.int8), pad_width=(1, 1), mode="edge"
+        np.zeros(shape=streak_data.shape, dtype=np.uint8), pad_width=(1, 1), mode="edge"
     )
 
     for region in streak_data.filtered_streak_df.itertuples():
@@ -335,10 +344,32 @@ def _mean_correction(
             input_image[max_row + 1, min_col + 1 : max_col + 1],
         ],
         axis=0,
-        dtype=np.int8,
+        dtype=np.uint8,
     )
 
     return streak_corrected
+
+
+def _save_channels(streak_data: StreakData, corrected_images: xr.DataArray, fov_dir: Path) -> None:
+    """Saves the corrected images in a subdirectory of `fov_dir`.
+
+    Args:
+        streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
+        data for streak correction.
+        corrected_images (xr.DataArray): The DataArray continaing the set of corrected images.
+        fov_dir (Path): A directory containing the fov and all it's channels for correction.
+    """
+    # Create the directory to store the corrected tiffs
+    streak_data.corrected_dir = Path(fov_dir, "corrected")
+    if not os.path.exists(streak_data.corrected_dir):
+        os.makedirs(streak_data.corrected_dir)
+
+    # Save the corrected tiffs
+    for fov in corrected_images:
+        channel_name = str(fov.fovs.values)
+        img: np.ndarray = fov.values
+        fp = Path(streak_data.corrected_dir, channel_name + ".tiff")
+        io.imsave(fp, img, check_contrast=False)
 
 
 def streak_correction(
@@ -373,7 +404,7 @@ def streak_correction(
     #  Open the image for mask generation.
     with fov_data.sel(fovs=image_name) as data:
         # Reshape it from (x,x,1) to (x,x)
-        input_image = data[:,:, 0]
+        input_image = data[:, :, 0]
         streak_data.shape = input_image.shape
         # Create and filter the binary masks
         streak_data.streak_mask = _make_binary_mask(input_image=input_image)
@@ -382,24 +413,25 @@ def streak_correction(
     # Get the file names.
     channel_fn = fov_data.fovs.values.tolist()
 
-    # Initialize the corrected images.
-    corrected_images = {fn: np.zeros(shape=streak_data.shape, dtype=np.int8) for fn in channel_fn}
+    # Initialize the corrected image fov dimensions.
+    fov_dim_size: int = len(channel_fn)
+    row_size, col_size = streak_data.shape
+    cor_img_data = np.zeros(shape=(fov_dim_size, row_size, col_size), dtype=np.uint8)
 
-    
-    for data in fov_data:
-        name = str(data.fovs.values)
-        input_image = data.values[:,:,0]
-        corrected_images[name] = _correct_streaks(streak_data=streak_data, input_image=input_image)
+    # Correct streaks and add them to the np.array
+    for idx, fov_chan in enumerate(fov_data):
+        input_image = fov_chan.values[:, :, 0]
+        cor_img_data[idx] = _correct_streaks(streak_data=streak_data, input_image=input_image)
 
-    # Create the directory to store the corrected tiffs
-    streak_data.corrected_dir = Path(fov_dir, "corrected")
-    if not os.path.exists(streak_data.corrected_dir):
-        os.makedirs(streak_data.corrected_dir)
+    # Create xarray from np.array
+    corrected_images = xr.DataArray(
+        data=cor_img_data,
+        coords=[fov_data.fovs.values, range(row_size), range(col_size)],
+        dims=["fovs", "rows", "cols"],
+    )
 
-    # Save the corrected tiffs
-    for fn, img in corrected_images.items():
-        fp = Path(streak_data.corrected_dir, fn + ".tiff")
-        io.imsave(fp, img.astype(np.int8), check_contrast=False)
+    # Save each channel
+    _save_channels(streak_data=streak_data, corrected_images=corrected_images, fov_dir=fov_dir)
 
     # Add mask information and return it
     if mask_data:
