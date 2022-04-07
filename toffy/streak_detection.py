@@ -24,8 +24,7 @@ import xarray as xr
 class StreakData:
     """Contains data for correcting the streaks consisting of binary masks, dataframes with
     location and size properties, a directory for saving, and the shape / channel for mask
-    generation. In addition provides a function to save any of the binary masks or dataframes.
-
+    generation.
     Args:
         shape (tuple): The shape of the image / fov.
         streak_channel (str): The specific channel name used to create the masks.
@@ -51,9 +50,6 @@ class StreakData:
     filtered_streak_df: pd.DataFrame = None
     boxed_streaks: np.ndarray = None
     corrected_streak_mask: np.ndarray = None
-
-    def __getitem__(self, item):
-        return getattr(self, item)
 
 
 def _get_save_dir(data_dir: Path, name: str, ext: str):
@@ -162,15 +158,19 @@ def _make_binary_mask(
     # Rescale the intensity using percentile ranges
     pmin_v, pmax_v = np.percentile(input_image, (pmin, pmax))
     input_image = exposure.rescale_intensity(input_image, in_range=(pmin_v, pmax_v))
+    
     # Laplace filter to get the streaks
     input_image = filters.laplace(input_image, ksize=3)
     input_image = exposure.rescale_intensity(input_image, out_range=(0, 1))
+    
     # Smoothing
     input_image = filters.gaussian(input_image, sigma=(0, gaussian_sigma))  # (y, x)
+    
     # Exposure Adjustments
     input_image = exposure.adjust_gamma(input_image, gamma=gamma, gain=gamma_gain)
     input_image = exposure.adjust_log(input_image, gain=log_gain, inv=True)
     input_image = exposure.rescale_intensity(input_image, out_range=(0, 1))
+    
     # apply threshold
     binary_mask = input_image > threshold
 
@@ -419,15 +419,15 @@ def streak_correction(
     cor_img_data = np.zeros(shape=(fov_dim_size, row_size, col_size), dtype=np.uint8)
 
     # Correct streaks and add them to the np.array
-    for idx, fov_chan in enumerate(fov_data):
-        input_image = fov_chan.values[:, :, 0]
+    for idx, channel in enumerate(fov_data):
+        input_image = channel.values[:, :, 0]
         cor_img_data[idx] = _correct_streaks(streak_data=streak_data, input_image=input_image)
 
     # Create xarray from np.array
     corrected_images = xr.DataArray(
         data=cor_img_data,
         coords=[fov_data.fovs.values, range(row_size), range(col_size)],
-        dims=["fovs", "rows", "cols"],
+        dims=["channels", "rows", "cols"],
     )
 
     # Save each channel
