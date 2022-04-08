@@ -52,8 +52,9 @@ class StreakData:
     corrected_streak_mask: np.ndarray = None
 
 
-def _get_save_dir(data_dir: Path, name: str, ext: str):
-    """_summary_
+def _get_save_dir(data_dir: Path, name: str, ext: str) -> Path:
+    """A helper function which generates the path where the masks and DataFrames
+    are saved to.
 
     Args:
         data_dir (Path): The directory to save the binary masks and DataFrames.
@@ -61,7 +62,7 @@ def _get_save_dir(data_dir: Path, name: str, ext: str):
         ext (str): The file extension, either `csv` or `tiff`.
 
     Returns:
-        _type_: _description_
+        Path: Returns the path where the file is saved to.
     """
     return Path(data_dir, name + f".{ext}")
 
