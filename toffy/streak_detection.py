@@ -88,8 +88,8 @@ def _save(streak_data: StreakData, name: str):
 
 
 def save_streak_masks(streak_data: StreakData):
-    """Saves the data in StreakData as a tiff file if it's a Numpy array, and a csv if it is a Pandas DataFrame.
-    Useful for visualization and debugging.
+    """Saves the data in StreakData as a tiff file if it's a Numpy array, and a csv if it is a
+    Pandas DataFrame. Useful for visualization and debugging.
 
     Args:
         streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
@@ -217,8 +217,9 @@ def _make_mask_dataframe(streak_data: StreakData, min_length: int = 50) -> None:
 
 
 def _make_filtered_mask(streak_data: StreakData) -> None:
-    """Visualization Utility. Uses the filtered streak dataframe to create a binary mask, where 1 indicates the pixels
-    that will get corrected. This mask can be later saved and used for visualization purposes.
+    """Visualization Utility. Uses the filtered streak dataframe to create a binary mask, where
+    1 indicates the pixels that will get corrected. This mask can be later saved and used for
+    visualization purposes.
 
     Args:
         streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
@@ -227,14 +228,14 @@ def _make_filtered_mask(streak_data: StreakData) -> None:
     streak_data.filtered_streak_mask = np.zeros(shape=streak_data.shape, dtype=np.uint8)
     for region in streak_data.filtered_streak_df.itertuples():
         streak_data.filtered_streak_mask[
-            region.min_row : region.max_row, region.min_col : region.max_col
+            region.min_row: region.max_row, region.min_col: region.max_col
         ] = 1
 
 
 def _make_box_outline(streak_data: StreakData) -> None:
-    """Visualization Utility. Creates a box outline for each binary streak using the filtered streak dataframe. Outlines
-    the streaks that will get corrected. This mask can be later saved and used for visualization
-    purposes.
+    """Visualization Utility. Creates a box outline for each binary streak using the filtered
+    streak dataframe. Outlines the streaks that will get corrected. This mask can be later saved
+    and used for visualization purposes.
 
     Args:
         streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
@@ -252,9 +253,9 @@ def _make_box_outline(streak_data: StreakData) -> None:
 
 
 def _make_correction_mask(streak_data: StreakData) -> None:
-    """Visualization Utility. Creates the correction mask for each binary streak using the filtered streak DataFrame.
-    Marks pixels which will be used for the correction method. This mask can be later saved and used for visualization
-    purposes.
+    """Visualization Utility. Creates the correction mask for each binary streak using the
+    filtered streak DataFrame. Marks pixels which will be used for the correction method.
+    This mask can be later saved and used for visualization purposes.
 
     Args:
         streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
@@ -265,10 +266,10 @@ def _make_correction_mask(streak_data: StreakData) -> None:
     )
 
     for region in streak_data.filtered_streak_df.itertuples():
-        padded_image[region.min_row, region.min_col + 1 : region.max_col + 1] = np.ones(
+        padded_image[region.min_row, region.min_col + 1: region.max_col + 1] = np.ones(
             shape=(region.max_col - region.min_col)
         )
-        padded_image[region.max_row + 1, region.min_col + 1 : region.max_col + 1] = np.ones(
+        padded_image[region.max_row + 1, region.min_col + 1: region.max_col + 1] = np.ones(
             shape=(region.max_col - region.min_col)
         )
 
@@ -292,7 +293,7 @@ def _correct_streaks(streak_data: StreakData, input_image: np.ndarray) -> np.nda
     corrected_image = padded_image.copy()
     # Correct each streak
     for region in streak_data.filtered_streak_df.itertuples():
-        corrected_image[region.max_row, region.min_col : region.max_col] = _correct_mean_alg(
+        corrected_image[region.max_row, region.min_col: region.max_col] = _correct_mean_alg(
             padded_image,
             region.min_row,
             region.max_row,
@@ -325,9 +326,9 @@ def _correct_mean_alg(
     streak_corrected: np.ndarray = np.mean(
         [
             # Row above
-            input_image[min_row, min_col + 1 : max_col + 1],
+            input_image[min_row, min_col + 1: max_col + 1],
             # Row below
-            input_image[max_row + 1, min_col + 1 : max_col + 1],
+            input_image[max_row + 1, min_col + 1: max_col + 1],
         ],
         axis=0,
         dtype=np.uint8,
@@ -396,20 +397,20 @@ def streak_correction(
     visualization_masks: bool = False,
 ) -> Tuple[xr.DataArray, StreakData]:
     """Takes an DataArray representation of a fov and a user specified image for streak detection.
-    Once all the streaks have been detected on that image, they are corrected via an averaging method.
-    The function can also returns a DataClass containing various binary masks and dataframes which were
-    used for filtering and correction when `visualization_masks` is True.
+    Once all the streaks have been detected on that image, they are corrected via an averaging
+    method. The function can also returns a DataClass containing various binary masks and
+    dataframes which were used for filtering and correction when `visualization_masks` is True.
 
     Args:
         fov_data (xr.DataArray): The data structure containing all of the channels to be processed
         and corrected.
-        streak_channel (str, optional): The name of the channel used (without the file extension) for identifying
-        the streaks. Defaults to "Noodle".
-        visualization_masks (bool, optional): If `True`, adds binary masks for visualization to the StreakData Dataclass
-        which gets returned. Defaults to "False".
+        streak_channel (str, optional): The name of the channel used (without the file extension)
+        for identifying the streaks. Defaults to "Noodle".
+        visualization_masks (bool, optional): If `True`, adds binary masks for visualization to
+        the StreakData Dataclass which gets returned. Defaults to "False".
     Returns:
-        Tuple[xr.DataArray, StreakData]: A tuple of the DataArray housing the corrected images, and the
-        streak data containing masks and dataframes for analysis and visualization.
+        Tuple[xr.DataArray, StreakData]: A tuple of the DataArray housing the corrected images,
+        and the streak data containing masks and dataframes for analysis and visualization.
     """
 
     # Initialize the streak DataClass
