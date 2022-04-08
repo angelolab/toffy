@@ -369,6 +369,7 @@ def save_corrected_channels(
     if save_streak_data:
         save_streak_masks(streak_data=streak_data)
 
+
 def streak_correction(
     fov_data: xr.DataArray,
     streak_channel: str = "Noodle",
