@@ -369,29 +369,6 @@ def save_corrected_channels(
     if save_streak_data:
         save_streak_masks(streak_data=streak_data)
 
-
-def load_fov_data(
-    data_dir: Union[str, Path],
-    fov: str,
-) -> xr.DataArray:
-    """Loads the fov in the `data_dir` directory with the specified name.
-
-    Args:
-        data_dir (Union[str, Path]): A directory containing all of the fovs.
-        fov (str): A directory containing the fov and all it's channels for correction.
-
-    Returns:
-        xr.DataArray: The data structure containing all of the channels to be processed
-        and corrected.
-    """
-
-    # Open fov directory containing all the tiff files
-    fov_data = load_utils.load_imgs_from_tree(data_dir=data_dir, fovs=[fov], dtype=np.int32)
-    # fov_data = fov_data[0, ...]
-
-    return fov_data
-
-
 def streak_correction(
     fov_data: xr.DataArray,
     streak_channel: str = "Noodle",
