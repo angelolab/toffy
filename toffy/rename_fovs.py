@@ -3,7 +3,7 @@ import json
 from ark.utils import io_utils
 
 
-def rename_fov_dirs(run_dir, fov_dir, new_dir=FALSE):
+def rename_fov_dirs(run_dir, fov_dir, new_dir=False):
     """Renames FOV directories to have specific names sources from the run JSON file
 
     Args:
@@ -15,7 +15,7 @@ def rename_fov_dirs(run_dir, fov_dir, new_dir=FALSE):
         """
 
     io_utils.validate_paths(run_dir)
-    io_utils.validate_paths(run_dir)
+    io_utils.validate_paths(fov_dir)
 
     #retieve FOV names and number of scans for each
     with open(run_dir) as f:
