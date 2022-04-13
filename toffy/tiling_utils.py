@@ -1045,87 +1045,6 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_auto_
     return slide_img, manual_auto_warning
 
 
-# TODO: this can be combined with write_manual_to_auto_map
-def write_tiled_regions(tiled_region_fovs, save_ann, tiled_region_path):
-    """Saves the manually-defined to automatically-generated FOV map and notifies the user
-
-    Helper to `save_mapping` nested callback function in `interactive_remap`
-
-    Args:
-        manual_to_auto_map (dict):
-            defines the mapping of manual to auto FOV names
-        save_ann (dict):
-            contains the annotation object defining the save notification
-        mapping_path (str):
-            the path to the file to save the mapping to
-    """
-
-    # save the mapping
-    with open(tiled_region_path, 'w', encoding='utf-8') as mp:
-        json.dump(tiled_region_fovs, mp)
-
-    # remove the save annotation if it already exists
-    # clears up some space if the user decides to save several times
-    if save_ann['annotation']:
-        save_ann['annotation'].remove()
-
-    # get the current datetime, need to display when the annotation was saved
-    timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-
-    # display save annotation above the plot
-    save_msg = plt.annotate(
-        'Mapping saved at %s!' % timestamp,
-        (0, 20),
-        color='white',
-        fontweight='bold',
-        annotation_clip=False
-    )
-
-    # print(save_msg)
-
-    # assign annotation to save_ann
-    save_ann['annotation'] = save_msg
-
-
-def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
-    """Saves the manually-defined to automatically-generated FOV map and notifies the user
-
-    Helper to `save_mapping` nested callback function in `interactive_remap`
-
-    Args:
-        manual_to_auto_map (dict):
-            defines the mapping of manual to auto FOV names
-        save_ann (dict):
-            contains the annotation object defining the save notification
-        mapping_path (str):
-            the path to the file to save the mapping to
-    """
-
-    # save the mapping
-    with open(mapping_path, 'w', encoding='utf-8') as mp:
-        json.dump(manual_to_auto_map, mp)
-
-    # remove the save annotation if it already exists
-    # clears up some space if the user decides to save several times
-    if save_ann['annotation']:
-        save_ann['annotation'].remove()
-
-    # get the current datetime, need to display when the annotation was saved
-    timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
-
-    # display save annotation above the plot
-    save_msg = plt.annotate(
-        'Mapping saved at %s!' % timestamp,
-        (0, 20),
-        color='white',
-        fontweight='bold',
-        annotation_clip=False
-    )
-
-    # assign annotation to save_ann
-    save_ann['annotation'] = save_msg
-
-
 def save_json(json_data, save_ann, json_path):
     """Saves `json__data` to `json_path` and notifies user through `save_ann`
 
@@ -1505,7 +1424,7 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
         # need to be in the output widget context to display status
         with out:
             # call the helper function to save manual_to_auto_map and notify user
-            write_tiled_regions(
+            save_json(
                 tiled_region_fovs, save_ann, tiled_region_path
             )
 
@@ -1898,7 +1817,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
         # need to be in the output widget context to display status
         with out:
             # call the helper function to save manual_to_auto_map and notify user
-            write_manual_to_auto_map(
+            save_json(
                 manual_to_auto_map, save_ann, mapping_path
             )
 

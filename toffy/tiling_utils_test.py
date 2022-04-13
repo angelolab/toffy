@@ -877,13 +877,13 @@ def test_remap_manual_to_auto_display():
 
 # NOTE: it won't be possible to test the exact datetime the mapping was saved at
 @parametrize('annot', [None, plt.annotate('Mapping saved at', (10, 10))])
-def test_write_manual_to_auto_map(annot):
+def test_save_json(annot):
     # define the save annotation status
     save_ann = {'annotation': annot}
 
     with tempfile.TemporaryDirectory() as td:
-        # write the mapping and update the annotation
-        tiling_utils.write_manual_to_auto_map(
+        # write a sample json and update the annotation
+        tiling_utils.save_json(
             test_cases._ANNOT_SAMPLE_MAPPING,
             save_ann,
             os.path.join(td, 'sample_mapping.json')
