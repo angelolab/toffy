@@ -4,7 +4,7 @@ from IPython.display import display
 import ipywidgets as widgets
 from itertools import combinations, product
 import json
-from matplotlib.patches import Rectangle
+from matplotlib.patches import Patch, Rectangle
 import matplotlib.pyplot as plt
 import numpy as np
 from operator import itemgetter
@@ -567,8 +567,8 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
 
         for index, (col_i, row_i) in enumerate(row_col_pairs):
             # use the fov size to scale to the current x- and y-coordinate
-            cur_row = start_row - row_i * region_info['row_fov_size']
-            cur_col = start_col + col_i * region_info['col_fov_size']
+            cur_row = start_row - (row_i * region_info['row_fov_size'])
+            cur_col = start_col + (col_i * region_info['col_fov_size'])
 
             # copy the fov metadata over and add cur_x, cur_y, and name
             fov = copy.deepcopy(tiling_params['fovs'][region_index])
@@ -1045,6 +1045,48 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_auto_
     return slide_img, manual_auto_warning
 
 
+# TODO: this can be combined with write_manual_to_auto_map
+def write_tiled_regions(tiled_region_fovs, save_ann, tiled_region_path):
+    """Saves the manually-defined to automatically-generated FOV map and notifies the user
+
+    Helper to `save_mapping` nested callback function in `interactive_remap`
+
+    Args:
+        manual_to_auto_map (dict):
+            defines the mapping of manual to auto FOV names
+        save_ann (dict):
+            contains the annotation object defining the save notification
+        mapping_path (str):
+            the path to the file to save the mapping to
+    """
+
+    # save the mapping
+    with open(tiled_region_path, 'w', encoding='utf-8') as mp:
+        json.dump(tiled_region_fovs, mp)
+
+    # remove the save annotation if it already exists
+    # clears up some space if the user decides to save several times
+    if save_ann['annotation']:
+        save_ann['annotation'].remove()
+
+    # get the current datetime, need to display when the annotation was saved
+    timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+
+    # display save annotation above the plot
+    save_msg = plt.annotate(
+        'Mapping saved at %s!' % timestamp,
+        (0, 20),
+        color='white',
+        fontweight='bold',
+        annotation_clip=False
+    )
+
+    # print(save_msg)
+
+    # assign annotation to save_ann
+    save_ann['annotation'] = save_msg
+
+
 def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
     """Saves the manually-defined to automatically-generated FOV map and notifies the user
 
@@ -1062,6 +1104,45 @@ def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
     # save the mapping
     with open(mapping_path, 'w', encoding='utf-8') as mp:
         json.dump(manual_to_auto_map, mp)
+
+    # remove the save annotation if it already exists
+    # clears up some space if the user decides to save several times
+    if save_ann['annotation']:
+        save_ann['annotation'].remove()
+
+    # get the current datetime, need to display when the annotation was saved
+    timestamp = datetime.now().strftime("%d-%m-%Y %H:%M:%S")
+
+    # display save annotation above the plot
+    save_msg = plt.annotate(
+        'Mapping saved at %s!' % timestamp,
+        (0, 20),
+        color='white',
+        fontweight='bold',
+        annotation_clip=False
+    )
+
+    # assign annotation to save_ann
+    save_ann['annotation'] = save_msg
+
+
+def save_json(json_data, save_ann, json_path):
+    """Saves `json__data` to `json_path` and notifies user through `save_ann`
+
+    Helper to `save_mapping` nested callback function in tiled region and tma visualizations
+
+    Args:
+        json_data (dict):
+            the JSON data to save
+        save_ann (dict):
+            contains the annotation object defining the save notification
+        json_path (str):
+            the path to save the JSON data to
+    """
+
+    # save the mapping
+    with open(json_path, 'w', encoding='utf-8') as mp:
+        json.dump(json_data, mp)
 
     # remove the save annotation if it already exists
     # clears up some space if the user decides to save several times
@@ -1273,75 +1354,80 @@ def generate_validation_annot(manual_to_auto_map, manual_auto_dist, check_dist=2
 
 class DraggableRectangle:
     def __init__(self, coords, width, height, color, id_val, ax):
-        rect = Rectangle(coords, width, height, color=color)
+        rect = Rectangle(coords, width, height, color=color, fill=False, linewidth=1)
         ax.add_patch(rect)
         self.rect = rect
         self.id_val = id_val
         self.press = None
+        # self.text = ax.text("", 15, 15, va='bottom', ha='left')
 
     def connect(self):
         """Connect to all the events we need."""
         self.cidpress = self.rect.figure.canvas.mpl_connect(
-            'button_press_event', self.on_press)
+            'button_press_event', self.on_press
+        )
         self.cidrelease = self.rect.figure.canvas.mpl_connect(
-            'button_release_event', self.on_release)
-        self.cidmotion = self.rect.figure.canvas.mpl_connect(
-            'motion_notify_event', self.on_motion)
+            'button_release_event', self.on_release
+        )
 
     def on_press(self, event):
         """Check whether mouse is over us; if so, store some data."""
-        print("Pressing the rectangle")
         if event.inaxes != self.rect.axes:
             return
         contains, attrd = self.rect.contains(event)
         if not contains:
             return
-        print('event contains', self.rect.xy)
+
         self.press = self.rect.xy, (event.xdata, event.ydata), self.id_val
-
-    def on_motion(self, event):
-        """Move the rectangle if the mouse is over us."""
-        if self.press is None or event.inaxes != self.rect.axes:
-            return
-
-        # self.rect.figure.canvas.clf()
-
-        (x0, y0), (xpress, ypress), _ = self.press
-        dx = event.xdata - xpress
-        dy = event.ydata - ypress
-        print(f'x0={x0}, xpress={xpress}, event.xdata={event.xdata}, '
-              f'dx={dx}, x0+dx={x0+dx}')
-        self.rect.set_x(x0+dx)
-        self.rect.set_y(y0+dy)
-
         self.rect.figure.canvas.draw()
 
     def on_release(self, event):
         """Clear button press information."""
-        print("Releasing the rectangle")
         if self.id_val == self.press[2]:
-            # self.rect.remove()
-            if self.rect.get_facecolor() == (0.0, 0.0, 1.0, 1.0):
-                self.rect.set_color((1.0, 0.0, 0.0, 1.0))
+            if self.rect.get_linewidth() == 1:
+                self.rect.set_linewidth(5)
             else:
-                self.rect.set_color((0.0, 0.0, 1.0, 1.0))
+                self.rect.set_linewidth(1)
 
         self.press = None
-
-        with open('file.txt', 'w') as f:
-            f.write("Just finished working with rectangle ID: %d" % self.id_val)
-
         self.rect.figure.canvas.draw()
 
     def disconnect(self):
         """Disconnect all callbacks."""
         self.rect.figure.canvas.mpl_disconnect(self.cidpress)
         self.rect.figure.canvas.mpl_disconnect(self.cidrelease)
-        self.rect.figure.canvas.mpl_disconnect(self.cidmotion)
+
+
+def delete_tiled_region_fovs(rectangles, tiled_region_fovs):
+    """Delete all the FOVs from tiled_region_fovs with lindwidth 5 (indicating its been selected)
+
+    Helper function to `delete_fovs` in `tiled_region_interactive_remap`
+
+
+    Args:
+        rectangles (dict):
+            Maps each FOV to its corresponding rectangle instance
+        tiled_region_fovs (dict):
+            The list of FOVs to overlay for each tiled region
+    """
+
+    # define a list of FOVs to delete
+    # NOTE: only FOVs with a linewidth of 5, indicates user has selected it
+    fovs_delete = [fov for fov in rectangles if rectangles[fov].rect.get_linewidth() == 5]
+
+    # overwrite the list of FOVs in tiled_region_fovs to only contain FOVs not in fov_delete
+    tiled_region_fovs['fovs'] = [
+        fov for fov in tiled_region_fovs['fovs'] if fov['name'] not in fovs_delete
+    ]
+
+    # now delete the corresponding rectangle for each FOV in fovs_delete
+    for fov in fovs_delete:
+        rectangles[fov].rect.remove()
+        del rectangles[fov]
 
 
 # TODO: potential type hinting candidate?
-def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, mapping_path,
+def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, tiled_region_path,
                                    figsize=(7, 7)):
     """Creates the tiled region interactive interface for manual to auto FOVs
 
@@ -1352,17 +1438,17 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
             The tiling parameters generated for each tiled region
         slide_img (numpy.ndarray):
             The image to overlay
-        mapping_path (str):
-            The path to the file to save the mapping to
+        tiled_region_path (str):
+            The path to the file to save the tiled regions to
         figsize (tuple):
             The size of the interactive figure to display
     """
 
     # error check: ensure mapping path exists
-    if not os.path.exists(os.path.split(mapping_path)[0]):
+    if not os.path.exists(os.path.split(tiled_region_path)[0]):
         raise FileNotFoundError(
-            "Path %s to mapping_path does not exist, "
-            "please rename to a valid location" % os.path.split(mapping_path)[0]
+            "Path %s to tiled_region_path does not exist, "
+            "please rename to a valid location" % os.path.split(tiled_region_path)[0]
         )
 
     # if there isn't a coreg_path defined, the user needs to run update_coregistration_params first
@@ -1387,78 +1473,157 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
     # define an output context to display
     out = widgets.Output()
 
-    # display the figure to plot on
-    fig, ax = plt.subplots(figsize=figsize)
-
-    # make sure the output gets displayed to the output widget so it displays properly
-    # with out:
-    # draw the image
-    img_plot = ax.imshow(slide_img)
-
-    # overwrite the default title
-    _ = plt.title('Overlay of tiled region FOVs')
-
-    # remove massive padding
-    _ = plt.tight_layout()
+    # define a dict to store the rectangles
+    rectangles = {}
 
     # define status of the save annotation, initially None, updates when user clicks w_save
     # NOTE: ipywidget callback functions can only access dicts defined in scope
     save_ann = {'annotation': None}
 
-    print("About to iterate over all FOVs")
+    def delete_fovs(b):
+        """Deletes the FOVs from the rectangles dict, tiled_region_fovs, and the image
 
-    # define a rectangle for each region
-    for index, fov in enumerate(tiled_region_fovs['fovs']):
-        print("Drawing for FOV %s" % fov['name'])
-        # skip Moly points
-        # TODO: will Moly points always be named MoQC?
-        if fov['name'] == 'MoQC':
-            continue
+        Args:
+            b (ipywidgets.widgets.widget_button.Button):
+                the button handler for `w_delete`, only passed as a standard for `on_click` callback
+        """
 
-        # extract the region name, this method accounts for '_' in the region name itself
-        fov_region = '_'.join(fov['name'].split('_')[:-1])
+        print("Delete FOVs called!")
 
-        # use the region name to extract the color
-        fov_color = region_colors[fov_region]
+        delete_tiled_region_fovs(rectangles, tiled_region_fovs)
 
-        # get the centroid coordinates
-        fov_centroid = tuple(fov['centerPointMicrons'].values())
+    def save_mapping(b):
+        """Saves the mapping defined in `manual_to_auto_map`
 
-        # define the top-left corner, subtract fovSizeMicrons from x and add it to y
-        fov_size = fov['fovSizeMicrons']
-        fov_top_left_microns = (fov_centroid[0] - fov_size / 2, fov_centroid[1] + fov_size / 2)
+        Args:
+            b (ipywidgets.widgets.widget_button.Button):
+                the button handler for `w_save`, only passed as a standard for `on_click` callback
+        """
 
-        # co-register the top-left fov corner
-        fov_top_left_pixels = convert_stage_to_optical(
-            fov_top_left_microns, stage_optical_coreg_params
+        print("Save mapping called!")
+
+        # need to be in the output widget context to display status
+        with out:
+            # call the helper function to save manual_to_auto_map and notify user
+            write_tiled_regions(
+                tiled_region_fovs, save_ann, tiled_region_path
+            )
+
+    # define the delete button
+    w_delete = widgets.Button(
+        description='Delete selected FOVs',
+        layout=widgets.Layout(width='auto'),
+        style={'description_width': 'initial'}
+    )
+
+    # define the save button
+    w_save = widgets.Button(
+        description='Save mapping',
+        layout=widgets.Layout(width='auto'),
+        style={'description_width': 'initial'}
+    )
+
+    # define a box to hold w_man and w_auto
+    w_box = widgets.HBox(
+        [w_delete, w_save],
+        layout=widgets.Layout(
+            display='flex',
+            flex_flow='row',
+            align_items='stretch',
+            width='75%'
         )
+    )
 
-        # we'll also need to find the length and width of the rectangle
-        # NOTE: we do so by co-registering the bottom-left and top-right points
-        # then finding the distance from those to the top-left
-        fov_bottom_left_microns = (fov_centroid[0] - fov_size / 2, fov_centroid[1] - fov_size / 2)
-        fov_bottom_left_pixels = convert_stage_to_optical(
-            fov_bottom_left_microns, stage_optical_coreg_params
-        )
+    # display the box of buttons
+    display(w_box)
 
-        fov_top_right_microns = (fov_centroid[0] + fov_size / 2, fov_centroid[1] + fov_size / 2)
-        fov_top_right_pixels = convert_stage_to_optical(
-            fov_top_right_microns, stage_optical_coreg_params
-        )
+    # ensure the selected FOVs get deleted when w_delete clicked
+    w_delete.on_click(delete_fovs)
 
-        fov_height = fov_bottom_left_pixels[0] - fov_top_left_pixels[0]
-        fov_width = fov_top_right_pixels[1] - fov_top_left_pixels[1]
+    # ensure the new mapping gets saved when w_save clicked
+    w_save.on_click(save_mapping)
 
-        print(fov_top_left_pixels)
-        print(fov_bottom_left_pixels)
-        print(fov_top_right_pixels)
-        print(fov_width)
-        print(fov_height)
+    # display the figure to plot on
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111)
 
-        # draw the rectangle defining this fov
-        dr = DraggableRectangle(
-            fov_top_left_pixels, fov_width, fov_height, fov_color, fov['name'], ax
-        )
+    # add a legend to indicate which region matches which color
+    handles = [Patch(facecolor=region_colors[rc]) for rc in region_colors]
+    _ = plt.legend(
+        handles,
+        region_colors,
+        title='ROI',
+        bbox_to_anchor=(0, 0),
+        bbox_transform=plt.gcf().transFigure,
+        loc='upper left'
+    )
+
+    with out:
+        # draw the image
+        img_plot = ax.imshow(slide_img)
+
+        # overwrite the default title
+        _ = plt.title('Overlay of tiled region FOVs')
+
+        # remove massive padding
+        _ = plt.tight_layout()
+
+        # define a rectangle for each region
+        for index, fov in enumerate(tiled_region_fovs['fovs']):
+            # skip Moly points
+            # TODO: will Moly points always be named MoQC?
+            if fov['name'] == 'MoQC':
+                continue
+
+            # extract the region name, this method accounts for '_' in the region name itself
+            fov_region = '_'.join(fov['name'].split('_')[:-1])
+
+            # use the region name to extract the color
+            fov_color = region_colors[fov_region]
+
+            # get the centroid coordinates
+            fov_centroid = tuple(fov['centerPointMicrons'].values())
+
+            # define the top-left corner, subtract fovSizeMicrons from x and add it to y
+            fov_size = fov['fovSizeMicrons']
+            fov_top_left_microns = (fov_centroid[0] - fov_size / 2, fov_centroid[1] + fov_size / 2)
+
+            # co-register the top-left fov corner
+            fov_top_left_pixels = convert_stage_to_optical(
+                fov_top_left_microns, stage_optical_coreg_params
+            )
+
+            # we'll also need to find the length and width of the rectangle
+            # NOTE: we do so by co-registering the bottom-left and top-right points
+            # then finding the distance from those to the top-left
+            fov_bottom_left_microns = (fov_centroid[0] - fov_size / 2, fov_centroid[1] - fov_size / 2)
+            fov_bottom_left_pixels = convert_stage_to_optical(
+                fov_bottom_left_microns, stage_optical_coreg_params
+            )
+
+            fov_top_right_microns = (fov_centroid[0] + fov_size / 2, fov_centroid[1] + fov_size / 2)
+            fov_top_right_pixels = convert_stage_to_optical(
+                fov_top_right_microns, stage_optical_coreg_params
+            )
+
+            fov_height = fov_bottom_left_pixels[0] - fov_top_left_pixels[0]
+            fov_width = fov_top_right_pixels[1] - fov_top_left_pixels[1]
+
+            # draw the rectangle defining this fov
+            dr = DraggableRectangle(
+                fov_top_left_pixels, fov_width, fov_height, fov_color, fov['name'], ax
+            )
+
+            # connect the rectangle to the event
+            dr.connect()
+
+            # add the rectangle to the dict
+            rectangles[fov['name']] = dr
+
+    # display the output
+    display(out)
+
+    return rectangles
 
 
 # TODO: potential type hinting candidate?
