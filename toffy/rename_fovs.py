@@ -22,3 +22,19 @@ def rename_fov_dirs(run_dir, fov_dir, new_dir=False):
         data = json.load(f)
         run_data = data['fovs']
         fov_scan = {x['name']: x['scanCount'] for x in run_data}
+
+
+    #determine how many folders will be changed
+    name_count = 0
+    for fov in fov_scan:
+        name_count += (1*fov_scan[fov])
+
+    #insert some kind of fov name validation
+
+
+    #retrieve number of current FOV directory and their names
+    old_dirs = io_utils.list_folders(fov_dir, "fov")
+    dir_count = len(old_dirs)
+
+
+#rename_fov_dirs("data/json_test/2022-04-07_TONIC_TMA21_run1.json", "data/fov_folders")
