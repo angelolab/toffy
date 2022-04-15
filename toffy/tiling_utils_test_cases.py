@@ -581,8 +581,6 @@ def generate_rectangle_cases(num_fovs, randomize, moly):
     }
 
 
-
-
 class RectangleCases:
     def case_one_region(self):
         # define a set of fovs defining the upper-left corners of each region
