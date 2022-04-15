@@ -34,11 +34,12 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=False):
     #retrieve number of current FOV directories and their names
     old_dirs = io_utils.list_folders(fov_dir, "fov")
     dir_count = len(old_dirs)
+    old_dirs.sort()
 
     #testing
     #test = list(fov_scan)[0:5]
     #fov_scan = {t: fov_scan[t] for t in test}
-    #print(fov_test)
+    #print(fov_scan)
 
     #check that fovs & scan counts match the number of existing FOV directories
     if name_count != dir_count:
