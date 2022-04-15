@@ -1278,7 +1278,6 @@ class DraggableRectangle:
         self.rect = rect
         self.id_val = id_val
         self.press = None
-        # self.text = ax.text("", 15, 15, va='bottom', ha='left')
 
     def connect(self):
         """Connect to all the events we need."""
@@ -1468,14 +1467,15 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
 
     # add a legend to indicate which region matches which color
     handles = [Patch(facecolor=region_colors[rc]) for rc in region_colors]
-    _ = plt.legend(
+    color_names = [rc for rc in region_colors]
+    _ = ax.legend(
         handles,
-        region_colors,
+        color_names,
         title='ROI',
-        bbox_to_anchor=(0, 0),
         bbox_transform=plt.gcf().transFigure,
-        loc='upper left'
+        loc='upper right'
     )
+    # print(leg)
 
     with out:
         # draw the image

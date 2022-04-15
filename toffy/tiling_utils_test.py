@@ -936,6 +936,11 @@ def test_generate_validation_annot(check_dist, check_duplicates, check_mismatche
     assert generated_annot == actual_annot
 
 
+@parametrize_with_cases('rectangle_list', test_cases.RectangleCases)
+def test_delete_tiled_region_fovs():
+    pass
+
+
 # NOTE: this only tests if the visualization runs with valid parameters
 # previous test functions check interactive functionality
 def test_tma_interactive_remap():
