@@ -697,6 +697,36 @@ def generate_tma_fov_list(tma_corners_path, num_fov_row, num_fov_col):
     return fov_regions
 
 
+def rename_duplicate_fovs(tma_fovs):
+    """Identify and rename duplicate FOV names in `fov_list`
+
+    For a given FOV name, the subsequent duplicates get renamed `{FOV}_duplicate{n}`
+
+    Args:
+        tma_fovs (dict):
+            The TMA run JSON, should contain a `'fovs'` key defining the list of FOVs
+
+    Returns:
+        dict:
+            The same run JSON with the FOVs renamed to account for duplicates
+    """
+
+    # used for identifying the number of times each FOV was found
+    fov_count = {}
+
+    # iterate over each FOV
+    for fov in tma_fovs['fovs']:
+        if fov['name'] not in fov_count:
+            fov_count[fov['name']] = 0
+
+        fov_count[fov['name']] += 1
+
+        if fov_count[fov['name']] > 1:
+            fov['name'] = '%s_duplicate%d' % (fov['name'], fov_count[fov['name']] - 1)
+
+    return tma_fovs
+
+
 def convert_stage_to_optical(coord, stage_optical_coreg_params):
     """Convert the coordinate in stage microns to optical pixels.
 
