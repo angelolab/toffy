@@ -552,9 +552,9 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
         row_col_pairs = generate_x_y_fov_pairs(row_range, col_range)
 
         # name the FOVs according to MIBI conventions
-        fov_names = ['%s_R%dC%d' % (region_info['region_name'], y + 1, x + 1)
-                     for x in range(region_info['fov_num_row'])
-                     for y in range(region_info['fov_num_col'])]
+        fov_names = ['%s_R%dC%d' % (region_info['region_name'], row + 1, col + 1)
+                     for row in range(region_info['fov_num_row'])
+                     for col in range(region_info['fov_num_col'])]
 
         # randomize pairs list if specified
         if region_info['region_rand'] == 'Y':
@@ -566,7 +566,7 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
         total_fovs += len(row_col_pairs)
 
         for index, (col_i, row_i) in enumerate(row_col_pairs):
-            # use the fov size to scale to the current x- and y-coordinate
+            # use the fov size to scale to the current row- and col-coordinate
             cur_row = start_row - (row_i * region_info['row_fov_size'])
             cur_col = start_col + (col_i * region_info['col_fov_size'])
 
@@ -1301,7 +1301,7 @@ def generate_validation_annot(manual_to_auto_map, manual_auto_dist, check_dist=2
     return warning_annot
 
 
-class DraggableRectangle:
+class FOVRectangle:
     def __init__(self, coords, width, height, color, id_val, ax):
         rect = Rectangle(coords, width, height, color=color, fill=False, linewidth=1)
         ax.add_patch(rect)
@@ -1344,6 +1344,82 @@ class DraggableRectangle:
         """Disconnect all callbacks."""
         self.rect.figure.canvas.mpl_disconnect(self.cidpress)
         self.rect.figure.canvas.mpl_disconnect(self.cidrelease)
+
+
+def generate_fov_rectangle(fov_info, region_colors, stage_optical_coreg_params, ax):
+    """Draws an interactive rectangle for the given FOV
+
+    Args:
+        fov_info (dict):
+            Defines the name, centroid, and size of the FOV in hte tiled region
+        region_colors (dict):
+            Maps each FOV to its respective color
+        stage_optical_coreg_params (dict):
+            Contains the co-registration parameters to use
+        ax (matplotlib.axes.Axes):
+            The axis to draw the rectangle on
+
+    Returns:
+        tiling_utils.FOVRectangle:
+            The interactive rectangle object associated with the FOV to draw
+    """
+
+    # extract the region name, this method accounts for '_' in the region name itself
+    fov_region = '_'.join(fov_info['name'].split('_')[:-1])
+
+    # use the region name to extract the color
+    fov_color = region_colors[fov_region]
+
+    # get the centroid coordinates
+    fov_centroid = tuple(fov_info['centerPointMicrons'].values())
+    # print(fov_centroid)
+
+    # define the top-left corner, subtract fovSizeMicrons from x and add it to y
+    fov_size = fov_info['fovSizeMicrons']
+    fov_top_left_microns = (fov_centroid[0] - fov_size / 2, fov_centroid[1] + fov_size / 2)
+    # print(fov_top_left_microns)
+
+    # co-register the top-left fov corner
+    fov_top_left_pixels = convert_stage_to_optical(
+        fov_top_left_microns, stage_optical_coreg_params
+    )
+
+    # we'll also need to find the length and width of the rectangle
+    # NOTE: we do so by co-registering the bottom-left and top-right points
+    # then finding the distance from those to the top-left
+    fov_bottom_left_microns = (
+        fov_centroid[0] - fov_size / 2, fov_centroid[1] - fov_size / 2
+    )
+    fov_bottom_left_pixels = convert_stage_to_optical(
+        fov_bottom_left_microns, stage_optical_coreg_params
+    )
+
+    fov_top_right_microns = (
+        fov_centroid[0] + fov_size / 2, fov_centroid[1] + fov_size / 2
+    )
+    fov_top_right_pixels = convert_stage_to_optical(
+        fov_top_right_microns, stage_optical_coreg_params
+    )
+
+    fov_height = fov_bottom_left_pixels[0] - fov_top_left_pixels[0]
+    fov_width = fov_top_right_pixels[1] - fov_top_left_pixels[1]
+
+    # draw the rectangle defining this fov
+    dr = FOVRectangle(
+        fov_top_left_pixels, fov_width, fov_height, fov_color, fov_info['name'], ax
+    )
+
+    # annotate the name of this FOV
+    _ = plt.annotate(
+        fov_info['name'].replace(fov_region + '_', ''),
+        convert_stage_to_optical(fov_centroid, stage_optical_coreg_params),
+        color='white',
+        fontsize=6,
+        fontweight='bold',
+        annotation_clip=False
+    )
+
+    return dr
 
 
 def delete_tiled_region_fovs(rectangles, tiled_region_fovs):
@@ -1412,7 +1488,7 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
         stage_optical_coreg_params = json.load(cp)['coreg_params'][-1]
 
     # map each region to a unique color
-    # TODO: default to tab20 discrete cma, make customizable?
+    # TODO: default to tab20 discrete cmap, make customizable?
     cm = plt.get_cmap('tab20')
     region_colors = {}
     for index, region in enumerate(tiling_params['region_params']):
@@ -1429,14 +1505,12 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
     save_ann = {'annotation': None}
 
     def delete_fovs(b):
-        """Deletes the FOVs from the rectangles dict, tiled_region_fovs, and the image
+        """Deletes the FOVs from the `rectangles` dict, `tiled_region_fovs`, and the image
 
         Args:
             b (ipywidgets.widgets.widget_button.Button):
-                the button handler for `w_delete`, only passed as a standard for `on_click` callback
+                the button handler for `w_delete`, passed as a standard for `on_click` callback
         """
-
-        print("Delete FOVs called!")
 
         delete_tiled_region_fovs(rectangles, tiled_region_fovs)
 
@@ -1445,12 +1519,10 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
 
         Args:
             b (ipywidgets.widgets.widget_button.Button):
-                the button handler for `w_save`, only passed as a standard for `on_click` callback
+                the button handler for `w_save`, passed as a standard for `on_click` callback
         """
 
-        print("Save mapping called!")
-
-        # need to be in the output widget context to display status
+        # needs to be in the output widget context to display status
         with out:
             # call the helper function to save manual_to_auto_map and notify user
             save_json(
@@ -1505,7 +1577,6 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
         bbox_transform=plt.gcf().transFigure,
         loc='upper right'
     )
-    # print(leg)
 
     with out:
         # draw the image
@@ -1518,56 +1589,20 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
         _ = plt.tight_layout()
 
         # define a rectangle for each region
-        for index, fov in enumerate(tiled_region_fovs['fovs']):
+        for index, fov_info in enumerate(tiled_region_fovs['fovs']):
             # skip Moly points
             # TODO: will Moly points always be named MoQC?
-            if fov['name'] == 'MoQC':
+            if fov_info['name'] == 'MoQC':
                 continue
 
-            # extract the region name, this method accounts for '_' in the region name itself
-            fov_region = '_'.join(fov['name'].split('_')[:-1])
-
-            # use the region name to extract the color
-            fov_color = region_colors[fov_region]
-
-            # get the centroid coordinates
-            fov_centroid = tuple(fov['centerPointMicrons'].values())
-
-            # define the top-left corner, subtract fovSizeMicrons from x and add it to y
-            fov_size = fov['fovSizeMicrons']
-            fov_top_left_microns = (fov_centroid[0] - fov_size / 2, fov_centroid[1] + fov_size / 2)
-
-            # co-register the top-left fov corner
-            fov_top_left_pixels = convert_stage_to_optical(
-                fov_top_left_microns, stage_optical_coreg_params
-            )
-
-            # we'll also need to find the length and width of the rectangle
-            # NOTE: we do so by co-registering the bottom-left and top-right points
-            # then finding the distance from those to the top-left
-            fov_bottom_left_microns = (fov_centroid[0] - fov_size / 2, fov_centroid[1] - fov_size / 2)
-            fov_bottom_left_pixels = convert_stage_to_optical(
-                fov_bottom_left_microns, stage_optical_coreg_params
-            )
-
-            fov_top_right_microns = (fov_centroid[0] + fov_size / 2, fov_centroid[1] + fov_size / 2)
-            fov_top_right_pixels = convert_stage_to_optical(
-                fov_top_right_microns, stage_optical_coreg_params
-            )
-
-            fov_height = fov_bottom_left_pixels[0] - fov_top_left_pixels[0]
-            fov_width = fov_top_right_pixels[1] - fov_top_left_pixels[1]
-
-            # draw the rectangle defining this fov
-            dr = DraggableRectangle(
-                fov_top_left_pixels, fov_width, fov_height, fov_color, fov['name'], ax
-            )
+            # draw the rectangle associated with the FOV
+            dr = generate_fov_rectangle(fov_info, region_colors, stage_optical_coreg_params, ax)
 
             # connect the rectangle to the event
             dr.connect()
 
             # add the rectangle to the dict
-            rectangles[fov['name']] = dr
+            rectangles[fov_info['name']] = dr
 
     # display the output
     display(out)
