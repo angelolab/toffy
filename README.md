@@ -28,7 +28,7 @@ For large MIBI runs, it is often convenient to automatically generate the JSON f
 The [second notebook](./templates/create_tma_mibi_run.ipynb) is for TMAs. This notebook is run after you have selected the appropriate cores from the TMA. It will generate an overlay with the image of the TMA and the locations you picked to ensure you selected the correct cores. It will then check that they are named correctly and that there are no duplicates.
 
 ### 3. Evaluating a MIBI run
-We have found it useful to generate certain QC plots for each MIBI run to ensure everything went smoothly. The notebooks in this section will automate the generation of these metrics to give a quantitative measure of what happened during the run. We are also in the process of creating a notebook to enable this process to happen while the run is ongoing. 
+We have found it useful to generate certain QC plots for each MIBI run to ensure everything went smoothly. The notebooks in this section will automate the generation of these metrics to give a quantitative measure of what happened during the run. They are currently under development, more details coming soon. 
 
 ### 4. Processing MIBI data
 Once your run has finished, you can begin to process the data to make it ready for analysis. To remove background signal contamination, as well as compensate for channel crosstalk, you can use the [compensation](./templates/4_compensate_image_data.ipynb) notebook. This will guide you through the process of determining the correct coefficients for the Rosetta algorith, which uses a flow-cytometry style compensation approach to remove spurious signal. 
