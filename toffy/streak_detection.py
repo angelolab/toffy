@@ -2,7 +2,6 @@ import numpy as np
 import os
 from typing import Union, Tuple
 from pathlib import Path
-from ark.utils import load_utils
 from skimage import (
     filters,
     exposure,
@@ -88,7 +87,7 @@ def _save(streak_data: StreakData, name: str):
         data.to_csv(st("csv"))
 
 
-def save_streak_masks(streak_data: StreakData):
+def _save_streak_masks(streak_data: StreakData):
     """Saves the data in StreakData as a tiff file if it's a Numpy array, and a csv if it is a
     Pandas DataFrame. Useful for visualization and debugging.
 
@@ -107,7 +106,7 @@ def save_streak_masks(streak_data: StreakData):
     for field in fields:
         _save(streak_data, name=field)
 
-
+# ! UNSTABLE WITH WHITE BACKGROUND, BLACK STREAKS
 def _make_binary_mask(
     input_image: np.ndarray,
     gaussian_sigma: float = 40,
@@ -367,7 +366,7 @@ def save_corrected_channels(
 
     # Save streak masks
     if save_streak_data:
-        save_streak_masks(streak_data=streak_data)
+        _save_streak_masks(streak_data=streak_data)
 
 
 def streak_correction(
