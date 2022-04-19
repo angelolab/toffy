@@ -97,7 +97,8 @@ class TestStreakDetection:
 # ? Modify to work with `parameterize_with_cases`
 # TODO: All channels of fake data must contain the same streaks. Add noise to each channel.
 # TODO: Add multiple streaks.
-@pytest.fixture(scope="class")
+# TODO: Hardcode the streak tests first, request for review
+@pytest.fixture(scope="class", params=[2, 4, 10])
 def fake_data(request):
     # Set up fake data dimensions
     num_images = 10
@@ -105,13 +106,16 @@ def fake_data(request):
     col_size = 1000
     fake_data = np.zeros(shape=(row_size, col_size, num_images), dtype=np.uint8)
 
-    # Generate the fake data by initialing a new generator and creating random streaks.
+    # Initialize a new generator
     rng = np.random.default_rng(12345)
-    (x_min,) = rng.integers(low=0, high=col_size - 2, size=1)
-    (x_max,) = rng.integers(low=x_min, high=col_size - 1, size=1)
-    (y,) = rng.integers(low=0, high=row_size - 1, size=1)
-    fake_streak = np.ones(shape=(x_max - x_min, num_images))
-    fake_data[y, x_min:x_max, :] = fake_streak
+
+    # Generate Streaks
+    for _ in range(request.param):
+        (x_min,) = rng.integers(low=0, high=col_size - 50, size=1)
+        (x_max,) = rng.integers(low=x_min + 50, high=col_size - 1, size=1)
+        (y,) = rng.integers(low=0, high=row_size - 1, size=1)
+        fake_streak = np.ones(shape=(x_max - x_min, num_images))
+        fake_data[y, x_min:x_max, :] = fake_streak
 
     # for fd in range(num_images):
 
@@ -129,9 +133,8 @@ def fake_data(request):
 
     # Add the Fake Fov to the request object
     request.cls.fake_fov = Fov(
-        fov_name="fake_fov", fov_da=fake_data_da, corrected_channels=None, streak_data=None
+        fov_name="fake_fov", fov_da=fake_data_da, corrected_channels=None, streak_data=streak_data
     )
-    request.cls.fake_fov.streak_data = streak_data
 
 
 @pytest.mark.usefixtures("fake_data")
@@ -145,6 +148,7 @@ class TestHelperFunctions:
             # Make sure the masks only contain values: `0`, `1`
             assert np.all(np.isin(fake_img_bin_mask, [0, 1]))
 
+            # Make sure the shape is the same
             assert fake_img_bin_mask.shape == self.fake_fov.streak_data.shape
 
     @pytest.mark.parametrize("min_length", [50])
@@ -160,3 +164,15 @@ class TestHelperFunctions:
         assert len(self.fake_fov.streak_data.streak_df) >= len(
             self.fake_fov.streak_data.filtered_streak_df
         )
+
+    def test_make_filtered_mask(self):
+        sd._make_filtered_mask(self.fake_fov.streak_data)
+
+        # Make sure the filtered mask only contains values: `0`, `1`
+        assert np.all(np.isin(self.fake_fov.streak_data.filtered_streak_mask, [0, 1]))
+
+    def test_make_box_outline(self):
+        sd._make_box_outline(self.fake_fov.streak_data)
+
+        # Make sure the filtered mask only contains values: `0`, `1`
+        assert np.all(np.isin(self.fake_fov.streak_data.boxed_streaks))
