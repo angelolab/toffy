@@ -422,9 +422,9 @@ def test_generate_tiled_region_fov_list(moly_path, moly_roi_setting,
 
         # define the center points sorted
         actual_center_points_sorted = [
-            (x, y) for x in np.arange(0, 10, 5) for y in list(reversed(np.arange(85, 105, 5)))
+            (x, y) for y in list(reversed(np.arange(95, 105, 5))) for x in np.arange(0, 20, 5)
         ] + [
-            (x, y) for x in np.arange(50, 90, 10) for y in list(reversed(np.arange(140, 160, 10)))
+            (x, y) for y in list(reversed(np.arange(120, 160, 10))) for x in np.arange(50, 70, 10)
         ]
 
         # define the corresponding FOV names
@@ -1002,8 +1002,10 @@ def test_generate_fov_rectangle():
         fov_info, region_colors, stage_optical_coreg_params, ax
     )
 
+    print(dr.rect.get_xy())
+
     # assert the coordinate of the upper-left corner matches
-    assert dr.rect.get_xy() == (9783, 18961)
+    assert dr.rect.get_xy() == (18961, 9783)
 
     # assert the height and width are computed correctly
     # NOTE: actual co-registration parameters mean height and width are much closer in magnitude
@@ -1118,68 +1120,173 @@ def test_delete_tiled_region_fovs(randomize, moly):
     assert np.all(linewidths == 1)
 
 
-# # NOTE: this only tests if the rectangles are drawn correctly
-# # unfortunately, there isn't a way to programmatically test the click of a button on Python's side
-# # see: https://github.com/jupyter-widgets/ipywidgets/issues/1896
-# @parametrize('num_regions', [1, 2, 3])
-# @parametrize('randomize', [False, True])
-# @parametrize('moly', [False, True])
-# def test_tiled_region_interactive_remap(num_regions, randomize, moly):
-#     # define the set of tiled region params, this will contain just the top-left corners
-#     sample_tiled_region_params = {
-#         "exportDateTime": "2021-03-12T19:02:37.920Z",
-#         "fovFormatVersion": "1.5",
-#         "fovs": [],
-#         "region_params": []
-#     }
+# NOTE: this only tests if the rectangles are drawn correctly
+# unfortunately, there isn't a way to programmatically test the click of a button on Python's side
+# see: https://github.com/jupyter-widgets/ipywidgets/issues/1896
+@parametrize('num_regions', [1, 2, 3])
+@parametrize('randomize', [False, True])
+@parametrize('moly', [False, True])
+def test_tiled_region_interactive_remap(num_regions, randomize, moly):
+    # define the set of tiled region params, this will contain just the top-left corners
+    sample_tiled_region_params = {
+        "exportDateTime": "2021-03-12T19:02:37.920Z",
+        "fovFormatVersion": "1.5",
+        "fovs": [],
+        "region_params": [],
+        "moly_region": "N"
+    }
 
-#     # iteratively generate the top-left FOV entry for each, as well as the region_params
-#     for roi in num_regions:
-#         pass
+    # iteratively generate the top-left FOV entry for each, as well as the region_params
+    for roi in np.arange(1, num_regions + 1):
+        # define the name of this region, this will prefix the FOV names
+        roi_name = 'Sample_ROI%d' % roi
 
-#     # define the final list of FOVs to use
-#     sample_tiled_region_fovs = {
-#         "exportDateTime": "2021-03-12T19:02:37.920Z",
-#         "fovFormatVersion": "1.5",
-#         "fovs": []
-#     }
+        # define the top-left centroid of this set of FOVs
+        fov_row_start = 10000 * roi
+        fov_col_start = 20000 * roi
+        start_coord = (fov_row_start, fov_col_start)
 
-#     # iteratively generate a FOV list for each region
-#     for roi in num_regions:
-#         # define the name of this region, this will prefix the FOV names
-#         roi_name = 'Sample_ROI%d' % roi
+        # define the number of rows and columns for this region
+        num_row_fovs = 2 * roi
+        num_col_fovs = 3 * roi
 
-#         # define the number of rows and columns for this region
-#         num_row_fovs = 2 * roi
-#         num_col_fovs = 3 * roi
+        # define the size of these FOVs, note that this will be consistent due to the way
+        # fovSizeMicrons is computed across all the FOVs in an ROI
+        fov_size = 2500 * roi
 
-#         # define the top-left centroid of this set of FOVs
-#         fov_row_start = 10000 * roi
-#         fov_col_start = 20000 * roi
+        # define the entry for this particular ROI, and append it to sample_tiled_region_params
+        top_left_roi_fov = test_utils.generate_sample_fov_tiling_entry(
+            start_coord, roi_name, fov_size
+        )
+        sample_tiled_region_params['fovs'].append(top_left_roi_fov)
 
-#         # define the size of these FOVs, note that this will be consistent due to the way
-#         # fovSizeMicrons is computed across all the FOVs in an ROI
-#         fov_size = 2500 * roi
+        # define the region params, and append to sample_tiled_region_params
+        region_params = {
+            'region_name': roi_name,
+            'region_start_row': fov_row_start,
+            'region_start_col': fov_col_start,
+            'fov_num_row': num_row_fovs,
+            'fov_num_col': num_col_fovs,
+            'row_fov_size': fov_size,
+            'col_fov_size': fov_size,
+            'region_rand': 'Y' if randomize else 'N'
+        }
+        sample_tiled_region_params['region_params'].append(region_params)
 
-#         # define all the coordinates to use
-#         fov_coords = [
-#             (fov_row_start + fov_size * (i + 1), fov_col_start + fov_size * (j + 1))
-#             for i in np.arange(num_row_fovs)
-#             for j in np.arange(num_col_fovs)
-#         ]
+    # if moly is set, set moly_region to 'Y' and add moly_interval key
+    if moly:
+        sample_tiled_region_params['moly_region'] = 'Y'
+        sample_tiled_region_params['moly_interval'] = 5
 
-#         # define the corresponding FOV names
-#         fov_names = [
-#             '%s_R%dC%d' % (roi_name, i + 1, j + 1)
-#             for i in np.arange(num_row_fovs)
-#             for j in np.arange(num_col_fovs)
-#         ]
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # write a sample Moly point
+        moly_path = os.path.join(temp_dir, 'sample_moly_point.json')
+        with open(moly_path, 'w') as outfile:
+            moly_point = test_utils.generate_sample_fov_tiling_entry((-1000, -1000), 'MoQC', 100)
+            json.dump(moly_point, outfile)
 
-#         fov_coords = [(1000 * (i + 1), 2000 * ())]
-#         start_coords = (1000 * roi, 2000 * roi)
+        # generate the full tiled region fov list
+        sample_tiled_region_fovs = tiling_utils.generate_tiled_region_fov_list(
+            sample_tiled_region_params, moly_path
+        )
 
-#     # retrieve the colormap used by this visualization for testing
-#     cmap = plt.get_cmap('tab20')
+        # define a dummy slide image to display over
+        sample_slide_img = np.zeros((4096, 4096))
+
+        # define a dummy path to save the tiled region to
+        # NOTE: unfortunately, we can't test saving functionality
+        # without the ability to programmatically click
+        sample_tiled_region_path = os.path.join(temp_dir, 'sample_tiled_region_run_file.json')
+
+        # make a dummy toffy directory and a dummy templates directory where the code is run
+        # NOTE: this is to test co-registration
+        os.mkdir(os.path.join(temp_dir, 'toffy'))
+        os.mkdir(os.path.join(temp_dir, 'templates'))
+
+        # change working directory to templates to simulate actual co-registration run
+        os.chdir(os.path.join(temp_dir, 'templates'))
+
+        # error check: path to sample_tiled_region_path must be valid
+        with pytest.raises(FileNotFoundError):
+            tiling_utils.tiled_region_interactive_remap(
+                {}, {}, [], os.path.join('path', 'does', 'not', 'exist')
+            )
+
+        # error check: co-registration has not been completed
+        with pytest.raises(FileNotFoundError):
+            tiling_utils.tiled_region_interactive_remap(
+                {}, {}, [], sample_tiled_region_path
+            )
+
+        # generate sample co-registration params in toffy
+        sample_coreg_params = {
+            'coreg_params': [
+                {
+                    'STAGE_TO_OPTICAL_X_MULTIPLIER': 25.0,
+                    'STAGE_TO_OPTICAL_X_OFFSET': 750.0,
+                    'STAGE_TO_OPTICAL_Y_MULTIPLIER': -20.0,
+                    'STAGE_TO_OPTICAL_Y_OFFSET': -500.0
+                }
+            ]
+        }
+
+        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'w') as cp:
+            json.dump(sample_coreg_params, cp)
+
+        # return the rectangles generated by tiled_region_interactive_remap
+        rectangles = tiling_utils.tiled_region_interactive_remap(
+            sample_tiled_region_fovs, sample_tiled_region_params,
+            sample_slide_img, sample_tiled_region_path
+        )
+
+    # assert the same Moly point FOV names exist in the set of rectangles created
+    # NOTE: this also ensures no Moly point rectangles were created
+    non_moly_fovs = [fov['name'] for fov in sample_tiled_region_fovs['fovs']
+                     if fov['name'] != 'MoQC']
+    rectangle_fovs = list(rectangles.keys())
+
+    assert non_moly_fovs == rectangle_fovs
+
+    # retrieve the colormap used by this visualization for testing color
+    cm = plt.get_cmap('tab20')
+    region_colors = {}
+    for index, region in enumerate(sample_tiled_region_params['region_params']):
+        region_colors[region['region_name']] = cm(index)
+
+    # # retrieve the full info set for each non-Moly FOV
+    # non_moly_fov_list = [fov for fov in sample_tiled_region_fovs['fovs'] if fov['name'] != 'MoQC']
+
+    # iterate through each FOV and match to corresponding rectangle
+    for fov in sample_tiled_region_fovs['fovs']:
+        # ignore the Moly point FOVs
+        if fov['name'] == 'MoQC':
+            continue
+
+        # retrieve the corresponding rectangle
+        rect_info = rectangles[fov['name']]
+
+        # get the name of this rection
+        rect_region = '_'.join(rect_info.id_val.split('_')[:-1])
+
+        # assert the edge color of this rectangle matches with the cmap
+        assert rect_info.rect.get_edgecolor() == region_colors[rect_region]
+
+        # assert the edge width of this rectangle is 1
+        # this is because no rectangles should've been clicked
+        assert rect_info.rect.get_linewidth() == 1
+
+        # retrieve the centroid and the size of the FOV
+        fov_centroid = tuple(fov['centerPointMicrons'].values())
+        fov_size = fov['fovSizeMicrons']
+
+        # co-register the top-left corner
+        top_left = (fov_centroid[0] - fov_size / 2, fov_centroid[1] + fov_size / 2)
+        top_left = tiling_utils.convert_stage_to_optical(
+            top_left, sample_coreg_params['coreg_params'][0]
+        )
+
+        # assert the top-left corner of this rectangle matches
+        assert rect_info.rect.get_xy() == tuple(reversed(top_left))
 
 
 # NOTE: this only tests if the visualization runs with valid parameters

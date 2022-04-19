@@ -3,7 +3,6 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from toffy.tiling_utils import DraggableRectangle
 from toffy.tiling_utils import XYCoord
 
 param = pytest.param
@@ -546,75 +545,6 @@ def generate_sample_annot(check_dist, check_duplicates, check_mismatches):
         annot += "\n\n"
 
     return annot
-
-
-# a helper function to generate the rectangles,
-# their corresponding entries in the tiled region json, and the ones to delete
-def generate_rectangle_cases(num_fovs, randomize, moly):
-    # define a set of fovs defining the upper-left corners of each region
-    sample_roi_fovs_list = test_utils.generate_sample_fovs_list(
-        fov_coords=[(100 * (i + 1), 100 * (i + 1)) for i in range(num_fovs)],
-        fov_names=['ROI%d' % i for i in range(num_fovs)],
-        fov_sizes=[50 * (i + 1) for i in range(num_fovs)]
-    )
-
-    # define the sample region inputs based on the number of FOVs
-    sample_region_inputs = {
-        'region_name': ['ROI%d' % i for i in range(num_fovs)],
-        'region_start_row': [100 * (i + 1) for i in range(num_fovs)],
-        'region_start_col': [100 * (i + 1) for i in range(num_fovs)],
-        'fov_num_row': [2 * (i + 1) for i in range(num_fovs)],
-        'fov_num_col': [4 / (i + 1) for i in range(num_fovs)],
-        'row_fov_size': [50 * (i + 1) for i in range(num_fovs)],
-        'col_fov_size': [50 * (i + 1) for i in range(num_fovs)],
-        'region_rand': randomize
-    }
-
-    # generate the region parameters for this set of ROIs
-    sample_region_params = tiling_utils.generate_region_info(sample_region_inputs)
-
-    # create the full set of tiling params
-    sample_tiling_params = {
-        'fovFormatVersion': '1.5',
-        'fovs': sample_roi_fovs_list['fovs'],
-        'region_params': sample_region_params
-    }
-
-
-class RectangleCases:
-    def case_one_region(self):
-        # define a set of fovs defining the upper-left corners of each region
-        sample_tiled_regions = test_utils.generate_sample_fovs_list(
-            fov_coords=[(100, 100)], fov_names=['TheFirstROI'],
-            fov_sizes=[20]
-        )
-
-        sample_region_inputs = {
-            'region_name': ['TheFirstROI'],
-            'region_start_row': [100],
-            'region_start_col': [0],
-            'fov_num_row': [2],
-            'fov_num_col': [4],
-            'row_fov_size': [50],
-            'col_fov_size': [50],
-            'region_rand': ['N']
-        }
-
-        sample_region_params = tiling_utils.generate_region_info(sample_region_inputs)
-
-        sample_tiling_params = {
-            'fovFormatVersion': '1.5',
-            'fovs': sample_roi_fovs_list['fovs'],
-            'region_params': sample_region_params
-        }
-
-        rectangles = 
-
-    def case_two_regions_delete_from_one(self):
-        pass
-
-    def case_two_regions_delete_from_both(self):
-        pass
 
 
 # testing Moly point insertion for remapping, this one's long so don't put directly in decorator

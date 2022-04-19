@@ -289,7 +289,7 @@ def read_tiled_region_inputs(region_corners, region_params):
         region_params['region_start_row'].append(fov['centerPointMicrons']['y'])
         region_params['region_start_col'].append(fov['centerPointMicrons']['x'])
 
-        print("Using start coordinates of (%d, %d) in microns for region %s"
+        print("Using start coordinates of (%d, %d) in stage microns for region %s"
               % (fov['centerPointMicrons']['x'], fov['centerPointMicrons']['y'], fov['name']))
 
         # verify that the micron size specified is valid
@@ -565,7 +565,7 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
         # a Moly point at the end of a region this way
         total_fovs += len(row_col_pairs)
 
-        for index, (col_i, row_i) in enumerate(row_col_pairs):
+        for index, (row_i, col_i) in enumerate(row_col_pairs):
             # use the fov size to scale to the current row- and col-coordinate
             cur_row = start_row - (row_i * region_info['row_fov_size'])
             cur_col = start_col + (col_i * region_info['col_fov_size'])
@@ -1405,14 +1405,17 @@ def generate_fov_rectangle(fov_info, region_colors, stage_optical_coreg_params, 
     fov_width = fov_top_right_pixels[1] - fov_top_left_pixels[1]
 
     # draw the rectangle defining this fov
+    # NOTE: the x-y axis for rectangles introduces yet another coordinate axis system,
+    # so we'll need to reverse the order fov_top_left_pixels is passed in
+    fov_top_left_pixels_rect = tuple(reversed(fov_top_left_pixels))
     dr = FOVRectangle(
-        fov_top_left_pixels, fov_width, fov_height, fov_color, fov_info['name'], ax
+        fov_top_left_pixels_rect, fov_width, fov_height, fov_color, fov_info['name'], ax
     )
 
     # annotate the name of this FOV
     _ = plt.annotate(
         fov_info['name'].replace(fov_region + '_', ''),
-        convert_stage_to_optical(fov_centroid, stage_optical_coreg_params),
+        tuple(reversed(convert_stage_to_optical(fov_centroid, stage_optical_coreg_params))),
         color='white',
         fontsize=6,
         fontweight='bold',
