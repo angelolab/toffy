@@ -1372,12 +1372,10 @@ def generate_fov_rectangle(fov_info, region_colors, stage_optical_coreg_params, 
 
     # get the centroid coordinates
     fov_centroid = tuple(fov_info['centerPointMicrons'].values())
-    # print(fov_centroid)
 
     # define the top-left corner, subtract fovSizeMicrons from x and add it to y
     fov_size = fov_info['fovSizeMicrons']
     fov_top_left_microns = (fov_centroid[0] - fov_size / 2, fov_centroid[1] + fov_size / 2)
-    # print(fov_top_left_microns)
 
     # co-register the top-left fov corner
     fov_top_left_pixels = convert_stage_to_optical(
