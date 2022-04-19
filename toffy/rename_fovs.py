@@ -11,7 +11,7 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
     Args:
         run_path (str): path to the JSON run file
         fov_dir (str): directory where the FOV subdirectories are stored
-        new_dir (str): name of new directory to output files to, defaults to None
+        new_dir (str): path to the new directory to output files to, defaults to None
 
         """
 
@@ -20,14 +20,26 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
 
     #retieve FOV names and number of scans for each
     with open(run_path) as f:
-        data = json.load(f)
-        run_data = data['fovs']
-        fov_scan = {x['name']: x['scanCount'] for x in run_data}
+        run_metadata = json.load(f)
+
+    fov_scan = dict()
+    for fov in run_metadata.get('fovs', ()):
+        name = fov.get('name')
+        run_order = fov.get('runOrder', -1)
+        scans = fov.get('scanCount', -1)
+        if run_order * scans < 0:
+            raise KeyError(f"Could not locate keys in {run_path}.json")
+
+        if scans > 1:
+            for scan in range(1, scans+1):
+                fov_name = f'fov-{run_order}-scan-{scan}'
+                fov_scan[fov_name] = f'{name}-{scan}'
+        else:
+            fov_name = f'fov-{run_order}-scan-{scans}'
+            fov_scan[fov_name] = name
 
     #determine how many folders will be changed
-    name_count = 0
-    for fov in fov_scan:
-        name_count += (1*fov_scan[fov])
+    name_count = len(fov_scan)
 
     #insert some kind of fov name validation
 
@@ -35,7 +47,7 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
     #retrieve number of current FOV directories and their names
     old_dirs = io_utils.list_folders(fov_dir, "fov")
     dir_count = len(old_dirs)
-    old_dirs.sort()
+    #old_dirs.sort()
 
     #testing
     #test = list(fov_scan)[0:5]
@@ -51,24 +63,24 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
         parent = os.path.join(fov_dir, os.pardir)
         new_dir = os.path.join(parent, new_dir)
         copy_tree(fov_dir, new_dir)
+        change_dir = new_dir
+    else:
+        change_dir = fov_dir
+
 
     #change the FOV directory names
     renamed_dirs = 0
-    for fov in fov_scan:
-        scan_num = fov_scan[fov]
-        for scan in range(1, scan_num+1):
-            if new_dir is not None:
-                change_dir = new_dir
-            else:
-                change_dir = fov_dir
-            fov_subdir = os.path.join(change_dir, old_dirs[renamed_dirs])
-            new_name = os.path.join(change_dir, fov + "-scan-" + str(scan))
-            os.rename(fov_subdir, new_name)
-            renamed_dirs += 1
+    for folder in fov_scan:
+        fov_subdir = os.path.join(change_dir, folder)
+        new_name = os.path.join(change_dir, fov_scan[folder])
+        os.rename(fov_subdir, new_name)
+        renamed_dirs += 1
 
 
-'''
-r = os.path.join("data", "json_test", "2022-04-07_TONIC_TMA21_run1.json")
+
+
+#r = os.path.join("data", "json_test", "2022-04-07_TONIC_TMA21_run1.json")
+r = os.path.join("data", "json_test", "2022-01-14_postsweep_2.json")
 f = os.path.join("data", "fov_folders")
-n = 'new_directory_name'
-rename_fov_dirs(r, f, n)'''
+n = os.path.join("data", "new_names")
+rename_fov_dirs(r, f, n)
