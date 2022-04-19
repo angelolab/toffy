@@ -1360,7 +1360,7 @@ def generate_fov_rectangle(fov_info, region_colors, stage_optical_coreg_params, 
             The axis to draw the rectangle on
 
     Returns:
-        tiling_utils.FOVRectangle:
+        FOVRectangle:
             The interactive rectangle object associated with the FOV to draw
     """
 
@@ -1410,16 +1410,6 @@ def generate_fov_rectangle(fov_info, region_colors, stage_optical_coreg_params, 
     fov_top_left_pixels_rect = tuple(reversed(fov_top_left_pixels))
     dr = FOVRectangle(
         fov_top_left_pixels_rect, fov_width, fov_height, fov_color, fov_info['name'], ax
-    )
-
-    # annotate the name of this FOV
-    _ = plt.annotate(
-        fov_info['name'].replace(fov_region + '_', ''),
-        tuple(reversed(convert_stage_to_optical(fov_centroid, stage_optical_coreg_params))),
-        color='white',
-        fontsize=6,
-        fontweight='bold',
-        annotation_clip=False
     )
 
     return dr
