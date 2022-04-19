@@ -28,7 +28,7 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
         run_order = fov.get('runOrder', -1)
         scans = fov.get('scanCount', -1)
         if run_order * scans < 0:
-            raise KeyError(f"Could not locate keys in {run_path}.json")
+            raise KeyError(f"Could not locate keys in {run_path}")
 
         if scans > 1:
             for scan in range(1, scans+1):
@@ -44,10 +44,8 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
     #insert some kind of fov name validation
 
 
-    #retrieve number of current FOV directories and their names
+    #retrieve the current FOV directory names
     old_dirs = io_utils.list_folders(fov_dir, "fov")
-    dir_count = len(old_dirs)
-    #old_dirs.sort()
 
     #testing
     #test = list(fov_scan)[0:5]
@@ -55,8 +53,10 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
     #print(fov_scan)
 
     #check that fovs & scan counts match the number of existing FOV directories
-    #if name_count != dir_count:
-    #    raise ValueError(f"FOV folders do not match expected amount listed in the run file")
+    if not set(old_dirs).issubset(set(fov_scan.keys())):
+        raise ValueError(f"FOV folders exceed the expected amount listed in {run_path}")
+    if not set(fov_scan.keys()).issubset(set(old_dirs)):
+        raise Warning(f"Not all FOVs listed in {run_path} have an existing directory")
 
     # create new directory and copy contents of fov_dir
     if new_dir is not None:
@@ -64,7 +64,6 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
         change_dir = new_dir
     else:
         change_dir = fov_dir
-
 
     #change the FOV directory names
     renamed_dirs = 0
@@ -76,10 +75,9 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
             renamed_dirs += 1
 
 
-
-
+'''
 #r = os.path.join("data", "json_test", "2022-04-07_TONIC_TMA21_run1.json")
 r = os.path.join("data", "json_test", "2022-01-14_postsweep_2.json")
 f = os.path.join("data", "fov_folders")
 n = os.path.join("data", "new_names")
-rename_fov_dirs(r, f, n)
+rename_fov_dirs(r, f, n)'''
