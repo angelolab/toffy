@@ -55,8 +55,8 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
     #print(fov_scan)
 
     #check that fovs & scan counts match the number of existing FOV directories
-    if name_count != dir_count:
-        raise ValueError(f"FOV folders do not match expected amount listed in the run file")
+    #if name_count != dir_count:
+    #    raise ValueError(f"FOV folders do not match expected amount listed in the run file")
 
     # create new directory and copy contents of fov_dir
     if new_dir is not None:
@@ -70,9 +70,10 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
     renamed_dirs = 0
     for folder in fov_scan:
         fov_subdir = os.path.join(change_dir, folder)
-        new_name = os.path.join(change_dir, fov_scan[folder])
-        os.rename(fov_subdir, new_name)
-        renamed_dirs += 1
+        if os.path.isdir(fov_subdir):
+            new_name = os.path.join(change_dir, fov_scan[folder])
+            os.rename(fov_subdir, new_name)
+            renamed_dirs += 1
 
 
 
