@@ -106,6 +106,7 @@ def _save_streak_masks(streak_data: StreakData):
     for field in fields:
         _save(streak_data, name=field)
 
+
 # ! UNSTABLE WITH WHITE BACKGROUND, BLACK STREAKS
 def _make_binary_mask(
     input_image: np.ndarray,
