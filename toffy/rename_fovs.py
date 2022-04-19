@@ -60,8 +60,6 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
 
     # create new directory and copy contents of fov_dir
     if new_dir is not None:
-        parent = os.path.join(fov_dir, os.pardir)
-        new_dir = os.path.join(parent, new_dir)
         copy_tree(fov_dir, new_dir)
         change_dir = new_dir
     else:
