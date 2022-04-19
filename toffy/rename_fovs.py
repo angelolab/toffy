@@ -1,5 +1,6 @@
 import json
 import os
+import warnings
 from distutils.dir_util import copy_tree
 
 from ark.utils import io_utils
@@ -12,6 +13,11 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
         run_path (str): path to the JSON run file
         fov_dir (str): directory where the FOV subdirectories are stored
         new_dir (str): path to the new directory to output files to, defaults to None
+
+    Raises:
+        KeyError : issue reading keys from the JSON file
+        ValueError : there are existing FOV directories that are not described the run file
+        UserWarning : not all fov names in the run file have an existing directory
 
         """
 
@@ -38,28 +44,26 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
             fov_name = f'fov-{run_order}-scan-{scans}'
             fov_scan[fov_name] = name
 
-    #determine how many folders will be changed
-    name_count = len(fov_scan)
-
     #insert some kind of fov name validation
 
 
     #retrieve the current FOV directory names
     old_dirs = io_utils.list_folders(fov_dir, "fov")
 
+    #check that fovs & scan counts match the number of existing FOV directories
+    if not set(old_dirs).issubset(set(fov_scan.keys())):
+        raise ValueError(f"FOV folders exceed the expected amount listed in {run_path}")
+    if not set(fov_scan.keys()).issubset(set(old_dirs)):
+        warnings.warn(f"Not all FOVs listed in {run_path} have an existing directory")
+
     #testing
     #test = list(fov_scan)[0:5]
     #fov_scan = {t: fov_scan[t] for t in test}
     #print(fov_scan)
 
-    #check that fovs & scan counts match the number of existing FOV directories
-    if not set(old_dirs).issubset(set(fov_scan.keys())):
-        raise ValueError(f"FOV folders exceed the expected amount listed in {run_path}")
-    if not set(fov_scan.keys()).issubset(set(old_dirs)):
-        raise Warning(f"Not all FOVs listed in {run_path} have an existing directory")
-
     # create new directory and copy contents of fov_dir
     if new_dir is not None:
+        io_utils.validate_paths(fov_dir)
         copy_tree(fov_dir, new_dir)
         change_dir = new_dir
     else:
@@ -75,9 +79,9 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
             renamed_dirs += 1
 
 
-'''
+
 #r = os.path.join("data", "json_test", "2022-04-07_TONIC_TMA21_run1.json")
 r = os.path.join("data", "json_test", "2022-01-14_postsweep_2.json")
 f = os.path.join("data", "fov_folders")
 n = os.path.join("data", "new_names")
-rename_fov_dirs(r, f, n)'''
+rename_fov_dirs(r, f, n)
