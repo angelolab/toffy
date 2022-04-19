@@ -1122,7 +1122,6 @@ def test_delete_tiled_region_fovs(randomize, moly):
 
 # NOTE: this only tests if the rectangles are drawn correctly
 # unfortunately, there isn't a way to programmatically test the click of a button on Python's side
-# see: https://github.com/jupyter-widgets/ipywidgets/issues/1896
 @parametrize('num_regions', [1, 2, 3])
 @parametrize('randomize', [False, True])
 @parametrize('moly', [False, True])
@@ -1252,9 +1251,6 @@ def test_tiled_region_interactive_remap(num_regions, randomize, moly):
     region_colors = {}
     for index, region in enumerate(sample_tiled_region_params['region_params']):
         region_colors[region['region_name']] = cm(index)
-
-    # # retrieve the full info set for each non-Moly FOV
-    # non_moly_fov_list = [fov for fov in sample_tiled_region_fovs['fovs'] if fov['name'] != 'MoQC']
 
     # iterate through each FOV and match to corresponding rectangle
     for fov in sample_tiled_region_fovs['fovs']:
