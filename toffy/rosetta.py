@@ -247,48 +247,49 @@ def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='normaliz
         channel_subset_dir: directory with a subset of the channels contained in other directories.
             Only channels found in this directory will be used for tiling."""
 
-    # Get optional list of channels to load
-    if channel_subset_dir is not None:
-        test_fov = list_folders(channel_subset_dir)[0]
-        test_data = load_imgs_from_tree(data_dir=channel_subset_dir, fovs=[test_fov],
-                                        img_sub_folder=img_sub_folder)
-        channels = test_data.channels.values
-    else:
-        channels = None
+    # Get list of channels from specific directory if provided, otherwise use the first one
+    if channel_subset_dir is None:
+        channel_subset_dir = input_dir_list[0]
 
-    # load images
-    dir_dict = {}
-    dir_shapes = []
-    for dir_name in input_dir_list:
-        dir_images = load_imgs_from_tree(dir_name, img_sub_folder=img_sub_folder,
-                                         dtype='float32', channels=channels)
-        dir_shapes.append(dir_images.shape)
-        dir_dict[dir_name] = dir_images
+    test_fov = list_folders(channel_subset_dir)[0]
+    test_data = load_imgs_from_tree(data_dir=channel_subset_dir, fovs=[test_fov],
+                                    img_sub_folder=img_sub_folder)
 
-    if not np.all([shape == dir_shapes[0] for shape in dir_shapes]):
-        raise ValueError("All directories must contain the same number of fovs and images")
+    img_size = test_data.shape[1]
+    channels = test_data.channels.values
+    chanel_num = len(channels)
 
-    first_dir = dir_dict[input_dir_list[0]]
-    img_size = first_dir.shape[1]
-    fov_num = first_dir.shape[0]
+    # check that all dirs have the same number of fovs and correct subset of channels
+    fov_names = list_folders(input_dir_list[0])
+    for dir_name in input_dir_list[1:]:
+        current_folders = list_folders(dir_name)
+        verify_same_elements(fov_names1=fov_names, fov_names2=current_folders)
+        current_channels = load_imgs_from_tree(data_dir=dir_name,
+                                               img_sub_folder=img_sub_folder,
+                                               fovs=current_folders[:1]).channels.values
+        verify_in_list(specified_channels=channels, current_channels=current_channels)
+
+    fov_num = len(fov_names)
 
     # loop over each channel
-    for j in range(first_dir.shape[3]):
+    for j in range(chanel_num):
         # create tiled array of dirs x fovs
         tiled_image = np.zeros((img_size * len(input_dir_list),
-                                img_size * fov_num), dtype=first_dir.dtype)
+                                img_size * fov_num), dtype=test_data.dtype)
 
         # loop over each fov, and place into columns of tiled array
-        for i in range(first_dir.shape[0]):
+        for i in range(fov_num):
             start = i * img_size
             end = (i + 1) * img_size
 
-            # go through each of the directories and place in appropriate spot
+            # go through each of the directories, read in the images, and place in the right spot
             for idx, key in enumerate(input_dir_list):
+                dir_data = load_imgs_from_tree(key, channels=channels,
+                                               img_sub_folder=img_sub_folder)
                 tiled_image[(img_size * idx):(img_size * (idx + 1)), start:end] = \
-                    dir_dict[key].values[i, :, :, j]
+                    dir_data.values[i, :, :, j]
 
-        io.imsave(os.path.join(output_dir, first_dir.channels.values[j] + '_comparison.tiff'),
+        io.imsave(os.path.join(output_dir, channels[j] + '_comparison.tiff'),
                   tiled_image, check_contrast=False)
 
 
