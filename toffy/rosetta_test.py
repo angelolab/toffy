@@ -257,6 +257,11 @@ def test_create_tiled_comparison(dir_num):
         with pytest.raises(ValueError):
             rosetta.create_tiled_comparison(paths, output_dir)
 
+        # no error raised if subset directory is specified
+        rosetta.create_tiled_comparison(paths, output_dir,
+                                        channel_subset_dir=os.path.join(top_level_dir,
+                                                                        dir_names[0]))
+
 
 def test_add_source_channel_to_tiled_image():
     with tempfile.TemporaryDirectory() as top_level_dir:
@@ -394,3 +399,11 @@ def test_create_rosetta_matrices():
 
             rescaled = test_matrix.divide(mult_vec, axis='index')
             assert np.array_equal(base_rosetta, rescaled)
+
+        # check that error is raised when non-numeric rosetta_matrix is passed
+        bad_matrix = pd.DataFrame({'col1': [1, 2, 3], 'col2': [4, 5, 6], 'col3': ['a', 'b', 'c']})
+        bad_matrix_path = os.path.join(temp_dir, 'bad_rosetta_matrix.csv')
+        bad_matrix.to_csv(bad_matrix_path)
+
+        with pytest.raises(ValueError, match='include only numeric'):
+            create_rosetta_matrices(bad_matrix_path, temp_dir, multipliers)

@@ -236,19 +236,32 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                     io.imsave(save_path, comp_data[j, :, :, idx], check_contrast=False)
 
 
-def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='normalized'):
+def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='normalized',
+                            channel_subset_dir=None):
     """Creates a tiled image comparing FOVs from all supplied runs for each channel.
 
     Args:
         input_dir_list: list of directories to compare
-        output_dir: directory where tifs will be saved"""
+        output_dir: directory where tifs will be saved
+        img_sub_folder: subfolder within each input directory to load images from
+        channel_subset_dir: directory with a subset of the channels contained in other directories.
+            Only channels found in this directory will be used for tiling."""
+
+    # Get optional list of channels to load
+    if channel_subset_dir is not None:
+        test_fov = list_folders(channel_subset_dir)[0]
+        test_data = load_imgs_from_tree(data_dir=channel_subset_dir, fovs=[test_fov],
+                                        img_sub_folder=img_sub_folder)
+        channels = test_data.channels.values
+    else:
+        channels = None
 
     # load images
     dir_dict = {}
     dir_shapes = []
     for dir_name in input_dir_list:
         dir_images = load_imgs_from_tree(dir_name, img_sub_folder=img_sub_folder,
-                                         dtype='float32')
+                                         dtype='float32', channels=channels)
         dir_shapes.append(dir_images.shape)
         dir_dict[dir_name] = dir_images
 
@@ -397,6 +410,10 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, masses=None):
     # Read input matrix
     comp_matrix = pd.read_csv(default_matrix, index_col=0)
     comp_masses = comp_matrix.index
+
+    # Check that all entries of comp_matrix are numeric
+    if not np.issubdtype(comp_matrix.values.dtype, np.number):
+        raise ValueError('Compensation matrix must include only numeric entries')
 
     # Check channel input
     if masses is None:
