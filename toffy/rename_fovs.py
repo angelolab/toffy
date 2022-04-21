@@ -75,10 +75,9 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
             new_name = os.path.join(change_dir, fov_scan[folder])
             os.rename(fov_subdir, new_name)
 
-
-'''
+"""
 #r = os.path.join("data", "json_test", "2022-04-07_TONIC_TMA21_run1.json")
 r = os.path.join("data", "json_test", "2022-01-14_postsweep_2.json")
 f = os.path.join("data", "fov_folders")
 n = os.path.join("data", "new_names")
-rename_fov_dirs(r, f, n)'''
+rename_fov_dirs(r, f, n)"""
