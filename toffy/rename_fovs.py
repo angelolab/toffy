@@ -10,14 +10,14 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
     """Renames FOV directories with default_name to have custom_name sourced from the run JSON file
 
     Args:
-        run_path (str): path to the JSON run file which contains custom_name values
-        fov_dir (str): directory where the FOV default_name subdirectories are stored
+        run_path (str): path to the JSON run file which contains custom name values
+        fov_dir (str): directory where the FOV default named subdirectories are stored
         new_dir (str): path to new directory to output renamed folders and files to, defaults to None
 
     Raises:
         KeyError: issue reading keys from the JSON file
-        ValueError: there are existing default_name directories that are not described in the run file
-        UserWarning: not all custom_names from the run file have an existing directory
+        ValueError: there are existing default named directories that are not described in the run file
+        UserWarning: not all custom names from the run file have an existing directory
 
         """
 
@@ -26,7 +26,7 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
 
     #insert some kind of fov name validation
 
-    #retieve FOV names and number of scans for each
+    #retieve custom names and number of scans for each fov, construct matching default names
     with open(run_path) as f:
         run_metadata = json.load(f)
 
@@ -46,10 +46,10 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
             default_name = f'fov-{run_order}-scan-{scans}'
             fov_scan[default_name] = custom_name
 
-    #retrieve the current FOV directory names
+    #retrieve the current default directory names
     old_dirs = io_utils.list_folders(fov_dir, "fov")
 
-    #check that fovs & scan counts match the number of existing FOV directories
+    #check if custom fov names & scan counts match the number of existing default directories
     if not set(old_dirs).issubset(set(fov_scan.keys())):
         raise ValueError(f"FOV folders exceed the expected amount listed in {run_path}")
     if not set(fov_scan.keys()).issubset(set(old_dirs)):
