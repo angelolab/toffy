@@ -3,7 +3,7 @@ import os
 import warnings
 from distutils.dir_util import copy_tree
 
-from ark.utils import io_utils
+from ark.utils import io_utils, misc_utils
 
 
 def rename_fov_dirs(run_path, fov_dir, new_dir=None):
@@ -24,9 +24,9 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
     io_utils.validate_paths(run_path)
     io_utils.validate_paths(fov_dir)
 
-    #insert some kind of fov name validation
+    # insert some kind of fov name validation
 
-    #retieve custom names and number of scans for each fov, construct matching default names
+    # retrieve custom names and number of scans for each fov, construct matching default names
     with open(run_path) as f:
         run_metadata = json.load(f)
 
@@ -39,23 +39,28 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
             raise KeyError(f"Could not locate keys in {run_path}")
 
         if scans > 1:
-            for scan in range(1, scans+1):
+            for scan in range(1, scans + 1):
                 default_name = f'fov-{run_order}-scan-{scan}'
                 fov_scan[default_name] = f'{custom_name}-{scan}'
         else:
             default_name = f'fov-{run_order}-scan-{scans}'
             fov_scan[default_name] = custom_name
 
-    #retrieve the current default directory names
+    # retrieve the current default directory names
     old_dirs = io_utils.list_folders(fov_dir, "fov")
 
-    #check if custom fov names & scan counts match the number of existing default directories
-    if not set(old_dirs).issubset(set(fov_scan.keys())):
-        raise ValueError(f"FOV folders exceed the expected amount listed in {run_path}")
-    if not set(fov_scan.keys()).issubset(set(old_dirs)):
-        warnings.warn(f"Not all FOVs listed in {run_path} have an existing directory")
+    # check if custom fov names & scan counts match the number of existing default directories
+    try:
+        misc_utils.verify_in_list(default=list(fov_scan.keys()), existing_folders=old_dirs)
+    except ValueError:
+        warnings.warn(f"Not all FOVs specified in {run_path} have an existing directory")
 
-    #validate new_dir and copy contents of fov_dir
+    try:
+        misc_utils.verify_in_list(existing_folders=old_dirs, default=list(fov_scan.keys()))
+    except ValueError:
+        raise ValueError(f"FOV folders exceed the expected amount specified in {run_path}")
+
+    # validate new_dir and copy contents of fov_dir
     if new_dir is not None:
         io_utils.validate_paths(fov_dir)
         copy_tree(fov_dir, new_dir)
@@ -63,7 +68,7 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
     else:
         change_dir = fov_dir
 
-    #change the default directory names to custom names
+    # change the default directory names to custom names
     for folder in fov_scan:
         fov_subdir = os.path.join(change_dir, folder)
         if os.path.isdir(fov_subdir):
@@ -72,8 +77,8 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
 
 
 '''
-r = os.path.join("data", "json_test", "2022-04-07_TONIC_TMA21_run1.json")
-#r = os.path.join("data", "json_test", "2022-01-14_postsweep_2.json")
+#r = os.path.join("data", "json_test", "2022-04-07_TONIC_TMA21_run1.json")
+r = os.path.join("data", "json_test", "2022-01-14_postsweep_2.json")
 f = os.path.join("data", "fov_folders")
 n = os.path.join("data", "new_names")
 rename_fov_dirs(r, f, n)'''
