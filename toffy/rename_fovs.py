@@ -71,8 +71,11 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
             default_name = f'fov-{run_order}-scan-{scans}'
             fov_scan[default_name] = custom_name
 
-    # retrieve the current default directory names
+    # retrieve current default directory names, if empty there are no default names to change
     old_dirs = io_utils.list_folders(fov_dir, "fov")
+    if not old_dirs:
+        warnings.warn(f"No directories in {fov_dir} require renaming")
+        return
 
     # check if custom fov names & scan counts match the number of existing default directories
     try:
@@ -102,3 +105,4 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
 # f = os.path.join("data", "fov_folders")
 # n = os.path.join("data", "new_names")
 # rename_fov_dirs(r, f, n)
+# rename_fov_dirs(r, f)
