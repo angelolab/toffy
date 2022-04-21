@@ -24,7 +24,7 @@ def check_unnamed_fovs(fov_data):
     for fov in fov_data['fovs']:
         if 'name' not in fov.keys():
             missing_count += 1
-            fov_data[fov['name']] = f'placeholder_{missing_count}'
+            fov['name'] = f'placeholder_{missing_count}'
 
     return fov_data
 
@@ -102,6 +102,7 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
 
 # r = os.path.join("data", "json_test", "2022-04-07_TONIC_TMA21_run1.json")
 # r = os.path.join("data", "json_test", "2022-01-14_postsweep_2.json")
+# r = os.path.join("data", "json_test", "DCIS_Dress_corners.json")
 # f = os.path.join("data", "fov_folders")
 # n = os.path.join("data", "new_names")
 # rename_fov_dirs(r, f, n)
