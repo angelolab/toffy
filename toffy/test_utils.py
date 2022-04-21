@@ -1,7 +1,10 @@
 from typing import List
 import os
+import shutil
 import functools
 from pathlib import Path
+import tempfile
+import json
 
 import pytest
 from pytest_cases import case, parametrize
@@ -13,6 +16,7 @@ from toffy.watcher_callbacks import (
     build_extract_callback,
     build_qc_callback,
 )
+from toffy.fov_watcher import RunStructure
 
 
 def generate_sample_fov_tiling_entry(coord, name, size):
@@ -123,7 +127,21 @@ class ExtractionQCGenerationCases:
 
 def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channels: List[str],
                                    intensities: bool = False):
-    """checks extraction directory for minimum expected structure
+    """Checks extraction directory for minimum expected structure
+
+    Args:
+        ext_dir (str):
+            Folder containing extraction output
+        point_names (list):
+            List of expected point names
+        channels (list):
+            List of expected channel names
+        intensities (bool):
+            Whether or not to check for intensities
+
+    Raises:
+        AssertionError:
+            Assertion error on missing expected tiff
     """
     for point in point_names:
         for channel in channels:
@@ -134,6 +152,18 @@ def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channel
 
 
 def check_qc_dir_structure(out_dir: str, point_names: List[str]):
+    """Checks QC directory for minimum expected structure
+
+    Args:
+        out_dir (str):
+            Folder containing QC output
+        point_names (list):
+            List of expected point names
+
+    Raises:
+        AssertionError:
+            Assertion error on missing csv
+    """
     for point in point_names:
         for ms in QC_SUFFIXES:
             assert(os.path.exists(os.path.join(out_dir, f'{point}_{ms}.csv')))
@@ -147,6 +177,69 @@ class ExtractionQCCallCases:
 
     def case_moly(self):
         return os.path.join(Path(__file__).parent, 'data', 'moly')
+
+
+def _make_small_file(folder: str, name: str):
+    """Creates small file.  Creating a blank file will cause a stall for 0-size checking
+
+    Args:
+        folder (str):
+            Folder to store file in
+        name (str):
+            Name of small file
+    """
+    with open(os.path.join(folder, name), 'w') as f:
+        f.write('a')
+
+
+class RunStructureTestContext:
+    def __init__(self, run_json, files=None):
+        self.run_json = run_json
+        self.files = files
+        self.tmpdir = None
+        self.run_structure = None
+
+    @property
+    def tempdir_name(self):
+        return Path(self.tmpdir).parts[-1]
+
+    def __enter__(self):
+        self.tmpdir = tempfile.mkdtemp()
+        with open(os.path.join(self.tmpdir, f'{self.tempdir_name}.json'), 'w') as f:
+            json.dump(self.run_json, f)
+
+        for file in self.files:
+            _make_small_file(self.tmpdir, file)
+
+        # build run structure dir
+        self.run_structure = RunStructure(self.tmpdir)
+        return self.tmpdir, self.run_structure
+
+    def __exit__(self, exc_type, exc_value, exc_traceback):
+        shutil.rmtree(self.tmpdir)
+
+
+class RunStructureCases:
+    def case_default(self):
+        fov_count = 2
+        run_json = {
+            'fovs': [
+                {'runOrder': n + 1, 'scanCount': 1}
+                for n in range(fov_count)
+            ]
+        }
+        expected_files = [
+            f'fov-{n + 1}-scan-1.bin'
+            for n in range(fov_count)
+        ]
+        expected_files += [binf.split('.')[0] + '.json' for binf in expected_files]
+        return run_json, expected_files
+
+    @pytest.mark.xfail(raises=KeyError)
+    def case_extrabin(self):
+        run_json, exp_files = self.case_default()
+        exp_files += ['fov-X-scan-1.bin']
+        return run_json, exp_files
 
 
 class WatcherCases:

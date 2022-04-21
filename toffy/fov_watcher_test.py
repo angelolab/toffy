@@ -6,11 +6,12 @@ import json
 from pathlib import Path
 from multiprocessing.pool import ThreadPool as Pool
 
+import pytest
 from pytest_cases import parametrize_with_cases
 
 from mibi_bin_tools import io_utils
 
-from toffy.test_utils import WatcherCases
+from toffy.test_utils import WatcherCases, RunStructureTestContext, RunStructureCases
 from toffy.fov_watcher import start_watcher
 
 TISSUE_DATA_PATH = os.path.join(Path(__file__).parent, 'data', 'tissue')
@@ -40,6 +41,17 @@ TISSUE_RUN_JSON_SPOOF = {
         {'runOrder': 2, 'scanCount': 1},
     ],
 }
+
+
+@parametrize_with_cases('run_json, expected_files', cases=RunStructureCases)
+def test_run_structure(run_json, expected_files):
+    with RunStructureTestContext(run_json, files=expected_files) as (tmpdir, run_structure):
+        for file in expected_files:
+            run_structure.check_run_condition(os.path.join(tmpdir, file))
+        assert(all(run_structure.check_fov_progress().values()))
+
+        with pytest.raises(FileNotFoundError):
+            run_structure.check_run_condition(os.path.join(tmpdir, 'fake_file.txt'))
 
 
 # TODO: add tests for per_run when per_run callbacks are created

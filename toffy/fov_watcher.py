@@ -166,7 +166,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         try:
             fov_ready, point_name = self.run_structure.check_run_condition(event.src_path)
         except TimeoutError as timeout_error:
-            print('Encountered TimeoutError error: ' + timeout_error)
+            print(f'Encountered TimeoutError error: {timeout_error}')
             logf = open(self.log_path, 'a')
             logf.write(
                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
