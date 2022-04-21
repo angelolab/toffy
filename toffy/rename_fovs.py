@@ -3,7 +3,8 @@ import os
 import warnings
 from distutils.dir_util import copy_tree
 
-from ark.utils import io_utils, misc_utils
+from ark.utils import io_utils
+from ark.utils.misc_utils import verify_in_list
 from toffy.tiling_utils import rename_duplicate_fovs
 
 
@@ -34,11 +35,11 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
     Args:
         run_path (str): path to the JSON run file which contains custom name values
         fov_dir (str): directory where the FOV default named subdirectories are stored
-        new_dir (str): path to new directory to output renamed folders and files to, defaults to None
+        new_dir (str): path to new directory to output renamed folders to, defaults to None
 
     Raises:
         KeyError: issue reading keys from the JSON file
-        ValueError: there are existing default named directories that are not described in the run file
+        ValueError: there exist default named directories that are not described in the run file
         UserWarning: not all custom names from the run file have an existing directory
 
         """
@@ -75,11 +76,11 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
 
     # check if custom fov names & scan counts match the number of existing default directories
     try:
-        misc_utils.verify_in_list(default=list(fov_scan.keys()), existing_folders=old_dirs)
+        verify_in_list(default=list(fov_scan.keys()), existing_folders=old_dirs)
     except ValueError:
         warnings.warn(f"Not all FOVs specified in {run_path} have an existing directory")
 
-    misc_utils.verify_in_list(existing_FOV_folders_not_found_in_run_file=old_dirs, default=list(fov_scan.keys()))
+    verify_in_list(existing_folders_not_found_in_run_file=old_dirs, default=list(fov_scan.keys()))
 
     # validate new_dir and copy contents of fov_dir
     if new_dir is not None:
@@ -96,8 +97,8 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
             new_name = os.path.join(change_dir, fov_scan[folder])
             os.rename(fov_subdir, new_name)
 
-#r = os.path.join("data", "json_test", "2022-04-07_TONIC_TMA21_run1.json")
-#r = os.path.join("data", "json_test", "2022-01-14_postsweep_2.json")
-#f = os.path.join("data", "fov_folders")
-#n = os.path.join("data", "new_names")
-#rename_fov_dirs(r, f, n)
+# r = os.path.join("data", "json_test", "2022-04-07_TONIC_TMA21_run1.json")
+# r = os.path.join("data", "json_test", "2022-01-14_postsweep_2.json")
+# f = os.path.join("data", "fov_folders")
+# n = os.path.join("data", "new_names")
+# rename_fov_dirs(r, f, n)
