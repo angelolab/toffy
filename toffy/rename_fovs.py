@@ -79,10 +79,7 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
     except ValueError:
         warnings.warn(f"Not all FOVs specified in {run_path} have an existing directory")
 
-    try:
-        misc_utils.verify_in_list(existing_folders=old_dirs, default=list(fov_scan.keys()))
-    except ValueError:
-        raise ValueError(f"FOV folders exceed the expected amount specified in {run_path}")
+    misc_utils.verify_in_list(existing_FOV_folders_not_found_in_run_file=old_dirs, default=list(fov_scan.keys()))
 
     # validate new_dir and copy contents of fov_dir
     if new_dir is not None:
