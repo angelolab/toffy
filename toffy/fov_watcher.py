@@ -1,3 +1,4 @@
+import sys
 import os
 from pathlib import Path
 import time
@@ -77,8 +78,7 @@ class RunStructure:
                 while os.path.getsize(path) == 0:
                     # consider timed out fovs complete
                     if wait_time >= self.timeout:
-                        for ext in self.fov_progress[fov_name].keys():
-                            self.fov_progress[fov_name][ext] = True
+                        del self.fov_progress[fov_name]
                         raise TimeoutError(f'timed out waiting for {path}...')
 
                     time.sleep(check_interval)
@@ -90,7 +90,7 @@ class RunStructure:
                 return True, fov_name
 
         elif extension == 'bin':
-            raise KeyError(f'Found unexpected file, {path}...')
+            raise KeyError(f'Found unexpected bin file, {path}...')
 
         return False, fov_name
 
@@ -120,7 +120,7 @@ class FOV_EventHandler(FileSystemEventHandler):
     """
     def __init__(self, run_folder: str, log_folder: str,
                  per_fov: List[Callable[[str, str], None]],
-                 per_run: List[Callable[[str], None]], timeout: int = 10 * 60):
+                 per_run: List[Callable[[str], None]], timeout: int = 1.03 * 60 * 60):
         """Initializes FOV_EventHandler
 
         Args:
@@ -164,6 +164,8 @@ class FOV_EventHandler(FileSystemEventHandler):
 
         # check if what's created is in the run structure
         try:
+            print(f'{event.src_path} created')
+            sys.stdout.flush()
             fov_ready, point_name = self.run_structure.check_run_condition(event.src_path)
         except TimeoutError as timeout_error:
             print(f'Encountered TimeoutError error: {timeout_error}')
@@ -173,6 +175,7 @@ class FOV_EventHandler(FileSystemEventHandler):
                 f'{event.src_path} never reached non-zero file size...\n'
             )
             self.check_complete()
+            return
 
         if fov_ready:
             print(f'Discovered {point_name}, begining per-fov callbacks...')
@@ -220,7 +223,7 @@ class FOV_EventHandler(FileSystemEventHandler):
 
 def start_watcher(run_folder: str, log_folder: str, per_fov: List[Callable[[str, str], None]],
                   per_run: List[Callable[[str, str], None]],
-                  completion_check_time: int = 30):
+                  completion_check_time: int = 30, zero_size_timeout: int = 10 * 60):
     """ Passes bin files to provided callback functions as they're created
 
     Args:
@@ -235,9 +238,11 @@ def start_watcher(run_folder: str, log_folder: str, per_fov: List[Callable[[str,
         completion_check_time (int):
             how long to wait before checking watcher completion, in seconds.
             note, this doesn't effect the watcher itself, just when this wrapper function exits.
+        zero_size_timeout (int):
+            number of seconds to wait for non-zero file size
     """
     observer = Observer()
-    event_handler = FOV_EventHandler(run_folder, log_folder, per_fov, per_run)
+    event_handler = FOV_EventHandler(run_folder, log_folder, per_fov, per_run, zero_size_timeout)
     observer.schedule(event_handler, run_folder, recursive=True)
     observer.start()
 
