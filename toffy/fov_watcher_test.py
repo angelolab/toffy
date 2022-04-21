@@ -28,8 +28,6 @@ def _slow_copy_sample_tissue_data(dest: str, delta: int = 10, one_blank: bool = 
             Time (in seconds) between each file copy
     """
 
-    print('copytime')
-
     for tissue_file in sorted(os.listdir(TISSUE_DATA_PATH)):
         time.sleep(delta)
         if one_blank and '.bin' in tissue_file:
@@ -38,7 +36,6 @@ def _slow_copy_sample_tissue_data(dest: str, delta: int = 10, one_blank: bool = 
             one_blank = False
         else:
             shutil.copy(os.path.join(TISSUE_DATA_PATH, tissue_file), dest)
-    print('copies done!')
 
 
 TISSUE_RUN_JSON_SPOOF = {
