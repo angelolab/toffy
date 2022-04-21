@@ -1,4 +1,3 @@
-import sys
 import os
 from pathlib import Path
 import time
@@ -26,6 +25,7 @@ class RunStructure:
         """
         self.timeout = timeout
         self.fov_progress = {}
+        self.processed_fovs = []
 
         # find run .json and get parameters
         run_name = Path(run_folder).parts[-1]
@@ -72,6 +72,11 @@ class RunStructure:
             return False, ''
 
         fov_name, extension = filename.split('.')
+
+        # avoids repeated processing in case of duplicated events
+        if fov_name in self.processed_fovs:
+            return False, fov_name
+
         wait_time = 0
         if fov_name in self.fov_progress:
             if extension in self.fov_progress[fov_name]:
@@ -93,6 +98,15 @@ class RunStructure:
             raise KeyError(f'Found unexpected bin file, {path}...')
 
         return False, fov_name
+
+    def processed(self, fov_name: str):
+        """Notifies run structure that fov has been processed
+
+        Args:
+            fov_name (str):
+                Name of FoV
+        """
+        self.processed_fovs.append(fov_name)
 
     def check_fov_progress(self) -> dict:
         """Condenses internal dictionary to show which fovs have finished
@@ -164,8 +178,6 @@ class FOV_EventHandler(FileSystemEventHandler):
 
         # check if what's created is in the run structure
         try:
-            print(f'{event.src_path} created')
-            sys.stdout.flush()
             fov_ready, point_name = self.run_structure.check_run_condition(event.src_path)
         except TimeoutError as timeout_error:
             print(f'Encountered TimeoutError error: {timeout_error}')
@@ -194,6 +206,7 @@ class FOV_EventHandler(FileSystemEventHandler):
                 )
 
                 fov_func(self.run_folder, point_name)
+            self.run_structure.processed(point_name)
 
             logf.close()
             self.check_complete()
