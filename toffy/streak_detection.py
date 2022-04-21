@@ -84,7 +84,7 @@ def _save(streak_data: StreakData, name: str):
     if type(data) is np.ndarray:
         io.imsave(st("tiff"), data.astype(np.uint8), check_contrast=False)
     elif type(data) is pd.DataFrame:
-        data.to_csv(st("csv"))
+        data.to_csv(st("csv"), index=True)
 
 
 def _save_streak_masks(streak_data: StreakData):
@@ -107,7 +107,6 @@ def _save_streak_masks(streak_data: StreakData):
         _save(streak_data, name=field)
 
 
-# ! UNSTABLE WITH WHITE BACKGROUND, BLACK STREAKS
 def _make_binary_mask(
     input_image: np.ndarray,
     gaussian_sigma: float = 40,
@@ -242,7 +241,9 @@ def _make_box_outline(streak_data: StreakData) -> None:
         streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
         data for streak correction.
     """
-    streak_data.boxed_streaks = np.zeros(shape=streak_data.shape, dtype=np.uint8)
+    padded_image = np.pad(
+        np.zeros(shape=streak_data.shape, dtype=np.uint8), pad_width=(1, 1), mode="edge"
+    )
     for region in streak_data.filtered_streak_df.itertuples():
         y, x = draw.rectangle_perimeter(
             start=(region.min_row, region.min_col),
@@ -250,7 +251,8 @@ def _make_box_outline(streak_data: StreakData) -> None:
             clip=True,
             shape=streak_data.shape,
         )
-        streak_data.boxed_streaks[y, x] = 1
+        padded_image[y, x] = 1
+    streak_data.boxed_streaks = util.crop(padded_image, crop_width=(1, 1))
 
 
 def _make_correction_mask(streak_data: StreakData) -> None:

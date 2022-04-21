@@ -1,178 +1,461 @@
-from dataclasses import dataclass
-from pathlib import Path
-from typing import List
-from attr import field
-import numpy as np
-import xarray as xr
-from ark.utils import load_utils
 import pytest
-import tempfile
+from pathlib import Path
 from toffy import streak_detection as sd
-from collections import Counter
+import numpy as np
+import pandas as pd
+from skimage import io
+from collections import namedtuple
+import xarray as xr
+from ark.utils import test_utils
 
 
-@dataclass
-class Fov:
-    fov_name: str
-    fov_da: xr.DataArray
-    corrected_channels: field(default=None)
-    streak_data: sd.StreakData = field(default=None)
+def test_get_save_dir(tmp_path):
+    data_dir: Path = Path(tmp_path)
+    name: str = "streak_data_test"
+    ext_csv: str = "csv"
+    ext_tiff: str = "tiff"
+
+    csv_save_dir: Path = sd._get_save_dir(data_dir=data_dir, name=name, ext=ext_csv)
+    assert csv_save_dir == Path(tmp_path / "streak_data_test.csv")
+
+    tiff_save_dir: Path = sd._get_save_dir(data_dir=data_dir, name=name, ext=ext_tiff)
+    assert tiff_save_dir == Path(tmp_path / "streak_data_test.tiff")
 
 
-@pytest.fixture(scope="class")
-def get_fovs(request):
-    # Load the data, use class scope to cache the fovs
-    # Once the class tests are done, it's removed from memory
-    data_dir = Path("toffy/data/streak/")
-    fovs = [fov.stem for fov in Path(data_dir).glob("*//") if "corrected" not in fov.stem]
-    fovs_dc = [
-        Fov(
-            fov_name=fov_name,
-            fov_da=load_utils.load_imgs_from_tree(
-                data_dir=data_dir, fovs=[fov_name], dtype=np.int32
-            ),
-            corrected_channels=None,
-            streak_data=None,
-        )
-        for fov_name in fovs
-    ]
-    request.cls.fovs = fovs_dc
-    request.cls.data_dir = data_dir
+def test_save(tmp_path):
+    # Create minimum data needed for testing the save functionality with dataframes and numpy array
+    # streak_data needs: corrected_dir, streak_channel, and data (streak_mask, streak_df,
+    # filtered_streak_mask, filtered_streak_df, boxed_streaks, corrected_streak_mask)
+    # Name: has to be one of the data parameters
 
+    streak_data_test = sd.StreakData(
+        corrected_dir=tmp_path,
+        streak_channel="TEST_CHANNEL",
+        streak_mask=np.zeros(shape=(10, 10)),
+        streak_df=pd.util.testing.makeDataFrame(),
+        filtered_streak_mask=np.zeros(shape=(10, 10)),
+        filtered_streak_df=pd.util.testing.makeDataFrame(),
+        boxed_streaks=np.zeros(shape=(10, 10)),
+        corrected_streak_mask=np.zeros(shape=(10, 10)),
+    )
 
-@pytest.mark.skip(reason="Cannot test with real data, need to utilize synthetic data")
-@pytest.mark.usefixtures("get_fovs")
-class TestStreakDetection:
-    def test_streak_detection(self):
-        # Test to make sure all the fovs are loaded correctly
-        assert len(self.fovs) == 3
+    Read_Fn = namedtuple("Read_Operation", "read_fn, ext")
+    fields = {
+        "streak_mask": Read_Fn(io.imread, ".tiff"),
+        "streak_df": Read_Fn(pd.read_csv, ".csv"),
+        "filtered_streak_mask": Read_Fn(io.imread, ".tiff"),
+        "filtered_streak_df": Read_Fn(pd.read_csv, ".csv"),
+        "boxed_streaks": Read_Fn(io.imread, ".tiff"),
+        "corrected_streak_mask": Read_Fn(io.imread, ".tiff"),
+    }
 
-        # Test the end-to-end streak correction pipeline function
-        #   `streak_detection::streak_correction`
-        # Make sure the input shape is equal to the output shape
-        # Add the corrected_channels and the streak_data to the Fov dataclass
-        for idx, fov in enumerate(self.fovs):
-            corrected_channels, streak_data = sd.streak_correction(
-                fov_data=fov.fov_da, streak_channel="Noodle", visualization_masks=True
+    #  Test `streak_detection::_save`
+    for field, rf in fields.items():
+        sd._save(streak_data=streak_data_test, name=field)
+
+        if rf.ext == ".csv":
+            data = rf.read_fn(
+                Path(tmp_path, f"streak_data_TEST_CHANNEL", field + rf.ext), index_col=0
             )
-            assert corrected_channels.shape == fov.fov_da[0, ...].shape
-            self.fovs[idx].corrected_channels = corrected_channels
-            self.fovs[idx].streak_data = streak_data
+        else:
+            data = rf.read_fn(Path(tmp_path, f"streak_data_TEST_CHANNEL", field + rf.ext))
 
-    def test_save_corrected_channels(self):
-        with tempfile.TemporaryDirectory() as save_dir:
-
-            save_dir_path = Path(save_dir)
-
-            for fov in self.fovs:
-                # Save Streak Masks
-                sd.save_corrected_channels(
-                    streak_data=fov.streak_data,
-                    corrected_channels=fov.corrected_channels,
-                    data_dir=save_dir,
-                    save_streak_data=True,
-                )
-            # Gather all the saved files
-            fovs = [fov.stem for fov in save_dir_path.glob("*//") if "corrected" in fov.stem]
-
-            # Check that the names in the corrected files are the same as the original files
-
-            for corrected_fov, fov in zip(fovs, self.fovs):
-                corrected_tiff_names = [
-                    cor_tiff.stem
-                    for cor_tiff in Path(save_dir_path / corrected_fov).glob("*.tiff")
-                ]
-
-                # Get initial file names
-                initial_tiff_names = [
-                    init_tiff.stem
-                    for init_tiff in Path(self.data_dir / fov.fov_name).glob("*.tiff")
-                ]
-
-                # Test that the set of initial tiffs map 1-to-1 to set of corrected tiffs
-                assert Counter(initial_tiff_names) == Counter(corrected_tiff_names)
+        if type(data) is np.ndarray:
+            assert np.array_equal(data, getattr(streak_data_test, field))
+        if type(data) is pd.DataFrame:
+            pd.testing.assert_frame_equal(data, getattr(streak_data_test, field))
 
 
-# ? Construct different sets of fake data (noisy, and clean variants)
-# ? Modify to work with `parameterize_with_cases`
-# TODO: All channels of fake data must contain the same streaks. Add noise to each channel.
-# TODO: Add multiple streaks.
-# TODO: Hardcode the streak tests first, request for review
-@pytest.fixture(scope="class", params=[2, 4, 10])
-def fake_data(request):
+def test_save_streak_masks(tmp_path):
+    # * Minimum Data Needed:
+    #   1. streak_data with the fields: corrected_dir, streak_channel, and data (streak_mask,
+    #   streak_df, filtered_streak_mask, filtered_streak_df, boxed_streaks, corrected_streak_mask)
+    streak_data_test = sd.StreakData(
+        corrected_dir=tmp_path,
+        streak_channel="TEST_CHANNEL",
+        streak_mask=np.zeros(shape=(10, 10)),
+        streak_df=pd.util.testing.makeDataFrame(),
+        filtered_streak_mask=np.zeros(shape=(10, 10)),
+        filtered_streak_df=pd.util.testing.makeDataFrame(),
+        boxed_streaks=np.zeros(shape=(10, 10)),
+        corrected_streak_mask=np.zeros(shape=(10, 10)),
+    )
+    sd._save_streak_masks(streak_data=streak_data_test)
+
+    Read_Fn = namedtuple("Read_Operation", "read_fn, ext")
+    fields = {
+        "streak_mask": Read_Fn(io.imread, ".tiff"),
+        "streak_df": Read_Fn(pd.read_csv, ".csv"),
+        "filtered_streak_mask": Read_Fn(io.imread, ".tiff"),
+        "filtered_streak_df": Read_Fn(pd.read_csv, ".csv"),
+        "boxed_streaks": Read_Fn(io.imread, ".tiff"),
+        "corrected_streak_mask": Read_Fn(io.imread, ".tiff"),
+    }
+
+    #  Test `streak_detection::_save`
+    for field, rf in fields.items():
+        if rf.ext == ".csv":
+            data = rf.read_fn(
+                Path(tmp_path, f"streak_data_TEST_CHANNEL", field + rf.ext), index_col=0
+            )
+        else:
+            data = rf.read_fn(Path(tmp_path, f"streak_data_TEST_CHANNEL", field + rf.ext))
+
+        if type(data) is np.ndarray:
+            assert np.array_equal(data, getattr(streak_data_test, field))
+        if type(data) is pd.DataFrame:
+            pd.testing.assert_frame_equal(data, getattr(streak_data_test, field))
+
+
+def test_make_binary_mask():
+    # * Minimum Data Needed
+    #   1. Numpy array
+    # Only need to test to make sure the dimensions are the same, and the output is a binary array
+    rng = np.random.default_rng(12345)
+    row_size = 1000
+    col_size = 1000
+    input_image_test = rng.integers(low=0, high=16, size=(row_size, col_size))
+
+    binary_mask = sd._make_binary_mask(input_image=input_image_test)
+    assert np.all(np.isin(binary_mask, [0, 1]))
+
+
+def test_make_mask_dataframe():
+    # * Minimum Data Needed
+    #   1. streak_data: Only need `streak_mask`
+    #   2. min_length: This can vary
+
+    # Set up fake data dimensions
+    row_size = 1000
+    col_size = 1000
+    test_mask = np.zeros(shape=(row_size, col_size))
+
+    # Initialize a new generator - set seed for reproducibility
+    rng = np.random.default_rng(12345)
+
+    # Generate Streaks
+    streak_count = 50
+    for _ in range(streak_count):
+        (x_min,) = rng.integers(low=0, high=col_size - 1, size=1)
+        (x_max,) = rng.integers(low=x_min, high=col_size - 1, size=1)
+        (y,) = rng.integers(low=0, high=row_size - 1, size=1)
+        streak = np.ones(shape=(x_max - x_min))
+        test_mask[y, x_min:x_max] = streak
+
+    streak_data = sd.StreakData(streak_mask=test_mask)
+
+    # Create the mask_dataframes
+    # Test various min_lengths: 50, 100, 150
+    # Post filter streak counts: 40, 33, 26
+    for min_l, post_filter_streak_count in zip([50, 100, 150], [40, 33, 26]):
+        sd._make_mask_dataframe(streak_data=streak_data, min_length=min_l)
+
+        assert len(streak_data.streak_df) == 48
+        assert len(streak_data.filtered_streak_df) < len(streak_data.streak_df)
+        assert len(streak_data.filtered_streak_df) == post_filter_streak_count
+
+
+def test_make_filtered_mask():
+    # * Minimum Data Needed
+    #   1. streak_data: shape, filtered_streak_df (min_row, max_row, min_col, max_col)
+    col_size = 1000
+    row_size = 1000
+
+    # Initialize a new generator - set seed for reproducibility
+    rng = np.random.default_rng(12345)
+
+    # Create filtered_streak_df
+    min_row = rng.integers(low=0, high=row_size - 1, size=(20))
+    max_row = min_row + 1
+    min_col = rng.integers(low=0, high=col_size - 1, size=(20))
+    max_col = rng.integers(low=min_col, high=row_size - 1, size=(20))
+    test_filtered_streak_df = pd.DataFrame(
+        np.stack([min_row, max_row, min_col, max_col], axis=-1),
+        columns=["min_row", "max_row", "min_col", "max_col"],
+    )
+
+    streak_data_test = sd.StreakData(
+        shape=(row_size, col_size), filtered_streak_df=test_filtered_streak_df
+    )
+
+    # run _make_filtered_mask
+    sd._make_filtered_mask(streak_data=streak_data_test)
+    # Make sure the filtered_streak_mask is binary
+    assert np.all(np.isin(streak_data_test.filtered_streak_mask, [0, 1]))
+
+
+def test_make_box_outline():
+    # * Minimum Data Needed
+    #   1. streak_data: shape, filtered_streak_df (min_row, max_row, min_col, max_col)
+
+    col_size = 1000
+    row_size = 1000
+
+    # Initialize a new generator - set seed for reproducibility
+    rng = np.random.default_rng(12345)
+
+    # Create filtered_streak_df
+    min_row = rng.integers(low=0, high=row_size - 1, size=(20))
+    max_row = min_row + 1
+    min_col = rng.integers(low=0, high=col_size - 1, size=(20))
+    max_col = rng.integers(low=min_col, high=row_size - 1, size=(20))
+    test_filtered_streak_df = pd.DataFrame(
+        np.stack([min_row, max_row, min_col, max_col], axis=-1),
+        columns=["min_row", "max_row", "min_col", "max_col"],
+    )
+
+    streak_data_test = sd.StreakData(
+        shape=(row_size, col_size), filtered_streak_df=test_filtered_streak_df
+    )
+
+    # run _make_box_outline
+    sd._make_box_outline(streak_data=streak_data_test)
+
+    # Make sure the box outline is binary
+    assert np.all(np.isin(streak_data_test.boxed_streaks, [0, 1]))
+
+
+def test_make_correction_mask():
+    # * Minimum Data Needed
+    #   1. streak_data: shape, filtered_streak_df (min_row, max_row, min_col, max_col)
+
+    col_size = 1000
+    row_size = 1000
+
+    # Initialize a new generator - set seed for reproducibility
+    rng = np.random.default_rng(12345)
+
+    # Create filtered_streak_df
+    min_row = rng.integers(low=0, high=row_size - 1, size=(20))
+    max_row = min_row + 1
+    min_col = rng.integers(low=0, high=col_size - 1, size=(20))
+    max_col = rng.integers(low=min_col, high=row_size - 1, size=(20))
+    test_filtered_streak_df = pd.DataFrame(
+        np.stack([min_row, max_row, min_col, max_col], axis=-1),
+        columns=["min_row", "max_row", "min_col", "max_col"],
+    )
+
+    streak_data_test = sd.StreakData(
+        shape=(row_size, col_size), filtered_streak_df=test_filtered_streak_df
+    )
+
+    # run _make_correction_mask
+    sd._make_correction_mask(streak_data=streak_data_test)
+
+    # Make sure the box outline is binary
+    assert np.all(np.isin(streak_data_test.corrected_streak_mask, [0, 1]))
+
+
+def test_correct_streaks():
+    # * Minimum Data Needed
+    #   1. streak_data: shape, filtered_streak_df (min_row, max_row, min_col, max_col)
+    #   2. Input Image: np.ndarray
+
+    col_size = 1000
+    row_size = 1000
+
+    # Initialize a new generator - set seed for reproducibility
+    rng = np.random.default_rng(12345)
+
+    # Create filtered_streak_df
+    min_row = rng.integers(low=0, high=row_size - 1, size=(20))
+    max_row = min_row + 1
+    min_col = rng.integers(low=0, high=col_size - 1, size=(20))
+    max_col = rng.integers(low=min_col, high=row_size - 1, size=(20))
+    test_filtered_streak_df = pd.DataFrame(
+        np.stack([min_row, max_row, min_col, max_col], axis=-1),
+        columns=["min_row", "max_row", "min_col", "max_col"],
+    )
+
+    streak_data_test = sd.StreakData(
+        shape=(row_size, col_size), filtered_streak_df=test_filtered_streak_df
+    )
+
+    # Create test input image
+    test_input_image = rng.integers(low=0, high=16, size=(1000, 1000))
+
+    test_corrected_image = sd._correct_streaks(
+        streak_data=streak_data_test, input_image=test_input_image
+    )
+
+    # Make sure the corrected image shape matches the input image shape
+    assert test_input_image.shape == test_corrected_image.shape
+
+
+def test_correct_mean_alg():
+    # * Minimum Data Needed
+    #   1. input_image: np.ndarray
+    #   2. min_row, max_row, min_col, max_col
+
+    test_input_image = np.pad(
+        np.array([[1, 2, 3, 4, 5], [0, 0, 0, 0, 0], [5, 6, 7, 8, 9]]),
+        pad_width=(1, 1),
+        mode="edge",
+    )
+
+    min_row = 1
+    max_row = 2
+    min_col = 0
+    max_col = 5
+
+    # run _correct_mean_alg
+    mean_streak_test = sd._correct_mean_alg(test_input_image, min_row, max_row, min_col, max_col)
+    assert np.array_equal(mean_streak_test, np.array([3, 4, 5, 6, 7]))
+
+
+def test_save_corrected_channels(tmp_path):
+    # * Minimum Data Needed
+    #   1. streak_data: fov, streak_mask, streak_df, filtered_streak_mask, filtered_streak_df,
+    #   boxed_streaks, corrected_streak_mask
+    #   2. corrected_channels
+
     # Set up fake data dimensions
     num_images = 10
     row_size = 1000
     col_size = 1000
-    fake_data = np.zeros(shape=(row_size, col_size, num_images), dtype=np.uint8)
 
     # Initialize a new generator
     rng = np.random.default_rng(12345)
+    test_data = rng.integers(low=0, high=16, size=(row_size, col_size, num_images))
 
-    # Generate Streaks
-    for _ in range(request.param):
-        (x_min,) = rng.integers(low=0, high=col_size - 50, size=1)
-        (x_max,) = rng.integers(low=x_min + 50, high=col_size - 1, size=1)
-        (y,) = rng.integers(low=0, high=row_size - 1, size=1)
-        fake_streak = np.ones(shape=(x_max - x_min, num_images))
-        fake_data[y, x_min:x_max, :] = fake_streak
-
-    # for fd in range(num_images):
-
-    # Create fake DataArray
-    fake_data_da = xr.DataArray(
-        data=fake_data,
-        coords=[range(row_size), range(col_size), range(num_images)],
+    # Create test DataArray
+    test_corrected_channels = xr.DataArray(
+        data=test_data,
+        coords=[range(row_size), range(col_size), [f"TEST_CHAN_{i}" for i in range(num_images)]],
         dims=["rows", "cols", "channels"],
     )
     # Create fake StreakData dataclass
-    # Use channel 0 as the streak detection channel.
-    streak_data: sd.StreakData = sd.StreakData(
-        shape=(row_size, col_size), fov="fake_fov", streak_channel=0
+    # Use channel `TEST_CHAN_0` as the streak detection channel.
+
+    streak_data_test = sd.StreakData(
+        shape=(row_size, col_size),
+        corrected_dir=tmp_path,
+        streak_channel="TEST_CHAN_0",
+        fov="TEST_FOV",
+        streak_mask=np.zeros(shape=(1000, 1000)),
+        streak_df=pd.util.testing.makeDataFrame(),
+        filtered_streak_mask=np.zeros(shape=(1000, 1000)),
+        filtered_streak_df=pd.util.testing.makeDataFrame(),
+        boxed_streaks=np.zeros(shape=(1000, 1000)),
+        corrected_streak_mask=np.zeros(shape=(1000, 1000)),
     )
 
-    # Add the Fake Fov to the request object
-    request.cls.fake_fov = Fov(
-        fov_name="fake_fov", fov_da=fake_data_da, corrected_channels=None, streak_data=streak_data
+    # Save the corrected channels, do not save the sreak data
+    sd.save_corrected_channels(
+        streak_data=streak_data_test,
+        corrected_channels=test_corrected_channels,
+        data_dir=tmp_path,
+        save_streak_data=False,
     )
 
+    # Open the corrected images to make sure they were saved correctly.
+    for channel in test_corrected_channels.channels.values:
+        test_channel_path = Path(tmp_path, "TEST_FOV" + "-corrected", channel + ".tiff")
+        saved_img = io.imread(test_channel_path)
 
-@pytest.mark.usefixtures("fake_data")
-class TestHelperFunctions:
-    def test_make_binary_mask(self):
+        # Test that the correct file was saved
+        assert np.array_equal(test_corrected_channels.loc[:, :, channel], saved_img)
 
-        for channel in self.fake_fov.fov_da.channels.values:
-            fake_img_bin_mask: np.ndarray = sd._make_binary_mask(
-                input_image=self.fake_fov.fov_da.loc[:, :, channel].values
+    # Save the corrected channels, save the streak data
+    sd.save_corrected_channels(
+        streak_data=streak_data_test,
+        corrected_channels=test_corrected_channels,
+        data_dir=tmp_path,
+        save_streak_data=True,
+    )
+
+    # Open the corrected images to make sure they were saved correctly.
+    for channel in test_corrected_channels.channels.values:
+        test_channel_path = Path(tmp_path, "TEST_FOV" + "-corrected", channel + ".tiff")
+        saved_img = io.imread(test_channel_path)
+
+        # Test that the correct file was saved
+        assert np.array_equal(test_corrected_channels.loc[:, :, channel], saved_img)
+
+    # Open the streak data csv and masks to make sure they were saved correctly.
+
+    Read_Fn = namedtuple("Read_Operation", "read_fn, ext")
+    fields = {
+        "streak_mask": Read_Fn(io.imread, ".tiff"),
+        "streak_df": Read_Fn(pd.read_csv, ".csv"),
+        "filtered_streak_mask": Read_Fn(io.imread, ".tiff"),
+        "filtered_streak_df": Read_Fn(pd.read_csv, ".csv"),
+        "boxed_streaks": Read_Fn(io.imread, ".tiff"),
+        "corrected_streak_mask": Read_Fn(io.imread, ".tiff"),
+    }
+
+    #  Test `streak_detection::_save`
+    for field, rf in fields.items():
+        if rf.ext == ".csv":
+            data = rf.read_fn(
+                Path(
+                    tmp_path,
+                    "TEST_FOV" + "-corrected",
+                    f"streak_data_TEST_CHAN_0",
+                    field + rf.ext,
+                ),
+                index_col=0,
             )
-            # Make sure the masks only contain values: `0`, `1`
-            assert np.all(np.isin(fake_img_bin_mask, [0, 1]))
+        else:
+            data = rf.read_fn(
+                Path(
+                    tmp_path,
+                    "TEST_FOV" + "-corrected",
+                    f"streak_data_TEST_CHAN_0",
+                    field + rf.ext,
+                )
+            )
 
-            # Make sure the shape is the same
-            assert fake_img_bin_mask.shape == self.fake_fov.streak_data.shape
+        if type(data) is np.ndarray:
+            assert np.array_equal(data, getattr(streak_data_test, field))
+        if type(data) is pd.DataFrame:
+            pd.testing.assert_frame_equal(data, getattr(streak_data_test, field))
 
-    @pytest.mark.parametrize("min_length", [50])
-    def test_make_mask_dataframe(self, min_length):
 
-        fake_img_bin_mask = sd._make_binary_mask(
-            input_image=self.fake_fov.fov_da.loc[:, :, self.fake_fov.streak_data.streak_channel]
-        )
-        self.fake_fov.streak_data.streak_mask = fake_img_bin_mask
+def test_streak_correction():
+    # * Minimum Data Needed
+    #   1. fov_data: A data array containing several channels.
+    #   2. streak_channel: a channel to base the streaks off of
+    # Use:
+    #   test_utils.make_images_xarray
+    #   test_utils._gen_tif_data
+    #   test_utils.gen_fov_chan_names
 
-        sd._make_mask_dataframe(streak_data=self.fake_fov.streak_data, min_length=min_length)
+    test_fov_data = test_utils._gen_tif_data(
+        fov_number=1, chan_number=10, img_shape=(10, 10), fills=False, dtype=np.int16
+    )
+    test_fov_data_xr = test_utils.make_images_xarray(tif_data=test_fov_data)
 
-        assert len(self.fake_fov.streak_data.streak_df) >= len(
-            self.fake_fov.streak_data.filtered_streak_df
-        )
+    corrected_channels_test, streak_data_test = sd.streak_correction(
+        fov_data=test_fov_data_xr, streak_channel="chan0", visualization_masks=False
+    )
 
-    def test_make_filtered_mask(self):
-        sd._make_filtered_mask(self.fake_fov.streak_data)
+    visualization_fields = [
+        "boxed_streaks",
+        "corrected_streak_mask",
+        "filtered_streak_mask",
+    ]
 
-        # Make sure the filtered mask only contains values: `0`, `1`
-        assert np.all(np.isin(self.fake_fov.streak_data.filtered_streak_mask, [0, 1]))
+    streak_fields = [
+        "streak_mask",
+        "streak_df",
+        "filtered_streak_df",
+    ]
 
-    def test_make_box_outline(self):
-        sd._make_box_outline(self.fake_fov.streak_data)
+    # Assert shape
+    assert corrected_channels_test.shape == test_fov_data_xr[0, ...].shape
+    # Assert that the correct values in streak_data_test are present
+    for vf in visualization_fields:
+        assert getattr(streak_data_test, vf) is None
+    for sf in streak_fields:
+        assert getattr(streak_data_test, sf) is not None
 
-        # Make sure the filtered mask only contains values: `0`, `1`
-        assert np.all(np.isin(self.fake_fov.streak_data.boxed_streaks))
+    corrected_channels_test, streak_data_test = sd.streak_correction(
+        fov_data=test_fov_data_xr, streak_channel="chan0", visualization_masks=True
+    )
+
+    # Assert that the correct values in streak_data_test are present
+    for vf in visualization_fields:
+        assert getattr(streak_data_test, vf) is not None
+    for sf in streak_fields:
+        assert getattr(streak_data_test, sf) is not None
