@@ -4,6 +4,28 @@ import warnings
 from distutils.dir_util import copy_tree
 
 from ark.utils import io_utils, misc_utils
+from toffy.tiling_utils import rename_duplicate_fovs
+
+
+def check_unnamed_fovs(fov_data):
+    """Identify FOVs that are missing the 'name' key and create one with value placeholder_{n}
+    Args:
+        fov_data (dict): the FOV run JSON
+
+    Returns:
+        dict: the same run JSON with placeholder names for FOVs that lack one
+       """
+
+    # count of FOVs that are missing the 'name' key
+    missing_count = 0
+
+    # iterate over each FOV and add a placeholder name if necessary
+    for fov in fov_data['fovs']:
+        if 'name' not in fov.keys():
+            missing_count += 1
+            fov_data[fov['name']] = f'placeholder_{missing_count}'
+
+    return fov_data
 
 
 def rename_fov_dirs(run_path, fov_dir, new_dir=None):
@@ -24,12 +46,14 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
     io_utils.validate_paths(run_path)
     io_utils.validate_paths(fov_dir)
 
-    # insert some kind of fov name validation
+    with open(run_path) as file:
+        run_metadata = json.load(file)
+
+    # check for missing or duplicate fov names
+    run_metadata = check_unnamed_fovs(run_metadata)
+    run_metadata = rename_duplicate_fovs(run_metadata)
 
     # retrieve custom names and number of scans for each fov, construct matching default names
-    with open(run_path) as f:
-        run_metadata = json.load(f)
-
     fov_scan = dict()
     for fov in run_metadata.get('fovs', ()):
         custom_name = fov.get('name')
@@ -75,9 +99,8 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
             new_name = os.path.join(change_dir, fov_scan[folder])
             os.rename(fov_subdir, new_name)
 
-"""
 #r = os.path.join("data", "json_test", "2022-04-07_TONIC_TMA21_run1.json")
-r = os.path.join("data", "json_test", "2022-01-14_postsweep_2.json")
-f = os.path.join("data", "fov_folders")
-n = os.path.join("data", "new_names")
-rename_fov_dirs(r, f, n)"""
+#r = os.path.join("data", "json_test", "2022-01-14_postsweep_2.json")
+#f = os.path.join("data", "fov_folders")
+#n = os.path.join("data", "new_names")
+#rename_fov_dirs(r, f, n)
