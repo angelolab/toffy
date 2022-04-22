@@ -33,6 +33,9 @@ def build_extract_callback(out_dir: str, panel: pd.DataFrame,
         raise TypeError('Global unit mass integration is no longer support. Please provide panel '
                         'as a pandas DataFrame...')
 
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
+
     def extract_callback(run_folder: str, point_name: str):
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
@@ -66,6 +69,9 @@ def build_qc_callback(out_dir: str, panel: pd.DataFrame, **kwargs) -> Callable[[
                         'as a pandas DataFrame...')
 
     kwargs['save_csv'] = False
+
+    if not os.path.exists(out_dir):
+        os.makedirs(out_dir)
 
     def qc_callback(run_folder: str, point_name: str):
         metric_data = compute_qc_metrics(run_folder, point_name, None, panel, **kwargs)

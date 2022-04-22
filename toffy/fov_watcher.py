@@ -25,6 +25,7 @@ class RunStructure:
         """
         self.timeout = timeout
         self.fov_progress = {}
+        self.processed_fovs = []
 
         # find run .json and get parameters
         run_name = Path(run_folder).parts[-1]
@@ -71,14 +72,18 @@ class RunStructure:
             return False, ''
 
         fov_name, extension = filename.split('.')
+
+        # avoids repeated processing in case of duplicated events
+        if fov_name in self.processed_fovs:
+            return False, fov_name
+
         wait_time = 0
         if fov_name in self.fov_progress:
             if extension in self.fov_progress[fov_name]:
                 while os.path.getsize(path) == 0:
                     # consider timed out fovs complete
                     if wait_time >= self.timeout:
-                        for ext in self.fov_progress[fov_name].keys():
-                            self.fov_progress[fov_name][ext] = True
+                        del self.fov_progress[fov_name]
                         raise TimeoutError(f'timed out waiting for {path}...')
 
                     time.sleep(check_interval)
@@ -90,9 +95,18 @@ class RunStructure:
                 return True, fov_name
 
         elif extension == 'bin':
-            raise KeyError(f'Found unexpected file, {path}...')
+            raise KeyError(f'Found unexpected bin file, {path}...')
 
         return False, fov_name
+
+    def processed(self, fov_name: str):
+        """Notifies run structure that fov has been processed
+
+        Args:
+            fov_name (str):
+                Name of FoV
+        """
+        self.processed_fovs.append(fov_name)
 
     def check_fov_progress(self) -> dict:
         """Condenses internal dictionary to show which fovs have finished
@@ -120,7 +134,7 @@ class FOV_EventHandler(FileSystemEventHandler):
     """
     def __init__(self, run_folder: str, log_folder: str,
                  per_fov: List[Callable[[str, str], None]],
-                 per_run: List[Callable[[str], None]], timeout: int = 10 * 60):
+                 per_run: List[Callable[[str], None]], timeout: int = 1.03 * 60 * 60):
         """Initializes FOV_EventHandler
 
         Args:
@@ -166,13 +180,14 @@ class FOV_EventHandler(FileSystemEventHandler):
         try:
             fov_ready, point_name = self.run_structure.check_run_condition(event.src_path)
         except TimeoutError as timeout_error:
-            print('Encountered TimeoutError error: ' + timeout_error)
+            print(f'Encountered TimeoutError error: {timeout_error}')
             logf = open(self.log_path, 'a')
             logf.write(
                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
                 f'{event.src_path} never reached non-zero file size...\n'
             )
             self.check_complete()
+            return
 
         if fov_ready:
             print(f'Discovered {point_name}, begining per-fov callbacks...')
@@ -191,6 +206,7 @@ class FOV_EventHandler(FileSystemEventHandler):
                 )
 
                 fov_func(self.run_folder, point_name)
+            self.run_structure.processed(point_name)
 
             logf.close()
             self.check_complete()
@@ -220,7 +236,7 @@ class FOV_EventHandler(FileSystemEventHandler):
 
 def start_watcher(run_folder: str, log_folder: str, per_fov: List[Callable[[str, str], None]],
                   per_run: List[Callable[[str, str], None]],
-                  completion_check_time: int = 30):
+                  completion_check_time: int = 30, zero_size_timeout: int = 10 * 60):
     """ Passes bin files to provided callback functions as they're created
 
     Args:
@@ -235,9 +251,11 @@ def start_watcher(run_folder: str, log_folder: str, per_fov: List[Callable[[str,
         completion_check_time (int):
             how long to wait before checking watcher completion, in seconds.
             note, this doesn't effect the watcher itself, just when this wrapper function exits.
+        zero_size_timeout (int):
+            number of seconds to wait for non-zero file size
     """
     observer = Observer()
-    event_handler = FOV_EventHandler(run_folder, log_folder, per_fov, per_run)
+    event_handler = FOV_EventHandler(run_folder, log_folder, per_fov, per_run, zero_size_timeout)
     observer.schedule(event_handler, run_folder, recursive=True)
     observer.start()
 
