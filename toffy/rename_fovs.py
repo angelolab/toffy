@@ -47,6 +47,11 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
     io_utils.validate_paths(run_path)
     io_utils.validate_paths(fov_dir)
 
+    # check that new_dir doesn't already exist
+    if new_dir is not None:
+        if os.path.exists(new_dir):
+            raise ValueError(f"The new directory supplied already exists: {new_dir}")
+
     with open(run_path) as file:
         run_metadata = json.load(file)
 
@@ -87,7 +92,6 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
 
     # validate new_dir and copy contents of fov_dir
     if new_dir is not None:
-        io_utils.validate_paths(fov_dir)
         copy_tree(fov_dir, new_dir)
         change_dir = new_dir
     else:
