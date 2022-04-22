@@ -129,9 +129,6 @@ def test_read_fiducial_info(monkeypatch, user_inputs):
     fiducial_pixel_y = [fiducial_info['optical'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
     assert fiducial_pixel_y == [6 + 8 * i for i in np.arange(6)]
 
-    # assert the name for this fiducial set is correct
-    assert fiducial_info['name'] == 'sample_name'
-
 
 def test_generate_coreg_params():
     # define a sample fiducial info dict
@@ -143,8 +140,7 @@ def test_generate_coreg_params():
         'optical': {
             pos: {'x': i * 4 + 1, 'y': i * 9 + 1}
             for (i, pos) in enumerate(settings.FIDUCIAL_POSITIONS)
-        },
-        'name': 'sample_name'
+        }
     }
 
     # generate the regression parameters
@@ -158,54 +154,55 @@ def test_generate_coreg_params():
     assert round(sample_coreg_params['STAGE_TO_OPTICAL_Y_OFFSET'], 1) == -0.7
 
 
-def test_write_coreg_params():
+def test_save_coreg_params():
     with tempfile.TemporaryDirectory() as temp_dir:
-        # file path validation
-        with pytest.raises(FileNotFoundError):
-            tiling_utils.write_coreg_params({}, '', 'bad_settings_path')
+        # make a dummy toffy directory and a dummy templates directory where the code is run
+        os.mkdir(os.path.join(temp_dir, 'toffy'))
+        os.mkdir(os.path.join(temp_dir, 'templates'))
 
-        # define sample values to put in settings.py
-        sample_settings = cleandoc(
-            """# default stage to pixel co-registration conversion params\n
-            STAGE_TO_OPTICAL_X_MULTIPLIER = 1 / 0.06887\n
-            STAGE_TO_OPTICAL_X_OFFSET = 27.79\n
-            STAGE_TO_OPTICAL_Y_MULTIPLIER = 1 / -0.06926\n
-            STAGE_TO_OPTICAL_Y_OFFSET = -77.40"""
-        ) + '\n'
+        # change working directory to templates to simulate actual co-registration run
+        os.chdir(os.path.join(temp_dir, 'templates'))
 
-        # define the settings.py path
-        sample_settings_path = os.path.join(temp_dir, 'settings.py')
-
-        # write out the sample settings
-        with open(sample_settings_path, 'w') as fw:
-            fw.write(sample_settings)
-
-        # define sample co-registration params
-        sample_coreg_params = {
-            'STAGE_TO_OPTICAL_X_MULTIPLIER': 0.5,
-            'STAGE_TO_OPTICAL_X_OFFSET': 1,
-            'STAGE_TO_OPTICAL_Y_MULTIPLIER': 1.5,
-            'STAGE_TO_OPTICAL_Y_OFFSET': 2
+        # test saving the first time
+        sample_coreg_params_first = {
+            'STAGE_TO_OPTICAL_X_MULTIPLIER': 2,
+            'STAGE_TO_OPTICAL_X_OFFSET': -0.5,
+            'STAGE_TO_OPTICAL_Y_MULTIPLIER': 3,
+            'STAGE_TO_OPTICAL_Y_OFFSET': -0.7,
+            'date': '22/03/2022 00:00:00'
         }
+        tiling_utils.save_coreg_params(sample_coreg_params_first)
 
-        # define a sample name to give this set
-        sample_name = 'new fiducial conversion'
+        # assert we actually created coreg_params.json in toffy
+        assert os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json'))
 
-        # add the new co-registration params
-        tiling_utils.write_coreg_params(sample_coreg_params, sample_name, sample_settings_path)
+        # load the first co-registration save data in
+        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'r') as cp:
+            coreg_data = json.load(cp)
 
-        # read each line of the new settings.py
-        with open(sample_settings_path, 'r') as fr:
-            # we only need to verify the last 5 lines
-            lines = fr.readlines()[-5:]
+        # assert 1 element in the coreg_params key and it contains the right coreg vals
+        assert len(coreg_data['coreg_params']) == 1
+        assert coreg_data['coreg_params'][0] == sample_coreg_params_first
 
-        # assert the comment header was added
-        assert lines[0] == \
-            '# %s stage to optical co-registration conversion params\n' % sample_name
+        # test saving the second time (should only append)
+        sample_coreg_params_second = {
+            'STAGE_TO_OPTICAL_X_MULTIPLIER': 4,
+            'STAGE_TO_OPTICAL_X_OFFSET': -1,
+            'STAGE_TO_OPTICAL_Y_MULTIPLIER': 6,
+            'STAGE_TO_OPTICAL_Y_OFFSET': -1.4,
+            'date': '23/03/2022 00:00:00'
+        }
+        tiling_utils.save_coreg_params(sample_coreg_params_second)
 
-        # assert the new co-registration parameters are correct
-        for i, (cp, cpv) in enumerate(sample_coreg_params.items()):
-            assert lines[i + 1] == '%s = %f\n' % (cp, cpv)
+        # load the second co-registration save data in
+        # NOTE: since the previous step only appended, coreg_params.json will not disappear
+        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'r') as cp:
+            coreg_data = json.load(cp)
+
+        # assert 2 elements in the coreg_params key and they contain the right coreg vals
+        assert len(coreg_data['coreg_params']) == 2
+        assert coreg_data['coreg_params'][0] == sample_coreg_params_first
+        assert coreg_data['coreg_params'][1] == sample_coreg_params_second
 
 
 @parametrize_with_cases(
@@ -213,12 +210,12 @@ def test_write_coreg_params():
     cases=test_cases.TiledRegionReadCases, glob='*_no_moly_param')
 def test_read_tiled_region_inputs(monkeypatch, fov_coords, fov_names, fov_sizes, user_inputs,
                                   base_param_values, full_param_set):
-    # define a sample fovs list
+    # define a sample fovs list to define the top-left corners of each tiled region
     sample_fovs_list = test_utils.generate_sample_fovs_list(
         fov_coords=fov_coords, fov_names=fov_names, fov_sizes=fov_sizes
     )
 
-    # define sample region_params to read data into
+    # define sample_region_params to read data into
     sample_region_params = {rpf: [] for rpf in settings.REGION_PARAM_FIELDS}
 
     # generate the user inputs
@@ -272,14 +269,14 @@ def test_generate_region_info():
 @parametrize('region_corners_file', [param('bad_region_corners.json', marks=file_missing_err),
                                      param('tiled_region_corners.json')])
 @parametrize_with_cases(
-    'fov_coords, fov_names, fov_sizes, user_inputs, base_param_values,full_param_set',
+    'fov_coords, fov_names, fov_sizes, user_inputs, base_param_values, full_param_set',
     cases=test_cases.TiledRegionReadCases, glob='*_with_moly_param'
 )
 @parametrize('moly_interval_val', [0, 1])
 def test_set_tiled_region_params(monkeypatch, region_corners_file, fov_coords, fov_names,
                                  fov_sizes, user_inputs, base_param_values,
                                  full_param_set, moly_interval_val):
-    # define a sample set of fovs
+    # define a sample set of fovs to define the top-left corners of each tiled region
     sample_fovs_list = test_utils.generate_sample_fovs_list(
         fov_coords=fov_coords, fov_names=fov_names, fov_sizes=fov_sizes
     )
@@ -354,19 +351,21 @@ def test_generate_x_y_fov_pairs_rhombus(coords, actual_pairs):
 
 
 @parametrize_with_cases(
-    'moly_path, moly_region_setting, moly_interval_setting, moly_interval_value, '
-    'moly_insert_indices, fov_1_end_pos', cases=test_cases.TiledRegionMolySettingCases
+    'moly_path, moly_roi_setting, moly_interval_setting, moly_interval_value, '
+    'moly_insert_indices, roi_1_end_pos', cases=test_cases.TiledRegionMolySettingCases
 )
 @parametrize('randomize_setting', [['N', 'N'], ['N', 'Y'], ['Y', 'Y']])
-def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
+def test_generate_tiled_region_fov_list(moly_path, moly_roi_setting,
                                         moly_interval_setting, moly_interval_value,
-                                        moly_insert_indices, fov_1_end_pos, randomize_setting):
-    sample_fovs_list = test_utils.generate_sample_fovs_list(
-        fov_coords=[(0, 0), (100, 100)], fov_names=["TheFirstFOV", "TheSecondFOV"],
+                                        moly_insert_indices, roi_1_end_pos, randomize_setting):
+    # define a set of fovs defining the upper-left corners of each region
+    sample_roi_fovs_list = test_utils.generate_sample_fovs_list(
+        fov_coords=[(0, 0), (100, 100)], fov_names=['TheFirstROI', 'TheSecondROI'],
         fov_sizes=[5, 10]
     )
 
     sample_region_inputs = {
+        'region_name': ['TheFirstROI', 'TheSecondROI'],
         'region_start_row': [100, 150],
         'region_start_col': [0, 50],
         'fov_num_row': [2, 4],
@@ -380,7 +379,7 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
 
     sample_tiling_params = {
         'fovFormatVersion': '1.5',
-        'fovs': sample_fovs_list['fovs'],
+        'fovs': sample_roi_fovs_list['fovs'],
         'region_params': sample_region_params
     }
 
@@ -393,7 +392,7 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
         with open(sample_moly_path, 'w') as smp:
             json.dump(sample_moly_point, smp)
 
-        sample_tiling_params['moly_region'] = moly_region_setting
+        sample_tiling_params['moly_region'] = moly_roi_setting
 
         sample_tiling_params['region_params'][0]['region_rand'] = randomize_setting[0]
         sample_tiling_params['region_params'][1]['region_rand'] = randomize_setting[1]
@@ -401,18 +400,23 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
         if moly_interval_setting:
             sample_tiling_params['moly_interval'] = moly_interval_value
 
-        fov_regions = tiling_utils.generate_tiled_region_fov_list(
+        fov_list = tiling_utils.generate_tiled_region_fov_list(
             sample_tiling_params, os.path.join(td, moly_path)
         )
 
         # assert none of the metadata keys explicitly added by set_tiling_params appear
         for k in ['region_params', 'moly_region', 'moly_interval']:
-            assert k not in fov_regions
+            assert k not in fov_list
 
         # retrieve the center points
         center_points = [
             (fov['centerPointMicrons']['x'], fov['centerPointMicrons']['y'])
-            for fov in fov_regions['fovs']
+            for fov in fov_list['fovs']
+        ]
+
+        # retrieve the fov names
+        fov_names = [
+            fov['name'] for fov in fov_list['fovs']
         ]
 
         # define the center points sorted
@@ -422,47 +426,73 @@ def test_generate_tiled_region_fov_list(moly_path, moly_region_setting,
             (x, y) for x in np.arange(50, 90, 10) for y in list(reversed(np.arange(140, 160, 10)))
         ]
 
+        # define the corresponding FOV names
+        actual_fov_names = [
+            'TheFirstROI_R%dC%d' % (x, y) for y in np.arange(1, 3) for x in np.arange(1, 5)
+        ] + [
+            'TheSecondROI_R%dC%d' % (x, y) for y in np.arange(1, 5) for x in np.arange(1, 3)
+        ]
+
         for mi in moly_insert_indices:
             actual_center_points_sorted.insert(mi, (14540, -10830))
+            actual_fov_names.insert(mi, 'MoQC')
 
-        # easiest case: the center points should be sorted
+        # easiest case: the center points and FOV names should be sorted
         if randomize_setting == ['N', 'N']:
             assert center_points == actual_center_points_sorted
-        # if only the second fov is randomized
-        elif randomize_setting == ['N', 'Y']:
-            # ensure the fov 1 center points are the same for both sorted and random
-            assert center_points[:fov_1_end_pos] == actual_center_points_sorted[:fov_1_end_pos]
+            assert fov_names == actual_fov_names
 
-            # ensure the random center points for fov 2 contain the same elements
+        # if only the second ROI is randomized
+        elif randomize_setting == ['N', 'Y']:
+            # ensure the ROI 1 center points and FOV names are the same for both sorted and random
+            assert center_points[:roi_1_end_pos] == actual_center_points_sorted[:roi_1_end_pos]
+            assert fov_names[:roi_1_end_pos] == actual_fov_names[:roi_1_end_pos]
+
+            # ensure the random center points and fov names for ROI 2 contain the same elements
             # as its sorted version
             misc_utils.verify_same_elements(
-                computed_center_points=center_points[fov_1_end_pos:],
-                actual_center_points=actual_center_points_sorted[fov_1_end_pos:]
+                computed_center_points=center_points[roi_1_end_pos:],
+                actual_center_points=actual_center_points_sorted[roi_1_end_pos:]
+            )
+            misc_utils.verify_same_elements(
+                computed_fov_names=fov_names[roi_1_end_pos:],
+                actual_fov_names=actual_fov_names[roi_1_end_pos:]
             )
 
-            # however, fov 2 sorted entries should NOT equal fov 2 random entries
-            assert center_points[fov_1_end_pos:] != actual_center_points_sorted[fov_1_end_pos:]
+            # however, ROI 2 sorted entries should NOT equal ROI 2 random entries
+            assert center_points[roi_1_end_pos:] != actual_center_points_sorted[roi_1_end_pos:]
+            assert fov_names[roi_1_end_pos:] != actual_fov_names[roi_1_end_pos:]
         # if both fovs are randomized
         elif randomize_setting == ['Y', 'Y']:
-            # ensure the random center points for fov 1 contain the same elements
+            # ensure the random center points and fov names for ROI 1 contain the same elements
             # as its sorted version
             misc_utils.verify_same_elements(
-                computed_center_points=center_points[:fov_1_end_pos],
-                actual_center_points=actual_center_points_sorted[:fov_1_end_pos]
+                computed_center_points=center_points[:roi_1_end_pos],
+                actual_center_points=actual_center_points_sorted[:roi_1_end_pos]
+            )
+            misc_utils.verify_same_elements(
+                computed_fov_names=fov_names[:roi_1_end_pos],
+                actual_fov_names=actual_fov_names[:roi_1_end_pos]
             )
 
-            # however, fov 1 sorted entries should NOT equal fov 1 random entries
-            assert center_points[:fov_1_end_pos] != actual_center_points_sorted[:fov_1_end_pos]
+            # however, ROI 1 sorted entries should NOT equal ROI 1 random entries
+            assert center_points[:roi_1_end_pos] != actual_center_points_sorted[:roi_1_end_pos]
+            assert fov_names[:roi_1_end_pos] != actual_fov_names[:roi_1_end_pos]
 
-            # ensure the random center points for fov 2 contain the same elements
+            # ensure the random center points for ROI 2 contain the same elements
             # as its sorted version
             misc_utils.verify_same_elements(
-                computed_center_points=center_points[fov_1_end_pos:],
-                actual_center_points=actual_center_points_sorted[fov_1_end_pos:]
+                computed_center_points=center_points[roi_1_end_pos:],
+                actual_center_points=actual_center_points_sorted[roi_1_end_pos:]
+            )
+            misc_utils.verify_same_elements(
+                computed_fov_names=fov_names[roi_1_end_pos:],
+                actual_fov_names=actual_fov_names[roi_1_end_pos:]
             )
 
-            # however, fov 2 sorted entries should NOT equal fov 2 random entries
-            assert center_points[fov_1_end_pos:] != actual_center_points_sorted[fov_1_end_pos:]
+            # however, ROI 2 sorted entries should NOT equal ROI 2 random entries
+            assert center_points[roi_1_end_pos:] != actual_center_points_sorted[roi_1_end_pos:]
+            assert fov_names[roi_1_end_pos:] != actual_fov_names[roi_1_end_pos:]
 
 
 @parametrize_with_cases('top_left, top_right, bottom_left, bottom_right',
@@ -538,12 +568,53 @@ def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_
             assert fov == 'R%dC%d' % (row_ind, col_ind)
 
 
+def test_rename_duplicate_fovs():
+    # define a sample set of FOVs
+    fov_coords = [(100 + 100 * i, 100 + 100 * j) for i in np.arange(4) for j in np.arange(3)]
+    fov_names = ["R%dC%d" % (i, j) for i in np.arange(1, 5) for j in np.arange(1, 4)]
+    fov_sizes = [1000] * 12
+    fov_list = test_utils.generate_sample_fovs_list(fov_coords, fov_names, fov_sizes)
+
+    # no duplicate FOV names identified, no names should be changed
+    fov_list_no_dup = tiling_utils.rename_duplicate_fovs(fov_list)
+    assert [fov['name'] for fov in fov_list_no_dup['fovs']] == fov_names
+
+    # rename R2C2 and R2C3 as R2C1 to create one set of duplicates
+    fov_list['fovs'][4]['name'] = 'R2C1'
+    fov_list['fovs'][5]['name'] = 'R2C1'
+    fov_names[4] = 'R2C1_duplicate1'
+    fov_names[5] = 'R2C1_duplicate2'
+
+    fov_list_one_dup = tiling_utils.rename_duplicate_fovs(fov_list)
+    assert [fov['name'] for fov in fov_list_one_dup['fovs']] == fov_names
+
+    # rename R3C3, R4C1, and R4C2 as R3C2 to create another set of duplicates of differing size
+    fov_list['fovs'][8]['name'] = 'R3C2'
+    fov_list['fovs'][9]['name'] = 'R3C2'
+    fov_list['fovs'][10]['name'] = 'R3C2'
+    fov_names[8] = 'R3C2_duplicate1'
+    fov_names[9] = 'R3C2_duplicate2'
+    fov_names[10] = 'R3C2_duplicate3'
+
+    fov_list_mult_dup = tiling_utils.rename_duplicate_fovs(fov_list)
+    assert [fov['name'] for fov in fov_list_mult_dup['fovs']] == fov_names
+
+
 def test_convert_stage_to_optical():
     # just need to test it gets the right values for one coordinate in microns
     sample_coord = (25000, 35000)
-    new_coord = tiling_utils.convert_stage_to_optical(sample_coord)
 
-    assert new_coord == (612, 762)
+    # also need a sample set of co-registration params
+    sample_coreg_params = {
+        'STAGE_TO_OPTICAL_X_MULTIPLIER': 10,
+        'STAGE_TO_OPTICAL_X_OFFSET': 1,
+        'STAGE_TO_OPTICAL_Y_MULTIPLIER': 20,
+        'STAGE_TO_OPTICAL_Y_OFFSET': -4
+    }
+
+    new_coord = tiling_utils.convert_stage_to_optical(sample_coord, sample_coreg_params)
+
+    assert new_coord == (620, 257)
 
 
 def test_assign_closest_fovs():
@@ -895,6 +966,110 @@ def test_generate_validation_annot(check_dist, check_duplicates, check_mismatche
     actual_annot = test_cases.generate_sample_annot(check_dist, check_duplicates, check_mismatches)
 
     assert generated_annot == actual_annot
+
+
+# NOTE: this only tests if the visualization runs with valid parameters
+# previous test functions check interactive functionality
+def test_tma_interactive_remap():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # make a dummy toffy directory and a dummy templates directory where the code is run
+        os.mkdir(os.path.join(temp_dir, 'toffy'))
+        os.mkdir(os.path.join(temp_dir, 'templates'))
+
+        # change working directory to templates to simulate actual co-registration run
+        os.chdir(os.path.join(temp_dir, 'templates'))
+
+        # define sample data for each parameter
+        sample_manual_fovs = {
+            'fovs': [
+                {
+                    'name': 'R1C1',
+                    'centerPointMicrons': {
+                        'x': 100,
+                        'y': 100
+                    }
+                },
+                {
+                    'name': 'R2C2',
+                    'centerPointMicrons': {
+                        'x': 200,
+                        'y': 200
+                    }
+                }
+            ]
+        }
+
+        sample_auto_fovs = {
+            'R1C1': (125, 125),
+            'R1C2': (125, 225),
+            'R2C1': (225, 125),
+            'R2C2': (225, 225)
+        }
+
+        sample_slide_img = np.zeros((1024, 1024, 3))
+
+        mapping_path = os.path.join('..', 'toffy', 'mapping.json')
+
+        # error check: directory path to mapping needs to be valid
+        with pytest.raises(FileNotFoundError):
+            tiling_utils.tma_interactive_remap(
+                sample_manual_fovs, sample_auto_fovs, sample_slide_img,
+                'bad/bad/bad_mapping_path.json'
+            )
+
+        # error check: check_dist needs to be numeric
+        with pytest.raises(ValueError):
+            tiling_utils.tma_interactive_remap(
+                sample_manual_fovs, sample_auto_fovs, sample_slide_img,
+                mapping_path, check_dist='bad'
+            )
+
+        # error check: check_dist needs to be greater than 0
+        with pytest.raises(ValueError):
+            tiling_utils.tma_interactive_remap(
+                sample_manual_fovs, sample_auto_fovs, sample_slide_img,
+                mapping_path, check_dist=0
+            )
+
+        # error check: check_duplicates needs to be boolean
+        with pytest.raises(ValueError):
+            tiling_utils.tma_interactive_remap(
+                sample_manual_fovs, sample_auto_fovs, sample_slide_img,
+                mapping_path, check_duplicates='bad'
+            )
+
+        # error check: check_mismatches needs to be boolean
+        with pytest.raises(ValueError):
+            tiling_utils.tma_interactive_remap(
+                sample_manual_fovs, sample_auto_fovs, sample_slide_img,
+                mapping_path, check_mismatches='bad'
+            )
+
+        # error check: no co-registration params specified
+        with pytest.raises(FileNotFoundError):
+            tiling_utils.tma_interactive_remap(
+                sample_manual_fovs, sample_auto_fovs, sample_slide_img, mapping_path
+            )
+
+        # generate sample co-registration params in toffy
+        sample_coreg_params = {
+            'coreg_params': [
+                {
+                    'STAGE_TO_OPTICAL_X_MULTIPLIER': 10,
+                    'STAGE_TO_OPTICAL_X_OFFSET': 1,
+                    'STAGE_TO_OPTICAL_Y_MULTIPLIER': 20,
+                    'STAGE_TO_OPTICAL_Y_OFFSET': -4
+                }
+            ]
+        }
+
+        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'w') as cp:
+            json.dump(sample_coreg_params, cp)
+
+        # this should now run
+        tiling_utils.tma_interactive_remap(
+            sample_manual_fovs, sample_auto_fovs, sample_slide_img, mapping_path
+        )
 
 
 @parametrize('randomize_setting', [False, True])

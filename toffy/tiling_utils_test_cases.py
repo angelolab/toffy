@@ -15,17 +15,14 @@ value_err = [xfail(raises=ValueError, strict=True)]
 
 def generate_fiducial_read_vals(user_input_type='none'):
     user_inputs = [1.5 * (i + 1) if i % 2 == 0 else 2 * i for i in np.arange(24)]
-    user_inputs.append('sample_name')
 
     if user_input_type == 'same_types':
         bad_inputs_to_insert = [-p for p in user_inputs if not isinstance(p, str)]
-        bad_inputs_to_insert.append('')
         for i in np.arange(0, len(user_inputs), 2):
             user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
 
     if user_input_type == 'diff_types':
         bad_inputs_to_insert = [str(p) + '_bad' for p in user_inputs]
-        bad_inputs_to_insert.append('')
         for i in np.arange(0, len(user_inputs), 2):
             user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
 
@@ -43,56 +40,66 @@ class FiducialInfoReadCases:
         return generate_fiducial_read_vals(user_input_type='diff_types')
 
 
-# this function assumes that FOV 2's corresponding values are linearly spaced from FOV 1's
+# define the list of region start coords and names
+_TILED_REGION_ROI_COORDS = [(50, 150), (100, 300)]
+_TILED_REGION_ROI_NAMES = ["TheFirstROI", "TheSecondROI"]
+_TILED_REGION_ROI_SIZES = [1000, 2000]
+
+
+# this function assumes that ROI 2's corresponding values are linearly spaced from ROI 1's
 # NOTE: x and y correspond to column and row index respectively as specified in the JSON spec file
-def generate_tiled_region_params(start_x_fov_1=50, start_y_fov_1=150,
-                                 num_row_fov_1=4, num_col_fov_1=2,
-                                 row_size_fov_1=2, col_size_fov_1=1, num_fovs=2):
+def generate_tiled_region_params(start_x_roi_1=50, start_y_roi_1=150,
+                                 num_row_roi_1=4, num_col_roi_1=2,
+                                 row_size_roi_1=2, col_size_roi_1=1, num_rois=2,
+                                 roi_names=deepcopy(_TILED_REGION_ROI_NAMES)):
     # define this dictionary for testing purposes to ensure that function calls
     # equal what would be placed in param_set_values
     base_param_values = {
-        'region_start_row': start_y_fov_1,
-        'region_start_col': start_x_fov_1,
-        'fov_num_row': num_row_fov_1,
-        'fov_num_col': num_col_fov_1,
-        'row_fov_size': row_size_fov_1,
-        'col_fov_size': col_size_fov_1
+        'region_start_row': start_y_roi_1,
+        'region_start_col': start_x_roi_1,
+        'fov_num_row': num_row_roi_1,
+        'fov_num_col': num_col_roi_1,
+        'row_fov_size': row_size_roi_1,
+        'col_fov_size': col_size_roi_1
     }
 
-    # define the values for each param that should be contained for each FOV
+    # define the values for each param that should be contained for each ROI
     full_param_set = {
         param: list(np.arange(
             base_param_values[param],
-            base_param_values[param] * (num_fovs + 1),
+            base_param_values[param] * (num_rois + 1),
             base_param_values[param]
         ))
 
         for param in base_param_values
     }
 
+    # set the names for each ROI
+    full_param_set['region_name'] = roi_names
+
     # TODO: might want to return just one and have the test function generate the other
     return base_param_values, full_param_set
 
 
 # test tiled region parameter setting and FOV generation
-# a helper function for generating params specific to each FOV for TiledRegionReadCases
-# NOTE: the param moly_region applies across all FOVs, so it's not set here
-def generate_tiled_region_cases(fov_coord_list, fov_name_list, fov_sizes,
-                                user_input_type='none', num_row_fov_1=4, num_col_fov_1=2,
-                                random_fov_1='n', random_fov_2='Y'):
+# a helper function for generating params specific to each ROI for TiledRegionReadCases
+# NOTE: the param moly_roi applies across all ROIs, so it's not set here
+def generate_tiled_region_cases(roi_coord_list, roi_name_list, roi_sizes,
+                                user_input_type='none', num_row_roi_1=4, num_col_roi_1=2,
+                                random_roi_1='n', random_roi_2='Y'):
     # define the base value for each parameter to use for testing
     # as well as the full set of parameters for each FOV
     base_param_values, full_param_set = generate_tiled_region_params(
-        fov_coord_list[0][0], fov_coord_list[0][1], num_row_fov_1, num_col_fov_1,
-        fov_sizes[0], fov_sizes[0], len(fov_coord_list)
+        roi_coord_list[0][0], roi_coord_list[0][1], num_row_roi_1, num_col_roi_1,
+        roi_sizes[0], roi_sizes[0], len(roi_coord_list)
     )
 
     full_param_set['region_rand'] = ['N', 'Y']
 
     # define the list of user inputs to pass into the input functions for tiled regions
     user_inputs = [
-        num_row_fov_1, num_col_fov_1, random_fov_1,
-        num_row_fov_1 * 2, num_col_fov_1 * 2, random_fov_2
+        num_row_roi_1, num_col_roi_1, random_roi_1,
+        num_row_roi_1 * 2, num_col_roi_1 * 2, random_roi_2
     ]
 
     # insert some bad inputs for the desire test type
@@ -107,13 +114,7 @@ def generate_tiled_region_cases(fov_coord_list, fov_name_list, fov_sizes,
         for i in np.arange(0, len(user_inputs), 2):
             user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
 
-    return fov_coord_list, fov_name_list, fov_sizes, user_inputs, base_param_values, full_param_set
-
-
-# define the list of region start coords and names
-_TILED_REGION_FOV_COORDS = [(50, 150), (100, 300)]
-_TILED_REGION_FOV_NAMES = ["TheFirstFOV", "TheSecondFOV"]
-_TILED_REGION_FOV_SIZES = [1000, 2000]
+    return roi_coord_list, roi_name_list, roi_sizes, user_inputs, base_param_values, full_param_set
 
 
 # NOTE: because of the way the moly_interval param is handled
@@ -121,25 +122,25 @@ _TILED_REGION_FOV_SIZES = [1000, 2000]
 class TiledRegionReadCases:
     def case_no_reentry_no_moly_param(self):
         return generate_tiled_region_cases(
-            _TILED_REGION_FOV_COORDS, _TILED_REGION_FOV_NAMES, deepcopy(_TILED_REGION_FOV_SIZES)
+            _TILED_REGION_ROI_COORDS, _TILED_REGION_ROI_NAMES, deepcopy(_TILED_REGION_ROI_SIZES)
         )
 
     def case_no_reentry_with_moly_param(self):
         fcl, fnl, fs, ui, bpv, fps = generate_tiled_region_cases(
-            _TILED_REGION_FOV_COORDS, _TILED_REGION_FOV_NAMES, deepcopy(_TILED_REGION_FOV_SIZES)
+            _TILED_REGION_ROI_COORDS, _TILED_REGION_ROI_NAMES, deepcopy(_TILED_REGION_ROI_SIZES)
         )
 
         return fcl, fnl, fs, ui + ['Y'], bpv, fps
 
     def case_reentry_same_type_no_moly_param(self):
         return generate_tiled_region_cases(
-            _TILED_REGION_FOV_COORDS, _TILED_REGION_FOV_NAMES, deepcopy(_TILED_REGION_FOV_SIZES),
+            _TILED_REGION_ROI_COORDS, _TILED_REGION_ROI_NAMES, deepcopy(_TILED_REGION_ROI_SIZES),
             user_input_type='same_types'
         )
 
     def case_reentry_same_type_with_moly_param(self):
         fcl, fnl, fs, ui, bpv, fps = generate_tiled_region_cases(
-            _TILED_REGION_FOV_COORDS, _TILED_REGION_FOV_NAMES, deepcopy(_TILED_REGION_FOV_SIZES),
+            _TILED_REGION_ROI_COORDS, _TILED_REGION_ROI_NAMES, deepcopy(_TILED_REGION_ROI_SIZES),
             user_input_type='same_types'
         )
 
@@ -147,13 +148,13 @@ class TiledRegionReadCases:
 
     def case_reentry_different_type_no_moly_param(self):
         return generate_tiled_region_cases(
-            _TILED_REGION_FOV_COORDS, _TILED_REGION_FOV_NAMES, deepcopy(_TILED_REGION_FOV_SIZES),
+            _TILED_REGION_ROI_COORDS, _TILED_REGION_ROI_NAMES, deepcopy(_TILED_REGION_ROI_SIZES),
             user_input_type='diff_types'
         )
 
     def case_reentry_different_type_with_moly_param(self):
         fcl, fnl, fs, ui, bpv, fps = generate_tiled_region_cases(
-            _TILED_REGION_FOV_COORDS, _TILED_REGION_FOV_NAMES, deepcopy(_TILED_REGION_FOV_SIZES),
+            _TILED_REGION_ROI_COORDS, _TILED_REGION_ROI_NAMES, deepcopy(_TILED_REGION_ROI_SIZES),
             user_input_type='diff_types'
         )
 
@@ -162,7 +163,7 @@ class TiledRegionReadCases:
     @xfail(raises=ValueError, strict=True)
     def case_bad_fov_size_value_no_moly_param(self):
         fcl, fnl, fs, ui, bpv, fps = generate_tiled_region_cases(
-            _TILED_REGION_FOV_COORDS, _TILED_REGION_FOV_NAMES, deepcopy(_TILED_REGION_FOV_SIZES)
+            _TILED_REGION_ROI_COORDS, _TILED_REGION_ROI_NAMES, deepcopy(_TILED_REGION_ROI_SIZES)
         )
 
         fs[0] = -5
@@ -172,7 +173,7 @@ class TiledRegionReadCases:
     @xfail(raises=ValueError, strict=True)
     def case_bad_fov_size_value_moly_param(self):
         fcl, fnl, fs, ui, bpv, fps = generate_tiled_region_cases(
-            _TILED_REGION_FOV_COORDS, _TILED_REGION_FOV_NAMES, deepcopy(_TILED_REGION_FOV_SIZES)
+            _TILED_REGION_ROI_COORDS, _TILED_REGION_ROI_NAMES, deepcopy(_TILED_REGION_ROI_SIZES)
         )
 
         fs[0] = -5
