@@ -76,7 +76,7 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
             default_name = f'fov-{run_order}-scan-{scans}'
             fov_scan[default_name] = custom_name
 
-    # retrieve current default directory names, if empty there are no default names to change
+    # retrieve current default directory names, check if already renamed
     old_dirs = io_utils.list_folders(fov_dir)
     if set(old_dirs) == set(fov_scan.values()):
         raise ValueError(f"All FOV folders in {fov_dir} have already been renamed")
