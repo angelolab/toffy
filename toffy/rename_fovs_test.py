@@ -40,12 +40,9 @@ def create_sample_run(name_list, run_order_list, scan_count_list, create_json=Fa
 
 
 def test_check_unnamed_fovs():
-    ex_name = ['fov-1', 'fov-2', 'fov-3', 'fov-4', 'missing']
+    ex_name = ['MoQC', 'missing', 'tonsil_bottom', 'moly_qc_tissue', 'missing']
     ex_run_order = list(range(1, 6))
     ex_scan_count = list(range(1, 6))
     ex_run = create_sample_run(ex_name, ex_run_order, ex_scan_count)
 
     rename_fovs.check_unnamed_fovs(ex_run)
-
-
-test_check_unnamed_fovs()
