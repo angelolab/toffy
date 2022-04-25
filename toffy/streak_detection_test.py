@@ -292,7 +292,7 @@ def test_correct_mean_alg():
     assert np.array_equal(mean_streak_test, np.array([3, 4, 5, 6, 7]))
 
 
-def test_save_corrected_channels(tmp_path):
+def test_save_corrected_channels(tmp_path, streak_dataset):
     # * Minimum Data Needed
     #   1. streak_data: fov, streak_mask, streak_df, filtered_streak_mask, filtered_streak_df,
     #   boxed_streaks, corrected_streak_mask
@@ -314,18 +314,8 @@ def test_save_corrected_channels(tmp_path):
     test_corrected_channels = test_corrected_channels[0, ...]
 
     # Create fake StreakData dataclass
-
-    streak_data_test = sd.StreakData(
-        shape=(row_size, col_size),
-        fov="fov0",
-        corrected_dir=tmp_path,
-        streak_channel="chan0",
-        streak_mask=np.zeros(shape=(1000, 1000)),
-        streak_df=pd.util.testing.makeDataFrame(),
-        filtered_streak_mask=np.zeros(shape=(1000, 1000)),
-        filtered_streak_df=pd.util.testing.makeDataFrame(),
-        boxed_streaks=np.zeros(shape=(1000, 1000)),
-        corrected_streak_mask=np.zeros(shape=(1000, 1000)),
+    streak_data_test = streak_dataset(
+        corrected_dir=tmp_path, fov="fov0", chan="chan0", shape=(1000, 1000)
     )
 
     # Save the corrected channels, do not save the sreak data
