@@ -1,6 +1,7 @@
 import tempfile
 import json
 import os
+import pytest
 
 # from ark.utils import test_utils
 from toffy import rename_fovs
@@ -65,7 +66,8 @@ def test_rename_fov_dirs():
         not_new_dir = os.path.join(base_dir, 'new_directory')
 
         # test existing directory for new_dir
-        rename_fovs.rename_fov_dirs(run_dir, fov_dir, not_new_dir)
+        with pytest.raises(ValueError):
+            rename_fovs.rename_fov_dirs(run_dir, fov_dir, not_new_dir)
 
 
 # test_rename_fov_dirs()
