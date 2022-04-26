@@ -5,6 +5,7 @@ import pytest
 import pandas as pd
 
 # from ark.utils import test_utils
+from ark.utils import io_utils
 from toffy import rename_fovs as rf
 
 
@@ -35,13 +36,17 @@ def create_sample_run(data, create_json=False):
 
     return sample_run
 
+
 def create_sample_fov_dirs(fovs, base_dir):
     for fov in fovs:
         os.mkdir(os.path.join(base_dir, fov))
 
-def remove_fov_dirs(fovs, base_dir):
+
+def remove_fov_dirs(base_dir):
+    fovs = io_utils.list_folders(base_dir)
     for fov in fovs:
         os.rmdir(os.path.join(base_dir, fov))
+
 
 def test_check_unnamed_fovs():
     # data with missing names
@@ -70,8 +75,8 @@ def test_rename_fov_dirs():
         fov_dir = os.path.join(base_dir, 'fov_folder')
 
         # create existing new directory
-        os.mkdir(os.path.join(base_dir, 'new_directory'))
-        not_new_dir = os.path.join(base_dir, 'new_directory')
+        os.mkdir(os.path.join(base_dir, 'not_new_directory'))
+        not_new_dir = os.path.join(base_dir, 'not_new_directory')
 
         # existing directory for new_dir should raise an error
         with pytest.raises(ValueError, match="already exists"):
@@ -82,14 +87,12 @@ def test_rename_fov_dirs():
         # regular sample run data
         ex_data = pd.DataFrame(
             {'names': ['MoQC', 'tonsil_bottom', 'moly_qc_tissue'],
-            'run': list(range(1, 4)),
-            'scans': [1, 2, 1]
-            })
+             'run': list(range(1, 4)),
+             'scans': [1, 2, 1]
+             })
 
         # create a json path with the sample data
         ex_run_path = create_sample_run(ex_data, True)
-        with open(ex_run_path) as file:
-            run_metadata = json.load(file)
 
         # create already renamed fov folders
         renamed_fovs = ['MoQC', 'tonsil_bottom-1', 'tonsil_bottom-2', 'moly_qc_tissue']
@@ -98,24 +101,37 @@ def test_rename_fov_dirs():
         # fov folders already renamed should raise an error
         with pytest.raises(ValueError, match=r"already been renamed"):
             rf.rename_fov_dirs(ex_run_path, fov_dir)
-        remove_fov_dirs(renamed_fovs, fov_dir)
-
+        remove_fov_dirs(fov_dir)
 
         # create correct fov folders
-        #correct_fovs = ['fov-1-scan-1', 'fov-2-scan-1', 'fov-2-scan-2', 'fov-3-scan-1']
-        #create_sample_fov_dirs(correct_fovs, fov_dir)
+        correct_fovs = ['fov-1-scan-1', 'fov-2-scan-1', 'fov-2-scan-2', 'fov-3-scan-1']
+        create_sample_fov_dirs(correct_fovs, fov_dir)
 
-        # test for correct renaming
-        #os.rmdir(correct_fovs)
+        # test successful renaming to new dir
+        rf.rename_fov_dirs(ex_run_path, fov_dir, os.path.join(base_dir, 'new_directory'))
+        remove_fov_dirs(os.path.join(base_dir, 'new_directory'))
+
+        # test successful renaming
+        rf.rename_fov_dirs(ex_run_path, fov_dir)
+        remove_fov_dirs(fov_dir)
 
         # create not enough fov folders
-        #less_fovs = ['fov-1-scan-1', 'fov-2-scan-1', 'fov-3-scan-1']
-        #create_sample_fov_dirs(less_fovs, fov_dir)
+        less_fovs = ['fov-1-scan-1', 'fov-2-scan-1', 'fov-3-scan-1']
+        create_sample_fov_dirs(less_fovs, fov_dir)
+
+        # fov folders already renamed should raise an error
+        with pytest.warns(match="Not all FOVs"):
+            rf.rename_fov_dirs(ex_run_path, fov_dir)
+        remove_fov_dirs(fov_dir)
 
         # create extra fov folders
+        extra_fovs = ['fov-1-scan-1', 'fov-2-scan-1', 'fov-2-scan-2', 'fov-3-scan-1', 'fov-3-scan-3']
+        create_sample_fov_dirs(extra_fovs, fov_dir)
+
+        # fov folders already renamed should raise an error
+        with pytest.raises(ValueError, match="not found in run file"):
+            rf.rename_fov_dirs(ex_run_path, fov_dir)
+        remove_fov_dirs(fov_dir)
 
         # delete sample run json
         os.remove(ex_run_path)
-
-
-test_rename_fov_dirs()
