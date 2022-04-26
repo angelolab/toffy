@@ -14,7 +14,8 @@ def create_sample_run(data, create_json=False):
     sample_run = {"fovs": fov_list}
 
     # set up dictionary
-    for name, run_order, scan_count in zip(data.loc[:, "names"], data.loc[:, "run"], data.loc[:, "scans"]):
+    for name, run_order, scan_count in \
+            zip(data.loc[:, "names"], data.loc[:, "run"], data.loc[:, "scans"]):
         ex_fov = {
             "scanCount": scan_count,
             "runOrder": run_order,
@@ -120,12 +121,13 @@ def test_rename_fov_dirs():
         create_sample_fov_dirs(less_fovs, fov_dir)
 
         # fov folders already renamed should raise an error
-        with pytest.warns(match="Not all FOVs"):
+        with pytest.warns(UserWarning, match="Not all FOVs"):
             rf.rename_fov_dirs(ex_run_path, fov_dir)
         remove_fov_dirs(fov_dir)
 
         # create extra fov folders
-        extra_fovs = ['fov-1-scan-1', 'fov-2-scan-1', 'fov-2-scan-2', 'fov-3-scan-1', 'fov-3-scan-3']
+        extra_fovs = ['fov-1-scan-1', 'fov-2-scan-1', 'fov-2-scan-2',
+                      'fov-3-scan-1', 'fov-3-scan-3']
         create_sample_fov_dirs(extra_fovs, fov_dir)
 
         # fov folders already renamed should raise an error
