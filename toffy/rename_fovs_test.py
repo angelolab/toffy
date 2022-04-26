@@ -2,16 +2,17 @@ import tempfile
 import json
 import os
 import pytest
+import pandas as pd
 
 # from ark.utils import test_utils
 from toffy import rename_fovs
 
 
-def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False):
+def create_sample_run(data, create_json=False):
     fov_list = []
     sample_run = {"fovs": fov_list}
 
-    for name, run_order, scan_count in zip(name_list, run_order_list, scan_count_list):
+    for name, run_order, scan_count in zip(data.loc[:, "names"], data.loc[:, "run"], data.loc[:, "scans"]):
         ex_fov = {
             "scanCount": scan_count,
             "runOrder": run_order,
@@ -36,7 +37,12 @@ def test_check_unnamed_fovs():
     ex_name = ['MoQC', None, 'tonsil_bottom', 'moly_qc_tissue', None]
     ex_run_order = list(range(1, 6))
     ex_scan_count = list(range(1, 6))
-    ex_run = create_sample_run(ex_name, ex_run_order, ex_scan_count)
+    ex_data = pd.DataFrame(
+        {'names': ex_name,
+         'run': ex_run_order,
+         'scans': ex_scan_count
+         })
+    ex_run = create_sample_run(ex_data)
 
     rename_fovs.check_unnamed_fovs(ex_run)
     for fov in ex_run.get('fovs', ()):
@@ -56,10 +62,9 @@ def test_rename_fov_dirs():
         os.mkdir(os.path.join(base_dir, 'new_directory'))
         not_new_dir = os.path.join(base_dir, 'new_directory')
 
-        # test existing directory for new_dir
-        with pytest.raises(ValueError):
-            rename_fovs.rename_fov_dirs(run_dir, fov_dir, not_new_dir)
+    # test existing directory for new_dir
+    with pytest.raises(ValueError):
+        rename_fovs.rename_fov_dirs(run_dir, fov_dir, not_new_dir)
 
 
-
-# test_rename_fov_dirs()
+#test_rename_fov_dirs()
