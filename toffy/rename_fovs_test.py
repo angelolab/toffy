@@ -28,7 +28,7 @@ def create_sample_run(name_list, run_order_list, scan_count_list, create_json=Fa
         fov_list.append(ex_fov)
 
     for fov in sample_run.get('fovs', ()):
-        if fov.get('name') == 'missing':
+        if fov.get('name') is None:
             del fov['name']
 
     if create_json:
@@ -41,12 +41,14 @@ def create_sample_run(name_list, run_order_list, scan_count_list, create_json=Fa
 
 
 def test_check_unnamed_fovs():
-    ex_name = ['MoQC', 'missing', 'tonsil_bottom', 'moly_qc_tissue', 'missing']
+    ex_name = ['MoQC', None, 'tonsil_bottom', 'moly_qc_tissue', None]
     ex_run_order = list(range(1, 6))
     ex_scan_count = list(range(1, 6))
     ex_run = create_sample_run(ex_name, ex_run_order, ex_scan_count)
 
     rename_fovs.check_unnamed_fovs(ex_run)
+    for fov in ex_run.get('fovs', ()):
+        assert fov.get('name') is not None
 
 
 def test_rename_fov_dirs():
