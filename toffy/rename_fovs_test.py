@@ -12,6 +12,7 @@ def create_sample_run(data, create_json=False):
     fov_list = []
     sample_run = {"fovs": fov_list}
 
+    # set up dictionary
     for name, run_order, scan_count in zip(data.loc[:, "names"], data.loc[:, "run"], data.loc[:, "scans"]):
         ex_fov = {
             "scanCount": scan_count,
@@ -20,10 +21,12 @@ def create_sample_run(data, create_json=False):
         }
         fov_list.append(ex_fov)
 
+    # delete name key if one is not provided
     for fov in sample_run.get('fovs', ()):
         if fov.get('name') is None:
             del fov['name']
 
+    # create json file for the data
     if create_json:
         temp = tempfile.NamedTemporaryFile(mode="w")
         json.dump(sample_run, temp)
@@ -34,16 +37,17 @@ def create_sample_run(data, create_json=False):
 
 
 def test_check_unnamed_fovs():
-    ex_name = ['MoQC', None, 'tonsil_bottom', 'moly_qc_tissue', None]
-    ex_run_order = list(range(1, 6))
-    ex_scan_count = list(range(1, 6))
+    # data with missing names
     ex_data = pd.DataFrame(
-        {'names': ex_name,
-         'run': ex_run_order,
-         'scans': ex_scan_count
+        {'names': ['MoQC', None, 'tonsil_bottom', 'moly_qc_tissue', None],
+         'run': list(range(1, 6)),
+         'scans': list(range(1, 6))
          })
+
+    # create a dict with the sample data
     ex_run = create_sample_run(ex_data)
 
+    # test that missing names are given a placeholder
     rename_fovs.check_unnamed_fovs(ex_run)
     for fov in ex_run.get('fovs', ()):
         assert fov.get('name') is not None
@@ -67,4 +71,4 @@ def test_rename_fov_dirs():
         rename_fovs.rename_fov_dirs(run_dir, fov_dir, not_new_dir)
 
 
-#test_rename_fov_dirs()
+# test_rename_fov_dirs()
