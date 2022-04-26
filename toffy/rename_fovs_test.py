@@ -8,15 +8,6 @@ from toffy import rename_fovs
 
 
 def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False):
-    """Creates example run metadata, create temporary JSON file if required
-       Args:
-           lists
-           create_json (bool): whether to create temporary JSON file and return the path, defaults to False
-
-       Returns:
-           dict: correctly formatted dictionary of sample run metadata
-           path: the path to a temporary JSON file for the sample run
-          """
     fov_list = []
     sample_run = {"fovs": fov_list}
 
@@ -68,6 +59,7 @@ def test_rename_fov_dirs():
         # test existing directory for new_dir
         with pytest.raises(ValueError):
             rename_fovs.rename_fov_dirs(run_dir, fov_dir, not_new_dir)
+
 
 
 # test_rename_fov_dirs()
