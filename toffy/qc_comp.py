@@ -275,8 +275,8 @@ def sort_bin_file_fovs(fovs, suffix_ignore=None):
     )
 
 
-def compute_qc_metrics(bin_file_path, fov_name, panel_path,
-                       gaussian_blur=False, blur_factor=1):
+def compute_qc_metrics(bin_file_path, fov_name, panel_path, manual_panel=None,
+                       gaussian_blur=False, blur_factor=1, save_csv=True):
     """Compute the QC metric matrices for the image data provided
 
     Args:
@@ -287,20 +287,31 @@ def compute_qc_metrics(bin_file_path, fov_name, panel_path,
             the name of the FOV to extract from `bin_file_path`, needs to correspond with JSON name
         panel_path (str):
             the path to the file defining the panel info for bin file extraction
+        manual_panel (tuple | pd.DataFrame):
+            manual input of panel. This is used if panel_path is set to None
         gaussian_blur (bool):
             whether or not to add Gaussian blurring
         blur_factor (int):
             the sigma (standard deviation) to use for Gaussian blurring
             set to 0 to use raw inputs without Gaussian blurring
             ignored if `gaussian_blur` set to `False`
+        save_csv (bool):
+            whether to save csvs of the qc metrics in bin_file_path
+
+    Returns:
+        None | Dict[str, pd.DataFrame]:
+            If save_csv is False, returns qc metrics. Otherwise, no return
     """
 
     # path validation checks
     if not os.path.exists(bin_file_path):
         raise FileNotFoundError("bin_file_path %s does not exist" % bin_file_path)
 
-    if not os.path.exists(panel_path):
+    if panel_path is not None and not os.path.exists(panel_path):
         raise FileNotFoundError("panel_path %s does not exist" % panel_path)
+
+    if panel_path is None and manual_panel is None:
+        raise ValueError("If panel_path is None, a panel must be provided via manual_panel...")
 
     if not os.path.exists(os.path.join(bin_file_path, fov_name + '.json')):
         raise FileNotFoundError("fov file %s.json not found in bin_file_path" % fov_name)
@@ -311,7 +322,7 @@ def compute_qc_metrics(bin_file_path, fov_name, panel_path,
         data_dir=bin_file_path,
         out_dir=None,
         include_fovs=[fov_name],
-        panel=pd.read_csv(panel_path)
+        panel=pd.read_csv(panel_path) if panel_path else manual_panel
     )
 
     # there's only 1 FOV and 1 type ('pulse'), so subset on that
@@ -349,6 +360,8 @@ def compute_qc_metrics(bin_file_path, fov_name, panel_path,
     # define the list of numpy arrays for looping
     metric_data = [nonzero_mean_intensity, total_intensity, intensity_99_9]
 
+    metric_csvs = {}
+
     for ms, md, mc in zip(settings.QC_SUFFIXES, metric_data, settings.QC_COLUMNS):
         # define the dataframe for this metric
         metric_df = pd.DataFrame(
@@ -363,9 +376,15 @@ def compute_qc_metrics(bin_file_path, fov_name, panel_path,
         metric_df['channel'] = chans
 
         # write the metric data to CSV
-        metric_df.to_csv(
-            os.path.join(bin_file_path, '%s_%s.csv' % (fov_name, ms)), index=False
-        )
+        if save_csv:
+            metric_df.to_csv(
+                os.path.join(bin_file_path, '%s_%s.csv' % (fov_name, ms)), index=False
+            )
+        else:
+            metric_csvs[f'{fov_name}_{ms}.csv'] = metric_df
+
+    if not save_csv:
+        return metric_csvs
 
 
 def combine_qc_metrics(bin_file_path):
