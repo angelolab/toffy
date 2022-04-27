@@ -200,7 +200,7 @@ def test_save_streak_masks(tmp_path: Path, streak_dataset: Callable):
 
 
 def test_make_binary_mask(create_image: Callable):
-    """Tests that the binary mask is created, and is correct.
+    """Tests that the binary mask is created, and the correct pixels are marked by the mask.
 
     Args:
         create_image (Callable): A wrapper for generating streaked image for testing purposes.
@@ -362,7 +362,9 @@ def test_correct_mean_alg():
 
 
 def test_save_corrected_channels(tmp_path, streak_dataset):
-    """Tests that the channels (images) are saved correctly.
+    """Tests that the channels (images) are saved correctly. Given some fake tiff data, it checks
+    if the files are saved in their proper directories, and the corrected tiffs are saved with the
+    proper file names.
 
     Args:
         tmp_path (Path): A fixture which will provide a temporary directory unique to the test
@@ -465,7 +467,11 @@ def test_save_corrected_channels(tmp_path, streak_dataset):
 
 
 def test_streak_correction():
-    """Tests that the streaks are corrected properly."""
+    """Tests that the streaks are corrected properly. Specifically looks at the streak fields and
+    visualization fields of the StreakData dataclass to check if they are saved there correctly.
+    As well as being the correct piece of data saved.
+
+    """
     # Set up fake data dimensions
     chan_num = 10
     row_size = 20
