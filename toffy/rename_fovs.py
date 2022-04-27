@@ -11,22 +11,24 @@ from toffy.tiling_utils import rename_duplicate_fovs
 def rename_missing_fovs(fov_data):
     """Identify FOVs that are missing the 'name' key and create one with value placeholder_{n}
     Args:
-        fov_data (dict): the FOV run JSON
+        fov_data (dict): the FOV run JSON data
 
     Returns:
-        dict: the same run JSON with placeholder names for FOVs that lack one
+        dict: a copy of the run JSON data with placeholder names for FOVs that lack one
        """
+
+    copy_fov_data = fov_data
 
     # count of FOVs that are missing the 'name' key
     missing_count = 0
 
     # iterate over each FOV and add a placeholder name if necessary
-    for fov in fov_data['fovs']:
+    for fov in copy_fov_data['fovs']:
         if 'name' not in fov.keys():
             missing_count += 1
             fov['name'] = f'placeholder_{missing_count}'
 
-    return fov_data
+    return copy_fov_data
 
 
 def rename_fov_dirs(run_path, fov_dir, new_dir=None):
