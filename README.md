@@ -108,7 +108,7 @@ The toffy repo is constantly being updated. In order to get those changes to you
 git pull
 ```
 
-After performing the above command, you will sometimes need to update your environment as well:
+After performing the above command, you will sometimes need to update your environment:
 
 ```
 conda remove --name toffy_env --all
