@@ -8,7 +8,7 @@ from ark.utils.misc_utils import verify_in_list
 from toffy.tiling_utils import rename_duplicate_fovs
 
 
-def check_unnamed_fovs(fov_data):
+def rename_missing_fovs(fov_data):
     """Identify FOVs that are missing the 'name' key and create one with value placeholder_{n}
     Args:
         fov_data (dict): the FOV run JSON
@@ -56,7 +56,7 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
         run_metadata = json.load(file)
 
     # check for missing or duplicate fov names
-    run_metadata = check_unnamed_fovs(run_metadata)
+    run_metadata = rename_missing_fovs(run_metadata)
     run_metadata = rename_duplicate_fovs(run_metadata)
 
     # retrieve custom names and number of scans for each fov, construct matching default names
