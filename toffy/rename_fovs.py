@@ -68,6 +68,7 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
         if run_order * scans < 0:
             raise KeyError(f"Could not locate keys in {run_path}")
 
+        # fovs with multiple scans have scan number specified
         if scans > 1:
             for scan in range(1, scans + 1):
                 default_name = f'fov-{run_order}-scan-{scan}'

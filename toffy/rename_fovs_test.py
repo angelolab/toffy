@@ -37,7 +37,6 @@ def create_sample_run(data, create_json=False, bad=False):
     if create_json:
         temp = tempfile.NamedTemporaryFile(mode="w", delete=False)
         json.dump(sample_run, temp)
-        print(temp.name)
         return temp.name
 
     return sample_run
@@ -83,8 +82,8 @@ def test_rename_fov_dirs():
         fov_dir = os.path.join(base_dir, 'fov_folder')
 
         # create existing new directory
-        os.mkdir(os.path.join(base_dir, 'not_new_directory'))
         not_new_dir = os.path.join(base_dir, 'not_new_directory')
+        os.mkdir(not_new_dir)
 
         # existing directory for new_dir should raise an error
         with pytest.raises(ValueError, match="already exists"):
@@ -122,10 +121,13 @@ def test_rename_fov_dirs():
 
         # test successful renaming to new dir
         rf.rename_fov_dirs(ex_run_path, fov_dir, os.path.join(base_dir, 'new_directory'))
-        remove_fov_dirs(os.path.join(base_dir, 'new_directory'))
+        new_dir = os.path.join(base_dir, 'new_directory')
+        assert set(io_utils.list_folders(new_dir)) == set(renamed_fovs)
+        remove_fov_dirs(new_dir)
 
         # test successful renaming
         rf.rename_fov_dirs(ex_run_path, fov_dir)
+        assert set(io_utils.list_folders(fov_dir)) == set(renamed_fovs)
         remove_fov_dirs(fov_dir)
 
         # create not enough fov folders
