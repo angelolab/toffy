@@ -66,7 +66,7 @@ def _get_save_dir(data_dir: Path, name: str, ext: str) -> Path:
     return Path(data_dir, name + f".{ext}")
 
 
-def _save(streak_data: StreakData, name: str):
+def _save_streak_data(streak_data: StreakData, name: str):
     """Helper function for saving tiff binary masks and dataframes.
 
     Args:
@@ -104,7 +104,7 @@ def _save_streak_masks(streak_data: StreakData):
         "corrected_streak_mask",
     ]
     for field in fields:
-        _save(streak_data, name=field)
+        _save_streak_data(streak_data, name=field)
 
 
 def _make_binary_mask(
@@ -116,6 +116,9 @@ def _make_binary_mask(
     pmin: int = 2,
     pmax: int = 98,
     threshold: float = 0.30,
+    wavelet: str = "db2",
+    mode: str = "hard",
+    rescale_sigma: bool = True
 ) -> np.ndarray:
     """Performs a series of denoiseing, filtering, and exposure adjustments to create a binary
     mask for the given input image.
@@ -132,15 +135,24 @@ def _make_binary_mask(
         the intensity. Defaults to 2.
         pmax (int, optional): Upper bound for the `np.percentile` threshold, used for rescaling
         the intensity. Defaults to 98.
-        threshold(float, optional): The lower bound for pixel values used to create a binary mask.
+        threshold (float, optional): The lower bound for pixel values used to create a binary mask.
         Defaults to 0.30.
+        wavelet (str): The type of wavelet to perform and can be any of the options
+        `pywt.wavelist` outputs. Defaults to "db2".
+        mode (str): An optional argument to choose the type of denoising performed. Its noted that
+        choosing soft thresholding given additive noise finds the best approximation of the
+        original image. Defaults to "hard".
+        rescale_sigma (bool): If False, no rescaling of the user-provided `sigma` will be
+        performed. The default of `True` rescales `sigma` appropriately if the image is rescaled
+        internally. Defaults to "True".
+
 
     Returns:
         np.ndarray: The binary mask containing all of the candidate strokes.
     """
     # Denoise the Image
     input_image = restoration.denoise_wavelet(
-        input_image, wavelet="db2", mode="hard", rescale_sigma=True
+        input_image, wavelet=wavelet, mode=mode, rescale_sigma=rescale_sigma
     )
     # Rescale the intensity using percentile ranges
     pmin_v, pmax_v = np.percentile(input_image, (pmin, pmax))
