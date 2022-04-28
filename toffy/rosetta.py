@@ -288,23 +288,19 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
 
 
 def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='normalized',
-                            channel_subset_dir=None):
+                            channels=None):
     """Creates a tiled image comparing FOVs from all supplied runs for each channel.
 
     Args:
         input_dir_list: list of directories to compare
         output_dir: directory where tifs will be saved
         img_sub_folder: subfolder within each input directory to load images from
-        channel_subset_dir: directory with a subset of the channels contained in other directories.
-            Only channels found in this directory will be used for tiling."""
+        channels: list of channels to compare. """
 
-    # Get list of channels from specific directory if provided, otherwise use the first one
-    if channel_subset_dir is None:
-        channel_subset_dir = input_dir_list[0]
-
-    test_fov = list_folders(channel_subset_dir)[0]
-    test_data = load_imgs_from_tree(data_dir=channel_subset_dir, fovs=[test_fov],
-                                    img_sub_folder=img_sub_folder)
+    test_dir = input_dir_list[0]
+    test_fov = list_folders(test_dir)[0]
+    test_data = load_imgs_from_tree(data_dir=test_dir, fovs=[test_fov],
+                                    img_sub_folder=img_sub_folder, channels=channels)
 
     img_size = test_data.shape[1]
     channels = test_data.channels.values

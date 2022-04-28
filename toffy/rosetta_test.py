@@ -275,15 +275,14 @@ def test_create_tiled_comparison(dir_num):
             col_len = dir_num * 10
             assert chan_img.shape == (col_len, row_len)
 
-        # check that directories with different images are okay if appropriately specified
+        # check that directories with different images are okay if overlapping channels specified
         for i in range(num_fovs):
             os.remove(os.path.join(top_level_dir, dir_names[1], 'fov{}'.format(i),
                                    'normalized/chan0.tiff'))
 
         # no error raised if subset directory is specified
-        rosetta.create_tiled_comparison(paths, output_dir,
-                                        channel_subset_dir=os.path.join(top_level_dir,
-                                                                        dir_names[1]))
+        rosetta.create_tiled_comparison(paths, output_dir, channels=['chan1', 'chan2'])
+
         # but one is raised if no subset directory is specified
         with pytest.raises(ValueError, match='1 of 1'):
             rosetta.create_tiled_comparison(paths, output_dir)
