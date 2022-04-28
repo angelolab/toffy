@@ -160,6 +160,30 @@ def test_validate_inputs():
             rosetta.validate_inputs(**input_dict_gaus_rad)
 
 
+def test_flat_field_correction():
+    input_img = np.random.rand(10, 10)
+    corrected_img = rosetta.flat_field_correction(img=input_img)
+
+    assert corrected_img.shape == input_img.shape
+    assert not np.array_equal(corrected_img, input_img)
+
+
+def test_get_masses_from_channel_names():
+    targets = ['chan1', 'chan2', 'chan3']
+    masses = [1, 2, 3]
+    test_df = pd.DataFrame({'Target': targets,
+                            'Mass': masses})
+
+    all_masses = rosetta.get_masses_from_channel_names(targets, test_df)
+    assert np.array_equal(masses, all_masses)
+
+    subset_masses = rosetta.get_masses_from_channel_names(targets[:2], test_df)
+    assert np.array_equal(masses[:2], subset_masses)
+
+    with pytest.raises(ValueError, match='channel names'):
+        rosetta.get_masses_from_channel_names(['chan4'], test_df)
+
+
 @parametrize('output_masses', [None, [25, 50, 101], [25, 50]])
 @parametrize('input_masses', [None, [25, 50, 101], [25, 50]])
 @parametrize('gaus_rad', [0, 1, 2])
@@ -187,7 +211,8 @@ def test_compensate_image_data(output_masses, input_masses, gaus_rad, save_forma
         # call function
         rosetta.compensate_image_data(data_dir, output_dir, comp_mat_path, panel_info,
                                       input_masses=input_masses, output_masses=output_masses,
-                                      save_format=save_format, gaus_rad=gaus_rad)
+                                      save_format=save_format, gaus_rad=gaus_rad,
+                                      ffc_channels=['chan1'])
 
         # all folders created
         output_folders = list_folders(output_dir)

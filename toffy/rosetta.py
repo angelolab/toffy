@@ -134,9 +134,51 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
         raise ValueError('gaus_rad parameter must be a non-negative integer')
 
 
+def flat_field_correction(img, gaus_rad=100):
+    """Apply flat field correction to an image
+
+    Args:
+        img (np.ndarray): image to be corrected
+        gaus_rad (int): radius for smoothing
+
+    Returns:
+        np.ndarray: corrected image """
+
+    # smooth image
+    img_smooth = gaussian_filter(img, sigma=gaus_rad)
+
+    # calculate mean to preserve overall intensity
+    img_mean = np.mean(img)
+
+    # apply correction
+    img_corr = (img / img_smooth) * img_mean
+
+    return img_corr
+
+
+def get_masses_from_channel_names(names, panel_df):
+    """Get the weights for the given names from the input dataframe.
+
+    Args:
+        names (list): the channels whose masses will be returned
+        panel_df (pd.DataFrame): the panel containing the masses and channel names
+
+    Returns:
+        list: the masses for the given channels
+    """
+
+    verify_in_list(supplied_channel_names=names,
+                   panel_channel_names=panel_df['Target'].values)
+
+    weights = panel_df.loc[np.isin(panel_df['Target'], names)]['Mass'].values
+
+    return weights
+
+
 def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info,
                           input_masses=None, output_masses=None, save_format='normalized',
-                          raw_data_sub_folder='', batch_size=10, gaus_rad=1, norm_const=100):
+                          raw_data_sub_folder='', batch_size=10, gaus_rad=1, norm_const=100,
+                          ffc_channels=['chan_39']):
     """Function to compensate MIBI data with a flow-cytometry style compensation matrix
 
     Args:
@@ -158,6 +200,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         batch_size: number of images to process at a time
         gaus_rad: radius for blurring image data. Passing 0 will result in no blurring
         norm_const: constant used for normalization if save_format == 'normalized'
+        ffc_channels (list): channels that need to be flat field corrected.
     """
 
     validate_paths([raw_data_dir, comp_data_dir, comp_mat_path],
@@ -202,6 +245,14 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                 for k in range(batch_data.shape[-1]):
                     batch_data[j, :, :, k] = gaussian_filter(batch_data[j, :, :, k],
                                                              sigma=gaus_rad)
+
+        # apply flat field correction if specified
+        if ffc_channels is not None:
+            verify_in_list(flat_field_correction_masses=ffc_channels, all_masses=acquired_targets)
+            for fov in batch_fovs:
+                for chan in ffc_channels:
+                    raw_img = batch_data.loc[fov, :, :, chan].values
+                    batch_data.loc[fov, :, :, chan] = flat_field_correction(raw_img)
 
         comp_data = _compensate_matrix_simple(raw_inputs=batch_data,
                                               comp_coeffs=comp_mat.values,
