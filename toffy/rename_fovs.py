@@ -1,6 +1,7 @@
 import json
 import os
 import warnings
+import copy
 from distutils.dir_util import copy_tree
 
 from ark.utils import io_utils
@@ -17,7 +18,7 @@ def rename_missing_fovs(fov_data):
         dict: a copy of the run JSON data with placeholder names for FOVs that lack one
        """
 
-    copy_fov_data = fov_data
+    copy_fov_data = copy.deepcopy(fov_data)
 
     # count of FOVs that are missing the 'name' key
     missing_count = 0
