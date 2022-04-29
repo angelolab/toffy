@@ -23,12 +23,16 @@ The repo has four main parts, with associated code and jupyter notebooks for eac
 The first time you use toffy on one of the commercial instruments, you'll need to perform some basic tasks to ensure everything is working properly. The [set up](./templates/1_set_up_toffy.ipynb) jupyter notebook will guide you through this process
 
 ### 2. Setting up a MIBI run 
-For large MIBI runs, it is often convenient to automatically generate the JSON file containing the individual FOVs. There are two notebooks for this task, one for large tiled regions, the second for TMAs. If you will be tiling multiple adjacent FOVs together into a single image, the [tiling](./templates/create_tiled_mibi_run.ipynb) notebook can automate this process. You provide the location of the top corner of the tiled region, along with the number of fovs along the rows and columns, and it will automatically create the appropriate JSON file. 
+For large MIBI runs, it is often convenient to automatically generate the JSON file containing the individual FOVs. There are two notebooks for this task, one for large tiled regions, the second for TMAs. If you will be tiling multiple adjacent FOVs together into a single image, the [tiling](./templates/2_create_tiled_mibi_run.ipynb) notebook can automate this process. You provide the location of the top corner of the tiled region, along with the number of fovs along the rows and columns, and it will automatically create the appropriate JSON file. 
 
-The [second notebook](./templates/create_tma_mibi_run.ipynb) is for TMAs. This notebook is run after you have selected the appropriate cores from the TMA. It will generate an overlay with the image of the TMA and the locations you picked to ensure you selected the correct cores. It will then check that they are named correctly and that there are no duplicates.
+The [second notebook](./templates/2_create_tma_mibi_run.ipynb) is for TMAs. This notebook is run after you have selected the appropriate cores from the TMA. It will generate an overlay with the image of the TMA and the locations you picked to ensure you selected the correct cores. It will then check that they are named correctly and that there are no duplicates.
 
 ### 3. Evaluating a MIBI run
-We have found it useful to generate certain QC plots for each MIBI run to ensure everything went smoothly. The notebooks in this section will automate the generation of these metrics to give a quantitative measure of what happened during the run. They are currently under development, more details coming soon. 
+There are a number of different computational tasks to complete once a MIBI run has finished to ensure everything went smoothly. 
+
+- 3a: real time monitoring. The [MIBI monitoring](./templates/3a_monitor_MIBI_run.ipynb) notebook will monitor an ongoing MIBI run, and begin processing the image data as soon as it is generated. This notebook is being continually be updated as we move more of our processing pipeline to happen in real time as the data is generated.
+- 3b: post-run monitoring. For each step in the monitoring notebook, we have a dedicated notebook that can perform the same tasks once a run is complete. This includes [the image extraction notebook]() and the [qc metrics notebook](./templates/3b_generate_qc_metrics.ipynb). 
+
 
 ### 4. Processing MIBI data
 Once your run has finished, you can begin to process the data to make it ready for analysis. To remove background signal contamination, as well as compensate for channel crosstalk, you can use the [compensation](./templates/4_compensate_image_data.ipynb) notebook. This will guide you through the process of determining the correct coefficients for the Rosetta algorith, which uses a flow-cytometry style compensation approach to remove spurious signal. 
