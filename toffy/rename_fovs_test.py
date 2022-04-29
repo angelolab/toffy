@@ -62,7 +62,7 @@ def test_rename_missing_fovs():
     ex_run = create_sample_run(ex_name, ex_run_order, ex_scan_count)
 
     # test that missing names are given a placeholder
-    rf.rename_missing_fovs(ex_run)
+    ex_run = rf.rename_missing_fovs(ex_run)
     for fov in ex_run.get('fovs', ()):
         assert fov.get('name') is not None
 
