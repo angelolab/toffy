@@ -169,6 +169,38 @@ def check_qc_dir_structure(out_dir: str, point_names: List[str]):
             assert(os.path.exists(os.path.join(out_dir, f'{point}_{ms}.csv')))
 
 
+def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False, bad=False):
+    fov_list = []
+    sample_run = {"fovs": fov_list}
+
+    # set up dictionary
+    for name, run_order, scan_count in zip(name_list, run_order_list, scan_count_list):
+        ex_fov = {
+            "scanCount": scan_count,
+            "runOrder": run_order,
+            "name": name
+        }
+        fov_list.append(ex_fov)
+
+    # delete name key if one is not provided
+    for fov in sample_run.get('fovs', ()):
+        if fov.get('name') is None:
+            del fov['name']
+
+    # create bad dictionary
+    if bad:
+        sample_run['bad key'] = sample_run['fovs']
+        del sample_run['fovs']
+
+    # create json file for the data
+    if create_json:
+        temp = tempfile.NamedTemporaryFile(mode="w", delete=False)
+        json.dump(sample_run, temp)
+        return temp.name
+
+    return sample_run
+
+
 # calling cases for the built extraction/qc callback
 # this should be limited to folders to call; no generation parameters allowed  >:(
 class ExtractionQCCallCases:

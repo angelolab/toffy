@@ -1,40 +1,6 @@
-import json
-import tempfile
 import numpy as np
 
 from toffy import json_utils, test_utils
-
-
-def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False, bad=False):
-    fov_list = []
-    sample_run = {"fovs": fov_list}
-
-    # set up dictionary
-    for name, run_order, scan_count in zip(name_list, run_order_list, scan_count_list):
-        ex_fov = {
-            "scanCount": scan_count,
-            "runOrder": run_order,
-            "name": name
-        }
-        fov_list.append(ex_fov)
-
-    # delete name key if one is not provided
-    for fov in sample_run.get('fovs', ()):
-        if fov.get('name') is None:
-            del fov['name']
-
-    # create bad dictionary
-    if bad:
-        sample_run['bad key'] = sample_run['fovs']
-        del sample_run['fovs']
-
-    # create json file for the data
-    if create_json:
-        temp = tempfile.NamedTemporaryFile(mode="w", delete=False)
-        json.dump(sample_run, temp)
-        return temp.name
-
-    return sample_run
 
 
 def test_rename_missing_fovs():
@@ -44,7 +10,7 @@ def test_rename_missing_fovs():
     ex_scan_count = list(range(1, 6))
 
     # create a dict with the sample data
-    ex_run = create_sample_run(ex_name, ex_run_order, ex_scan_count)
+    ex_run = test_utils.create_sample_run(ex_name, ex_run_order, ex_scan_count)
 
     # test that missing names are given a placeholder
     ex_run = json_utils.rename_missing_fovs(ex_run)

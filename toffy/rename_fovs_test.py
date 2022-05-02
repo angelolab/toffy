@@ -1,42 +1,10 @@
 import tempfile
-import json
 import os
 import pytest
 
 from ark.utils import io_utils
 from toffy import rename_fovs as rf
-
-
-def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False, bad=False):
-    fov_list = []
-    sample_run = {"fovs": fov_list}
-
-    # set up dictionary
-    for name, run_order, scan_count in zip(name_list, run_order_list, scan_count_list):
-        ex_fov = {
-            "scanCount": scan_count,
-            "runOrder": run_order,
-            "name": name
-        }
-        fov_list.append(ex_fov)
-
-    # delete name key if one is not provided
-    for fov in sample_run.get('fovs', ()):
-        if fov.get('name') is None:
-            del fov['name']
-
-    # create bad dictionary
-    if bad:
-        sample_run['bad key'] = sample_run['fovs']
-        del sample_run['fovs']
-
-    # create json file for the data
-    if create_json:
-        temp = tempfile.NamedTemporaryFile(mode="w", delete=False)
-        json.dump(sample_run, temp)
-        return temp.name
-
-    return sample_run
+from toffy import test_utils
 
 
 def create_sample_fov_dirs(fovs, base_dir):
@@ -75,10 +43,10 @@ def test_rename_fov_dirs():
         ex_scan_count = [1, 2, 1]
 
         # create a json path with the sample data
-        ex_run_path = create_sample_run(ex_name, ex_run_order, ex_scan_count, True)
+        ex_run_path = test_utils.create_sample_run(ex_name, ex_run_order, ex_scan_count, True)
 
         # bad sample run data
-        bad_run = create_sample_run(ex_name, ex_run_order, ex_scan_count, True, bad=True)
+        bad_run = test_utils.create_sample_run(ex_name, ex_run_order, ex_scan_count, True, bad=True)
 
         # bad run file data should raise an error
         with pytest.raises(KeyError):
