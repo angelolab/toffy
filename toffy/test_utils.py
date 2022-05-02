@@ -170,6 +170,20 @@ def check_qc_dir_structure(out_dir: str, point_names: List[str]):
 
 
 def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False, bad=False):
+    """Creates sample run metadata with option to create a temporary json file
+
+    Args:
+        name_list (list): List of strings for FOV names
+        run_order_list (list): List detailing run order
+        scan_count_list (list): List of the scanCount for each FOV
+        create_json (bool): Whether or not to return a json tempfile path
+        bad (bool): Whether or not to create a dictionary without correct FOV key setup
+
+    Returns:
+        sample_run (dict): the dictionary for the sample run metadata
+        temp.name (str): path to the temporary json run file
+
+    """
     fov_list = []
     sample_run = {"fovs": fov_list}
 
