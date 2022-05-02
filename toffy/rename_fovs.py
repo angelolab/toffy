@@ -1,35 +1,11 @@
 import json
 import os
 import warnings
-import copy
 from distutils.dir_util import copy_tree
 
 from ark.utils import io_utils
 from ark.utils.misc_utils import verify_in_list
-from toffy.tiling_utils import rename_duplicate_fovs
-
-
-def rename_missing_fovs(fov_data):
-    """Identify FOVs that are missing the 'name' key and create one with value placeholder_{n}
-    Args:
-        fov_data (dict): the FOV run JSON data
-
-    Returns:
-        dict: a copy of the run JSON data with placeholder names for FOVs that lack one
-       """
-
-    copy_fov_data = copy.deepcopy(fov_data)
-
-    # count of FOVs that are missing the 'name' key
-    missing_count = 0
-
-    # iterate over each FOV and add a placeholder name if necessary
-    for fov in copy_fov_data['fovs']:
-        if 'name' not in fov.keys():
-            missing_count += 1
-            fov['name'] = f'placeholder_{missing_count}'
-
-    return copy_fov_data
+from toffy.json_utils import rename_missing_fovs, rename_duplicate_fovs
 
 
 def rename_fov_dirs(run_path, fov_dir, new_dir=None):
