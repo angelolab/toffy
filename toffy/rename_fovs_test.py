@@ -52,21 +52,6 @@ def remove_fov_dirs(base_dir):
         os.rmdir(os.path.join(base_dir, fov))
 
 
-def test_rename_missing_fovs():
-    # data with missing names
-    ex_name = ['custom_1', None, 'custom_2', 'custom_3', None]
-    ex_run_order = list(range(1, 6))
-    ex_scan_count = list(range(1, 6))
-
-    # create a dict with the sample data
-    ex_run = create_sample_run(ex_name, ex_run_order, ex_scan_count)
-
-    # test that missing names are given a placeholder
-    ex_run = rf.rename_missing_fovs(ex_run)
-    for fov in ex_run.get('fovs', ()):
-        assert fov.get('name') is not None
-
-
 def test_rename_fov_dirs():
     with tempfile.TemporaryDirectory() as base_dir:
         # create run file and fov folder directories
