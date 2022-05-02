@@ -46,7 +46,8 @@ def test_rename_fov_dirs():
         ex_run_path = test_utils.create_sample_run(ex_name, ex_run_order, ex_scan_count, True)
 
         # bad sample run data
-        bad_run = test_utils.create_sample_run(ex_name, ex_run_order, ex_scan_count, True, bad=True)
+        bad_run = test_utils.create_sample_run(ex_name, ex_run_order, ex_scan_count,
+                                               True, bad=True)
 
         # bad run file data should raise an error
         with pytest.raises(KeyError):
