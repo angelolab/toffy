@@ -35,7 +35,7 @@ There are a number of different computational tasks to complete once a MIBI run 
 
 
 ### 4. Processing MIBI data
-Once your run has finished, you can begin to process the data to make it ready for analysis. To remove background signal contamination, as well as compensate for channel crosstalk, you can use the [compensation](./templates/4_compensate_image_data.ipynb) notebook. This will guide you through the process of determining the correct coefficients for the Rosetta algorith, which uses a flow-cytometry style compensation approach to remove spurious signal. 
+Once your run has finished, you can begin to process the data to make it ready for analysis. To remove background signal contamination, as well as compensate for channel crosstalk, you can use the [compensation](./templates/4_compensate_image_data.ipynb) notebook. This will guide you through the process of determining the correct coefficients for the Rosetta algorithm, which uses a flow-cytometry style compensation approach to remove spurious signal. 
 
 Following compensation, you will want to normalize your images to ensure consistent intensity across the run. This functionality is currently in the works, and we'll have a beta version available to test soon. 
 
