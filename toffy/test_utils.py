@@ -7,15 +7,12 @@ import tempfile
 import json
 
 import pytest
-from pytest_cases import case, parametrize
+from pytest_cases import parametrize
 
 import pandas as pd
 
 from toffy.settings import QC_SUFFIXES
-from toffy.watcher_callbacks import (
-    build_extract_callback,
-    build_qc_callback,
-)
+from toffy.watcher_callbacks import build_fov_callback
 from toffy.fov_watcher import RunStructure
 
 
@@ -96,33 +93,35 @@ def generate_sample_fovs_list(fov_coords, fov_names, fov_sizes):
 
 # generation parameters for the extraction/qc callback build
 # this should be limited to the panel, foldernames, and kwargs
-DEFAULT_TAGS = ('extract', 'qc')
+VALID_CALLBACKS = ('extract_tiffs', 'generate_qc')
 
 
 class ExtractionQCGenerationCases:
-    @pytest.mark.xfail(raises=TypeError)
-    @case(tags=DEFAULT_TAGS)
-    def case_bad_global(self):
-        return (-0.3, 0.0), {}
-
-    @case(tags=DEFAULT_TAGS)
-    def case_default(self):
-        _, kwargs = self.case_bad_global()
+    def case_both_callbacks(self):
         panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv')
-        return pd.read_csv(panel_path), kwargs
+        return VALID_CALLBACKS, {'panel': pd.read_csv(panel_path)}
 
-    @case(tags='extract')
+    def case_extract_only(self):
+        cbs, kwargs = self.case_both_callbacks()
+        return cbs[:1], kwargs
+
+    def case_qc_only(self):
+        cbs, kwargs = self.case_both_callbacks()
+        return cbs[1:], kwargs
+
     def case_extraction_intensities(self):
-        panel, kwargs = self.case_default()
+        cbs, kwargs = self.case_both_callbacks()
         kwargs['intensities'] = True
-        return panel, kwargs
+        return cbs, kwargs
 
-    @pytest.mark.xfail()
-    @case(tags=DEFAULT_TAGS)
-    def case_bad_kwarg(self):
-        panel, kwargs = self.case_default()
-        kwargs['fake kwarg'] = "i shouldn't exist :("
-        return panel, kwargs
+    @pytest.mark.xfail(raises=ValueError)
+    def case_missing_panel(self):
+        cbs, _ = self.case_both_callbacks()
+        return cbs, {}
+
+    @pytest.mark.xfail(raises=ValueError)
+    def case_bad_callback(self):
+        return ['invalid_callback'], {}
 
 
 def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channels: List[str],
@@ -254,6 +253,11 @@ class WatcherCases:
             check_qc_dir_structure,
         ]
         return [
-            functools.partial(build_extract_callback, panel=panel, intensities=intensity),
-            functools.partial(build_qc_callback, panel=panel),
+            functools.partial(
+                build_fov_callback,
+                'extract_tiffs',
+                'generate_qc',
+                panel=panel,
+                intensities=intensity
+            ),
         ], [], validators

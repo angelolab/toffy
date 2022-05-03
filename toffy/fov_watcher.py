@@ -153,6 +153,8 @@ class FOV_EventHandler(FileSystemEventHandler):
         self.run_folder = run_folder
 
         self.log_path = os.path.join(log_folder, f'{Path(run_folder).parts[-1]}_log.txt')
+        if not os.path.exists(log_folder):
+            os.makedirs(log_folder)
 
         # create run structure
         self.run_structure = RunStructure(run_folder, timeout=timeout)

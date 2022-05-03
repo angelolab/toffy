@@ -62,16 +62,15 @@ def test_run_structure(run_json, expected_files):
 @parametrize_with_cases('per_fov_partial, per_run, validators', cases=WatcherCases)
 def test_watcher(per_fov_partial, per_run, validators, add_blank):
     with tempfile.TemporaryDirectory() as tmpdir:
-        per_fov = []
-        for i, func in enumerate(per_fov_partial):
-            cb_dir = os.path.join(tmpdir, f'cb_{i}', RUN_DIR_NAME)
-            os.makedirs(cb_dir)
-            per_fov.append(func(cb_dir))
-
+        per_fov = [
+            per_fov_partial[0](
+                tiff_out_dir=os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME),
+                qc_out_dir=os.path.join(tmpdir, 'cb_1', RUN_DIR_NAME)
+            ),
+        ]
         run_data = os.path.join(tmpdir, 'test_run')
         log_out = os.path.join(tmpdir, 'log_output')
         os.makedirs(run_data)
-        os.makedirs(log_out)
 
         with open(os.path.join(run_data, 'test_run.json'), 'w') as f:
             json.dump(TISSUE_RUN_JSON_SPOOF, f)

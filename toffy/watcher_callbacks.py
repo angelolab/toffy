@@ -1,81 +1,135 @@
 import os
-from typing import Callable
+from dataclasses import dataclass, field
+import inspect
 
 import pandas as pd
+import xarray as xr
 
-from mibi_bin_tools.bin_files import extract_bin_files
+from mibi_bin_tools.bin_files import extract_bin_files, _write_out
 
-from toffy.qc_comp import compute_qc_metrics
-
-
-def build_extract_callback(out_dir: str, panel: pd.DataFrame,
-                           **kwargs) -> Callable[[str, str], None]:
-    """Generates extraction callback for given panel + parameters
-
-    Args:
-        out_dir (str):
-            Path where tiffs are written
-        panel (pd.DataFrame):
-            Target mass integration ranges
-        **kwargs (dict):
-            Additional arguments for `mibi_bin_tools.bin_files.extract_bin_files`.
-            Accepted kwargs are:
-
-         - intensities
-         - time_res
-
-    Returns:
-        Callable[[str, str, str], None]:
-            Callback for fov watcher
-    """
-
-    if isinstance(panel, tuple):
-        raise TypeError('Global unit mass integration is no longer support. Please provide panel '
-                        'as a pandas DataFrame...')
-
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
-
-    def extract_callback(run_folder: str, point_name: str):
-        if not os.path.exists(out_dir):
-            os.makedirs(out_dir)
-
-        extract_bin_files(run_folder, out_dir, [point_name], panel, **kwargs)
-
-    return extract_callback
+from toffy.qc_comp import compute_qc_metrics_direct
 
 
-def build_qc_callback(out_dir: str, panel: pd.DataFrame, **kwargs) -> Callable[[str, str], None]:
-    """Generates qc callback for given panel + parameters
+@dataclass
+class FovCallbacks:
+    run_folder: str
+    point_name: str
+    __panel: pd.DataFrame = field(default=None, init=False)
+    __fov_data: xr.DataArray = field(default=None, init=False)
 
-    Args:
-        out_dir (str):
-            Path where qc metrics are written
-        panel (pd.DataFrame):
-            Target mass integration ranges
-        **kwargs (dict):
-            Additional arguments for `toffy.qc_comp.compute_qc_metrics`.  Accepted kwargs are:
+    def _generate_fov_data(self, panel: pd.DataFrame, **kwargs):
+        """Extracts data from bin files using the given panel
 
-         - gaussian_blur
-         - blur_factor
+        The data and the panel are then cached members of the FovCallbacks object
 
-    Returns:
-        Callable[[str, str], None]:
-            Callback for fov watcher
-    """
+        Args:
+            panel (pd.DataFrame):
+                Panel used for extraction
+            **kwargs (dict):
+                kwargs are passed to `extract_bin_files`
+        """
+        self.__fov_data = extract_bin_files(
+            self.run_folder,
+            None,
+            [self.point_name],
+            panel,
+            kwargs.get('intensities', False),
+            kwargs.get('time_res', 0.0005)
+        )
 
-    if isinstance(panel, tuple):
-        raise TypeError('Global unit mass integration is no longer support. Please provide panel '
-                        'as a pandas DataFrame...')
+        self.__panel = panel
 
-    kwargs['save_csv'] = False
+    def extract_tiffs(self, tiff_out_dir: str, panel: pd.DataFrame, **kwargs):
+        """Extract tiffs into provided directory, using given panel
 
-    if not os.path.exists(out_dir):
-        os.makedirs(out_dir)
+        Args:
+            tiff_out_dir (str):
+                Path where tiffs are written
+            panel (pd.DataFrame):
+                Target mass integration ranges
+            **kwargs (dict):
+                Additional arguments for `mibi_bin_tools.bin_files.extract_bin_files`.
+                Accepted kwargs are
 
-    def qc_callback(run_folder: str, point_name: str):
-        metric_data = compute_qc_metrics(run_folder, point_name, None, panel, **kwargs)
+             - intensities
+             - time_res
+        """
+        if not os.path.exists(tiff_out_dir):
+            os.makedirs(tiff_out_dir)
+
+        if self.__fov_data is None:
+            self._generate_fov_data(panel, **kwargs)
+
+        intensities = kwargs.get('intensities', False)
+        _write_out(
+            self.__fov_data[0, :, :, :, :].values,
+            tiff_out_dir,
+            self.point_name,
+            list(self.__fov_data.channel.values),
+            intensities
+        )
+
+    def generate_qc(self, qc_out_dir: str, panel: pd.DataFrame = None, **kwargs):
+        """Genereates qc metrics from given panel, and saves output to provided directory
+
+        Args:
+            qc_out_dir (str):
+                Path where qc_metrics are written
+            panel (pd.DataFrame):
+                Target mass integration ranges
+            **kwargs (dict):
+                Additional arguments for `toffy.qc_comp.compute_qc_metrics`. Accepted kwargs are:
+
+             - gaussian_blur
+             - blur_factor
+        """
+        if not os.path.exists(qc_out_dir):
+            os.makedirs(qc_out_dir)
+
+        if self.__fov_data is None:
+            if panel is None:
+                raise ValueError('Must provide panel if fov data is not already generated...')
+            self._generate_fov_data(panel, **kwargs)
+
+        metric_data = compute_qc_metrics_direct(
+            self.__fov_data,
+            self.point_name,
+            kwargs.get('gaussian_blur', False),
+            kwargs.get('blur_factor', 1)
+        )
+
         for metric_name, data in metric_data.items():
-            data.to_csv(os.path.join(out_dir, metric_name), index=False)
+            data.to_csv(os.path.join(qc_out_dir, metric_name), index=False)
 
-    return qc_callback
+
+def build_fov_callback(*args, **kwargs):
+
+    # validate user callback settings
+    methods = [attr for attr in dir(FovCallbacks) if attr[0] != '_']
+    for arg in args:
+        if arg not in methods:
+            raise ValueError(
+                f'{arg} is not a valid FovCallbacks member\n'
+                f'Accepted callbacks are {methods}'
+            )
+        argnames = inspect.getfullargspec(getattr(FovCallbacks, arg))[0]
+        for argname in argnames:
+            if argname not in kwargs and argname != 'self':
+                raise ValueError(
+                    f'Missing necessary keyword argument, {argname}'
+                )
+
+    # constructuct actual callback
+    def fov_callback(run_folder: str, point_name: str):
+        callback_obj = FovCallbacks(run_folder, point_name)
+        print(args)
+        for arg in args:
+            if cb := getattr(callback_obj, arg, None):
+                cb(**kwargs)
+            else:
+                # unreachable...
+                raise ValueError(
+                    f'Could not locate attribute {arg} in FovCallback object'
+                )
+
+    return fov_callback
