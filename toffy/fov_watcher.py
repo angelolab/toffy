@@ -236,7 +236,7 @@ class FOV_EventHandler(FileSystemEventHandler):
 
 def start_watcher(run_folder: str, log_folder: str, per_fov: List[Callable[[str, str], None]],
                   per_run: List[Callable[[str, str], None]],
-                  completion_check_time: int = 30, zero_size_timeout: int = 10 * 60):
+                  completion_check_time: int = 30, zero_size_timeout: int = 1.03 * 60 * 60):
     """ Passes bin files to provided callback functions as they're created
 
     Args:
