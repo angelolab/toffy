@@ -17,7 +17,8 @@ class FovCallbacks:
     __panel: pd.DataFrame = field(default=None, init=False)
     __fov_data: xr.DataArray = field(default=None, init=False)
 
-    def _generate_fov_data(self, panel: pd.DataFrame, **kwargs):
+    def _generate_fov_data(self, panel: pd.DataFrame, intensities=False, time_res=0.0005,
+                           **kwargs):
         """Extracts data from bin files using the given panel
 
         The data and the panel are then cached members of the FovCallbacks object
@@ -25,16 +26,20 @@ class FovCallbacks:
         Args:
             panel (pd.DataFrame):
                 Panel used for extraction
+            intensities (bool | List[str]):
+                Intensities argument for `mibi_bin_tools.bin_files.extract_bin_files`
+            time_res (float):
+                Time resolution argument for `mibi_bin_tool.bin_files.extract_bin_files`
             **kwargs (dict):
-                kwargs are passed to `extract_bin_files`
+                Unused kwargs for other functions
         """
         self.__fov_data = extract_bin_files(
             self.run_folder,
             None,
             [self.point_name],
             panel,
-            kwargs.get('intensities', False),
-            kwargs.get('time_res', 0.0005)
+            intensities,
+            time_res
         )
 
         self.__panel = panel
@@ -116,13 +121,12 @@ def build_fov_callback(*args, **kwargs):
         for argname in argnames:
             if argname not in kwargs and argname != 'self':
                 raise ValueError(
-                    f'Missing necessary keyword argument, {argname}'
+                    f'Missing necessary keyword argument, {argname} for callback function {arg}...'
                 )
 
-    # constructuct actual callback
+    # construct actual callback
     def fov_callback(run_folder: str, point_name: str):
         callback_obj = FovCallbacks(run_folder, point_name)
-        print(args)
         for arg in args:
             if cb := getattr(callback_obj, arg, None):
                 cb(**kwargs)
