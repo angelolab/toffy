@@ -288,6 +288,23 @@ class RunStructureCases:
 
 
 class WatcherCases:
+    """Test cases for start_watcher
+
+    Cases in this class will, in order, return:
+        (partial per_fov callbacks, per_run callbacks, directory validation functions)
+
+    per_fov callbacks are made partial here, which allowa directory arguments to be created
+    and passed within the actual test function.  Otherwise, these test cases would have to handle
+    the mangement (or somehow be aware) of the temporary directory where the testing happens.
+
+    per_run callbacks are currently not partialed since none are implemented.  That being said,
+    they probably will undergo the same treatment once some are implemented.
+
+    Validation functions will check that the directory/files created by each callback are correct.
+    Some maybe partialed for convinience, since some arguments, like the panel, are created here
+    and might as well be premptively passed, so that only "run dependent" arguments need to be
+    passed to the validators (i.e out directory and point names).
+    """
     @parametrize(intensity=(False, True))
     def case_default(self, intensity):
         panel = pd.read_csv(os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv'))
@@ -298,6 +315,9 @@ class WatcherCases:
                 intensities=intensity),
             check_qc_dir_structure,
         ]
+
+        # NOTE: Callback strings passed to build_fov_callback CANNOT have argument names
+        #       Otherwise they are treated as kwargs
         return [
             functools.partial(
                 build_fov_callback,
