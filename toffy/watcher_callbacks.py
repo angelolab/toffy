@@ -34,12 +34,12 @@ class FovCallbacks:
                 Unused kwargs for other functions
         """
         self.__fov_data = extract_bin_files(
-            self.run_folder,
-            None,
-            [self.point_name],
-            panel,
-            intensities,
-            time_res
+            data_dir=self.run_folder,
+            out_dir=None,
+            include_fovs=[self.point_name],
+            panel=panel,
+            intensities=intensities,
+            time_res=time_res
         )
 
         self.__panel = panel
@@ -67,11 +67,11 @@ class FovCallbacks:
 
         intensities = kwargs.get('intensities', False)
         _write_out(
-            self.__fov_data[0, :, :, :, :].values,
-            tiff_out_dir,
-            self.point_name,
-            list(self.__fov_data.channel.values),
-            intensities
+            img_data=self.__fov_data[0, :, :, :, :].values,
+            out_dir=tiff_out_dir,
+            fov_name=self.point_name,
+            targets=list(self.__fov_data.channel.values),
+            intensities=intensities
         )
 
     def generate_qc(self, qc_out_dir: str, panel: pd.DataFrame = None, **kwargs):
@@ -97,10 +97,10 @@ class FovCallbacks:
             self._generate_fov_data(panel, **kwargs)
 
         metric_data = compute_qc_metrics_direct(
-            self.__fov_data,
-            self.point_name,
-            kwargs.get('gaussian_blur', False),
-            kwargs.get('blur_factor', 1)
+            image_data=self.__fov_data,
+            fov_name=self.point_name,
+            gaussian_blur=kwargs.get('gaussian_blur', False),
+            blur_factor=kwargs.get('blur_factor', 1)
         )
 
         for metric_name, data in metric_data.items():
