@@ -108,15 +108,30 @@ class FovCallbacks:
 
 
 def build_fov_callback(*args, **kwargs):
+    """Assembles callbacks to be run for each transfered FoV
+
+    Args:
+        *args (List[str]):
+            Names of member functions of `FovCallbacks` to chain together
+        **kwargs (Dict[str, Any]):
+            Arguments to pass to `FovCallbacks` member functions specified in *args
+
+    Raises:
+        ValueError:
+            Raised on non-existant member function or missing required kwarg
+    """
+    # retrieve all 'non-special' methods of FovCallbacks
+    methods = [attr for attr in dir(FovCallbacks) if attr[0] != '_']
 
     # validate user callback settings
-    methods = [attr for attr in dir(FovCallbacks) if attr[0] != '_']
     for arg in args:
+        # check that `arg` is a method of FovCallbacks
         if arg not in methods:
             raise ValueError(
                 f'{arg} is not a valid FovCallbacks member\n'
                 f'Accepted callbacks are {methods}'
             )
+        # check that required (non-keyword) arguments for `arg` is present in passed `**kwargs`
         argnames = inspect.getfullargspec(getattr(FovCallbacks, arg))[0]
         for argname in argnames:
             if argname not in kwargs and argname != 'self':
@@ -126,7 +141,10 @@ def build_fov_callback(*args, **kwargs):
 
     # construct actual callback
     def fov_callback(run_folder: str, point_name: str):
+        # construct FovCallback object for given FoV
         callback_obj = FovCallbacks(run_folder, point_name)
+
+        # for each member, retrieve the member function and run it
         for arg in args:
             if cb := getattr(callback_obj, arg, None):
                 cb(**kwargs)
