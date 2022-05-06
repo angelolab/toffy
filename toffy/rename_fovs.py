@@ -62,12 +62,9 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
         raise ValueError(f"All FOV folders in {fov_dir} have already been renamed")
 
     # check if custom fov names & scan counts match the number of existing default directories
-    try:
-        verify_in_list(default=list(fov_scan.keys()), existing_folders=old_dirs)
-    except ValueError:
-        warnings.warn(f"Not all FOVs specified in {run_path} have an existing directory")
-
-    verify_in_list(existing_folders_not_found_in_run_file=old_dirs, default=list(fov_scan.keys()))
+    verify_in_list(warn=True, fovs_in_run_file=list(fov_scan.keys()),
+                   existing_fov_folders=old_dirs)
+    verify_in_list(existing_fov_folders=old_dirs, fovs_in_run_file=list(fov_scan.keys()))
 
     # validate new_dir and copy contents of fov_dir
     if new_dir is not None:
