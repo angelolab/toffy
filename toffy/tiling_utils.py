@@ -17,7 +17,7 @@ import warnings
 
 from dataclasses import dataclass
 
-from toffy import settings
+from toffy import settings, json_utils
 from ark.utils import misc_utils
 
 
@@ -357,6 +357,7 @@ def set_tiled_region_params(region_corners_path):
     # read in the region corners data
     with open(region_corners_path, 'r', encoding='utf-8') as flf:
         tiled_region_corners = json.load(flf)
+    tiled_region_corners = json_utils.rename_missing_fovs(tiled_region_corners)
 
     # define the parameter dict to return
     tiling_params = {}
@@ -666,6 +667,7 @@ def generate_tma_fov_list(tma_corners_path, num_fov_row, num_fov_col):
     # read in tma_corners_path
     with open(tma_corners_path, 'r', encoding='utf-8') as flf:
         tma_corners = json.load(flf)
+    tma_corners = json_utils.rename_missing_fovs(tma_corners)
 
     # a TMA can only be defined by four FOVs, one for each corner
     if len(tma_corners['fovs']) != 4:
