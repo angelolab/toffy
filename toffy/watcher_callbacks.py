@@ -7,6 +7,8 @@ import matplotlib.pyplot as plt
 import pandas as pd
 import xarray as xr
 
+from ark.utils import misc_utils
+
 from mibi_bin_tools.bin_files import extract_bin_files, _write_out
 
 from toffy.qc_comp import compute_qc_metrics_direct, combine_qc_metrics, visualize_qc_metrics
@@ -167,21 +169,15 @@ def build_fov_callback(*args, **kwargs):
     methods = [attr for attr in dir(FovCallbacks) if attr[0] != '_']
 
     # validate user callback settings
+    misc_utils.verify_in_list(arg_strings=args, valid_callbacks=methods)
     for arg in args:
-        # check that `arg` is a method of FovCallbacks
-        if arg not in methods:
-            raise ValueError(
-                f'{arg} is not a valid FovCallbacks member\n'
-                f'Accepted callbacks are {methods}'
-            )
         # check that required (non-keyword) arguments for `arg` is present in passed `**kwargs`
         argnames = inspect.getfullargspec(getattr(FovCallbacks, arg))[0]
-        for argname in argnames:
-            if argname not in kwargs and argname != 'self':
-                raise ValueError(
-                    f'Missing necessary keyword argument, {argname} '
-                    f'for fov callback function {arg}...'
-                )
+        argnames = [argname for argname in argnames if argname != 'self']
+        misc_utils.verify_in_list(
+            required_arguments=argnames,
+            passed_arguments=list(kwargs.values())
+        )
 
     # construct actual callback
     def fov_callback(run_folder: str, point_name: str):
@@ -225,20 +221,16 @@ def build_callbacks(run_callbacks: Iterable[str],
     methods = [attr for attr in dir(RunCallbacks) if attr[0] != '_']
 
     fov_callbacks = set(fov_callbacks)
-    for run_cb in run_callbacks:
-        if run_cb not in methods:
-            raise ValueError(
-                f'{run_cb} is not a valid RunCallbacks member\n'
-                f'Accepted callbacks are {methods}...'
-            )
 
+    misc_utils.verify_in_list(requested_callbacks=run_callbacks, valid_callbacks=methods)
+    for run_cb in run_callbacks:
         argnames = inspect.getfullargspec(getattr(RunCallbacks, run_cb))[0]
-        for argname in argnames:
-            if argname not in kwargs and argname != 'self':
-                raise ValueError(
-                    f'Missing necessary keyword argument, {argname} '
-                    f'for run callback function {run_cb}...'
-                )
+        argnames = [argname for argname in argnames if argname != 'self']
+
+        misc_utils.verify_in_list(
+            required_arguments=argnames,
+            passed_arguments=list(kwargs.values())
+        )
 
         fov_callbacks.union(RUN_PREREQUISITES.get(run_cb, set()))
 
