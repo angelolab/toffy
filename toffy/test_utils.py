@@ -12,7 +12,6 @@ from pytest_cases import parametrize
 import pandas as pd
 
 from toffy.settings import QC_COLUMNS, QC_SUFFIXES
-from toffy.watcher_callbacks import build_fov_callback
 from toffy.fov_watcher import RunStructure
 
 
@@ -316,14 +315,11 @@ class WatcherCases:
     """Test cases for start_watcher
 
     Cases in this class will, in order, return:
-        (partial per_fov callbacks, per_run callbacks, directory validation functions)
+        (fov callback names, run callback names, kwargs for the callbacks,
+         directory validation functions)
 
-    per_fov callbacks are made partial here, which allowa directory arguments to be created
-    and passed within the actual test function.  Otherwise, these test cases would have to handle
-    the mangement (or somehow be aware) of the temporary directory where the testing happens.
-
-    per_run callbacks are currently not partialed since none are implemented.  That being said,
-    they probably will undergo the same treatment once some are implemented.
+    Required directory kwargs must be added within the actual test function. They aren't added
+    here since contructing the temp directory within this class would probably be harder to manage.
 
     Validation functions will check that the directory/files created by each callback are correct.
     Some maybe partialed for convinience, since some arguments, like the panel, are created here
@@ -341,14 +337,11 @@ class WatcherCases:
             check_qc_dir_structure,
         ]
 
-        # NOTE: Callback strings passed to build_fov_callback CANNOT have argument names
-        #       Otherwise they are treated as kwargs
-        return [
-            functools.partial(
-                build_fov_callback,
-                'extract_tiffs',
-                'generate_qc',
-                panel=panel,
-                intensities=intensity
-            ),
-        ], [], validators
+        kwargs = {'panel': panel, 'intensities': intensity}
+
+        return (
+            ['plot_qc_metrics'],
+            ['extract_tiffs'],
+            kwargs,
+            validators
+        )
