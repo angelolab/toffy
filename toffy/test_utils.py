@@ -11,7 +11,7 @@ from pytest_cases import parametrize
 
 import pandas as pd
 
-from toffy.settings import QC_SUFFIXES
+from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 from toffy.watcher_callbacks import build_fov_callback
 from toffy.fov_watcher import RunStructure
 
@@ -93,13 +93,14 @@ def generate_sample_fovs_list(fov_coords, fov_names, fov_sizes):
 
 # generation parameters for the extraction/qc callback build
 # this should be limited to the panel, foldernames, and kwargs
-VALID_CALLBACKS = ('extract_tiffs', 'generate_qc')
+FOV_CALLBACKS = ('extract_tiffs', 'generate_qc')
+RUN_CALLBACKS = ('plot_qc_metrics',)
 
 
 class ExtractionQCGenerationCases:
     def case_both_callbacks(self):
         panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv')
-        return VALID_CALLBACKS, {'panel': pd.read_csv(panel_path)}
+        return FOV_CALLBACKS, {'panel': pd.read_csv(panel_path)}
 
     def case_extract_only(self):
         cbs, kwargs = self.case_both_callbacks()
@@ -117,6 +118,26 @@ class ExtractionQCGenerationCases:
     @pytest.mark.xfail(raises=ValueError)
     def case_missing_panel(self):
         cbs, _ = self.case_both_callbacks()
+        return cbs, {}
+
+    @pytest.mark.xfail(raises=ValueError)
+    def case_bad_callback(self):
+        return ['invalid_callback'], {}
+
+
+class PlotQCMetricsCases:
+    def case_default(self):
+        panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv')
+        return RUN_CALLBACKS, {'panel': pd.read_csv(panel_path)}
+
+    def save_figure(self):
+        cbs, kws = self.case_default()
+        kws['save_dir'] = True
+        return cbs, kws
+
+    @pytest.mark.xfail(raises=ValueError)
+    def case_missing_panel(self):
+        cbs, _ = self.case_default()
         return cbs, {}
 
     @pytest.mark.xfail(raises=ValueError)
@@ -150,7 +171,7 @@ def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channel
             assert(os.path.exists(os.path.join(ext_dir, point, 'intensities')))
 
 
-def check_qc_dir_structure(out_dir: str, point_names: List[str]):
+def check_qc_dir_structure(out_dir: str, point_names: List[str], qc_plots: bool = False):
     """Checks QC directory for minimum expected structure
 
     Args:
@@ -158,14 +179,18 @@ def check_qc_dir_structure(out_dir: str, point_names: List[str]):
             Folder containing QC output
         point_names (list):
             List of expected point names
+        qc_plots (bool):
+            Whether to expect plot files
 
     Raises:
         AssertionError:
             Assertion error on missing csv
     """
     for point in point_names:
-        for ms in QC_SUFFIXES:
+        for mn, ms in zip(QC_COLUMNS, QC_SUFFIXES):
             assert(os.path.exists(os.path.join(out_dir, f'{point}_{ms}.csv')))
+            if qc_plots:
+                assert(os.path.exists(os.path.join(out_dir, '%s_barplot_stats.png' % mn)))
 
 
 def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False, bad=False):

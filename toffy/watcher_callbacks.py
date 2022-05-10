@@ -13,7 +13,7 @@ from mibi_bin_tools.bin_files import extract_bin_files, _write_out
 
 from toffy.qc_comp import compute_qc_metrics_direct, combine_qc_metrics, visualize_qc_metrics
 
-from toffy.settings import QC_COLUMNS
+from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 
 
 RUN_PREREQUISITES = {
@@ -47,7 +47,8 @@ class RunCallbacks:
         qc_df = combine_qc_metrics(qc_out_dir)
 
         _, axes = plt.subplots(3, 1)
-        for i, metric_name in enumerate(QC_COLUMNS):
+        for i, (metric_name, ms) in enumerate(zip(QC_COLUMNS, QC_SUFFIXES)):
+            qc_df = pd.read_csv(os.path.join(qc_out_dir, 'combined_%s.csv' % ms))
             visualize_qc_metrics(qc_df, metric_name, ax=axes[i], **viz_kwargs)
 
 
@@ -176,7 +177,7 @@ def build_fov_callback(*args, **kwargs):
         argnames = [argname for argname in argnames if argname != 'self']
         misc_utils.verify_in_list(
             required_arguments=argnames,
-            passed_arguments=list(kwargs.values())
+            passed_arguments=list(kwargs.keys())
         )
 
     # construct actual callback
@@ -229,10 +230,10 @@ def build_callbacks(run_callbacks: Iterable[str],
 
         misc_utils.verify_in_list(
             required_arguments=argnames,
-            passed_arguments=list(kwargs.values())
+            passed_arguments=list(kwargs.keys())
         )
 
-        fov_callbacks.union(RUN_PREREQUISITES.get(run_cb, set()))
+        fov_callbacks = fov_callbacks.union(RUN_PREREQUISITES.get(run_cb, set()))
 
     fov_callback = build_fov_callback(*list(fov_callbacks), **kwargs)
 
