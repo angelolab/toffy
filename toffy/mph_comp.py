@@ -19,7 +19,8 @@ def compute_mph_metrics(bin_file_path, target, save_csv=True):
             # need to fix to parse thru existing csv
             pass
         else:
-            median = bin_files.get_median_pulse_height(bin_file_path, 'fov-{}-scan-1'.format(i), target)
+            median = bin_files.get_median_pulse_height(bin_file_path,
+                                                       'fov-{}-scan-1'.format(i), target)
             count = total_counts['fov-{}-scan-1'.format(i)]
 
             out_df = pd.DataFrame({
@@ -49,7 +50,7 @@ def combine_mph_metrics(bin_file_path, output_dir):
     combined_df.to_csv(os.path.join(output_dir, 'total_count_vs_mph_data.csv'), index=False)
 
 
-def visualize_mph(mph_df, regression : bool, save_dir=None):
+def visualize_mph(mph_df, regression: bool, save_dir=None):
 
     # visualize the median pulse heights
     plt.style.use('dark_background')
