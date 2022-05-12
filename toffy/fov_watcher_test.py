@@ -80,8 +80,14 @@ def test_watcher(run_cbs, fov_cbs, kwargs, validators, add_blank):
         with open(os.path.join(run_data, 'test_run.json'), 'w') as f:
             json.dump(TISSUE_RUN_JSON_SPOOF, f)
 
+        # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
+        # client access computer.  `start_watcher` is made async here since these processes
+        # wouldn't block each other in normal use
         with Pool(processes=4) as pool:
             pool.apply_async(_slow_copy_sample_tissue_data, (run_data, 6, add_blank))
+
+            # watcher completion is checked every 2 seconds
+            # zero-size files are halted for 6 seconds or until they have non zero-size
             res_scan = pool.apply_async(
                 start_watcher,
                 (run_data, log_out, fov_callback, run_callback, 2, 6)

@@ -44,7 +44,7 @@ class RunCallbacks:
         valid_kwargs = ['axes_size', 'wrap', 'dpi', 'save_dir']
         viz_kwargs = {k: v for k, v in kwargs.items() if k in valid_kwargs}
 
-        qc_df = combine_qc_metrics(qc_out_dir)
+        combine_qc_metrics(qc_out_dir)
 
         _, axes = plt.subplots(3, 1)
         for i, (metric_name, ms) in enumerate(zip(QC_COLUMNS, QC_SUFFIXES)):
