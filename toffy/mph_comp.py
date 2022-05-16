@@ -1,16 +1,37 @@
 import os
 import pandas as pd
 import numpy as np
+import json
 import matplotlib.pyplot as plt
 
 from mibi_bin_tools import bin_files
 
 
-def compute_mph_metrics(bin_file_path, target, save_csv=True, mass_range=None,):
+def get_estimated_time(bin_file_path):
+
+    fov_files = bin_files._find_bin_files(bin_file_path)
+    json_files = \
+        [(name, os.path.join(bin_file_path, fov['json'])) for name, fov in fov_files.items()]
+    time_list = {}
+
+    for j in json_files:
+        with open(j[1]) as file:
+            run_metadata = json.load(file)
+            size = run_metadata.get('frameSize')
+            time = run_metadata.get('dwellTimeMillis')
+            estimated_time = size**2 * time
+            time_list[j[0]] = estimated_time
+
+    return time_list
+
+
+def compute_mph_metrics(bin_file_path, target, save_csv=True, mass_range=None):
 
     # retrieve the total counts and compute pulse heights for each FOV run file
     # saves individual .csv  files to bin_file_path
     total_counts = bin_files.get_total_counts(bin_file_path)
+    fov_times = get_estimated_time(bin_file_path)
+    fov_keys = list(fov_times.keys())
     metric_csvs = {}
 
     for i in range(1, len(total_counts) + 1):
@@ -27,7 +48,8 @@ def compute_mph_metrics(bin_file_path, target, save_csv=True, mass_range=None,):
         out_df = pd.DataFrame({
             'fov': [i],
             'MPH': [median],
-            'total_count': [count]})
+            'total_count': [count],
+            'time': [fov_times[fov_keys[i - 1]]]})
 
         metric_csvs['fov-{}-scan-1'.format(i)] = out_df
 
@@ -43,18 +65,26 @@ def combine_mph_metrics(bin_file_path, output_dir):
     total_counts = bin_files.get_total_counts(bin_file_path)
     pulse_heights = []
     fov_counts = []
+    estimated_time = []
 
     for i in range(1, len(total_counts) + 1):
         temp_df = pd.read_csv(os.path.join(bin_file_path, 'fov-{}-pulse_height.csv'.format(i)))
         pulse_heights.append(temp_df['MPH'].values[0])
         if i > 1:
             fov_counts.append(temp_df['total_count'].values[0] + fov_counts[i - 2])
+            estimated_time.append(temp_df['time'].values[0] + estimated_time[i - 2])
         else:
             fov_counts.append(temp_df['total_count'].values[0])
+            estimated_time.append(temp_df['time'].values[0])
 
-    combined_df = pd.DataFrame({'pulse_heights': pulse_heights, 'cum_total_count': fov_counts})
+    combined_df = pd.DataFrame({'pulse_heights': pulse_heights, 'cum_total_count': fov_counts,
+                                'cum_total_time': estimated_time})
     combined_df.to_csv(os.path.join(output_dir, 'total_count_vs_mph_data.csv'), index=False)
 
+
+bin_file_path = os.path.join("data", "tissue")
+output_dir = os.path.join("data", "tissue_mph")
+combine_mph_metrics(bin_file_path, output_dir)
 
 def visualize_mph(mph_df, regression: bool, save_dir=None):
 
