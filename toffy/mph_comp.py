@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 from mibi_bin_tools import bin_files
 
 
-def compute_mph_metrics(bin_file_path, target, mass_range=None, save_csv=True):
+def compute_mph_metrics(bin_file_path, target, save_csv=True, mass_range=None,):
 
     # retrieve the total counts and compute pulse heights for each FOV run file
     # saves individual .csv  files to bin_file_path
@@ -16,27 +16,25 @@ def compute_mph_metrics(bin_file_path, target, mass_range=None, save_csv=True):
     for i in range(1, len(total_counts) + 1):
         pulse_height_file = 'fov-{}-pulse_height.csv'.format(i)
 
-        if os.path.exists(os.path.join(bin_file_path, pulse_height_file)):
-            # need to fix to parse thru existing csv
-            pass
+        if mass_range is None:
+            median = bin_files.get_median_pulse_height(bin_file_path,
+                                                       'fov-{}-scan-1'.format(i), target)
         else:
-            if mass_range is None:
-                median = bin_files.get_median_pulse_height(bin_file_path,
-                                                           'fov-{}-scan-1'.format(i), target)
-            else:
-                median = bin_files.get_median_pulse_height(bin_file_path,
-                                                           'fov-{}-scan-1'.format(i), target, mass_range)
-            count = total_counts['fov-{}-scan-1'.format(i)]
+            median = bin_files.get_median_pulse_height(bin_file_path,
+                                                       'fov-{}-scan-1'.format(i), target, mass_range)
+        count = total_counts['fov-{}-scan-1'.format(i)]
 
-            out_df = pd.DataFrame({
-                'fov': [i],
-                'MPH': [median],
-                'total_count': [count]})
+        out_df = pd.DataFrame({
+            'fov': [i],
+            'MPH': [median],
+            'total_count': [count]})
 
+        metric_csvs['fov-{}-scan-1'.format(i)] = out_df
+
+        if not os.path.exists(os.path.join(bin_file_path, pulse_height_file)):
             if save_csv:
                 out_df.to_csv(os.path.join(bin_file_path, pulse_height_file), index=False)
-            else:
-                metric_csvs['fov-{}-scan-1'.format(i)] = out_df
+
     if not save_csv:
         return metric_csvs
 
