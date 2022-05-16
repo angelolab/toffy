@@ -20,8 +20,8 @@ def compute_mph_metrics(bin_file_path, target, save_csv=True, mass_range=None,):
             median = bin_files.get_median_pulse_height(bin_file_path,
                                                        'fov-{}-scan-1'.format(i), target)
         else:
-            median = bin_files.get_median_pulse_height(bin_file_path,
-                                                       'fov-{}-scan-1'.format(i), target, mass_range)
+            median = bin_files.get_median_pulse_height(bin_file_path, 'fov-{}-scan-1'.format(i),
+                                                       target, mass_range)
         count = total_counts['fov-{}-scan-1'.format(i)]
 
         out_df = pd.DataFrame({
