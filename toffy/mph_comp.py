@@ -19,7 +19,7 @@ def get_estimated_time(bin_file_path):
             run_metadata = json.load(file)
             size = run_metadata.get('frameSize')
             time = run_metadata.get('dwellTimeMillis')
-            estimated_time = size**2 * time
+            estimated_time = int(size**2 * time)
             time_list[j[0]] = estimated_time
 
     return time_list
@@ -82,29 +82,35 @@ def combine_mph_metrics(bin_file_path, output_dir):
     combined_df.to_csv(os.path.join(output_dir, 'total_count_vs_mph_data.csv'), index=False)
 
 
-bin_file_path = os.path.join("data", "tissue")
-output_dir = os.path.join("data", "tissue_mph")
-combine_mph_metrics(bin_file_path, output_dir)
-
 def visualize_mph(mph_df, regression: bool, save_dir=None):
-
     # visualize the median pulse heights
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    ax2 = ax1.twiny()
+    x = mph_df['cum_total_count']
+    y = mph_df['pulse_heights']
+    ax1.scatter(x, y)
+    ax1.set_xlabel('FOV cumulative count')
+    ax1.set_ylabel('median pulse height')
+    ax2.set_xlabel('estimated time (ms)')
+    ax1.set_xlim(0, max(x) + 10000)
+    ax2.set_xlim(0, max(x) + 10000)
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(mph_df['cum_total_time'])
     plt.style.use('dark_background')
-    plt.title('FOV total counts vs median pulse height')
-    plt.scatter('cum_total_count', 'pulse_heights', data=mph_df)
-    plt.gca().set_xlabel('FOV cumulative count')
-    plt.gca().set_ylabel('median pulse hight')
+    # plt.title('FOV total counts vs median pulse height')
     plt.gcf().set_size_inches(18.5, 10.5)
-    plt.xlim(0, max(mph_df['cum_total_count']) + 10000)
+
     if not regression and save_dir is not None:
         plt.savefig(os.path.join(save_dir, 'fov_vs_mph.jpg'))
         return
 
     if regression:
         # plot with regression line
-        x = np.array(mph_df['cum_total_count'])
-        y = np.array(mph_df['pulse_heights'])
-        m, b = np.polyfit(x, y, 1)
-        plt.plot(x, m * x + b)
+        x2 = np.array(mph_df['cum_total_count'])
+        y2 = np.array(mph_df['pulse_heights'])
+        m, b = np.polyfit(x2, y2, 1)
+        plt.plot(x2, m * x2 + b)
         if save_dir is not None:
             plt.savefig(os.path.join(save_dir, 'fov_vs_mph_regression.jpg'))
+    plt.show()
