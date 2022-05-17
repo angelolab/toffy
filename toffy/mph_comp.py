@@ -13,7 +13,8 @@ def compute_mph_metrics(bin_file_path, target, mass_start, mass_stop, save_csv=T
             bin_file_path (str): path to the FOV bin and json files
             target (str): channel to use
             save_csv (bool): whether to save to csv file or output data, defaults to True
-            mass_range (tuple): integration range for pulse heights, default same as pulse function
+            mass_start (float): beginning of mass integration range
+            mass_stop (float): end of mass integration range
 
         Return:
             None | Dict[str, pd.DataFrame]: if save_csv if False, return mph metrics
@@ -22,18 +23,22 @@ def compute_mph_metrics(bin_file_path, target, mass_start, mass_stop, save_csv=T
     # path validation checks
     io_utils.validate_paths(bin_file_path)
 
-    # get total counts for each FOV
-    total_counts = bin_files.get_total_counts(bin_file_path)
+    # list bin files in directory
+    fov_bins = io_utils.list_files(bin_file_path, ".bin")
+    fov_bins = io_utils.remove_file_extensions(fov_bins)
+
     metric_csvs = {}
+    i = 0
 
     # retrieve the data from each bin file and store it / output to individual csv
-    for i in range(1, len(total_counts) + 1):
+    for file in fov_bins:
+        i = i+1
         pulse_height_file = 'fov-{}-pulse_height.csv'.format(i)
 
         # get median pulse heights
         median = bin_files.get_median_pulse_height(bin_file_path, 'fov-{}-scan-1'.format(i),
                                                    target, (mass_start, mass_stop))
-        count = total_counts['fov-{}-scan-1'.format(i)]
+        count = bin_files.get_total_counts(bin_file_path, [file])
 
         out_df = pd.DataFrame({
             'fov': [i],
@@ -63,13 +68,17 @@ def combine_mph_metrics(bin_file_path, output_dir):
     io_utils.validate_paths(bin_file_path)
     io_utils.validate_paths(output_dir)
 
-    # get FOV total counts
-    total_counts = bin_files.get_total_counts(bin_file_path)
+    # list bin files in directory
+    fov_bins = io_utils.list_files(bin_file_path, ".bin")
+    fov_bins = io_utils.remove_file_extensions(fov_bins)
+
     pulse_heights = []
     fov_counts = []
+    i = 0
 
     # for each csv retrieve mph values
-    for i in range(1, len(total_counts) + 1):
+    for file in fov_bins:
+        i = i+1
         temp_df = pd.read_csv(os.path.join(bin_file_path, 'fov-{}-pulse_height.csv'.format(i)))
         pulse_heights.append(temp_df['MPH'].values[0])
         # calculate total counts cumulatively for plotting
