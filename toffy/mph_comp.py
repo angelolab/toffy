@@ -8,21 +8,29 @@ from mibi_bin_tools import bin_files
 
 
 def get_estimated_time(bin_file_path):
+    """Retrieve run time data for each bin file
+    Args:
+        bin_file_path (str): path to the FOV bin and json files
+    Returns:
+        fov_times (dictionary): fov bin file names and estimated run time
+    """
 
+    # get json files in bin_file_path
     fov_files = bin_files._find_bin_files(bin_file_path)
     json_files = \
         [(name, os.path.join(bin_file_path, fov['json'])) for name, fov in fov_files.items()]
-    time_list = {}
+    fov_times = {}
 
+    # retrieve estimated time (frame dimensions x pixel dwell time)
     for j in json_files:
         with open(j[1]) as file:
             run_metadata = json.load(file)
             size = run_metadata.get('frameSize')
             time = run_metadata.get('dwellTimeMillis')
             estimated_time = int(size**2 * time)
-            time_list[j[0]] = estimated_time
+            fov_times[j[0]] = estimated_time
 
-    return time_list
+    return fov_times
 
 
 def compute_mph_metrics(bin_file_path, target, save_csv=True, mass_range=None):
@@ -84,6 +92,8 @@ def combine_mph_metrics(bin_file_path, output_dir):
 
 def visualize_mph(mph_df, regression: bool, save_dir=None):
     # visualize the median pulse heights
+    plt.style.use('dark_background')
+    # plt.title('FOV total counts vs median pulse height')
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
     ax2 = ax1.twiny()
@@ -97,8 +107,6 @@ def visualize_mph(mph_df, regression: bool, save_dir=None):
     ax2.set_xlim(0, max(x) + 10000)
     ax2.set_xticks(x)
     ax2.set_xticklabels(mph_df['cum_total_time'])
-    plt.style.use('dark_background')
-    # plt.title('FOV total counts vs median pulse height')
     plt.gcf().set_size_inches(18.5, 10.5)
 
     if not regression and save_dir is not None:
