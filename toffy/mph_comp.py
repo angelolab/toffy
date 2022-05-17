@@ -4,6 +4,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from mibi_bin_tools import bin_files
+from ark.utils import io_utils
 
 
 def compute_mph_metrics(bin_file_path, target, save_csv=True, mass_range=(-0.3, 0.0)):
@@ -17,6 +18,9 @@ def compute_mph_metrics(bin_file_path, target, save_csv=True, mass_range=(-0.3, 
         Return:
             None | Dict[str, pd.DataFrame]: if save_csv if False, return mph metrics
             """
+
+    # path validation checks
+    io_utils.validate_paths(bin_file_path)
 
     # get total counts for each FOV
     total_counts = bin_files.get_total_counts(bin_file_path)
@@ -55,6 +59,10 @@ def combine_mph_metrics(bin_file_path, output_dir):
             output_dir (str): path to output csv to
             """
 
+    # path validation checks
+    io_utils.validate_paths(bin_file_path)
+    io_utils.validate_paths(output_dir)
+
     # get FOV total counts
     total_counts = bin_files.get_total_counts(bin_file_path)
     pulse_heights = []
@@ -82,6 +90,9 @@ def visualize_mph(mph_df, regression: bool, save_dir=None):
             regression (bool): whether or not to plot regression line
             save_dir (str): path of directory to save plot to
             """
+
+    # path validation checks
+    io_utils.validate_paths(save_dir)
 
     # visualize the median pulse heights
     plt.style.use('dark_background')
