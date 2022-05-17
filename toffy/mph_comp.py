@@ -7,7 +7,7 @@ from mibi_bin_tools import bin_files
 from ark.utils import io_utils
 
 
-def compute_mph_metrics(bin_file_path, target, save_csv=True, mass_range=(-0.3, 0.0)):
+def compute_mph_metrics(bin_file_path, target, mass_start, mass_stop, save_csv=True):
     """Retrieves FOV total counts and median pulse heights for all bin files in the directory
         Args:
             bin_file_path (str): path to the FOV bin and json files
@@ -32,7 +32,7 @@ def compute_mph_metrics(bin_file_path, target, save_csv=True, mass_range=(-0.3, 
 
         # get median pulse heights
         median = bin_files.get_median_pulse_height(bin_file_path, 'fov-{}-scan-1'.format(i),
-                                                   target, mass_range)
+                                                   target, (mass_start, mass_stop))
         count = total_counts['fov-{}-scan-1'.format(i)]
 
         out_df = pd.DataFrame({
