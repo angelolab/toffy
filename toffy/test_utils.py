@@ -7,15 +7,11 @@ import tempfile
 import json
 
 import pytest
-from pytest_cases import case, parametrize
+from pytest_cases import parametrize
 
 import pandas as pd
 
-from toffy.settings import QC_SUFFIXES
-from toffy.watcher_callbacks import (
-    build_extract_callback,
-    build_qc_callback,
-)
+from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 from toffy.fov_watcher import RunStructure
 
 
@@ -96,33 +92,56 @@ def generate_sample_fovs_list(fov_coords, fov_names, fov_sizes):
 
 # generation parameters for the extraction/qc callback build
 # this should be limited to the panel, foldernames, and kwargs
-DEFAULT_TAGS = ('extract', 'qc')
+FOV_CALLBACKS = ('extract_tiffs', 'generate_qc')
+RUN_CALLBACKS = ('plot_qc_metrics',)
 
 
 class ExtractionQCGenerationCases:
-    @pytest.mark.xfail(raises=TypeError)
-    @case(tags=DEFAULT_TAGS)
-    def case_bad_global(self):
-        return (-0.3, 0.0), {}
-
-    @case(tags=DEFAULT_TAGS)
-    def case_default(self):
-        _, kwargs = self.case_bad_global()
+    def case_both_callbacks(self):
         panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv')
-        return pd.read_csv(panel_path), kwargs
+        return FOV_CALLBACKS, {'panel': pd.read_csv(panel_path)}
 
-    @case(tags='extract')
+    def case_extract_only(self):
+        cbs, kwargs = self.case_both_callbacks()
+        return cbs[:1], kwargs
+
+    def case_qc_only(self):
+        cbs, kwargs = self.case_both_callbacks()
+        return cbs[1:], kwargs
+
     def case_extraction_intensities(self):
-        panel, kwargs = self.case_default()
+        cbs, kwargs = self.case_both_callbacks()
         kwargs['intensities'] = True
-        return panel, kwargs
+        return cbs, kwargs
 
-    @pytest.mark.xfail()
-    @case(tags=DEFAULT_TAGS)
-    def case_bad_kwarg(self):
-        panel, kwargs = self.case_default()
-        kwargs['fake kwarg'] = "i shouldn't exist :("
-        return panel, kwargs
+    @pytest.mark.xfail(raises=ValueError)
+    def case_missing_panel(self):
+        cbs, _ = self.case_both_callbacks()
+        return cbs, {}
+
+    @pytest.mark.xfail(raises=ValueError)
+    def case_bad_callback(self):
+        return ['invalid_callback'], {}
+
+
+class PlotQCMetricsCases:
+    def case_default(self):
+        panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv')
+        return RUN_CALLBACKS, {'panel': pd.read_csv(panel_path)}
+
+    def save_figure(self):
+        cbs, kws = self.case_default()
+        kws['save_dir'] = True
+        return cbs, kws
+
+    @pytest.mark.xfail(raises=ValueError)
+    def case_missing_panel(self):
+        cbs, _ = self.case_default()
+        return cbs, {}
+
+    @pytest.mark.xfail(raises=ValueError)
+    def case_bad_callback(self):
+        return ['invalid_callback'], {}
 
 
 def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channels: List[str],
@@ -151,7 +170,7 @@ def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channel
             assert(os.path.exists(os.path.join(ext_dir, point, 'intensities')))
 
 
-def check_qc_dir_structure(out_dir: str, point_names: List[str]):
+def check_qc_dir_structure(out_dir: str, point_names: List[str], qc_plots: bool = False):
     """Checks QC directory for minimum expected structure
 
     Args:
@@ -159,14 +178,18 @@ def check_qc_dir_structure(out_dir: str, point_names: List[str]):
             Folder containing QC output
         point_names (list):
             List of expected point names
+        qc_plots (bool):
+            Whether to expect plot files
 
     Raises:
         AssertionError:
             Assertion error on missing csv
     """
     for point in point_names:
-        for ms in QC_SUFFIXES:
+        for mn, ms in zip(QC_COLUMNS, QC_SUFFIXES):
             assert(os.path.exists(os.path.join(out_dir, f'{point}_{ms}.csv')))
+            if qc_plots:
+                assert(os.path.exists(os.path.join(out_dir, '%s_barplot_stats.png' % mn)))
 
 
 def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False, bad=False):
@@ -289,6 +312,20 @@ class RunStructureCases:
 
 
 class WatcherCases:
+    """Test cases for start_watcher
+
+    Cases in this class will, in order, return:
+        (fov callback names, run callback names, kwargs for the callbacks,
+         directory validation functions)
+
+    Required directory kwargs must be added within the actual test function. They aren't added
+    here since contructing the temp directory within this class would probably be harder to manage.
+
+    Validation functions will check that the directory/files created by each callback are correct.
+    Some maybe partialed for convinience, since some arguments, like the panel, are created here
+    and might as well be premptively passed, so that only "run dependent" arguments need to be
+    passed to the validators (i.e out directory and point names).
+    """
     @parametrize(intensity=(False, True))
     def case_default(self, intensity):
         panel = pd.read_csv(os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv'))
@@ -299,7 +336,12 @@ class WatcherCases:
                 intensities=intensity),
             check_qc_dir_structure,
         ]
-        return [
-            functools.partial(build_extract_callback, panel=panel, intensities=intensity),
-            functools.partial(build_qc_callback, panel=panel),
-        ], [], validators
+
+        kwargs = {'panel': panel, 'intensities': intensity}
+
+        return (
+            ['plot_qc_metrics'],
+            ['extract_tiffs'],
+            kwargs,
+            validators
+        )

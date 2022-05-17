@@ -3,7 +3,6 @@ import matplotlib.pyplot as plt
 import os
 import numpy as np
 import pandas as pd
-import re
 from requests.exceptions import HTTPError
 from scipy.ndimage import gaussian_filter
 import seaborn as sns
@@ -15,7 +14,6 @@ from toffy.mibitracker_utils import MibiRequests
 from toffy import settings
 
 import ark.utils.io_utils as io_utils
-import ark.utils.load_utils as load_utils
 import ark.utils.misc_utils as misc_utils
 import mibi_bin_tools.bin_files as bin_files
 
@@ -325,6 +323,33 @@ def compute_qc_metrics(bin_file_path, fov_name, panel_path, manual_panel=None,
         panel=pd.read_csv(panel_path) if panel_path else manual_panel
     )
 
+    metric_csvs = compute_qc_metrics_direct(image_data, fov_name, gaussian_blur, blur_factor)
+    if save_csv:
+        for metric_name, data in metric_csvs.items():
+            data.to_csv(os.path.join(bin_file_path, metric_name), index=False)
+
+
+def compute_qc_metrics_direct(image_data, fov_name, gaussian_blur=False, blur_factor=1):
+    """Compute the QC metric matrices for the image data provided
+
+    Args:
+        image_data (xr.DataArray):
+            image data in 'extract_bin_files' output format
+        fov_name (str):
+            the name of the FOV to extract from `bin_file_path`, needs to correspond with JSON name
+        gaussian_blur (bool):
+            whether or not to add Gaussian blurring
+        blur_factor (int):
+            the sigma (standard deviation) to use for Gaussian blurring
+            set to 0 to use raw inputs without Gaussian blurring
+            ignored if `gaussian_blur` set to `False`
+
+    Returns:
+        Dict[str, pd.DataFrame]:
+            Returns qc metrics
+
+    """
+
     # there's only 1 FOV and 1 type ('pulse'), so subset on that
     image_data = image_data.loc[fov_name, 'pulse', :, :, :]
 
@@ -375,36 +400,29 @@ def compute_qc_metrics(bin_file_path, fov_name, panel_path, manual_panel=None,
         metric_df['fov'] = fov_name
         metric_df['channel'] = chans
 
-        # write the metric data to CSV
-        if save_csv:
-            metric_df.to_csv(
-                os.path.join(bin_file_path, '%s_%s.csv' % (fov_name, ms)), index=False
-            )
-        else:
-            metric_csvs[f'{fov_name}_{ms}.csv'] = metric_df
+        metric_csvs[f'{fov_name}_{ms}.csv'] = metric_df
 
-    if not save_csv:
-        return metric_csvs
+    return metric_csvs
 
 
-def combine_qc_metrics(bin_file_path):
+def combine_qc_metrics(qc_metrics_dir):
     """Aggregates the QC results of each FOV into one `.csv`
 
     Args:
-        bin_file_path (str):
+        qc_metrics_dir (str):
             the name of the folder containing the QC metric files
     """
 
     # path validation check
-    if not os.path.exists(bin_file_path):
-        raise FileNotFoundError('bin_file_path %s does not exist' % bin_file_path)
+    if not os.path.exists(qc_metrics_dir):
+        raise FileNotFoundError('qc_metrics_dir %s does not exist' % qc_metrics_dir)
 
     for ms in settings.QC_SUFFIXES:
         # define an aggregated metric DataFrame
         metric_df = pd.DataFrame()
 
         # list all the files corresponding to this metric
-        metric_files = io_utils.list_files(bin_file_path, substrs=ms + '.csv')
+        metric_files = io_utils.list_files(qc_metrics_dir, substrs=ms + '.csv')
 
         # don't consider any existing combined .csv files, just the fov-level .csv files
         metric_files = [
@@ -416,14 +434,15 @@ def combine_qc_metrics(bin_file_path):
 
         # iterate over each metric file and append the data to metric_df
         for mf in metric_files:
-            metric_df = pd.concat([metric_df, pd.read_csv(os.path.join(bin_file_path, mf))])
+            metric_df = pd.concat([metric_df, pd.read_csv(os.path.join(qc_metrics_dir, mf))])
 
         # write the aggregated metric data
         # NOTE: if this combined metric file already exists, it will be overwritten
-        metric_df.to_csv(os.path.join(bin_file_path, 'combined_%s.csv' % ms), index=False)
+        metric_df.to_csv(os.path.join(qc_metrics_dir, 'combined_%s.csv' % ms), index=False)
 
 
-def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=None, save_dir=None):
+def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=None, save_dir=None,
+                         ax=None):
     """Visualize a barplot of a specific QC metric
 
     Args:
@@ -440,6 +459,8 @@ def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=No
             Ignored if save_dir is None
         save_dir (str):
             If saving, the name of the directory to save visualization to
+        ax (matplotlib.axes.Axes):
+            Axes to place catplots
     """
 
     # catplot allows for easy facets on a barplot
@@ -452,7 +473,8 @@ def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=No
         kind='bar',
         color='black',
         sharex=True,
-        sharey=False
+        sharey=False,
+        ax=ax,
     )
 
     # per Erin's visualization, don't show the hundreds of fov labels on the x-axis
@@ -482,4 +504,19 @@ def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=No
 
     # save the figure if specified
     if save_dir is not None:
-        misc_utils.save_figure(save_dir, '%s_barplot_stats.png' % metric_name, dpi=dpi)
+        if ax is None:
+            misc_utils.save_figure(save_dir, '%s_barplot_stats.png' % metric_name, dpi=dpi)
+        else:
+            # TODO: add ax argument to misc_utils.save_figure when moved to tmi
+            if not os.path.exists(save_dir):
+                raise FileNotFoundError("save_dir %s does not exist" % save_dir)
+
+            fig = plt.gcf()
+            extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
+
+            # TODO: fine tune extent expansion
+            fig.savefig(
+                os.path.join(save_dir, '%s_barplot_stats.png' % metric_name),
+                dpi=dpi,
+                bbox_inches=extent.expanded(1.1, 1.2)
+            )
