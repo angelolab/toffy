@@ -81,14 +81,14 @@ def combine_mph_metrics(bin_file_path, output_dir):
         i = i+1
         temp_df = pd.read_csv(os.path.join(bin_file_path, 'fov-{}-pulse_height.csv'.format(i)))
         pulse_heights.append(temp_df['MPH'].values[0])
-        # calculate total counts cumulatively for plotting
-        if i > 1:
-            fov_counts.append(temp_df['total_count'].values[0] + fov_counts[i - 2])
-        else:
-            fov_counts.append(temp_df['total_count'].values[0])
+        fov_counts.append(temp_df['total_count'].values[0])
+
+    # calculate cumulative sums of total counts
+    fov_counts_cum = [fov_counts[j]+fov_counts[j-1] if j > 0 else fov_counts[j]
+                      for j in range(len(fov_counts))]
 
     # save csv to output_dir
-    combined_df = pd.DataFrame({'pulse_heights': pulse_heights, 'cum_total_count': fov_counts})
+    combined_df = pd.DataFrame({'pulse_heights': pulse_heights, 'cum_total_count': fov_counts_cum})
     combined_df.to_csv(os.path.join(output_dir, 'total_count_vs_mph_data.csv'), index=False)
 
 
