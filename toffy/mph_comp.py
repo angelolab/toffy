@@ -28,24 +28,22 @@ def compute_mph_metrics(bin_file_path, target, mass_start, mass_stop, save_csv=T
     fov_bins = io_utils.remove_file_extensions(fov_bins)
 
     metric_csvs = {}
-    i = 0
 
     # retrieve the data from each bin file and store it / output to individual csv
-    for file in fov_bins:
-        i = i+1
-        pulse_height_file = 'fov-{}-pulse_height.csv'.format(i)
+    for i, file in enumerate(fov_bins):
+        pulse_height_file = 'fov-{}-pulse_height.csv'.format(i+1)
 
         # get median pulse heights
-        median = bin_files.get_median_pulse_height(bin_file_path, 'fov-{}-scan-1'.format(i),
+        median = bin_files.get_median_pulse_height(bin_file_path, 'fov-{}-scan-1'.format(i+1),
                                                    target, (mass_start, mass_stop))
         count = bin_files.get_total_counts(bin_file_path, [file])
 
         out_df = pd.DataFrame({
-            'fov': [i],
+            'fov': [i+1],
             'MPH': [median],
             'total_count': [count]})
 
-        metric_csvs['fov-{}-scan-1'.format(i)] = out_df
+        metric_csvs['fov-{}-scan-1'.format(i+1)] = out_df
 
         # saves individual .csv  files to bin_file_path
         if not os.path.exists(os.path.join(bin_file_path, pulse_height_file)):
@@ -74,12 +72,10 @@ def combine_mph_metrics(bin_file_path, output_dir):
 
     pulse_heights = []
     fov_counts = []
-    i = 0
 
     # for each csv retrieve mph values
-    for file in fov_bins:
-        i = i+1
-        temp_df = pd.read_csv(os.path.join(bin_file_path, 'fov-{}-pulse_height.csv'.format(i)))
+    for i, file in enumerate(fov_bins):
+        temp_df = pd.read_csv(os.path.join(bin_file_path, 'fov-{}-pulse_height.csv'.format(i+1)))
         pulse_heights.append(temp_df['MPH'].values[0])
         fov_counts.append(temp_df['total_count'].values[0])
 
