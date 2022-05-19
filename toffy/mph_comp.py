@@ -96,17 +96,13 @@ def visualize_mph(mph_df, regression: bool, save_dir=None):
     plt.gcf().set_size_inches(18.5, 10.5)
     plt.xlim(0, max(mph_df['cum_total_count']) + 10000)
 
-    # save figure without regression line
-    if not regression and save_dir is not None:
-        plt.savefig(os.path.join(save_dir, 'fov_vs_mph.jpg'))
-        return
-
     # plot regression line
     if regression:
         x = np.array(mph_df['cum_total_count'])
         y = np.array(mph_df['pulse_heights'])
         m, b = np.polyfit(x, y, 1)
         plt.plot(x, m * x + b)
-        # save figure
-        if save_dir is not None:
-            plt.savefig(os.path.join(save_dir, 'fov_vs_mph_regression.jpg'))
+
+    # save figure
+    if save_dir is not None:
+        plt.savefig(os.path.join(save_dir, 'fov_vs_mph.jpg'))
