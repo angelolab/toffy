@@ -13,19 +13,14 @@ def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_
             bin_file_path (str): path to the FOV bin and json files
             fov (string): name of fov bin file without the extension
             target (str): channel to use
-            save_csv (bool): whether to save to csv file or output data, defaults to True
             mass_start (float): beginning of mass integration range
             mass_stop (float): end of mass integration range
+            save_csv (bool): whether to save to csv file or output data, defaults to True
 
-        Return:
-            None | Dict[str, pd.DataFrame]: if save_csv if False, return mph metrics
             """
 
     # path validation checks
     io_utils.validate_paths(bin_file_path)
-
-
-    metric_csvs = {}
 
     # retrieve the data from bin file and store it output to individual csv
     pulse_height_file = fov +'-pulse_height.csv'
@@ -41,16 +36,10 @@ def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_
         'MPH': [median],
         'total_count': [count]})
 
-    metric_csvs[fov] = out_df
-
     # saves individual .csv  files to bin_file_path
     if not os.path.exists(os.path.join(bin_file_path, pulse_height_file)):
         if save_csv:
             out_df.to_csv(os.path.join(bin_file_path, pulse_height_file), index=False)
-
-    # return data
-    if not save_csv:
-        return metric_csvs
 
 
 def combine_mph_metrics(bin_file_path, output_dir):
