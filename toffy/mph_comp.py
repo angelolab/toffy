@@ -49,14 +49,12 @@ def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_
     # saves individual .csv  files to bin_file_path
     total_counts = bin_files.get_total_counts(bin_file_path)
     fov_times = get_estimated_time(bin_file_path)
-    fov_keys = list(fov_times.keys())
-    metric_csvs = {}
 
     # path validation checks
     io_utils.validate_paths(bin_file_path)
 
     # retrieve the data from bin file and store it output to individual csv
-    pulse_height_file = fov +'-pulse_height.csv'
+    pulse_height_file = fov + '-pulse_height.csv'
 
     # get median pulse heights
     median = bin_files.get_median_pulse_height(bin_file_path, fov,
@@ -68,7 +66,7 @@ def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_
         'fov': [fov],
         'MPH': [median],
         'total_count': [count],
-        'time': [fov_times[fov_keys[i - 1]]]})
+        'time': [fov_times[fov]]})
 
     # saves individual .csv  files to bin_file_path
     if not os.path.exists(os.path.join(bin_file_path, pulse_height_file)):
@@ -105,10 +103,12 @@ def combine_mph_metrics(bin_file_path, output_dir):
     # calculate cumulative sums of total counts
     fov_counts_cum = [fov_counts[j]+fov_counts[j-1] if j > 0 else fov_counts[j]
                       for j in range(len(fov_counts))]
+    estimated_time_cum = [estimated_time[j] + estimated_time[j - 1] if j > 0
+                          else estimated_time[j] for j in range(len(estimated_time))]
 
     # save csv to output_dir
-    combined_df = pd.DataFrame({'pulse_heights': pulse_heights, 'cum_total_count': fov_counts_cum
-                               'cum_total_time': estimated_time})
+    combined_df = pd.DataFrame({'pulse_heights': pulse_heights, 'cum_total_count': fov_counts_cum,
+                               'cum_total_time': estimated_time_cum})
     combined_df.to_csv(os.path.join(output_dir, 'total_count_vs_mph_data.csv'), index=False)
 
 
