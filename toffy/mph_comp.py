@@ -7,10 +7,11 @@ from mibi_bin_tools import bin_files
 from ark.utils import io_utils
 
 
-def compute_mph_metrics(bin_file_path, target, mass_start, mass_stop, save_csv=True):
+def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_csv=True):
     """Retrieves FOV total counts and median pulse heights for all bin files in the directory
         Args:
             bin_file_path (str): path to the FOV bin and json files
+            fov (string): name of fov bin file without the extension
             target (str): channel to use
             save_csv (bool): whether to save to csv file or output data, defaults to True
             mass_start (float): beginning of mass integration range
@@ -23,32 +24,29 @@ def compute_mph_metrics(bin_file_path, target, mass_start, mass_stop, save_csv=T
     # path validation checks
     io_utils.validate_paths(bin_file_path)
 
-    # list bin files in directory
-    fov_bins = io_utils.list_files(bin_file_path, ".bin")
-    fov_bins = io_utils.remove_file_extensions(fov_bins)
 
     metric_csvs = {}
 
-    # retrieve the data from each bin file and store it / output to individual csv
-    for i, file in enumerate(fov_bins):
-        pulse_height_file = 'fov-{}-pulse_height.csv'.format(i+1)
+    # retrieve the data from bin file and store it output to individual csv
+    pulse_height_file = fov +'-pulse_height.csv'
 
-        # get median pulse heights
-        median = bin_files.get_median_pulse_height(bin_file_path, 'fov-{}-scan-1'.format(i+1),
-                                                   target, (mass_start, mass_stop))
-        count = bin_files.get_total_counts(bin_file_path, [file])
+    # get median pulse heights
+    median = bin_files.get_median_pulse_height(bin_file_path, fov,
+                                               target, (mass_start, mass_stop))
+    count_dict = bin_files.get_total_counts(bin_file_path, [fov])
+    count = count_dict[fov]
 
-        out_df = pd.DataFrame({
-            'fov': [i+1],
-            'MPH': [median],
-            'total_count': [count]})
+    out_df = pd.DataFrame({
+        'fov': [fov],
+        'MPH': [median],
+        'total_count': [count]})
 
-        metric_csvs['fov-{}-scan-1'.format(i+1)] = out_df
+    metric_csvs[fov] = out_df
 
-        # saves individual .csv  files to bin_file_path
-        if not os.path.exists(os.path.join(bin_file_path, pulse_height_file)):
-            if save_csv:
-                out_df.to_csv(os.path.join(bin_file_path, pulse_height_file), index=False)
+    # saves individual .csv  files to bin_file_path
+    if not os.path.exists(os.path.join(bin_file_path, pulse_height_file)):
+        if save_csv:
+            out_df.to_csv(os.path.join(bin_file_path, pulse_height_file), index=False)
 
     # return data
     if not save_csv:
@@ -75,7 +73,7 @@ def combine_mph_metrics(bin_file_path, output_dir):
 
     # for each csv retrieve mph values
     for i, file in enumerate(fov_bins):
-        temp_df = pd.read_csv(os.path.join(bin_file_path, 'fov-{}-pulse_height.csv'.format(i+1)))
+        temp_df = pd.read_csv(os.path.join(bin_file_path, file + '-pulse_height.csv'))
         pulse_heights.append(temp_df['MPH'].values[0])
         fov_counts.append(temp_df['total_count'].values[0])
 
