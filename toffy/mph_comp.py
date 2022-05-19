@@ -23,7 +23,7 @@ def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_
     io_utils.validate_paths(bin_file_path)
 
     # retrieve the data from bin file and store it output to individual csv
-    pulse_height_file = fov +'-pulse_height.csv'
+    pulse_height_file = fov + '-pulse_height.csv'
 
     # get median pulse heights
     median = bin_files.get_median_pulse_height(bin_file_path, fov,
