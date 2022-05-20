@@ -151,4 +151,5 @@ def visualize_mph(mph_df, regression: bool, save_dir=None):
     # save figure
     if save_dir is not None:
         plt.savefig(os.path.join(save_dir, 'fov_vs_mph.jpg'))
+
     plt.show()
