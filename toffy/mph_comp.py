@@ -132,16 +132,13 @@ def visualize_mph(mph_df, regression: bool, save_dir=None):
     ax2 = ax1.twiny()
     x = mph_df['cum_total_count']
     y = mph_df['pulse_heights']
+    x_alt = mph_df['cum_total_time']
     ax1.scatter(x, y)
     ax1.set_xlabel('FOV cumulative count')
     ax1.set_ylabel('median pulse height')
     ax2.set_xlabel('estimated time (ms)')
-    ax1.set_xlim(0, max(x) + 10000)
-    ax2.set_xlim(0, max(x) + 10000)
-    ax2.set_xticks(x)
-    ax2.set_xticklabels(mph_df['cum_total_time'])
+    ax2.scatter(x_alt, y)
     plt.gcf().set_size_inches(18.5, 10.5)
-    plt.xlim(0, max(mph_df['cum_total_count']) + 10000)
 
     # plot regression line
     if regression:
@@ -149,7 +146,7 @@ def visualize_mph(mph_df, regression: bool, save_dir=None):
         x2 = np.array(mph_df['cum_total_count'])
         y2 = np.array(mph_df['pulse_heights'])
         m, b = np.polyfit(x2, y2, 1)
-        plt.plot(x2, m * x2 + b)
+        ax1.plot(x2, m * x2 + b)
 
     # save figure
     if save_dir is not None:
