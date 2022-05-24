@@ -8,34 +8,30 @@ from mibi_bin_tools import bin_files
 from ark.utils import io_utils
 
 
-def get_estimated_time(bin_file_path):
-    """Retrieve run time data for each bin file
+def get_estimated_time(bin_file_path, fov):
+    """Retrieve run time data for each fov json file
     Args:
         bin_file_path (str): path to the FOV bin and json files
+        fov (str): name of fov to get estimated time for
     Returns:
-        fov_times (dictionary): fov bin file names and estimated run time
+        fov_time (int): estimated run time for the given fov
     """
 
     # get json files in bin_file_path
-    fov_files = bin_files._find_bin_files(bin_file_path)
-    json_files = \
-        [(name, os.path.join(bin_file_path, fov['json'])) for name, fov in fov_files.items()]
-    fov_times = {}
+    json_file = io_utils.list_files(bin_file_path, fov+".json")
 
     # retrieve estimated time (frame dimensions x pixel dwell time)
-    for j in json_files:
-        with open(j[1]) as file:
-            run_metadata = json.load(file)
-            size = run_metadata.get('frameSize')
-            time = run_metadata.get('dwellTimeMillis')
-            estimated_time = int(size**2 * time)
-            fov_times[j[0]] = estimated_time
+    with open(os.path.join(bin_file_path, json_file[0])) as file:
+        run_metadata = json.load(file)
+        size = run_metadata.get('frameSize')
+        time = run_metadata.get('dwellTimeMillis')
+        estimated_time = int(size**2 * time)
 
-    return fov_times
+    return estimated_time
 
 
 def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_csv=True):
-    """Retrieves FOV total counts and median pulse heights for all bin files in the directory
+    """Retrieves FOV total counts, pulse heights, & estimated time for all fovs in the directory
         Args:
             bin_file_path (str): path to the FOV bin and json files
             fov (string): name of fov bin file without the extension
@@ -45,10 +41,6 @@ def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_
             save_csv (bool): whether to save to csv file or output data, defaults to True
 
             """
-    # retrieve the total counts and compute pulse heights for each FOV run file
-    # saves individual .csv  files to bin_file_path
-    total_counts = bin_files.get_total_counts(bin_file_path)
-    fov_times = get_estimated_time(bin_file_path)
 
     # path validation checks
     io_utils.validate_paths(bin_file_path)
@@ -56,17 +48,18 @@ def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_
     # retrieve the data from bin file and store it output to individual csv
     pulse_height_file = fov + '-pulse_height.csv'
 
-    # get median pulse heights
+    # get median pulse heights, counts, and time
     median = bin_files.get_median_pulse_height(bin_file_path, fov,
                                                target, (mass_start, mass_stop))
     count_dict = bin_files.get_total_counts(bin_file_path, [fov])
     count = count_dict[fov]
+    time = get_estimated_time(bin_file_path, fov)
 
     out_df = pd.DataFrame({
         'fov': [fov],
         'MPH': [median],
         'total_count': [count],
-        'time': [fov_times[fov]]})
+        'time': [time]})
 
     # saves individual .csv  files to bin_file_path
     if not os.path.exists(os.path.join(bin_file_path, pulse_height_file)):
