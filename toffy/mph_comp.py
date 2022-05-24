@@ -17,8 +17,13 @@ def get_estimated_time(bin_file_path, fov):
         fov_time (int): estimated run time for the given fov
     """
 
-    # get json files in bin_file_path
+    # path validation
+    io_utils.validate_paths(bin_file_path)
+
+    # get fov json file in bin_file_path
     json_file = io_utils.list_files(bin_file_path, fov+".json")
+    if len(json_file) == 0:
+        raise ValueError(f"The new FOV name supplied doesn't have a JSON file: {fov}")
 
     # retrieve estimated time (frame dimensions x pixel dwell time)
     with open(os.path.join(bin_file_path, json_file[0])) as file:
@@ -42,7 +47,7 @@ def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_
 
             """
 
-    # path validation checks
+    # path validation
     io_utils.validate_paths(bin_file_path)
 
     # retrieve the data from bin file and store it output to individual csv
