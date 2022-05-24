@@ -1,10 +1,37 @@
 import os
 import pandas as pd
 import numpy as np
+import json
 import matplotlib.pyplot as plt
 
 from mibi_bin_tools import bin_files
 from ark.utils import io_utils
+
+
+def get_estimated_time(bin_file_path):
+    """Retrieve run time data for each bin file
+    Args:
+        bin_file_path (str): path to the FOV bin and json files
+    Returns:
+        fov_times (dictionary): fov bin file names and estimated run time
+    """
+
+    # get json files in bin_file_path
+    fov_files = bin_files._find_bin_files(bin_file_path)
+    json_files = \
+        [(name, os.path.join(bin_file_path, fov['json'])) for name, fov in fov_files.items()]
+    fov_times = {}
+
+    # retrieve estimated time (frame dimensions x pixel dwell time)
+    for j in json_files:
+        with open(j[1]) as file:
+            run_metadata = json.load(file)
+            size = run_metadata.get('frameSize')
+            time = run_metadata.get('dwellTimeMillis')
+            estimated_time = int(size**2 * time)
+            fov_times[j[0]] = estimated_time
+
+    return fov_times
 
 
 def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_csv=True):
@@ -18,6 +45,10 @@ def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_
             save_csv (bool): whether to save to csv file or output data, defaults to True
 
             """
+    # retrieve the total counts and compute pulse heights for each FOV run file
+    # saves individual .csv  files to bin_file_path
+    total_counts = bin_files.get_total_counts(bin_file_path)
+    fov_times = get_estimated_time(bin_file_path)
 
     # path validation checks
     io_utils.validate_paths(bin_file_path)
@@ -34,7 +65,8 @@ def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_
     out_df = pd.DataFrame({
         'fov': [fov],
         'MPH': [median],
-        'total_count': [count]})
+        'total_count': [count],
+        'time': [fov_times[fov]]})
 
     # saves individual .csv  files to bin_file_path
     if not os.path.exists(os.path.join(bin_file_path, pulse_height_file)):
@@ -59,19 +91,24 @@ def combine_mph_metrics(bin_file_path, output_dir):
 
     pulse_heights = []
     fov_counts = []
+    estimated_time = []
 
     # for each csv retrieve mph values
     for i, file in enumerate(fov_bins):
         temp_df = pd.read_csv(os.path.join(bin_file_path, file + '-pulse_height.csv'))
         pulse_heights.append(temp_df['MPH'].values[0])
         fov_counts.append(temp_df['total_count'].values[0])
+        estimated_time.append(temp_df['time'].values[0])
 
     # calculate cumulative sums of total counts
     fov_counts_cum = [fov_counts[j]+fov_counts[j-1] if j > 0 else fov_counts[j]
                       for j in range(len(fov_counts))]
+    estimated_time_cum = [estimated_time[j] + estimated_time[j - 1] if j > 0
+                          else estimated_time[j] for j in range(len(estimated_time))]
 
     # save csv to output_dir
-    combined_df = pd.DataFrame({'pulse_heights': pulse_heights, 'cum_total_count': fov_counts_cum})
+    combined_df = pd.DataFrame({'pulse_heights': pulse_heights, 'cum_total_count': fov_counts_cum,
+                               'cum_total_time': estimated_time_cum})
     combined_df.to_csv(os.path.join(output_dir, 'total_count_vs_mph_data.csv'), index=False)
 
 
@@ -89,20 +126,30 @@ def visualize_mph(mph_df, regression: bool, save_dir=None):
 
     # visualize the median pulse heights
     plt.style.use('dark_background')
-    plt.title('FOV total counts vs median pulse height')
-    plt.scatter('cum_total_count', 'pulse_heights', data=mph_df)
-    plt.gca().set_xlabel('FOV cumulative count')
-    plt.gca().set_ylabel('median pulse hight')
+    # plt.title('FOV total counts vs median pulse height')
+    fig = plt.figure()
+    ax1 = fig.add_subplot(111)
+    ax2 = ax1.twiny()
+    x = mph_df['cum_total_count']
+    y = mph_df['pulse_heights']
+    x_alt = mph_df['cum_total_time']
+    ax1.scatter(x, y)
+    ax1.set_xlabel('FOV cumulative count')
+    ax1.set_ylabel('median pulse height')
+    ax2.set_xlabel('estimated time (ms)')
+    ax2.scatter(x_alt, y)
     plt.gcf().set_size_inches(18.5, 10.5)
-    plt.xlim(0, max(mph_df['cum_total_count']) + 10000)
 
     # plot regression line
     if regression:
-        x = np.array(mph_df['cum_total_count'])
-        y = np.array(mph_df['pulse_heights'])
-        m, b = np.polyfit(x, y, 1)
-        plt.plot(x, m * x + b)
+        # plot with regression line
+        x2 = np.array(mph_df['cum_total_count'])
+        y2 = np.array(mph_df['pulse_heights'])
+        m, b = np.polyfit(x2, y2, 1)
+        ax1.plot(x2, m * x2 + b)
 
     # save figure
     if save_dir is not None:
         plt.savefig(os.path.join(save_dir, 'fov_vs_mph.jpg'))
+
+    plt.show()
