@@ -109,7 +109,10 @@ def combine_mph_metrics(bin_file_path, output_dir):
     # save csv to output_dir
     combined_df = pd.DataFrame({'pulse_heights': pulse_heights, 'cum_total_count': fov_counts_cum,
                                'cum_total_time': estimated_time_cum})
-    combined_df.to_csv(os.path.join(output_dir, 'total_count_vs_mph_data.csv'), index=False)
+    file_path = os.path.join(output_dir, 'total_count_vs_mph_data.csv')
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    combined_df.to_csv(file_path, index=False)
 
 
 def visualize_mph(mph_df, regression: bool, save_dir=None):
