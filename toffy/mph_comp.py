@@ -23,7 +23,7 @@ def get_estimated_time(bin_file_path, fov):
     # get fov json file in bin_file_path
     json_file = io_utils.list_files(bin_file_path, fov+".json")
     if len(json_file) == 0:
-        raise ValueError(f"The new FOV name supplied doesn't have a JSON file: {fov}")
+        raise FileNotFoundError(f"The FOV name supplied doesn't have a JSON file: {fov}")
 
     # retrieve estimated time (frame dimensions x pixel dwell time)
     with open(os.path.join(bin_file_path, json_file[0])) as file:
@@ -50,13 +50,18 @@ def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_
     # path validation
     io_utils.validate_paths(bin_file_path)
 
-    # retrieve the data from bin file and store it output to individual csv
+    # retrieve the data from bin file and output to individual csv
     pulse_height_file = fov + '-pulse_height.csv'
 
-    # get median pulse heights, counts, and time
-    median = bin_files.get_median_pulse_height(bin_file_path, fov,
-                                               target, (mass_start, mass_stop))
-    count_dict = bin_files.get_total_counts(bin_file_path, [fov])
+    try:
+        median = bin_files.get_median_pulse_height(bin_file_path, fov,
+                                                   target, (mass_start, mass_stop))
+        count_dict = bin_files.get_total_counts(bin_file_path, [fov])
+    except FileNotFoundError:
+        raise FileNotFoundError(f"The FOV name supplied doesn't have a JSON file: {fov}")
+    except ValueError:
+        raise ValueError(f"The target name is invalid: {target}")
+
     count = count_dict[fov]
     time = get_estimated_time(bin_file_path, fov)
 
