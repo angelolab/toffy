@@ -118,7 +118,7 @@ def test_validate_inputs():
         # check that images and channels are the same
         input_dict_img_name = copy.copy(input_dict)
         input_dict_img_name['acquired_targets'] = chans + ['chan15']
-        with pytest.raises(ValueError, match='image files and list listed channels'):
+        with pytest.raises(ValueError, match='provided for list listed channels'):
             rosetta.validate_inputs(**input_dict_img_name)
 
         # check that input masses are valid

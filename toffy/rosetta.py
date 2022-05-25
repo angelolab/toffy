@@ -105,11 +105,10 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
     verify_same_elements(acquired_masses=acquired_masses, compensation_masses=all_masses)
 
     # check first FOV to make sure all channels are present
-    test_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=fovs[0:1],
-                                    channels=acquired_targets, dtype='float32',
+    test_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=fovs[0:1], dtype='float32',
                                     img_sub_folder=raw_data_sub_folder)
 
-    verify_same_elements(image_files=test_data.channels.values, listed_channels=acquired_targets)
+    verify_in_list(listed_channels=acquired_targets, image_files=test_data.channels.values)
 
     # make sure supplied masses are present
     if input_masses is not None:
