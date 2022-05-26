@@ -41,7 +41,7 @@ def compute_mph_metrics():
     start_mass = -0.3
     stop_mass = 0.0
 
-    # bad run file data should raise an error
+    # bad directory path should raise an error
     bad_path = os.path.join("data", "not-a-folder")
     with pytest.raises(ValueError):
         mph.compute_mph_metrics(bad_path, fov_name, target_name, start_mass, stop_mass)
@@ -74,6 +74,16 @@ def compute_mph_metrics():
 
 def combine_mph_metrics():
     bin_file_path = os.path.join("data", "tissue")
+    bad_path = os.path.join("data", "not-a-folder")
+
+    # bad bin file directory path should raise an error
+    with pytest.raises(ValueError):
+        mph.combine_mph_metrics(bad_path, bin_file_path)
+
+    # bad output directory path should raise an error
+    with pytest.raises(ValueError):
+        mph.combine_mph_metrics(bin_file_path, bad_path)
+
     data1 = pd.DataFrame([{
         'fov': 'fov-1-scan-1',
         'MPH': 2222,
