@@ -116,3 +116,25 @@ def combine_mph_metrics():
     os.remove(csv_path)
     os.remove(os.path.join(bin_file_path, 'fov-1-scan-1-pulse_height.csv'))
     os.remove(os.path.join(bin_file_path, 'fov-2-scan-1-pulse_height.csv'))
+
+
+def visualize_mph():
+    bad_path = os.path.join("data", "not-a-folder")
+    mph_data = pd.DataFrame({
+            'pulse_heights': [2222, 3800],
+            'cum_total_count': [72060, 146859],
+            'cum_total_time': [512, 1024],
+        }, index=[0, 1])
+
+    # bad output directory path should raise an error
+    with pytest.raises(ValueError):
+        mph.visualize_mph(mph_data, False, bad_path)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # test without saving
+        mph.visualize_mph(mph_data, True)
+        assert not os.path.exists(os.path.join(temp_dir, 'fov_vs_mph.jpg'))
+
+        # test with saving
+        mph.visualize_mph(mph_data, True, save_dir=temp_dir)
+        assert os.path.exists(os.path.join(temp_dir, 'fov_vs_mph.jpg'))
