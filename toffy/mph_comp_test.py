@@ -68,3 +68,41 @@ def compute_mph_metrics():
         }])
     csv_data = pd.read_csv(csv_path)
     assert csv_data.equals(mph_data)
+
+    os.remove('fov-1-scan-1-pulse_height.csv')
+
+
+def combine_mph_metrics():
+    bin_file_path = os.path.join("data", "tissue")
+    data1 = pd.DataFrame([{
+        'fov': 'fov-1-scan-1',
+        'MPH': 2222,
+        'total_count': 72060,
+        'time': 512,
+    }])
+    data2 = pd.DataFrame([{
+        'fov': 'fov-2-scan-1',
+        'MPH': 3800,
+        'total_count': 74799,
+        'time': 512,
+    }])
+
+    data1.to_csv(os.path.join(bin_file_path, 'fov-1-scan-1-pulse_height.csv'), index=False)
+    data2.to_csv(os.path.join(bin_file_path, 'fov-2-scan-1-pulse_height.csv'), index=False)
+
+    combined_data = pd.DataFrame({
+            'pulse_heights': [2222, 3800],
+            'cum_total_count': [72060, 146859],
+            'cum_total_time': [512, 1024],
+        }, index=[0, 1])
+
+    # test successful data retrieval and csv output
+    mph.combine_mph_metrics(bin_file_path, bin_file_path)
+    csv_path = os.path.join(bin_file_path, 'total_count_vs_mph_data.csv')
+    csv_data = pd.read_csv(csv_path)
+    assert os.path.exists(csv_path)
+    assert csv_data.equals(combined_data)
+
+    os.remove(csv_path)
+    os.remove(os.path.join(bin_file_path, 'fov-1-scan-1-pulse_height.csv'))
+    os.remove(os.path.join(bin_file_path, 'fov-2-scan-1-pulse_height.csv'))
