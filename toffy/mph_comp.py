@@ -28,9 +28,13 @@ def get_estimated_time(bin_file_path, fov):
     # retrieve estimated time (frame dimensions x pixel dwell time)
     with open(os.path.join(bin_file_path, json_file[0])) as file:
         run_metadata = json.load(file)
-        size = run_metadata.get('frameSize')
-        time = run_metadata.get('dwellTimeMillis')
-        estimated_time = int(size**2 * time)
+        try:
+            size = run_metadata.get('frameSize')
+            time = run_metadata.get('dwellTimeMillis')
+            estimated_time = int(size**2 * time)
+        except TypeError:
+            raise KeyError("The FOV json file is missing one of the necessary keys "
+                           "(frameSize or dwellTimeMillis)")
 
     return estimated_time
 

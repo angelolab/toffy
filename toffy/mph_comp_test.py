@@ -1,8 +1,11 @@
 import pandas as pd
 import pytest
 import os
+import tempfile
+import json
 
 from toffy import mph_comp as mph
+
 
 def get_estimated_time():
     bad_path = os.path.join("data", "not-a-folder")
@@ -19,10 +22,15 @@ def get_estimated_time():
     with pytest.raises(FileNotFoundError):
         mph.get_estimated_time(good_path, bad_fov)
 
-    # bad run file data should raise an error
+    # bad FOV json file data should raise an error, no frameSize or dwellTimeMillis keys
+    bad_data = {'fov': {'not_frameSize': 0, 'not_dwellTimeMillis': 0}}
+    temp_json = tempfile.NamedTemporaryFile(mode="w", suffix='fov_name.json', delete=False)
+    temp_json.write(json.dumps(bad_data))
+    temp_dir = tempfile.gettempdir()
+    with pytest.raises(KeyError, match="missing one of the necessary keys"):
+        mph.get_estimated_time(temp_dir, 'fov_name')
 
-
-    # test sucessful time data retrieval
+    # test successful time data retrieval
     assert mph.get_estimated_time(good_path, good_fov) == 512
 
 
