@@ -164,5 +164,3 @@ def visualize_mph(mph_df, regression: bool, save_dir=None):
         if os.path.exists(file_path):
             os.remove(file_path)
         plt.savefig(file_path)
-
-    plt.show()
