@@ -1,5 +1,7 @@
+import copy
 import os
 import json
+import shutil
 
 import numpy as np
 import pandas as pd
@@ -8,7 +10,7 @@ import skimage.io as io
 from scipy.ndimage import gaussian_filter
 
 from ark.utils.load_utils import load_imgs_from_tree, load_imgs_from_dir
-from ark.utils.io_utils import list_folders, validate_paths
+from ark.utils.io_utils import list_folders, validate_paths, list_files
 from ark.utils.misc_utils import verify_same_elements, verify_in_list
 
 
@@ -37,7 +39,7 @@ def transform_compensation_json(json_path, comp_mat_path):
     comp_mat.to_csv(comp_mat_path)
 
 
-def compensate_matrix_simple(raw_inputs, comp_coeffs):
+def _compensate_matrix_simple(raw_inputs, comp_coeffs, out_indices):
     """Perform compensation on the raw data using the supplied compensation values
 
     Args:
@@ -45,6 +47,8 @@ def compensate_matrix_simple(raw_inputs, comp_coeffs):
             array with shape [fovs, rows, cols, channels] containing the image data
         comp_coeffs (numpy.ndarray):
             2D array of coefficients with source channels as rows and targets as columns
+        out_indices (numpy.ndarray):
+            which indices to generate compensated outputs for
 
     returns:
         numpy.ndarray: compensated copy of the raw inputs"""
@@ -52,7 +56,7 @@ def compensate_matrix_simple(raw_inputs, comp_coeffs):
     outputs = np.copy(raw_inputs)
 
     # loop over each channel and construct compensation values
-    for chan in range(raw_inputs.shape[-1]):
+    for chan in out_indices:
         chan_coeffs = comp_coeffs[:, chan]
 
         # convert from 1D to 4D for broadcasting
@@ -68,41 +72,30 @@ def compensate_matrix_simple(raw_inputs, comp_coeffs):
     # set negative values to zero
     outputs = np.where(outputs > 0, outputs, 0)
 
+    # subset on specified indices
+    outputs = outputs[..., out_indices]
+
     return outputs
 
 
-def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info_path,
-                          save_format='normalized', batch_size=10, gaus_rad=1, norm_const=100):
-    """Function to compensate MIBI data with a flow-cytometry style compensation matrix
+def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, input_masses,
+                    output_masses, all_masses, fovs, save_format, raw_data_sub_folder, batch_size,
+                    gaus_rad):
+    """Helper function to validate inputs for compensate_image_data
 
     Args:
-        raw_data_dir: path to directory containing raw images
-        comp_data_dir: path to directory where compensated images will be saved
-        comp_mat_path: path to compensation matrix, nxn with channel labels
-        panel_info_path: path to panel info file with 'masses' and 'targets' as columns
-        save_format: flag to control how the processed tifs are saved. Must be one of:
-            'raw': Direct output from the compensation matrix corresponding to number of ion events
-                detected per pixel. These will not be viewable in many image processing programs
-            'normalized': all images are divided by 100 to enable visualization. This transform
-                has no effect on downstream analysis as it preserves relative expression values
-            'both': saves both 'raw' and 'normalized' images
-        batch_size: number of images to process at a time
-        gaus_rad: radius for blurring image data. Passing 0 will result in no blurring
-        norm_const: constant used for normalization if save_format == 'normalized'
-    """
-
-    validate_paths([raw_data_dir, comp_data_dir, comp_mat_path, panel_info_path],
-                   data_prefix=False)
-
-    # get list of all fovs
-    fovs = list_folders(raw_data_dir, substrs=['fov'])
-
-    # load csv files
-    comp_mat = pd.read_csv(comp_mat_path, index_col=0)
-    panel_info = pd.read_csv(panel_info_path)
-    acquired_masses = panel_info['masses'].values
-    acquired_targets = panel_info['targets'].values
-    all_masses = comp_mat.columns.values.astype('int')
+        raw_data_dir (str): path to raw data
+        comp_mat (pd.DataFrame): compensation matrix
+        acquired_masses (list): masses in the supplied panel
+        acquired_targets (list): targets in the supplied panel
+        input_masses (list): masses to use for compensation
+        output_masses (list): masses to compensate
+        all_masses (list): masses in the compensation matrix
+        fovs (list): fovs in the raw_data_dir
+        save_format (str): format to save the data
+        raw_data_sub_folder (string): sub-folder for raw images
+        batch_size (int): number of images to process concurrently
+        gaus_rad (int): radius for smoothing"""
 
     # make sure panel is in increasing order
     if not np.all(acquired_masses == sorted(acquired_masses)):
@@ -112,20 +105,128 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
     verify_same_elements(acquired_masses=acquired_masses, compensation_masses=all_masses)
 
     # check first FOV to make sure all channels are present
-    test_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=fovs[0:1],
-                                    channels=acquired_targets, dtype='float32')
+    test_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=fovs[0:1], dtype='float32',
+                                    img_sub_folder=raw_data_sub_folder)
 
-    verify_same_elements(image_files=test_data.channels.values, listed_channels=acquired_targets)
+    verify_in_list(listed_channels=acquired_targets, image_files=test_data.channels.values)
+
+    # make sure supplied masses are present
+    if input_masses is not None:
+        verify_in_list(input_masses=input_masses, compensation_masses=all_masses)
+
+    if output_masses is not None:
+        verify_in_list(output_masses=output_masses, compensation_masses=all_masses)
+
+    # make sure compensation matrix has valid values
+    if comp_mat.isna().values.any():
+        raise ValueError('Compensation matrix must contain a value for every field; check to '
+                         'make sure there are no missing values')
 
     # check for valid save_formats
     allowed_formats = ['raw', 'normalized', 'both']
     verify_in_list(save_format=save_format, allowed_formats=allowed_formats)
 
-    if batch_size < 1 or not isinstance(batch_size, int):
+    if not isinstance(batch_size, int) or batch_size < 1:
         raise ValueError('batch_size parameter must be a positive integer')
 
-    if gaus_rad < 0 or not isinstance(gaus_rad, int):
+    if not isinstance(gaus_rad, int) or gaus_rad < 0:
         raise ValueError('gaus_rad parameter must be a non-negative integer')
+
+
+def flat_field_correction(img, gaus_rad=100):
+    """Apply flat field correction to an image
+
+    Args:
+        img (np.ndarray): image to be corrected
+        gaus_rad (int): radius for smoothing
+
+    Returns:
+        np.ndarray: corrected image """
+
+    # smooth image
+    img_smooth = gaussian_filter(img, sigma=gaus_rad)
+
+    # calculate mean to preserve overall intensity
+    img_mean = np.mean(img)
+
+    # apply correction
+    img_corr = (img / img_smooth) * img_mean
+
+    return img_corr
+
+
+def get_masses_from_channel_names(names, panel_df):
+    """Get the weights for the given names from the input dataframe.
+
+    Args:
+        names (list): the channels whose masses will be returned
+        panel_df (pd.DataFrame): the panel containing the masses and channel names
+
+    Returns:
+        list: the masses for the given channels
+    """
+
+    verify_in_list(supplied_channel_names=names,
+                   panel_channel_names=panel_df['Target'].values)
+
+    weights = panel_df.loc[np.isin(panel_df['Target'], names)]['Mass'].values
+
+    return weights
+
+
+def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info,
+                          input_masses=None, output_masses=None, save_format='normalized',
+                          raw_data_sub_folder='', batch_size=10, gaus_rad=1, norm_const=100,
+                          ffc_channels=['chan_39']):
+    """Function to compensate MIBI data with a flow-cytometry style compensation matrix
+
+    Args:
+        raw_data_dir: path to directory containing raw images
+        comp_data_dir: path to directory where compensated images will be saved
+        comp_mat_path: path to compensation matrix, nxn with channel labels
+        panel_info: array with information about the panel
+        input_masses (list): masses from the compensation matrix to use for compensation. If None,
+            all masses will be used
+        output_masses (list): masses from the compensation matrix that will have tifs generated. If
+            None, all masses will be used
+        save_format: flag to control how the processed tifs are saved. Must be one of:
+            'raw': Direct output from the compensation matrix corresponding to number of ion events
+                detected per pixel. These will not be viewable in many image processing programs
+            'normalized': all images are divided by 100 to enable visualization. This transform
+                has no effect on downstream analysis as it preserves relative expression values
+            'both': saves both 'raw' and 'normalized' images
+        raw_data_sub_folder (string): sub-folder for raw images
+        batch_size: number of images to process at a time
+        gaus_rad: radius for blurring image data. Passing 0 will result in no blurring
+        norm_const: constant used for normalization if save_format == 'normalized'
+        ffc_channels (list): channels that need to be flat field corrected.
+    """
+
+    validate_paths([raw_data_dir, comp_data_dir, comp_mat_path],
+                   data_prefix=False)
+
+    # get list of all fovs
+    fovs = list_folders(raw_data_dir)
+
+    # load csv files
+    comp_mat = pd.read_csv(comp_mat_path, index_col=0)
+    acquired_masses = panel_info['Mass'].values
+    acquired_targets = panel_info['Target'].values
+    all_masses = comp_mat.columns.values.astype('int')
+
+    validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, input_masses,
+                    output_masses, all_masses, fovs, save_format, raw_data_sub_folder, batch_size,
+                    gaus_rad)
+
+    # set unused masses to zero
+    if input_masses is not None:
+        zero_idx = ~np.isin(all_masses, input_masses)
+        comp_mat.loc[zero_idx, :] = 0
+
+    if output_masses is None:
+        out_indices = np.arange(len(all_masses))
+    else:
+        out_indices = np.where(np.isin(all_masses, output_masses))[0]
 
     # loop over each set of FOVs in the batch
     for i in range(0, len(fovs), batch_size):
@@ -134,7 +235,8 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         # load batch of fovs
         batch_fovs = fovs[i: i + batch_size]
         batch_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=batch_fovs,
-                                         channels=acquired_targets, dtype='float32')
+                                         channels=acquired_targets, dtype='float32',
+                                         img_sub_folder=raw_data_sub_folder)
 
         # blur data
         if gaus_rad > 0:
@@ -143,8 +245,17 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                     batch_data[j, :, :, k] = gaussian_filter(batch_data[j, :, :, k],
                                                              sigma=gaus_rad)
 
-        comp_data = compensate_matrix_simple(raw_inputs=batch_data,
-                                             comp_coeffs=comp_mat.values)
+        # apply flat field correction if specified
+        if ffc_channels is not None:
+            verify_in_list(flat_field_correction_masses=ffc_channels, all_masses=acquired_targets)
+            for fov in batch_fovs:
+                for chan in ffc_channels:
+                    raw_img = batch_data.loc[fov, :, :, chan].values
+                    batch_data.loc[fov, :, :, chan] = flat_field_correction(raw_img)
+
+        comp_data = _compensate_matrix_simple(raw_inputs=batch_data,
+                                              comp_coeffs=comp_mat.values,
+                                              out_indices=out_indices)
 
         # save data
         for j in range(batch_data.shape[0]):
@@ -160,82 +271,214 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                 raw_folder = os.path.join(fov_folder, 'raw')
                 os.makedirs(raw_folder)
 
-            for k in range(batch_data.shape[-1]):
-                channel_name = batch_data.channels.values[k] + '.tiff'
+            # this may be only a subset of masses, based on output_masses
+            for idx, val in enumerate(out_indices):
+                channel_name = batch_data.channels.values[val] + '.tiff'
 
                 # save tifs to appropriate directories
                 if save_format in ['normalized', 'both']:
                     save_path = os.path.join(norm_folder, channel_name)
-                    io.imsave(save_path, comp_data[j, :, :, k] / norm_const, check_contrast=False)
+                    io.imsave(save_path, comp_data[j, :, :, idx] / norm_const,
+                              check_contrast=False)
 
                 if save_format in ['raw', 'both']:
                     save_path = os.path.join(raw_folder, channel_name)
-                    io.imsave(save_path, comp_data[j, :, :, k], check_contrast=False)
+                    io.imsave(save_path, comp_data[j, :, :, idx], check_contrast=False)
 
 
-def create_tiled_comparison(input_dir_list, output_dir):
+def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='normalized',
+                            channels=None):
     """Creates a tiled image comparing FOVs from all supplied runs for each channel.
 
     Args:
         input_dir_list: list of directories to compare
-        output_dir: directory where tifs will be saved"""
+        output_dir: directory where tifs will be saved
+        img_sub_folder: subfolder within each input directory to load images from
+        channels: list of channels to compare. """
 
-    # load images
-    dir_dict = {}
-    dir_shapes = []
-    for dir_name in input_dir_list:
-        dir_images = load_imgs_from_tree(dir_name)
-        dir_shapes.append(dir_images.shape)
-        dir_dict[dir_name] = dir_images
+    test_dir = input_dir_list[0]
+    test_fov = list_folders(test_dir)[0]
+    test_data = load_imgs_from_tree(data_dir=test_dir, fovs=[test_fov],
+                                    img_sub_folder=img_sub_folder, channels=channels)
 
-    if not np.all([shape == dir_shapes[0] for shape in dir_shapes]):
-        raise ValueError("All directories must contain the same number of fovs and images")
+    img_size = test_data.shape[1]
+    channels = test_data.channels.values
+    chanel_num = len(channels)
 
-    first_dir = dir_dict[input_dir_list[0]]
-    img_size = first_dir.shape[1]
-    fov_num = first_dir.shape[0]
+    # check that all dirs have the same number of fovs and correct subset of channels
+    fov_names = list_folders(input_dir_list[0])
+    for dir_name in input_dir_list[1:]:
+        current_folders = list_folders(dir_name)
+        verify_same_elements(fov_names1=fov_names, fov_names2=current_folders)
+        current_channels = load_imgs_from_tree(data_dir=dir_name,
+                                               img_sub_folder=img_sub_folder,
+                                               fovs=current_folders[:1]).channels.values
+        verify_in_list(specified_channels=channels, current_channels=current_channels)
+
+    fov_num = len(fov_names)
 
     # loop over each channel
-    for j in range(first_dir.shape[3]):
+    for j in range(chanel_num):
         # create tiled array of dirs x fovs
         tiled_image = np.zeros((img_size * len(input_dir_list),
-                                img_size * fov_num), dtype=first_dir.dtype)
+                                img_size * fov_num), dtype=test_data.dtype)
 
         # loop over each fov, and place into columns of tiled array
-        for i in range(first_dir.shape[0]):
+        for i in range(fov_num):
             start = i * img_size
             end = (i + 1) * img_size
 
-            # go through each of the directories and place in appropriate spot
+            # go through each of the directories, read in the images, and place in the right spot
             for idx, key in enumerate(input_dir_list):
+                dir_data = load_imgs_from_tree(key, channels=channels[j:j + 1],
+                                               img_sub_folder=img_sub_folder)
                 tiled_image[(img_size * idx):(img_size * (idx + 1)), start:end] = \
-                    dir_dict[key].values[i, :, :, j]
+                    dir_data.values[i, :, :, 0]
 
-        io.imsave(os.path.join(output_dir, first_dir.channels.values[j] + '_comparison.tiff'),
-                  tiled_image)
+        io.imsave(os.path.join(output_dir, channels[j] + '_comparison.tiff'),
+                  tiled_image, check_contrast=False)
 
 
-def create_rosetta_matrices(default_matrix, multipliers=[0.5, 1, 1.5], channels=None):
-    """Creates a series of compensation matrices for evaluating coefficients
+def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, source_channel,
+                                      img_sub_folder='', percent_norm=98):
+    """Adds the specified source_channel to the first row of previously generated tiled images
 
     Args:
+        raw_img_dir (str): path to directory containing the raw images
+        tiled_img_dir (str): path to directory contained the tiled images
+        output_dir (str): path to directory where outputs will be saved
+        img_sub_folder (str): subfolder within raw_img_dir to load images from
+        source_channel (str): the channel which will be prepended to the tiled images
+        percent_norm (int): percentile normalization param to enable easy visualization"""
+
+    # load source images
+    source_imgs = load_imgs_from_tree(raw_img_dir, channels=[source_channel],
+                                      dtype='float32', img_sub_folder=img_sub_folder)
+
+    # convert stacked images to concatenated row
+    source_list = [source_imgs.values[fov, :, :, 0] for fov in range(source_imgs.shape[0])]
+    source_row = np.concatenate(source_list, axis=1)
+    perc_source = np.percentile(source_row, percent_norm)
+
+    # confirm tiled images have expected shape
+    tiled_images = list_files(tiled_img_dir)
+    test_file = io.imread(os.path.join(tiled_img_dir, tiled_images[0]))
+    if test_file.shape[1] != source_row.shape[1]:
+        raise ValueError('Tiled image {} has shape {}, but source image {} has'
+                         'shape {}'.format(tiled_images[0], test_file.shape, source_channel,
+                                           source_row.shape))
+
+    # loop through each tiled image, prepend source row, and save
+    for tile_name in tiled_images:
+        current_tile = io.imread(os.path.join(tiled_img_dir, tile_name))
+
+        # normalize the source row to be in the same range as the current tile
+        perc_tile = np.percentile(current_tile, percent_norm)
+        perc_ratio = perc_source / perc_tile
+        normalized_source = source_row / perc_ratio
+
+        # combine together and save
+        combined_tile = np.concatenate([normalized_source, current_tile])
+        save_name = tile_name.split('.tiff')[0] + '_source_' + source_channel + '.tiff'
+        io.imsave(os.path.join(output_dir, save_name), combined_tile, check_contrast=False)
+
+
+def replace_with_intensity_image(run_dir, channel='Au', replace=True, fovs=None):
+    """Replaces the specified channel with the intensity image of that channel
+
+    Args:
+        run_dir (str): directory containing extracted run data
+        channel (str): the channel whose intensity image will be copied over
+        fovs (list or None): the subset of fovs within run_dir which will have their
+            intensity image copied over. If None, applies to all fovs
+        replace (bool): controls whether intensity image is copied over with _intensity appended
+            or if it will overwrite existing channel"""
+
+    all_fovs = list_folders(run_dir)
+
+    # ensure supplied folders are valid
+    if fovs is not None:
+        verify_in_list(specified_folders=fovs, all_folders=all_fovs)
+        all_fovs = fovs
+
+    # ensure channel is valid
+    test_file = os.path.join(run_dir, all_fovs[0], 'intensities', channel + '_intensity.tiff')
+    if not os.path.exists(test_file):
+        raise FileNotFoundError('Could not find specified file {}'.format(test_file))
+
+    # loop through each fov
+    for fov in all_fovs:
+        # control whether intensity image overwrites previous image or is copied with new name
+        if replace:
+            suffix = '.tiff'
+        else:
+            suffix = '_intensity.tiff'
+        shutil.copy(os.path.join(run_dir, fov, 'intensities', channel + '_intensity.tiff'),
+                    os.path.join(run_dir, fov, channel + suffix))
+
+
+def remove_sub_dirs(run_dir, sub_dirs, fovs=None):
+    """Removes specified sub-folders from fovs in a run
+
+    Args:
+        run_dir (str): path to directory containing fovs
+        sub_dirs (list): directories to remove from each fov
+        fovs (list): list of fovs to remove dirs from, otherwise removes from all fovs
+    """
+
+    all_fovs = list_folders(run_dir)
+
+    # ensure supplied folders are valid
+    if fovs is not None:
+        verify_in_list(specified_folders=fovs, all_folders=all_fovs)
+        all_fovs = fovs
+
+    # ensure all sub_dirs exist
+    for sub_dir in sub_dirs:
+        if not os.path.isdir(os.path.join(run_dir, all_fovs[0], sub_dir)):
+            raise ValueError("Did not find {} in {}".format(sub_dir, all_fovs[0]))
+
+    for fov in all_fovs:
+        for sub_dir in sub_dirs:
+            shutil.rmtree(os.path.join(run_dir, fov, sub_dir))
+
+
+def create_rosetta_matrices(default_matrix, save_dir, multipliers, masses=None):
+    """Creates a series of compensation matrices for evaluating coefficients
+    Args:
         default_matrix (str): path to the rosetta matrix to use as the default
+        save_dir (str): output directory
         multipliers (list): the range of values to multiply the default matrix by
             to get new coefficients
-        channels (list | None): an optional list of channels to include in the multiplication. If
-            only a subset of channels are specified, other channels will retain their values
-            in all iterations. If None, all channels are included"""
+        masses (list | None): an optional list of masses to include in the multiplication. If
+            only a subset of masses are specified, other masses will retain their values
+            in all iterations. If None, all masses are included
+    """
+    # Read input matrix
+    comp_matrix = pd.read_csv(default_matrix, index_col=0)
+    comp_masses = comp_matrix.index
 
-    # TODO: Cameron will make this function
+    # Check that all entries of comp_matrix are numeric
+    if not np.issubdtype(comp_matrix.values.dtype, np.number):
+        raise ValueError('Compensation matrix must include only numeric entries')
 
-    # step 1: read in the default matrix
+    # Check channel input
+    if masses is None:
+        masses = comp_masses
+    else:
+        try:
+            masses = [int(x) for x in masses]
+        except ValueError:
+            raise ValueError("Masses must be provided as integers")
+        verify_in_list(specified_masses=masses, rosetta_masses=comp_masses)
 
-    # step 2: figure out which channels will be modified
+    # loop over each specified multiplier and create separate compensation matrix
+    for i in multipliers:
+        mult_matrix = copy.deepcopy(comp_matrix)
 
-    # step 3: loop over each of the multipliers
-
-    # step 4: modify the appropriate channels based on mulitiplier
-
-    # step 5: save the modified matrix as original_name_multiplier
-
-    pass
+        for j in range(len(comp_matrix)):
+            # multiply specified channel by multiplier
+            if comp_masses[j] in masses:
+                mult_matrix.iloc[j, :] = comp_matrix.iloc[j, :] * i
+        base_name = os.path.basename(default_matrix).split('.csv')[0]
+        mult_matrix.to_csv(os.path.join(save_dir, base_name + '_mult_%s.csv' % (str(i))))
