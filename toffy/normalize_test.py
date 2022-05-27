@@ -49,10 +49,10 @@ def test_write_counts_per_mass(mocker):
     with tempfile.TemporaryDirectory() as temp_dir:
         masses = [88, 89, 90]
         expected_counts = [16 * i for i in range(1, len(masses) + 1)]
-        mocker.patch('toffy.watcher_functions.extract_bin_files', mocked_extract_bin_file)
+        mocker.patch('toffy.normalize.extract_bin_files', mocked_extract_bin_file)
 
-        normalize.write_counts_per_mass(base_dir=temp_dir, fov='fov1',
-                                                masses=masses)
+        normalize.write_counts_per_mass(base_dir=temp_dir, output_dir=temp_dir, fov='fov1',
+                                        masses=masses)
         output = pd.read_csv(os.path.join(temp_dir, 'fov1_channel_counts.csv'))
         assert len(output) == len(masses)
         assert set(output['mass'].values) == set(masses)
@@ -62,9 +62,10 @@ def test_write_counts_per_mass(mocker):
 def test_write_mph_per_mass(mocker):
     with tempfile.TemporaryDirectory() as temp_dir:
         masses = [88, 89, 90]
-        mocker.patch('toffy.watcher_functions.get_median_pulse_height', mocked_pulse_height)
+        mocker.patch('toffy.normalize.get_median_pulse_height', mocked_pulse_height)
 
-        normalize.write_mph_per_mass(base_dir=temp_dir, fov='fov1', masses=masses)
+        normalize.write_mph_per_mass(base_dir=temp_dir, output_dir=temp_dir, fov='fov1',
+                                     masses=masses)
         output = pd.read_csv(os.path.join(temp_dir, 'fov1_pulse_heights.csv'))
         assert len(output) == len(masses)
         assert set(output['mass'].values) == set(masses)
@@ -162,10 +163,11 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
         for i in range(len(dir_names)):
             full_path = os.path.join(temp_dir, dir_names[i])
             os.makedirs(full_path)
-            mph_dfs[i].to_csv(os.path.join(full_path, 'pulse_heights_combined.csv'), index=False)
+            mph_dfs[i].to_csv(os.path.join(full_path, 'fov-1-scan-1_pulse_heights.csv'),
+                              index=False)
             all_mph.extend(mph_dfs[i]['pulse_height'])
 
-            count_dfs[i].to_csv(os.path.join(full_path, 'channel_counts_combined.csv'),
+            count_dfs[i].to_csv(os.path.join(full_path, 'fov-1-scan-1_channel_counts.csv'),
                                 index=False)
             all_counts.extend(count_dfs[i]['channel_count'])
 

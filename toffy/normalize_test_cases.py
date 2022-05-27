@@ -18,24 +18,15 @@ class TuningCurveFiles:
         for dir in dirs:
 
             # create lists to hold values from each fov in directory
-            mph_vals = []
-            channel_counts = []
-            fovs = []
-            num_fovs = np.random.randint(1, 5)
-
-            for i in range(1, num_fovs + 1):
-                # initialize random columns for each fov
-                mph_vals.extend(np.random.randint(1, 200, len(masses)))
-                channel_counts.extend(np.random.randint(3, 100, len(masses)))
-                fovs.extend(np.repeat(i, len(masses)))
+            mph_vals = np.random.randint(1, 200, len(masses))
+            channel_counts = np.random.randint(3, 100, len(masses))
+            fovs = np.repeat(1, len(masses))
 
             # create dfs from current directory
-            mph_df = pd.DataFrame({'mass': np.tile(masses, num_fovs),
-                                   'fov': fovs, 'pulse_height': mph_vals})
+            mph_df = pd.DataFrame({'mass': masses, 'fov': fovs, 'pulse_height': mph_vals})
 
             # count_df has fields in different order to check that matching is working
-            count_df = pd.DataFrame({'mass': np.tile(masses, num_fovs),
-                                     'channel_count': channel_counts, 'fov': fovs})
+            count_df = pd.DataFrame({'mass':masses,'channel_count': channel_counts, 'fov': fovs})
 
             mph_dfs.append(mph_df)
             count_dfs.append(count_df)

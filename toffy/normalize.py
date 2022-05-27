@@ -18,11 +18,12 @@ from mibi_bin_tools.panel_utils import make_panel
 from toffy.detector_sweep import parse_sweep_parameters
 
 
-def write_counts_per_mass(base_dir, fov, masses, integration_window=(0.5, 0.5)):
+def write_counts_per_mass(base_dir, output_dir, fov, masses, integration_window=(0.5, 0.5)):
     """Records the total counts per mass for the specified FOV
 
     Args:
         base_dir (str): the directory containing the FOV
+        output_dir (str): the directory where the csv file will be saved
         fov (str): the name of the fov to extract
         masses (list): the list of masses to extract counts from
         integration_window (tuple): start and stop offset for integrating mass peak
@@ -44,14 +45,15 @@ def write_counts_per_mass(base_dir, fov, masses, integration_window=(0.5, 0.5)):
     out_df = pd.DataFrame({'mass': masses,
                            'fov': fovs,
                            'channel_count': channel_count})
-    out_df.to_csv(os.path.join(base_dir, fov + '_channel_counts.csv'), index=False)
+    out_df.to_csv(os.path.join(output_dir, fov + '_channel_counts.csv'), index=False)
 
 
-def write_mph_per_mass(base_dir, fov, masses, integration_window=(0.5, 0.5)):
+def write_mph_per_mass(base_dir, output_dir, fov, masses, integration_window=(0.5, 0.5)):
     """Records the mean pulse height (MPH) per mass for the specified FOV
 
     Args:
         base_dir (str): the directory containing the FOV
+        output_dir (str): the directory where the csv file will be saved
         fov (str): the name of the fov to extract
         masses (list): the list of masses to extract MPH from
         integration_window (tuple): start and stop offset for integrating mass peak
@@ -70,7 +72,7 @@ def write_mph_per_mass(base_dir, fov, masses, integration_window=(0.5, 0.5)):
     out_df = pd.DataFrame({'mass': masses,
                            'fov': fovs,
                            'pulse_height': mph_vals})
-    out_df.to_csv(os.path.join(base_dir, fov + '_pulse_heights.csv'), index=False)
+    out_df.to_csv(os.path.join(output_dir, fov + '_pulse_heights.csv'), index=False)
 
 
 def create_objective_function(obj_func):
@@ -216,17 +218,12 @@ def combine_tuning_curve_metrics(dir_list):
     # create list to hold all extracted data
     all_dirs = []
 
-    # loop through directories, and if present, multiple fovs within directories
+    # loop through each run folder
     for dir in dir_list:
 
-        # generate aggregated table if it doesn't already exist
-        for prefix in ['pulse_heights', 'channel_counts']:
-            if not os.path.exists(os.path.join(dir, prefix + '_combined.csv')):
-                combine_run_metrics(dir, prefix)
-
         # combine tables together
-        pulse_heights = pd.read_csv(os.path.join(dir, 'pulse_heights_combined.csv'))
-        channel_counts = pd.read_csv(os.path.join(dir, 'channel_counts_combined.csv'))
+        pulse_heights = pd.read_csv(os.path.join(dir, 'fov-1-scan-1_pulse_heights.csv'))
+        channel_counts = pd.read_csv(os.path.join(dir, 'fov-1-scan-1_channel_counts.csv'))
         combined = pulse_heights.merge(channel_counts, 'outer', on=['fov', 'mass'])
 
         if len(combined) != len(pulse_heights):
@@ -236,9 +233,6 @@ def combine_tuning_curve_metrics(dir_list):
 
         # add directory label and add to list
         combined['directory'] = dir
-        run_name = dir.split('/')[-1]
-        #voltage = parse_sweep_parameters(run_name).voltage
-        combined['voltage'] = run_name.split('PMMA')[-1]
         all_dirs.append(combined)
 
     # combine data from each dir together
@@ -253,7 +247,8 @@ def combine_tuning_curve_metrics(dir_list):
 
 
 def normalize_image_data(img_dir, output_dir, fov, pulse_heights, panel_info,
-                         norm_func_path, extreme_vals=(0.5, 1)):
+                         norm_func_path=os.path.join('..', 'toffy', 'norm_func.json'),
+                         extreme_vals=(0.5, 1)):
     """Normalizes image data based on median pulse height from the run and a tuning curve
 
     Args:
