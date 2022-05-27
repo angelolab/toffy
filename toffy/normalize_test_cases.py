@@ -26,7 +26,7 @@ class TuningCurveFiles:
             mph_df = pd.DataFrame({'mass': masses, 'fov': fovs, 'pulse_height': mph_vals})
 
             # count_df has fields in different order to check that matching is working
-            count_df = pd.DataFrame({'mass':masses,'channel_count': channel_counts, 'fov': fovs})
+            count_df = pd.DataFrame({'mass': masses, 'channel_count': channel_counts, 'fov': fovs})
 
             mph_dfs.append(mph_df)
             count_dfs.append(count_df)
