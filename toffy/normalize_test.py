@@ -1,10 +1,10 @@
 import json
-import os
-import pytest
-
 import numpy as np
+import os
 import pandas as pd
+import pytest
 import tempfile
+import xarray as xr
 
 from pytest_cases import parametrize_with_cases
 
@@ -13,6 +13,62 @@ from toffy import normalize
 import toffy.normalize_test_cases as test_cases
 
 parametrize = pytest.mark.parametrize
+
+
+def mocked_extract_bin_file(data_dir, include_fovs, panel, out_dir, intensities):
+    mass_num = len(panel)
+
+    base_img = np.ones((3, 4, 4))
+
+    all_imgs = []
+    for i in range(1, mass_num + 1):
+        all_imgs.append(base_img * i)
+
+    out_img = np.stack(all_imgs, axis=-1)
+
+    out_img = np.expand_dims(out_img, axis=0)
+
+    out_array = xr.DataArray(data=out_img,
+                             coords=[
+                                [include_fovs[0]],
+                                ['pulse', 'intensity', 'area'],
+                                np.arange(base_img.shape[1]),
+                                np.arange(base_img.shape[2]),
+                                panel['Target'].values,
+                             ],
+                             dims=['fov', 'type', 'x', 'y', 'channel'])
+    return out_array
+
+
+def mocked_pulse_height(data_dir, fov, panel, channel):
+    mass = panel['Mass'].values[0]
+    return mass * 2
+
+
+def test_write_counts_per_mass(mocker):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        masses = [88, 89, 90]
+        expected_counts = [16 * i for i in range(1, len(masses) + 1)]
+        mocker.patch('toffy.watcher_functions.extract_bin_files', mocked_extract_bin_file)
+
+        normalize.write_counts_per_mass(base_dir=temp_dir, fov='fov1',
+                                                masses=masses)
+        output = pd.read_csv(os.path.join(temp_dir, 'fov1_channel_counts.csv'))
+        assert len(output) == len(masses)
+        assert set(output['mass'].values) == set(masses)
+        assert set(output['channel_count'].values) == set(expected_counts)
+
+
+def test_write_mph_per_mass(mocker):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        masses = [88, 89, 90]
+        mocker.patch('toffy.watcher_functions.get_median_pulse_height', mocked_pulse_height)
+
+        normalize.write_mph_per_mass(base_dir=temp_dir, fov='fov1', masses=masses)
+        output = pd.read_csv(os.path.join(temp_dir, 'fov1_pulse_heights.csv'))
+        assert len(output) == len(masses)
+        assert set(output['mass'].values) == set(masses)
+        assert np.all(output['pulse_height'].values == output['mass'].values * 2)
 
 
 # TODO: move to toolbox repo once created
@@ -140,12 +196,12 @@ def test_normalize_image_data():
         os.makedirs(output_dir)
 
         # make fake data for testing
-        fovs, chans = test_utils.gen_fov_chan_names(num_fovs=2, num_chans=10)
+        fovs, chans = test_utils.gen_fov_chan_names(num_fovs=1, num_chans=10)
         filelocs, data_xr = test_utils.create_paired_xarray_fovs(
             data_dir, fovs, chans, img_shape=(10, 10), fills=True)
 
-        # weights of mph to norm const func: 0.1x + 0x^2 + 0.5
-        weights = [0.1, 0, 0.5]
+        # weights of mph to norm const func: 0.01x + 0x^2 + 0.5
+        weights = [0.01, 0, 0.5]
         name = 'poly_2'
         func_json = {'name': name, 'weights': weights}
         func_path = os.path.join(top_level_dir, 'norm_func.json')
@@ -153,31 +209,37 @@ def test_normalize_image_data():
         with open(func_path, 'w') as fp:
             json.dump(func_json, fp)
 
+        # create pulse heights file with linearly increasing values
         masses = np.array(range(1, len(chans) + 1))
         panel_info_file = pd.DataFrame({'Mass': masses, 'Target': chans})
+        mph_vals = np.arange(1, len(masses) + 1)
 
-        # fov1 mass to mph function: line with 20% slope starting at 1.2
-        mph_0 = masses * 0.2 + 1
-        fov_0 = ['fov0'] * len(chans)
+        pulse_heights = pd.DataFrame({'mass': masses,
+                                     'fov': ['fov0' for _ in masses],
+                                      'pulse_height': mph_vals})
 
-        # fov1 mass to mph function: line with 10% slope starting at 4
-        mph_1 = masses * .1 + 4
-        fov_1 = ['fov1'] * len(chans)
-
-        pulse_heights = pd.DataFrame({'mass': np.concatenate([masses, masses]),
-                                     'fov': fov_0 + fov_1,
-                                      'pulse_height': np.concatenate([mph_0, mph_1])})
-
-        normalize.normalize_image_data(data_dir, output_dir, fovs=None,
+        # normalize images
+        normalize.normalize_image_data(data_dir, output_dir, fov='fov0',
                                        pulse_heights=pulse_heights, panel_info=panel_info_file,
                                        norm_func_path=func_path)
 
-        normalized = load_utils.load_imgs_from_tree(output_dir, fovs=fovs, channels=chans)
+        normalized = load_utils.load_imgs_from_tree(output_dir, fovs=['fov0'], channels=chans)
 
-        # compute expected multipliers for each mass in each fov
-        mults = [mph_array * weights[0] + weights[2] for mph_array in [mph_0, mph_1]]
+        # compute expected multipliers for each mass
+        mults = mph_vals * weights[0] + weights[2]
 
-        for idx, mult in enumerate(mults):
-            mult = mult.reshape(1, 1, len(mult))
-            assert np.allclose(data_xr.values[idx, :, :, :],
-                               normalized.values[idx, :, :, :] * mult)
+        # check that image data has been rescaled appropriately
+        mults = mults.reshape(1, 1, len(mults))
+        assert np.allclose(data_xr.values, normalized.values * mults)
+
+        # check that warning is raised for out of range channels
+        mph_vals[-1] = 100
+        mph_vals[0] = -5
+        pulse_heights = pd.DataFrame({'mass': masses,
+                                      'fov': ['fov0' for _ in masses],
+                                      'pulse_height': mph_vals})
+        with pytest.warns(UserWarning, match='inspection for accuracy is recommended'):
+            normalize.normalize_image_data(data_dir, output_dir, fov='fov0',
+                                           pulse_heights=pulse_heights, panel_info=panel_info_file,
+                                           norm_func_path=func_path)
+

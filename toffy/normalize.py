@@ -12,7 +12,65 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from ark.utils import io_utils, load_utils
+from mibi_bin_tools.bin_files import extract_bin_files, get_median_pulse_height
+from mibi_bin_tools.panel_utils import make_panel
+
 from toffy.detector_sweep import parse_sweep_parameters
+
+
+def write_counts_per_mass(base_dir, fov, masses, integration_window=(0.5, 0.5)):
+    """Records the total counts per mass for the specified FOV
+
+    Args:
+        base_dir (str): the directory containing the FOV
+        fov (str): the name of the fov to extract
+        masses (list): the list of masses to extract counts from
+        integration_window (tuple): start and stop offset for integrating mass peak
+    """
+
+    start_offset, stop_offset = integration_window
+
+    # create panel with extraction criteria
+    panel = make_panel(mass=masses, low_range=start_offset, high_range=stop_offset)
+
+    array = extract_bin_files(data_dir=base_dir, out_dir=None, include_fovs=[fov], panel=panel,
+                              intensities=False)
+    # we only care about pulse counts, not intensities
+    array = array.loc[fov, 'pulse', :, :, :]
+    channel_count = np.sum(array, axis=(0, 1))
+
+    # create df to hold output
+    fovs = np.repeat(fov, len(masses))
+    out_df = pd.DataFrame({'mass': masses,
+                           'fov': fovs,
+                           'channel_count': channel_count})
+    out_df.to_csv(os.path.join(base_dir, fov + '_channel_counts.csv'), index=False)
+
+
+def write_mph_per_mass(base_dir, fov, masses, integration_window=(0.5, 0.5)):
+    """Records the mean pulse height (MPH) per mass for the specified FOV
+
+    Args:
+        base_dir (str): the directory containing the FOV
+        fov (str): the name of the fov to extract
+        masses (list): the list of masses to extract MPH from
+        integration_window (tuple): start and stop offset for integrating mass peak
+    """
+    start_offset, stop_offset = integration_window
+
+    # hold computed values
+    mph_vals = []
+
+    for mass in masses:
+        panel = make_panel(mass=mass, low_range=start_offset, high_range=stop_offset)
+        mph_vals.append(get_median_pulse_height(data_dir=base_dir, fov=fov, channel='targ0',
+                                                panel=panel))
+    # create df to hold output
+    fovs = np.repeat(fov, len(masses))
+    out_df = pd.DataFrame({'mass': masses,
+                           'fov': fovs,
+                           'pulse_height': mph_vals})
+    out_df.to_csv(os.path.join(base_dir, fov + '_pulse_heights.csv'), index=False)
 
 
 def create_objective_function(obj_func):
@@ -179,8 +237,8 @@ def combine_tuning_curve_metrics(dir_list):
         # add directory label and add to list
         combined['directory'] = dir
         run_name = dir.split('/')[-1]
-        voltage = parse_sweep_parameters(run_name).voltage
-        combined['voltage'] = voltage
+        #voltage = parse_sweep_parameters(run_name).voltage
+        combined['voltage'] = run_name.split('PMMA')[-1]
         all_dirs.append(combined)
 
     # combine data from each dir together
@@ -194,26 +252,20 @@ def combine_tuning_curve_metrics(dir_list):
     return all_data
 
 
-def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info,
-                         norm_func_path, mph_func_type='poly_2', extreme_vals=(0.5, 1)):
+def normalize_image_data(img_dir, output_dir, fov, pulse_heights, panel_info,
+                         norm_func_path, extreme_vals=(0.5, 1)):
     """Normalizes image data based on median pulse height from the run and a tuning curve
 
     Args:
-        data_dir (str): directory with the image data
+        img_dir (str): directory with the image data
         output_dir (str): directory where the normalized images will be saved
-        fovs (list or None): which fovs to include in normalization. If None, uses all fovs
-        pulse_heights (pd.DataFrame): pulse heights per mass per fov
+        fov (str): name of the fov to normalize
+        pulse_heights (pd.DataFrame): pulse heights per mass
         panel_info (pd.DataFrame): mapping between channels and masses
         norm_func_path (str): file containing the saved weights for the normalization function
-        mph_func_type (str): name of the function to use for fitting the mass vs mph curve
         extreme_vals (tuple): determines the range for norm vals which will raise a warning
     """
-
-    # get FOVs to loop over
-    if fovs is None:
-        fovs = io_utils.list_folders(data_dir)
-
-    # load calibration function
+    # load normalization function
     with open(norm_func_path, 'r') as cf:
         norm_json = json.load(cf)
 
@@ -224,33 +276,30 @@ def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info,
     # instantiate function which translates pulse height to a normalization constant
     norm_func = create_prediction_function(norm_name, norm_weights)
 
-    for fov in fovs:
-        output_fov_dir = os.path.join(output_dir, fov)
+    output_fov_dir = os.path.join(output_dir, fov)
+    if os.path.exists(output_fov_dir):
+        print("output directory {} already exists, "
+              "data will be overwritten".format(output_fov_dir))
+    else:
         os.makedirs(output_fov_dir)
 
-        # get images and pulse heights for current fov
-        images = load_utils.load_imgs_from_tree(data_dir, fovs=[fov], channels=channels,
-                                                dtype='float32')
-        fov_pulse_heights = pulse_heights.loc[pulse_heights['fov'] == fov, :]
+    # get images and pulse heights
+    images = load_utils.load_imgs_from_tree(img_dir, fovs=[fov], channels=channels,
+                                            dtype='float32')
 
-        # fit a function to model pulse height as a function of mass
-        mph_weights = fit_calibration_curve(x_vals=fov_pulse_heights['mass'].values,
-                                            y_vals=fov_pulse_heights['pulse_height'].values,
-                                            obj_func=mph_func_type)
+    # predict normalization based on MPH value for all masses
+    norm_vals = norm_func(pulse_heights['pulse_height'].values)
 
-        # predict mph for each mass in the panel
-        mph_func = create_prediction_function(name=mph_func_type, weights=mph_weights)
-        mph_vals = mph_func(panel_info['Mass'].values)
+    # check if any values are outside expected range
+    extreme_mask = np.logical_or(norm_vals < extreme_vals[0], norm_vals > extreme_vals[1])
+    if np.any(extreme_mask):
+        bad_channels = channels[extreme_mask]
+        warnings.warn('The following channel(s) had an extreme normalization value. Manual '
+                      'inspection for accuracy is recommended: {}'.format(bad_channels))
 
-        # predict normalization for each mph in the panel
-        norm_vals = norm_func(mph_vals)
+    # correct images and save
+    normalized_images = images / norm_vals.reshape((1, 1, 1, len(channels)))
 
-        if np.any(norm_vals < extreme_vals[0]) or np.any(norm_vals > extreme_vals[1]):
-            warnings.warn('The following FOV had an extreme normalization value. Manually '
-                          'inspection for accuracy is recommended: fov {}'.format(fov))
-
-        normalized_images = images / norm_vals.reshape((1, 1, 1, len(channels)))
-
-        for idx, chan in enumerate(channels):
-            io.imsave(os.path.join(output_fov_dir, chan + '.tiff'),
-                      normalized_images[0, :, :, idx], check_contrast=False)
+    for idx, chan in enumerate(channels):
+        io.imsave(os.path.join(output_fov_dir, chan + '.tiff'),
+                  normalized_images[0, :, :, idx], check_contrast=False)
