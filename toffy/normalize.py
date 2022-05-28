@@ -244,7 +244,7 @@ def combine_tuning_curve_metrics(dir_list):
     return all_data
 
 
-def normalize_image_data(img_dir, output_dir, fov, pulse_heights, panel_info,
+def normalize_image_data(img_dir, output_dir, fov, pulse_heights, panel_info, img_sub_folder='',
                          norm_func_path=os.path.join('..', 'toffy', 'norm_func.json'),
                          extreme_vals=(0.5, 1)):
     """Normalizes image data based on median pulse height from the run and a tuning curve
@@ -259,6 +259,11 @@ def normalize_image_data(img_dir, output_dir, fov, pulse_heights, panel_info,
         extreme_vals (tuple): determines the range for norm vals which will raise a warning
     """
     # load normalization function
+    if not os.path.exists(norm_func_path):
+        raise ValueError("No normalization function found. You will need to run "
+                         "section 3 of the 1_set_up_toffy.ipynb notebook to generate the "
+                         "necessary function before you can normalize your data")
+
     with open(norm_func_path, 'r') as cf:
         norm_json = json.load(cf)
 
@@ -278,7 +283,7 @@ def normalize_image_data(img_dir, output_dir, fov, pulse_heights, panel_info,
 
     # get images and pulse heights
     images = load_utils.load_imgs_from_tree(img_dir, fovs=[fov], channels=channels,
-                                            dtype='float32')
+                                            dtype='float32', img_sub_folder=img_sub_folder)
 
     # predict normalization based on MPH value for all masses
     norm_vals = norm_func(pulse_heights['pulse_height'].values)

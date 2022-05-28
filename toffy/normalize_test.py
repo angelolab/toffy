@@ -252,3 +252,9 @@ def test_normalize_image_data():
             normalize.normalize_image_data(data_dir, output_dir, fov='fov0',
                                            pulse_heights=pulse_heights, panel_info=panel_info_file,
                                            norm_func_path=func_path)
+
+        # bad function path
+        with pytest.raises(ValueError, match='No normalization function'):
+            normalize.normalize_image_data(data_dir, output_dir, fov='fov0',
+                                           pulse_heights=pulse_heights, panel_info=panel_info_file,
+                                           norm_func_path='bad_func_path')
