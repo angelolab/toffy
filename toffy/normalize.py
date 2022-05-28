@@ -15,8 +15,6 @@ from ark.utils import io_utils, load_utils
 from mibi_bin_tools.bin_files import extract_bin_files, get_median_pulse_height
 from mibi_bin_tools.panel_utils import make_panel
 
-from toffy.detector_sweep import parse_sweep_parameters
-
 
 def write_counts_per_mass(base_dir, output_dir, fov, masses, integration_window=(0.5, 0.5)):
     """Records the total counts per mass for the specified FOV
@@ -298,3 +296,7 @@ def normalize_image_data(img_dir, output_dir, fov, pulse_heights, panel_info,
     for idx, chan in enumerate(channels):
         io.imsave(os.path.join(output_fov_dir, chan + '.tiff'),
                   normalized_images[0, :, :, idx], check_contrast=False)
+
+    log_df = pd.DataFrame({'channels': channels,
+                           'norm_vals': norm_vals})
+    log_df.to_csv(os.path.join(output_fov_dir, 'normalization_coefs.csv'), index=False)

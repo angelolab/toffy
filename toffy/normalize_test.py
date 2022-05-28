@@ -47,13 +47,15 @@ def mocked_pulse_height(data_dir, fov, panel, channel):
 
 def test_write_counts_per_mass(mocker):
     with tempfile.TemporaryDirectory() as temp_dir:
+        out_dir = os.path.join(temp_dir, 'out_dir')
+        os.makedirs(out_dir)
         masses = [88, 89, 90]
         expected_counts = [16 * i for i in range(1, len(masses) + 1)]
         mocker.patch('toffy.normalize.extract_bin_files', mocked_extract_bin_file)
 
-        normalize.write_counts_per_mass(base_dir=temp_dir, output_dir=temp_dir, fov='fov1',
+        normalize.write_counts_per_mass(base_dir=temp_dir, output_dir=out_dir, fov='fov1',
                                         masses=masses)
-        output = pd.read_csv(os.path.join(temp_dir, 'fov1_channel_counts.csv'))
+        output = pd.read_csv(os.path.join(out_dir, 'fov1_channel_counts.csv'))
         assert len(output) == len(masses)
         assert set(output['mass'].values) == set(masses)
         assert set(output['channel_count'].values) == set(expected_counts)
@@ -61,12 +63,14 @@ def test_write_counts_per_mass(mocker):
 
 def test_write_mph_per_mass(mocker):
     with tempfile.TemporaryDirectory() as temp_dir:
+        out_dir = os.path.join(temp_dir, 'out_dir')
+        os.makedirs(out_dir)
         masses = [88, 89, 90]
         mocker.patch('toffy.normalize.get_median_pulse_height', mocked_pulse_height)
 
-        normalize.write_mph_per_mass(base_dir=temp_dir, output_dir=temp_dir, fov='fov1',
+        normalize.write_mph_per_mass(base_dir=temp_dir, output_dir=out_dir, fov='fov1',
                                      masses=masses)
-        output = pd.read_csv(os.path.join(temp_dir, 'fov1_pulse_heights.csv'))
+        output = pd.read_csv(os.path.join(out_dir, 'fov1_pulse_heights.csv'))
         assert len(output) == len(masses)
         assert set(output['mass'].values) == set(masses)
         assert np.all(output['pulse_height'].values == output['mass'].values * 2)
@@ -226,6 +230,7 @@ def test_normalize_image_data():
                                        norm_func_path=func_path)
 
         normalized = load_utils.load_imgs_from_tree(output_dir, fovs=['fov0'], channels=chans)
+        log_file = pd.read_csv(os.path.join(output_dir, 'fov0', 'normalization_coefs.csv'))
 
         # compute expected multipliers for each mass
         mults = mph_vals * weights[0] + weights[2]
@@ -233,6 +238,9 @@ def test_normalize_image_data():
         # check that image data has been rescaled appropriately
         mults = mults.reshape(1, 1, len(mults))
         assert np.allclose(data_xr.values, normalized.values * mults)
+
+        # check that log file accurately recorded mults
+        assert np.allclose(log_file['norm_vals'].values, mults)
 
         # check that warning is raised for out of range channels
         mph_vals[-1] = 100
