@@ -1323,7 +1323,7 @@ def generate_fov_rectangle(fov_info, region_colors, stage_optical_coreg_params, 
 
     Args:
         fov_info (dict):
-            Defines the name, centroid, and size of the FOV in hte tiled region
+            Defines the name, centroid, and size of the FOV in the tiled region
         region_colors (dict):
             Maps each FOV to its respective color
         stage_optical_coreg_params (dict):
