@@ -360,13 +360,14 @@ def test_generate_tiled_region_fov_list(moly_path, moly_roi_setting,
                                         moly_interval_setting, moly_interval_value,
                                         moly_insert_indices, roi_1_end_pos, randomize_setting):
     # define a set of fovs defining the upper-left corners of each region
+    # NOTE: also tests functionality for names containing additional '_'
     sample_roi_fovs_list = test_utils.generate_sample_fovs_list(
-        fov_coords=[(0, 0), (100, 100)], fov_names=['TheFirstROI', 'TheSecondROI'],
+        fov_coords=[(0, 0), (100, 100)], fov_names=['TheFirstROI', 'TheSecond_ROI'],
         fov_sizes=[5, 10]
     )
 
     sample_region_inputs = {
-        'region_name': ['TheFirstROI', 'TheSecondROI'],
+        'region_name': ['TheFirstROI', 'TheSecond_ROI'],
         'region_start_row': [100, 150],
         'region_start_col': [0, 50],
         'fov_num_row': [2, 4],
@@ -431,7 +432,7 @@ def test_generate_tiled_region_fov_list(moly_path, moly_roi_setting,
         actual_fov_names = [
             'TheFirstROI_R%dC%d' % (x, y) for x in np.arange(1, 3) for y in np.arange(1, 5)
         ] + [
-            'TheSecondROI_R%dC%d' % (x, y) for x in np.arange(1, 5) for y in np.arange(1, 3)
+            'TheSecond_ROI_R%dC%d' % (x, y) for x in np.arange(1, 5) for y in np.arange(1, 3)
         ]
 
         for mi in moly_insert_indices:
