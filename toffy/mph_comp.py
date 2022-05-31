@@ -39,10 +39,11 @@ def get_estimated_time(bin_file_path, fov):
     return estimated_time
 
 
-def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop):
+def compute_mph_metrics(bin_file_path, csv_dir, fov, target, mass_start, mass_stop):
     """Retrieves FOV total counts, pulse heights, & estimated time for all fovs in the directory
         Args:
             bin_file_path (str): path to the FOV bin and json files
+            csv_dir (str): path to output csv to
             fov (string): name of fov bin file without the extension
             target (str): channel to use
             mass_start (float): beginning of mass integration range
@@ -52,6 +53,7 @@ def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop):
 
     # path validation
     io_utils.validate_paths(bin_file_path)
+    io_utils.validate_paths(csv_dir)
 
     # retrieve the data from bin file and output to individual csv
     pulse_height_file = fov + '-pulse_height.csv'
@@ -75,15 +77,14 @@ def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop):
         'time': [time]})
 
     # saves individual .csv  files to bin_file_path
-    if not os.path.exists(os.path.join(bin_file_path, pulse_height_file)):
-        out_df.to_csv(os.path.join(bin_file_path, pulse_height_file), index=False)
+    if not os.path.exists(os.path.join(csv_dir, pulse_height_file)):
+        out_df.to_csv(os.path.join(csv_dir, pulse_height_file), index=False)
 
 
-def combine_mph_metrics(bin_file_path, output_dir, return_data=False):
+def combine_mph_metrics(csv_dir, return_data=False):
     """Combines data from individual csvs into one
         Args:
-            bin_file_path (str): path to the FOV bin and json files
-            output_dir (str): path to output csv to
+            csv_dir (str): path where FOV csvs are stored
             return_data (bool): whether to return dataframe with mph metrics, default False
 
         Returns:
@@ -91,27 +92,28 @@ def combine_mph_metrics(bin_file_path, output_dir, return_data=False):
             """
 
     # path validation checks
-    io_utils.validate_paths(bin_file_path)
-    io_utils.validate_paths(output_dir)
+    io_utils.validate_paths(csv_dir)
 
     # list bin files in directory
-    fov_bins = io_utils.list_files(bin_file_path, ".bin")
-    fov_bins = io_utils.remove_file_extensions(fov_bins)
+    fov_files = io_utils.list_files(csv_dir, "-pulse_height.csv")
 
+    # for each csv retrieve mph values
     combined_rows = []
-    for i, file in enumerate(fov_bins):
-        combined_rows.append(pd.read_csv(os.path.join(bin_file_path, file + '-pulse_height.csv')))
+    for i, file in enumerate(fov_files):
+        combined_rows.append(pd.read_csv(os.path.join(csv_dir, file)))
 
+    # calculate cumulative sums of total counts and time
     combined_df = pd.concat(combined_rows)
     combined_df['cum_total_count'] = combined_df['total_count'].cumsum()
     combined_df['cum_total_time'] = combined_df['time'].cumsum()
 
     # save csv to output_dir
-    file_path = os.path.join(output_dir, 'total_count_vs_mph_data.csv')
+    file_path = os.path.join(csv_dir, 'total_count_vs_mph_data.csv')
     if os.path.exists(file_path):
         os.remove(file_path)
     combined_df.to_csv(file_path, index=False)
 
+    # return data
     if return_data:
         return combined_df
 
