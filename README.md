@@ -90,6 +90,8 @@ cd toffy
 conda env create -f environment.yml
 ```
 
+This creates a *Python 3.8* environment named `toffy_env`. You can view everything that gets installed by looking at the `environment.yml` file.
+
 ### Using the repo
 Once you're ready to use the repo, enter the following commands. 
 
