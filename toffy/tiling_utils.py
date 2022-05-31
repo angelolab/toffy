@@ -289,7 +289,7 @@ def read_tiled_region_inputs(region_corners, region_params):
         region_params['region_start_row'].append(fov['centerPointMicrons']['y'])
         region_params['region_start_col'].append(fov['centerPointMicrons']['x'])
 
-        print("Using start coordinates of (%d, %d) in stage microns for region %s"
+        print("Using start coordinates of (%d, %d) in microns for region %s"
               % (fov['centerPointMicrons']['x'], fov['centerPointMicrons']['y'], fov['name']))
 
         # verify that the micron size specified is valid
@@ -1442,7 +1442,7 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
     if not os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json')):
         raise FileNotFoundError(
             "You haven't co-registered your slide yet. Please run "
-            "update_coregistraion_params.ipynb first."
+            "1_set_up_toffy.ipynb first."
         )
 
     # load the co-registraition parameters in
@@ -1478,7 +1478,7 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
         delete_tiled_region_fovs(rectangles, tiled_region_fovs)
 
     def save_mapping(b):
-        """Saves the mapping defined in `manual_to_auto_map`
+        """Saves the mapping defined in `tiled_region_fovs`
 
         Args:
             b (ipywidgets.widgets.widget_button.Button):
@@ -1487,7 +1487,7 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
 
         # needs to be in the output widget context to display status
         with out:
-            # call the helper function to save manual_to_auto_map and notify user
+            # call the helper function to save tiled_region_fovs and notify user
             save_json(
                 tiled_region_fovs, save_ann, tiled_region_path
             )
@@ -1627,7 +1627,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
     if not os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json')):
         raise FileNotFoundError(
             "You haven't co-registered your slide yet. Please run "
-            "update_coregistraion_params.ipynb first."
+            "1_set_up_toffy.ipynb first."
         )
 
     # load the co-registration parameters in
