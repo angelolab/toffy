@@ -3,7 +3,7 @@ from pathlib import Path
 import time
 import json
 from datetime import datetime
-from typing import Callable, List, Tuple
+from typing import Callable, Tuple
 from watchdog.events import FileCreatedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
@@ -127,14 +127,14 @@ class FOV_EventHandler(FileSystemEventHandler):
             folder to save all callback results + log file
         run_structure (RunStructure):
             expected run file structure + fov_progress status
-        per_fov (list):
-            callbacks to run on each fov
-        per_run (list):
-            callbacks to run over the entire run
+        fov_callback (Callable[[str, str], None]):
+            callback to run on each fov
+        run_callback (Callable[[None], None]):
+            callback to run over the entire run
     """
     def __init__(self, run_folder: str, log_folder: str,
-                 per_fov: List[Callable[[str, str], None]],
-                 per_run: List[Callable[[str], None]], timeout: int = 1.03 * 60 * 60):
+                 fov_callback: Callable[[str, str], None],
+                 run_callback: Callable[[str], None], timeout: int = 1.03 * 60 * 60):
         """Initializes FOV_EventHandler
 
         Args:
@@ -142,10 +142,10 @@ class FOV_EventHandler(FileSystemEventHandler):
                 path to run folder
             log_folder (str):
                 path to save outputs to
-            per_fov (list):
-                callbacks to run on each fov
-            per_run (list):
-                callbacks to run over the entire run
+            fov_callback (Callable[[str, str], None]):
+                callback to run on each fov
+            run_callback (Callable[[None], None]):
+                callback to run over the entire run
             timeout (int):
                 number of seconds to wait for non-null filesize before raising an error
         """
@@ -153,12 +153,14 @@ class FOV_EventHandler(FileSystemEventHandler):
         self.run_folder = run_folder
 
         self.log_path = os.path.join(log_folder, f'{Path(run_folder).parts[-1]}_log.txt')
+        if not os.path.exists(log_folder):
+            os.makedirs(log_folder)
 
         # create run structure
         self.run_structure = RunStructure(run_folder, timeout=timeout)
 
-        self.per_fov = per_fov
-        self.per_run = per_run
+        self.fov_func = fov_callback
+        self.run_func = run_callback
 
         for root, dirs, files in os.walk(run_folder):
             for name in files:
@@ -167,7 +169,7 @@ class FOV_EventHandler(FileSystemEventHandler):
     def on_created(self, event: FileCreatedEvent):
         """Handles file creation events
 
-        If FOV structure is completed, all callbacks in `per_fov` will be run over the data.
+        If FOV structure is completed, the fov callback, `self.fov_func` will be run over the data.
         This function is automatically called; users generally shouldn't call this function
 
         Args:
@@ -199,13 +201,12 @@ class FOV_EventHandler(FileSystemEventHandler):
             )
 
             # run per_fov callbacks
-            for fov_func in self.per_fov:
-                logf.write(
-                    f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
-                    f'Running {fov_func.__name__} on {point_name}\n'
-                )
+            logf.write(
+                f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
+                f'Running {self.fov_func.__name__} on {point_name}\n'
+            )
 
-                fov_func(self.run_folder, point_name)
+            self.fov_func(self.run_folder, point_name)
             self.run_structure.processed(point_name)
 
             logf.close()
@@ -225,18 +226,17 @@ class FOV_EventHandler(FileSystemEventHandler):
             )
 
             # run per_runs
-            for run_func in self.per_run:
-                logf.write(
-                    f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
-                    f'Running {run_func.__name__} on whole run\n'
-                )
+            logf.write(
+                f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
+                f'Running {self.run_func.__name__} on whole run\n'
+            )
 
-                run_func(self.run_folder)
+            self.run_func()
 
 
-def start_watcher(run_folder: str, log_folder: str, per_fov: List[Callable[[str, str], None]],
-                  per_run: List[Callable[[str, str], None]],
-                  completion_check_time: int = 30, zero_size_timeout: int = 1.03 * 60 * 60):
+def start_watcher(run_folder: str, log_folder: str, fov_callback: Callable[[str, str], None],
+                  run_callback: Callable[[None], None], completion_check_time: int = 30,
+                  zero_size_timeout: int = 1.03 * 60 * 60):
     """ Passes bin files to provided callback functions as they're created
 
     Args:
@@ -244,10 +244,12 @@ def start_watcher(run_folder: str, log_folder: str, per_fov: List[Callable[[str,
             path to run folder
         log_folder (str):
             where to create log file
-        per_fov (list):
-            list of functions to pass bin files
-        per_run (list):
-            list of functions to pass whole run
+        fov_callback (Callable[[str, str], None]):
+            function to run on each completed fov. assemble this using
+            `watcher_callbacks.build_callbacks`
+        run_callback (Callable[[None], None]):
+            function ran once the run has completed. assemble this using
+            `watcher_callbacks.build_callbacks`
         completion_check_time (int):
             how long to wait before checking watcher completion, in seconds.
             note, this doesn't effect the watcher itself, just when this wrapper function exits.
@@ -255,7 +257,8 @@ def start_watcher(run_folder: str, log_folder: str, per_fov: List[Callable[[str,
             number of seconds to wait for non-zero file size
     """
     observer = Observer()
-    event_handler = FOV_EventHandler(run_folder, log_folder, per_fov, per_run, zero_size_timeout)
+    event_handler = FOV_EventHandler(run_folder, log_folder, fov_callback, run_callback,
+                                     zero_size_timeout)
     observer.schedule(event_handler, run_folder, recursive=True)
     observer.start()
 
