@@ -107,11 +107,12 @@ def combine_mph_metrics():
         }, index=[0, 1])
 
     # test successful data retrieval and csv output
-    mph.combine_mph_metrics(bin_file_path, bin_file_path)
+    mph_data = mph.combine_mph_metrics(bin_file_path, bin_file_path, return_data=True)
     csv_path = os.path.join(bin_file_path, 'total_count_vs_mph_data.csv')
     csv_data = pd.read_csv(csv_path)
     assert os.path.exists(csv_path)
     assert csv_data.equals(combined_data)
+    assert mph_data.equals(combined_data)
 
     os.remove(csv_path)
     os.remove(os.path.join(bin_file_path, 'fov-1-scan-1-pulse_height.csv'))

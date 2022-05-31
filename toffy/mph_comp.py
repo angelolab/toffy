@@ -39,7 +39,7 @@ def get_estimated_time(bin_file_path, fov):
     return estimated_time
 
 
-def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_csv=True):
+def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop):
     """Retrieves FOV total counts, pulse heights, & estimated time for all fovs in the directory
         Args:
             bin_file_path (str): path to the FOV bin and json files
@@ -47,7 +47,6 @@ def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_
             target (str): channel to use
             mass_start (float): beginning of mass integration range
             mass_stop (float): end of mass integration range
-            save_csv (bool): whether to save to csv file or output data, defaults to True
 
             """
 
@@ -77,15 +76,18 @@ def compute_mph_metrics(bin_file_path, fov, target, mass_start, mass_stop, save_
 
     # saves individual .csv  files to bin_file_path
     if not os.path.exists(os.path.join(bin_file_path, pulse_height_file)):
-        if save_csv:
-            out_df.to_csv(os.path.join(bin_file_path, pulse_height_file), index=False)
+        out_df.to_csv(os.path.join(bin_file_path, pulse_height_file), index=False)
 
 
-def combine_mph_metrics(bin_file_path, output_dir):
+def combine_mph_metrics(bin_file_path, output_dir, return_data=False):
     """Combines data from individual csvs into one
         Args:
             bin_file_path (str): path to the FOV bin and json files
             output_dir (str): path to output csv to
+            return_data (bool): whether to return dataframe with mph metrics, default False
+
+        Returns:
+            combined mph data for all FOVs
             """
 
     # path validation checks
@@ -120,6 +122,9 @@ def combine_mph_metrics(bin_file_path, output_dir):
     if os.path.exists(file_path):
         os.remove(file_path)
     combined_df.to_csv(file_path, index=False)
+
+    if return_data:
+        return combined_df
 
 
 def visualize_mph(mph_df, regression: bool, save_dir=None):
