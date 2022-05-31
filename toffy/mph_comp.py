@@ -98,26 +98,15 @@ def combine_mph_metrics(bin_file_path, output_dir, return_data=False):
     fov_bins = io_utils.list_files(bin_file_path, ".bin")
     fov_bins = io_utils.remove_file_extensions(fov_bins)
 
-    pulse_heights = []
-    fov_counts = []
-    estimated_time = []
-
-    # for each csv retrieve mph values
+    combined_rows = []
     for i, file in enumerate(fov_bins):
-        temp_df = pd.read_csv(os.path.join(bin_file_path, file + '-pulse_height.csv'))
-        pulse_heights.append(temp_df['MPH'].values[0])
-        fov_counts.append(temp_df['total_count'].values[0])
-        estimated_time.append(temp_df['time'].values[0])
+        combined_rows.append(pd.read_csv(os.path.join(bin_file_path, file + '-pulse_height.csv')))
 
-    # calculate cumulative sums of total counts
-    fov_counts_cum = [fov_counts[j]+fov_counts[j-1] if j > 0 else fov_counts[j]
-                      for j in range(len(fov_counts))]
-    estimated_time_cum = [estimated_time[j] + estimated_time[j - 1] if j > 0
-                          else estimated_time[j] for j in range(len(estimated_time))]
+    combined_df = pd.concat(combined_rows)
+    combined_df['cum_total_count'] = combined_df['total_count'].cumsum()
+    combined_df['cum_total_time'] = combined_df['time'].cumsum()
 
     # save csv to output_dir
-    combined_df = pd.DataFrame({'pulse_heights': pulse_heights, 'cum_total_count': fov_counts_cum,
-                               'cum_total_time': estimated_time_cum})
     file_path = os.path.join(output_dir, 'total_count_vs_mph_data.csv')
     if os.path.exists(file_path):
         os.remove(file_path)
@@ -146,7 +135,7 @@ def visualize_mph(mph_df, regression: bool, save_dir=None):
     ax1 = fig.add_subplot(111)
     ax2 = ax1.twiny()
     x = mph_df['cum_total_count']
-    y = mph_df['pulse_heights']
+    y = mph_df['MPH']
     x_alt = mph_df['cum_total_time']
     ax1.scatter(x, y)
     ax1.set_xlabel('FOV cumulative count')
@@ -159,7 +148,7 @@ def visualize_mph(mph_df, regression: bool, save_dir=None):
     if regression:
         # plot with regression line
         x2 = np.array(mph_df['cum_total_count'])
-        y2 = np.array(mph_df['pulse_heights'])
+        y2 = np.array(mph_df['MPH'])
         m, b = np.polyfit(x2, y2, 1)
         ax1.plot(x2, m * x2 + b)
 
