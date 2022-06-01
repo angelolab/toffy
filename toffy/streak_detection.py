@@ -109,7 +109,7 @@ def _save_streak_masks(streak_data: StreakData):
 
 def _make_binary_mask(
     input_image: np.ndarray,
-    gaussian_sigma: float = 40,
+    gaussian_sigma: float = 5.00,
     gamma: float = 3.80,
     gamma_gain: float = 0.10,
     log_gain: float = 1.00,
@@ -117,7 +117,7 @@ def _make_binary_mask(
     pmax: int = 98,
     threshold: float = 0.30,
     wavelet: str = "db2",
-    mode: str = "hard",
+    mode: str = "soft",
     rescale_sigma: bool = True
 ) -> np.ndarray:
     """Performs a series of denoiseing, filtering, and exposure adjustments to create a binary
@@ -126,7 +126,7 @@ def _make_binary_mask(
     Args:
         input_image (np.ndarray): The image to perform the streak masking on.
         gaussian_sigma (float, optional): Parameter for `skimage.filters.gaussian`. Defaults to
-        40.
+        5.00.
         gamma (float, optional): Parameter for `skimage.exposure.adjust_gamma`. Defaults to 3.80.
         gamma_gain (float, optional): Parameter for `skimage.exposure.adjust_gamma`. Defaults to
         0.10.
@@ -141,7 +141,7 @@ def _make_binary_mask(
         `pywt.wavelist` outputs. Defaults to "db2".
         mode (str): An optional argument to choose the type of denoising performed. Its noted that
         choosing soft thresholding given additive noise finds the best approximation of the
-        original image. Defaults to "hard".
+        original image. Defaults to "soft".
         rescale_sigma (bool): If False, no rescaling of the user-provided `sigma` will be
         performed. The default of `True` rescales `sigma` appropriately if the image is rescaled
         internally. Defaults to "True".
