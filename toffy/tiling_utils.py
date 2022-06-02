@@ -10,6 +10,7 @@ from operator import itemgetter
 import os
 import pandas as pd
 import re
+from typing import Optional
 from skimage.draw import ellipse
 from sklearn.linear_model import LinearRegression
 from sklearn.utils import shuffle
@@ -482,7 +483,7 @@ def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_righ
     return pairs
 
 
-def generate_tiled_region_fov_list(tiling_params, moly_path):
+def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str]):
     """Generate the list of FOVs on the image from the `tiling_params` set for tiled regions
 
     Moly point insertion: happens once every number of FOVs you specified in
@@ -502,7 +503,7 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
     Args:
         tiling_params (dict):
             The tiling parameters created by `set_tiled_region_params`
-        moly_path (str):
+        moly_path (Optional[str]):
             The path to the Moly point to insert between FOV intervals and/or regions.
             If these insertion parameters are not specified in `tiling_params`, this won't be used.
 
@@ -512,12 +513,13 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
     """
 
     # file path validation
-    if not os.path.exists(moly_path):
-        raise FileNotFoundError("Moly point file %s does not exist" % moly_path)
+    if tiling_params["moly_region"] == "Y" or (tiling_params.get("moly_interval", 0) > 0):
+        if not os.path.exists(moly_path):
+            raise FileNotFoundError("Moly point file %s does not exist" % moly_path)
 
-    # read in the moly point data
-    with open(moly_path, 'r', encoding='utf-8') as mpf:
-        moly_point = json.load(mpf)
+        # read in the moly point data
+        with open(moly_path, 'r', encoding='utf-8') as mpf:
+            moly_point = json.load(mpf)
 
     # define the fov_regions dict
     fov_regions = {}
