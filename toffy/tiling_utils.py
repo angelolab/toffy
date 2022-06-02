@@ -378,29 +378,29 @@ def set_tiled_region_params(region_corners_path):
     # store the read in parameters in the region_params key
     tiling_params['region_params'] = generate_region_info(region_params)
 
-    # whether to insert moly points between regions
-    moly_region_insert = read_tiling_param(
-        "Insert a moly point between each tiled region? Y/N: ",
-        "Error: moly point region parameter must be either Y or N",
-        lambda mri: mri in ['Y', 'N', 'y', 'n'],
-        dtype=str
-    )
+    # # whether to insert moly points between regions
+    # moly_region_insert = read_tiling_param(
+    #     "Insert a moly point between each tiled region? Y/N: ",
+    #     "Error: moly point region parameter must be either Y or N",
+    #     lambda mri: mri in ['Y', 'N', 'y', 'n'],
+    #     dtype=str
+    # )
 
-    # convert to uppercase to standardize
-    moly_region_insert = moly_region_insert.upper()
-    tiling_params['moly_region'] = moly_region_insert
+    # # convert to uppercase to standardize
+    # moly_region_insert = moly_region_insert.upper()
+    # tiling_params['moly_region'] = moly_region_insert
 
-    # whether to insert moly points between fovs
-    moly_interval = read_tiling_param(
-        "Enter the FOV interval size to insert Moly points. If yes, enter the number of FOVs "
-        "between each Moly point. If no, enter 0: ",
-        "Error: moly interval must be 0 or a positive integer",
-        lambda mi: mi >= 0,
-        dtype=int
-    )
+    # # whether to insert moly points between fovs
+    # moly_interval = read_tiling_param(
+    #     "Enter the FOV interval size to insert Moly points. If yes, enter the number of FOVs "
+    #     "between each Moly point. If no, enter 0: ",
+    #     "Error: moly interval must be 0 or a positive integer",
+    #     lambda mi: mi >= 0,
+    #     dtype=int
+    # )
 
-    if moly_interval > 0:
-        tiling_params['moly_interval'] = moly_interval
+    # if moly_interval > 0:
+    #     tiling_params['moly_interval'] = moly_interval
 
     return tiling_params
 
@@ -483,7 +483,7 @@ def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_righ
     return pairs
 
 
-def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str]):
+def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str] = None):
     """Generate the list of FOVs on the image from the `tiling_params` set for tiled regions
 
     Moly point insertion: happens once every number of FOVs you specified in
@@ -506,6 +506,7 @@ def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str]):
         moly_path (Optional[str]):
             The path to the Moly point to insert between FOV intervals and/or regions.
             If these insertion parameters are not specified in `tiling_params`, this won't be used.
+            Defaults to None.
 
     Returns:
         dict:
@@ -513,7 +514,8 @@ def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str]):
     """
 
     # file path validation
-    if tiling_params["moly_region"] == "Y" or (tiling_params.get("moly_interval", 0) > 0):
+    if (tiling_params.get("moly_region", "N") == "Y") or \
+       (tiling_params.get("moly_interval", 0) > 0):
         if not os.path.exists(moly_path):
             raise FileNotFoundError("Moly point file %s does not exist" % moly_path)
 
@@ -591,7 +593,8 @@ def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str]):
                 fov_regions['fovs'].append(moly_point)
 
         # append Moly point to seperate regions if not last and if specified
-        if tiling_params['moly_region'] == 'Y' and \
+        if 'moly_region' in tiling_params and \
+            tiling_params['moly_region'] == 'Y' and \
            region_index != len(tiling_params['region_params']) - 1:
             fov_regions['fovs'].append(moly_point)
 
