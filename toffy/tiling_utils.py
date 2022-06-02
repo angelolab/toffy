@@ -517,7 +517,7 @@ def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str] = Non
     if (tiling_params.get("moly_region", "N") == "Y") or \
        (tiling_params.get("moly_interval", 0) > 0):
         if not os.path.exists(moly_path):
-            raise FileNotFoundError("Moly point file %s does not exist" % moly_path)
+            raise FileNotFoundError("The provided Moly FOV file %s does not exist. If you want to include Moly FOVs you must provide a valid path. Otherwise, select 'No' for the options relating to Moly FOVs" % moly_path)
 
         # read in the moly point data
         with open(moly_path, 'r', encoding='utf-8') as mpf:
