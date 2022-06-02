@@ -7,11 +7,11 @@ import json
 from toffy import mph_comp as mph
 
 
-def get_estimated_time():
-    bad_path = os.path.join("data", "not-a-folder")
+def test_get_estimated_time():
+    bad_path = os.path.join("..", "data", "not-a-folder")
     bad_fov = "not-a-fov"
 
-    good_path = os.path.join("data", "tissue")
+    good_path = os.path.join("..", "data", "tissue")
     good_fov = 'fov-1-scan-1'
 
     # bad directory path should raise an error
@@ -35,14 +35,14 @@ def get_estimated_time():
 
 
 def test_compute_mph_metrics():
-    bin_file_path = os.path.join("data", "tissue")
+    bin_file_path = os.path.join("..", "data", "tissue")
     fov_name = 'fov-1-scan-1'
     target_name = 'CD8'
     start_mass = -0.3
     stop_mass = 0.0
 
     # bad directory path should raise an error
-    bad_path = os.path.join("data", "not-a-folder")
+    bad_path = os.path.join("..", "data", "not-a-folder")
     with pytest.raises(ValueError):
         mph.compute_mph_metrics(bad_path, bin_file_path, fov_name,
                                 target_name, start_mass, stop_mass)
@@ -77,8 +77,8 @@ def test_compute_mph_metrics():
 
 
 def test_combine_mph_metrics():
-    csv_path = os.path.join("data", "tissue")
-    bad_path = os.path.join("data", "not-a-folder")
+    csv_path = os.path.join("..", "data", "tissue")
+    bad_path = os.path.join("..", "data", "not-a-folder")
 
     # bad directory path should raise an error
     with pytest.raises(ValueError):
@@ -122,7 +122,7 @@ def test_combine_mph_metrics():
 
 
 def test_visualize_mph():
-    bad_path = os.path.join("data", "not-a-folder")
+    bad_path = os.path.join("..", "data", "not-a-folder")
     mph_data = pd.DataFrame({
             'MPH': [2222, 3800],
             'cum_total_count': [72060, 146859],
