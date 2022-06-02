@@ -25,7 +25,7 @@ def test_get_estimated_time():
         mph.get_estimated_time(good_path, bad_fov)
 
     # bad FOV json file data should raise an error, no frameSize or dwellTimeMillis keys
-    bad_data = {'fov': {'not_frameSize': 0, 'not_dwellTimeMillis': 0}}
+    bad_data = {"fov": {"not_frameSize": 0, "not_dwellTimeMillis": 0}}
     temp_json = tempfile.NamedTemporaryFile(mode="w", suffix='fov_name.json', delete=False)
     temp_json.write(json.dumps(bad_data))
     temp_dir = tempfile.gettempdir()
