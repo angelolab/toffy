@@ -15,9 +15,9 @@ def bin_array(arr, bin_factor):
     return arr_bin
 
 
-def compute_mph_intensities(data_dir, channel, panel,  fov_list=None, bin_factor=100):
-    if os.path.exists(os.path.join(data_dir, 'mph_counts.csv')):
-        return
+def compute_mph_intensities(data_dir, channel, panel, fov_list=None, bin_factor=100):
+    # if os.path.exists(os.path.join(data_dir, 'mph_counts.csv')):
+    #    return
 
     # visualize all fovs in folder if list not specified
     if fov_list is None:
@@ -40,9 +40,9 @@ def compute_mph_intensities(data_dir, channel, panel,  fov_list=None, bin_factor
 
     final_df = pd.DataFrame(out_df)
     final_df['binned_intensities'] = final_df['all_intensities'].apply(lambda x: bin_array(x, bin_factor))
-
-    final_df = pd.DataFrame(out_df)
     final_df.to_csv(os.path.join(data_dir, 'mph_counts.csv'))
+
+    return final_df
 
 '''
 channel1 = 'Mo98'
@@ -53,20 +53,24 @@ panel1 = pd.DataFrame([{
     'Stop': float(channel1[2:]) + 0.5,
 }])
 data_dir = os.path.join('data', 'tissue')
-compute_mph_intensities(data_dir, channel1, panel1)
+data1 = compute_mph_intensities(data_dir, channel1, panel1)
 '''
 
 
-def vizualize_mph_hist(base_dir, fov_list=None, bin_factor=100, x_cutoff=20000, normalize=True):
-    compute_mph_intensities(base_dir, fov_list, bin_factor)
-    data = pd.read_csv(os.path.join(base_dir, 'mph_counts.csv'))
+def visualize_mph_hist(base_dir, channel, panel, fov_list=None, bin_factor=100, x_cutoff=20000, normalize=True):
+    data = compute_mph_intensities(base_dir, channel, panel, fov_list, bin_factor)
+    #data = pd.read_csv(os.path.join(base_dir, 'mph_counts.csv'))
     # matplotlib fun
     for idx, row in data.iterrows():
         if normalize:
             plt.plot(np.arange(row['binned_intensities'].shape[0])[0:x_cutoff // bin_factor] * bin_factor,
-                     row['binned_intensities']
-                     [0:x_cutoff // bin_factor] / np.max(row))
+                     row['binned_intensities'][0:x_cutoff // bin_factor] / np.max(row['binned_intensities']))
         else:
             plt.plot(np.arange(row['binned_intensities'].shape[0])[0:x_cutoff // bin_factor] * bin_factor,
-                     row['binned_intensities']
-                     [0:x_cutoff // bin_factor])
+                     row['binned_intensities'][0:x_cutoff // bin_factor])
+
+    plt.gca().set_xlabel('pulse height')
+    plt.gca().set_ylabel('occurrence count')
+    plt.gcf().set_size_inches(18.5, 10.5)
+
+# visualize_mph_hist(data_dir, channel1, panel1)
