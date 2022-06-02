@@ -34,7 +34,7 @@ def get_estimated_time():
     assert mph.get_estimated_time(good_path, good_fov) == 512
 
 
-def compute_mph_metrics():
+def test_compute_mph_metrics():
     bin_file_path = os.path.join("data", "tissue")
     fov_name = 'fov-1-scan-1'
     target_name = 'CD8'
@@ -76,7 +76,7 @@ def compute_mph_metrics():
     os.remove(os.path.join(bin_file_path, 'fov-1-scan-1-pulse_height.csv'))
 
 
-def combine_mph_metrics():
+def test_combine_mph_metrics():
     csv_path = os.path.join("data", "tissue")
     bad_path = os.path.join("data", "not-a-folder")
 
@@ -121,7 +121,7 @@ def combine_mph_metrics():
     os.remove(os.path.join(csv_path, 'fov-2-scan-1-pulse_height.csv'))
 
 
-def visualize_mph():
+def test_visualize_mph():
     bad_path = os.path.join("data", "not-a-folder")
     mph_data = pd.DataFrame({
             'MPH': [2222, 3800],
