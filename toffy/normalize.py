@@ -9,6 +9,7 @@ import numpy as np
 from scipy.optimize import curve_fit
 import skimage.io as io
 import matplotlib.pyplot as plt
+import natsort as ns
 import pandas as pd
 
 from ark.utils import io_utils, load_utils
@@ -113,7 +114,7 @@ def create_objective_function(obj_func):
     return objectives[obj_func]
 
 
-def fit_calibration_curve(x_vals, y_vals, obj_func, plot_fit=False):
+def fit_calibration_curve(x_vals, y_vals, obj_func, plot_fit=False, save_path=None):
     """Finds the optimal weights to fit the supplied values for the specified function
 
     Args:
@@ -121,6 +122,7 @@ def fit_calibration_curve(x_vals, y_vals, obj_func, plot_fit=False):
         y_vals (list): the y value to be fit
         obj_func (str): the name of the function that will be fit to the data
         plot_fit (bool): whether or not to plot the fit of the function vs the values
+        save_path (str or None): location to save the plot of the fitted values
 
     Returns:
         list: the weights of the fitted function"""
@@ -137,6 +139,9 @@ def fit_calibration_curve(x_vals, y_vals, obj_func, plot_fit=False):
         x_line = np.arange(min(x_vals), max(x_vals), 1)
         y_line = objective(x_line, *popt)
         plt.plot(x_line, y_line, '--', color='red')
+
+        if save_path is not None:
+            plt.savefig(save_path)
 
     return popt
 
@@ -162,29 +167,24 @@ def create_prediction_function(name, weights):
     return pred_func
 
 
-def combine_run_metrics(run_dir, file_prefix):
+def combine_run_metrics(run_dir, substring):
     """Combines the specified metrics from different FOVs into a single file
 
     Args:
         run_dir (str): the directory containing the files
-        file_prefix (str): the prefix of the files to be combined"""
+        substring(str): the substring contained within the files to be combined"""
 
-    files = io_utils.list_files(run_dir, file_prefix)
-    bins = io_utils.list_files(run_dir, '.bin')
+    files = io_utils.list_files(run_dir, substring)
 
     # validate inputs
-    if len(bins) == 0:
-        raise ValueError('No bin files found in {}'.format(run_dir))
+    if len(files) == 0:
+        raise ValueError('No files found in {}'.format(run_dir))
 
-    if file_prefix + '_combined.csv' in files:
-        warnings.warn('removing previously generated '
-                      'combined {} file in {}'.format(file_prefix, run_dir))
-        os.remove(os.path.join(run_dir, file_prefix + '_combined.csv'))
+    if substring + '_combined.csv' in files:
+        warnings.warn('Removing previously generated '
+                      'combined {} file in {}'.format(substring, run_dir))
+        os.remove(os.path.join(run_dir, substring + '_combined.csv'))
         files = [file for file in files if 'combined' not in file]
-
-    if len(bins) != len(files):
-        raise ValueError('Mismatch between the number of bins and number '
-                         'of {} files in {}'.format(file_prefix, run_dir))
 
     # collect all metrics files
     metrics = []
@@ -197,11 +197,11 @@ def combine_run_metrics(run_dir, file_prefix):
         for i in range(1, len(metrics)):
             if len(metrics[i]) != base_len:
                 raise ValueError('Not all {} files are the same length: file {} does not match'
-                                 'file {}'.format(file_prefix, files[0], files[i]))
+                                 'file {}'.format(substring, files[0], files[i]))
 
     metrics = pd.concat(metrics)
 
-    metrics.to_csv(os.path.join(run_dir, file_prefix + '_combined.csv'), index=False)
+    metrics.to_csv(os.path.join(run_dir, substring + '_combined.csv'), index=False)
 
 
 def combine_tuning_curve_metrics(dir_list):
@@ -244,21 +244,102 @@ def combine_tuning_curve_metrics(dir_list):
     return all_data
 
 
-def normalize_image_data(img_dir, output_dir, fov, pulse_heights, panel_info, img_sub_folder='',
+def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func):
+    """Fits a curve for the MPH over time for the specified mass"""
+
+    fov_order = np.linspace(0, len(mph_vals) - 1, len(mph_vals))
+
+    save_path = os.path.join(save_dir, str(mass) + '_mph_fit.jpg')
+
+    weights = fit_calibration_curve(x_vals=fov_order, y_vals=mph_vals, obj_func=obj_func,
+                                   plot_fit=True, save_path=save_path)
+
+    mass_json = {'name': obj_func, 'weights': weights.tolist()}
+    mass_path = os.path.join(save_dir, str(mass) + '_norm_func.json')
+
+    with open(mass_path, 'w') as mp:
+        json.dump(mass_json, mp)
+
+
+def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
+    """Uses the mph curves for each mass to generate a smoothed mph estimate"""
+
+
+    # TODO: default to median if # of observations is too small
+
+    # get all masses
+    masses = np.unique(pulse_height_df['mass'].values)
+
+    # create column to hold fitted values
+    pulse_height_df['pulse_height_fit'] = 0
+
+    for mass in masses:
+        # load channel-specific prediction function
+        mass_path = os.path.join(obj_func_dir, str(mass) + '_norm_func.json')
+
+        with open(mass_path, 'r') as mp:
+            mass_json = json.load(mp)
+
+        name, weights = mass_json['name'], mass_json['weights']
+
+        pred_func = create_prediction_function(name=name, weights=weights)
+
+        # compute predicted MPH
+        mass_idx = pulse_height_df['mass'] == mass
+        raw_vals = pulse_height_df.loc[mass_idx, 'pulse_height'].values
+        pred_vals = pred_func(raw_vals)
+
+        # update df
+        pulse_height_df.loc[mass_idx, 'pulse_height_fit'] = pred_vals
+
+    return pulse_height_df
+
+
+def create_combined_pulse_heights_file(pulse_height_dir, panel_info, output_dir, channel_obj_func):
+    # create variables for mass fitting
+    masses = panel_info['Mass'].values
+    norm_dir = os.path.join(output_dir, 'normalization_data')
+
+    # combine fov-level files together
+    combine_run_metrics(run_dir=pulse_height_dir, substring='pulse_height')
+    pulse_height_df = pd.read_csv(os.path.join(pulse_height_dir, 'pulse_heights_combined.csv'))
+
+    # order by FOV
+    ordering = ns.natsorted(pulse_height_df['fov'].values.unique())
+    pulse_height_df['fov'] = pd.Categorical(pulse_height_df['fov'],
+                                            ordered=True,
+                                            categories=ordering)
+
+    # loop over each mass, and fit a curve for MPH over the course of the run
+    for mass in masses:
+        mph_vals = pulse_height_df.loc[pulse_height_df['mass'] == mass, 'pulse_height'].values
+        fit_mass_mph_curve(mph_vals=mph_vals, mass=mass, save_dir=norm_dir,
+                           obj_func=channel_obj_func)
+
+    # update pulse_height_df to include fitted mph values
+    pulse_height_df = create_fitted_mass_mph_vals(pulse_height_df=pulse_height_df,
+                                                  obj_func_dir=norm_dir)
+
+    return pulse_height_df
+
+
+def normalize_image_data(img_dir, output_dir, fovs, pulse_height_dir, panel_info, img_sub_folder='',
                          norm_func_path=os.path.join('..', 'toffy', 'norm_func.json'),
-                         extreme_vals=(0.5, 1)):
+                         channel_obj_func='poly_3', extreme_vals=(0.5, 1)):
     """Normalizes image data based on median pulse height from the run and a tuning curve
 
     Args:
         img_dir (str): directory with the image data
         output_dir (str): directory where the normalized images will be saved
-        fov (str): name of the fov to normalize
-        pulse_heights (pd.DataFrame): pulse heights per mass
+        fovs (list): the fovs to normalize
+        pulse_height_dir (str): directory containing per-fov pulse heights
         panel_info (pd.DataFrame): mapping between channels and masses
         norm_func_path (str): file containing the saved weights for the normalization function
+        channel_obj_func (str): class of function to use for modeling MPH over time per mass
         extreme_vals (tuple): determines the range for norm vals which will raise a warning
     """
-    # load normalization function
+
+    # load normalization function for mapping MPH to counts
     if not os.path.exists(norm_func_path):
         raise ValueError("No normalization function found. You will need to run "
                          "section 3 of the 1_set_up_toffy.ipynb notebook to generate the "
@@ -269,39 +350,44 @@ def normalize_image_data(img_dir, output_dir, fov, pulse_heights, panel_info, im
 
     norm_weights, norm_name = norm_json['weights'], norm_json['name']
 
-    channels = panel_info['Target'].values
-
-    # instantiate function which translates pulse height to a normalization constant
     norm_func = create_prediction_function(norm_name, norm_weights)
 
-    output_fov_dir = os.path.join(output_dir, fov)
-    if os.path.exists(output_fov_dir):
-        print("output directory {} already exists, "
-              "data will be overwritten".format(output_fov_dir))
-    else:
-        os.makedirs(output_fov_dir)
+    pulse_height_df = create_combined_pulse_heights_file()
 
-    # get images and pulse heights
-    images = load_utils.load_imgs_from_tree(img_dir, fovs=[fov], channels=channels,
-                                            dtype='float32', img_sub_folder=img_sub_folder)
 
-    # predict normalization based on MPH value for all masses
-    norm_vals = norm_func(pulse_heights['pulse_height'].values)
 
-    # check if any values are outside expected range
-    extreme_mask = np.logical_or(norm_vals < extreme_vals[0], norm_vals > extreme_vals[1])
-    if np.any(extreme_mask):
-        bad_channels = channels[extreme_mask]
-        warnings.warn('The following channel(s) had an extreme normalization value. Manual '
-                      'inspection for accuracy is recommended: {}'.format(bad_channels))
+    # loop over each fov
+    for fov in fovs:
+        output_fov_dir = os.path.join(output_dir, fov)
+        if os.path.exists(output_fov_dir):
+            print("output directory {} already exists, "
+                  "data will be overwritten".format(output_fov_dir))
+        else:
+            os.makedirs(output_fov_dir)
 
-    # correct images and save
-    normalized_images = images / norm_vals.reshape((1, 1, 1, len(channels)))
+        # get images and pulse heights
+        images = load_utils.load_imgs_from_tree(img_dir, fovs=[fov], channels=channels,
+                                                dtype='float32', img_sub_folder=img_sub_folder)
 
-    for idx, chan in enumerate(channels):
-        io.imsave(os.path.join(output_fov_dir, chan + '.tiff'),
-                  normalized_images[0, :, :, idx], check_contrast=False)
+        # predict normalization based on MPH value for all masses
+        pulse_height_fov = pulse_height_df.loc[pulse_height_df['fov'] == fov, :]
+        norm_vals = norm_func(pulse_height_fov['pulse_height_fit'].values)
 
-    log_df = pd.DataFrame({'channels': channels,
-                           'norm_vals': norm_vals})
-    log_df.to_csv(os.path.join(output_fov_dir, 'normalization_coefs.csv'), index=False)
+        # check if any values are outside expected range
+        extreme_mask = np.logical_or(norm_vals < extreme_vals[0], norm_vals > extreme_vals[1])
+        if np.any(extreme_mask):
+            bad_channels = channels[extreme_mask]
+            warnings.warn('The following channel(s) had an extreme normalization '
+                          'value for fov {}. Manual inspection for accuracy is '
+                          'recommended: {}'.format(fov, bad_channels))
+
+        # correct images and save
+        normalized_images = images / norm_vals.reshape((1, 1, 1, len(channels)))
+
+        for idx, chan in enumerate(channels):
+            io.imsave(os.path.join(output_fov_dir, chan + '.tiff'),
+                      normalized_images[0, :, :, idx], check_contrast=False)
+
+        log_df = pd.DataFrame({'channels': channels,
+                               'norm_vals': norm_vals})
+        log_df.to_csv(os.path.join(output_fov_dir, 'normalization_coefs.csv'), index=False)

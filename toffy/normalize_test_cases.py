@@ -38,14 +38,11 @@ class CombineRunMetricFiles():
 
     def case_default_metrics(self):
         # create full directory of files
-        bins = []
         metrics = []
         for i in range(1, 5):
-            bin_name = 'example_{}.bin'.format(i)
-            bins.append(bin_name)
             metric_name = 'example_metric_{}.csv'.format(i)
             metric_values = {'column_1': np.random.rand(10),
                              'column_2': np.random.rand(10),
                              'column_3': np.random.rand(10)}
             metrics.append([metric_name, metric_values])
-        return bins, metrics
+        return metrics

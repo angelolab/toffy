@@ -111,12 +111,9 @@ def test_create_prediction_function(obj_func, num_params):
     _ = pred_func(np.random.rand(10))
 
 
-@parametrize_with_cases('bins, metrics', cases=test_cases.CombineRunMetricFiles)
-def test_combine_run_metrics(bins, metrics):
+@parametrize_with_cases('metrics', cases=test_cases.CombineRunMetricFiles)
+def test_combine_run_metrics(metrics):
     with tempfile.TemporaryDirectory() as temp_dir:
-
-        for bin_file in bins:
-            _make_blank_file(temp_dir, bin_file)
 
         for metric in metrics:
             name, values_df = metric[0], pd.DataFrame(metric[1])
@@ -127,7 +124,7 @@ def test_combine_run_metrics(bins, metrics):
         combined_data = pd.read_csv(os.path.join(temp_dir, 'example_metric_combined.csv'))
 
         assert np.array_equal(combined_data.columns, ['column_1', 'column_2', 'column_3'])
-        assert len(combined_data) == len(bins) * 10
+        assert len(combined_data) == len(metrics) * 10
 
         # check that previously generated combined file is removed with warning
         with pytest.warns(UserWarning, match='previously generated'):
@@ -140,19 +137,12 @@ def test_combine_run_metrics(bins, metrics):
 
         with pytest.raises(ValueError, match='files are the same length'):
             normalize.combine_run_metrics(temp_dir, 'example_metric')
-        os.remove(os.path.join(temp_dir, name))
-        os.remove(os.path.join(temp_dir, 'example_1.bin'))
-
-        # different number of bins raises error
-        os.remove(os.path.join(temp_dir, bins[3]))
-        with pytest.raises(ValueError, match='Mismatch'):
-            normalize.combine_run_metrics(temp_dir, 'example_metric')
 
         # empty directory raises error
         empty_dir = os.path.join(temp_dir, 'empty')
         os.makedirs(empty_dir)
 
-        with pytest.raises(ValueError, match='No bin files'):
+        with pytest.raises(ValueError, match='No files'):
             normalize.combine_run_metrics(empty_dir, 'example_metric')
 
 
@@ -193,6 +183,60 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
             assert np.all(norm_vals == 1)
 
 
+def test_fit_mass_mph_curve(tmpdir):
+    mph_vals = np.random.randint(0, 10, 10)
+    mass_name = '88'
+    obj_func = 'poly_2'
+
+    normalize.fit_mass_mph_curve(mph_vals=mph_vals, mass=mass_name, save_dir=tmpdir,
+                                 obj_func=obj_func)
+
+    # make sure plot was created
+    plot_path = os.path.join(tmpdir, mass_name + '_mph_fit.jpg')
+    assert os.path.exists(plot_path)
+
+    # make sure json with weights was created
+    weights_path = os.path.join(tmpdir, mass_name + '_norm_func.json')
+
+    with open(weights_path, 'r') as wp:
+        mass_json = json.load(wp)
+
+    # load weights into prediction function
+    weights = mass_json['weights']
+    pred_func = normalize.create_prediction_function(name=obj_func, weights=weights)
+
+    # check that prediction function runs
+    _ = pred_func(np.arange(10))
+
+
+def test_create_fitted_mass_mph_vals(tmpdir):
+    masses = ['88', '100', '120']
+    fovs = ['fov1', 'fov2', 'fov3', 'fov4']
+    obj_func = 'poly_2'
+
+    # create json for each channel
+    for mass in masses:
+        weights = np.random.rand(3)
+        mass_json = {'name': obj_func, 'weights': weights.tolist()}
+        mass_path = os.path.join(tmpdir, mass + '_norm_func.json')
+
+        with open(mass_path, 'w') as mp:
+            json.dump(mass_json, mp)
+
+    # create combined mph_df
+    pulse_height_list = np.random.rand(len(masses) * len(fovs))
+    mass_list = np.tile(masses, len(fovs))
+    fov_list = np.repeat(fovs, len(masses))
+
+    pulse_height_df = pd.DataFrame({'pulse_height': pulse_height_list,
+                                    'mass': mass_list, 'fov': fov_list})
+
+    modified_df = normalize.create_fitted_mass_mph_vals(pulse_height_df=pulse_height_df,
+                                                        obj_func_dir=tmpdir)
+
+    assert np.all(modified_df['pulse_height'].values != modified_df['pulse_height_fit'].values)
+
+
 def test_normalize_image_data():
     with tempfile.TemporaryDirectory() as top_level_dir:
         data_dir = os.path.join(top_level_dir, 'data_dir')
@@ -202,7 +246,7 @@ def test_normalize_image_data():
         os.makedirs(output_dir)
 
         # make fake data for testing
-        fovs, chans = test_utils.gen_fov_chan_names(num_fovs=1, num_chans=10)
+        fovs, chans = test_utils.gen_fov_chan_names(num_fovs=3, num_chans=10)
         filelocs, data_xr = test_utils.create_paired_xarray_fovs(
             data_dir, fovs, chans, img_shape=(10, 10), fills=True)
 
