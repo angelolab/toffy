@@ -1,3 +1,4 @@
+from matplotlib.pyplot import connect
 import numpy as np
 import os
 from typing import Union, Tuple
@@ -110,8 +111,8 @@ def _save_streak_masks(streak_data: StreakData):
 def _make_binary_mask(
     input_image: np.ndarray,
     gaussian_sigma: float = 5.00,
-    gamma: float = 3.80,
-    gamma_gain: float = 0.10,
+    gamma: float = 4.0,
+    gamma_gain: float = 1.00,
     log_gain: float = 1.00,
     pmin: int = 2,
     pmax: int = 98,
@@ -150,7 +151,6 @@ def _make_binary_mask(
     Returns:
         np.ndarray: The binary mask containing all of the candidate strokes.
     """
-    # Denoise the Image
     input_image = restoration.denoise_wavelet(
         input_image, wavelet=wavelet, mode=mode, rescale_sigma=rescale_sigma
     )
@@ -258,8 +258,8 @@ def _make_box_outline(streak_data: StreakData) -> None:
     )
     for region in streak_data.filtered_streak_df.itertuples():
         y, x = draw.rectangle_perimeter(
-            start=(region.min_row, region.min_col),
-            end=(region.max_row - 1, region.max_col - 1),
+            start=(region.min_row + 1, region.min_col + 1),
+            end=(region.max_row, region.max_col),
             clip=True,
             shape=streak_data.shape,
         )
