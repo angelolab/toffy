@@ -296,7 +296,7 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
 
 
 def create_combined_pulse_heights_file(pulse_height_dir, panel_info, norm_dir, mass_obj_func):
-    """"Combine individual pulse height CSVs together into single formatted file
+    """Combine individual pulse height CSVs together into single formatted file
 
     Args:
         pulse_height_dir (str): path to directory containing pulse height csvs
@@ -349,7 +349,7 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
     # check if any values are outside expected range
     extreme_mask = np.logical_or(norm_vals < extreme_vals[0], norm_vals > extreme_vals[1])
     if np.any(extreme_mask):
-        bad_channels = channels[extreme_mask]
+        bad_channels = np.array(channels)[extreme_mask]
         warnings.warn('The following channel(s) had an extreme normalization '
                       'value for fov {}. Manual inspection for accuracy is '
                       'recommended: {}'.format(fov, bad_channels))

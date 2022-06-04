@@ -265,6 +265,38 @@ def test_create_combined_pulse_heights_file(tmpdir, metrics):
     assert np.all(df['pulse_height'].values != df['pulse_height_fit'])
 
 
+def test_normalize_fov(tmpdir):
+    # create image data
+    fovs, chans = test_utils.gen_fov_chan_names(num_fovs=1, num_chans=3)
+    _, data_xr = test_utils.create_paired_xarray_fovs(
+        tmpdir, fovs, chans, img_shape=(10, 10))
+
+    # create inputs
+    norm_vals = np.random.rand(len(chans))
+    extreme_vals = (-1, 1)
+    norm_dir = os.path.join(tmpdir, 'norm_dir')
+    os.makedirs(norm_dir)
+
+    # normalize fov
+    normalize.normalize_fov(img_data=data_xr, norm_vals=norm_vals, norm_dir=norm_dir,
+                            fov=fovs[0], channels=chans, extreme_vals=extreme_vals)
+
+    # check that normalized images were modified by correct amount
+    norm_imgs = load_utils.load_imgs_from_tree(norm_dir, channels=chans)
+    assert np.allclose(data_xr.values, norm_imgs.values * norm_vals)
+
+    # check that log file has correct values
+    log_file = pd.read_csv(os.path.join(norm_dir, 'fov0', 'normalization_coefs.csv'))
+    assert np.array_equal(log_file['channels'], chans)
+    assert np.allclose(log_file['norm_vals'], norm_vals)
+
+    # check that warning is raised for extreme values
+    with pytest.warns(UserWarning, match='inspection for accuracy is recommended'):
+        norm_vals[0] = 1.5
+        normalize.normalize_fov(img_data=data_xr, norm_vals=norm_vals, norm_dir=norm_dir,
+                                fov=fovs[0], channels=chans, extreme_vals=extreme_vals)
+
+
 def test_normalize_image_data():
     with tempfile.TemporaryDirectory() as top_level_dir:
         data_dir = os.path.join(top_level_dir, 'data_dir')
@@ -302,7 +334,6 @@ def test_normalize_image_data():
                                        norm_func_path=func_path)
 
         normalized = load_utils.load_imgs_from_tree(output_dir, fovs=['fov0'], channels=chans)
-        log_file = pd.read_csv(os.path.join(output_dir, 'fov0', 'normalization_coefs.csv'))
 
         # compute expected multipliers for each mass
         mults = mph_vals * weights[0] + weights[2]
@@ -310,20 +341,6 @@ def test_normalize_image_data():
         # check that image data has been rescaled appropriately
         mults = mults.reshape(1, 1, len(mults))
         assert np.allclose(data_xr.values, normalized.values * mults)
-
-        # check that log file accurately recorded mults
-        assert np.allclose(log_file['norm_vals'].values, mults)
-
-        # check that warning is raised for out of range channels
-        mph_vals[-1] = 100
-        mph_vals[0] = -5
-        pulse_heights = pd.DataFrame({'mass': masses,
-                                      'fov': ['fov0' for _ in masses],
-                                      'pulse_height': mph_vals})
-        with pytest.warns(UserWarning, match='inspection for accuracy is recommended'):
-            normalize.normalize_image_data(data_dir, output_dir, fov='fov0',
-                                           pulse_heights=pulse_heights, panel_info=panel_info_file,
-                                           norm_func_path=func_path)
 
         # bad function path
         with pytest.raises(ValueError, match='No normalization function'):
