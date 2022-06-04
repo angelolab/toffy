@@ -295,10 +295,21 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
     return pulse_height_df
 
 
-def create_combined_pulse_heights_file(pulse_height_dir, panel_info, output_dir, channel_obj_func):
+def create_combined_pulse_heights_file(pulse_height_dir, panel_info, norm_dir, mass_obj_func):
+    """"Combine individual pulse height CSVs together into single formatted file
+
+    Args:
+        pulse_height_dir (str): path to directory containing pulse height csvs
+        panel_info (pd.DataFrame): the panel for this dataset
+        norm_dir (str): the directory where normalized images will be saved
+        mass_obj_func (str): the objective function used to fit the MPH over time per mass
+
+    Returns:
+        pd.DataFrame: the combined pulse heights file"""
+
     # create variables for mass fitting
     masses = panel_info['Mass'].values
-    fit_dir = os.path.join(output_dir, 'curve_fits')
+    fit_dir = os.path.join(norm_dir, 'curve_fits')
     os.makedirs(fit_dir)
 
     # combine fov-level files together
@@ -316,7 +327,7 @@ def create_combined_pulse_heights_file(pulse_height_dir, panel_info, output_dir,
     for mass in masses:
         mph_vals = pulse_height_df.loc[pulse_height_df['mass'] == mass, 'pulse_height'].values
         fit_mass_mph_curve(mph_vals=mph_vals, mass=mass, save_dir=fit_dir,
-                           obj_func=channel_obj_func)
+                           obj_func=mass_obj_func)
 
     # update pulse_height_df to include fitted mph values
     pulse_height_df = create_fitted_mass_mph_vals(pulse_height_df=pulse_height_df,
@@ -325,28 +336,60 @@ def create_combined_pulse_heights_file(pulse_height_dir, panel_info, output_dir,
     return pulse_height_df
 
 
-def normalize_image_data(img_dir, output_dir, fovs, pulse_height_dir, panel_info, img_sub_folder='',
+def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
+
+    # create directory to hold normalized images
+    output_fov_dir = os.path.join(norm_dir, fov)
+    if os.path.exists(output_fov_dir):
+        print("output directory {} already exists, "
+              "data will be overwritten".format(output_fov_dir))
+    else:
+        os.makedirs(output_fov_dir)
+
+    # check if any values are outside expected range
+    extreme_mask = np.logical_or(norm_vals < extreme_vals[0], norm_vals > extreme_vals[1])
+    if np.any(extreme_mask):
+        bad_channels = channels[extreme_mask]
+        warnings.warn('The following channel(s) had an extreme normalization '
+                      'value for fov {}. Manual inspection for accuracy is '
+                      'recommended: {}'.format(fov, bad_channels))
+
+    # correct images and save
+    normalized_images = img_data / norm_vals.reshape((1, 1, 1, len(norm_vals)))
+
+    for idx, chan in enumerate(channels):
+        io.imsave(os.path.join(output_fov_dir, chan + '.tiff'),
+                  normalized_images[0, :, :, idx], check_contrast=False)
+
+    # save logs
+    log_df = pd.DataFrame({'channels': channels,
+                           'norm_vals': norm_vals})
+    log_df.to_csv(os.path.join(output_fov_dir, 'normalization_coefs.csv'), index=False)
+
+
+def normalize_image_data(img_dir, norm_dir, fovs, pulse_height_dir, panel_info, img_sub_folder='',
                          norm_func_path=os.path.join('..', 'toffy', 'norm_func.json'),
-                         channel_obj_func='poly_3', extreme_vals=(0.5, 1)):
+                         mass_obj_func='poly_3', extreme_vals=(0.5, 1)):
     """Normalizes image data based on median pulse height from the run and a tuning curve
 
     Args:
         img_dir (str): directory with the image data
-        output_dir (str): directory where the normalized images will be saved
+        norm_dir (str): directory where the normalized images will be saved
         fovs (list): the fovs to normalize
         pulse_height_dir (str): directory containing per-fov pulse heights
         panel_info (pd.DataFrame): mapping between channels and masses
         norm_func_path (str): file containing the saved weights for the normalization function
-        channel_obj_func (str): class of function to use for modeling MPH over time per mass
+        mass_obj_func (str): class of function to use for modeling MPH over time per mass
         extreme_vals (tuple): determines the range for norm vals which will raise a warning
     """
 
-    # load normalization function for mapping MPH to counts
+    # error checks
     if not os.path.exists(norm_func_path):
         raise ValueError("No normalization function found. You will need to run "
                          "section 3 of the 1_set_up_toffy.ipynb notebook to generate the "
                          "necessary function before you can normalize your data")
 
+    # load normalization function for mapping MPH to counts
     with open(norm_func_path, 'r') as cf:
         norm_json = json.load(cf)
 
@@ -354,19 +397,14 @@ def normalize_image_data(img_dir, output_dir, fovs, pulse_height_dir, panel_info
 
     norm_func = create_prediction_function(norm_name, norm_weights)
 
-    pulse_height_df = create_combined_pulse_heights_file()
-
-
+    # combine pulse heights together into single df
+    pulse_height_df = create_combined_pulse_heights_file(pulse_height_dir=pulse_height_dir,
+                                                         panel_info=panel_info, norm_dir=norm_dir,
+                                                         mass_obj_func=mass_obj_func)
+    channels = panel_info['Target']
 
     # loop over each fov
     for fov in fovs:
-        output_fov_dir = os.path.join(output_dir, fov)
-        if os.path.exists(output_fov_dir):
-            print("output directory {} already exists, "
-                  "data will be overwritten".format(output_fov_dir))
-        else:
-            os.makedirs(output_fov_dir)
-
         # get images and pulse heights
         images = load_utils.load_imgs_from_tree(img_dir, fovs=[fov], channels=channels,
                                                 dtype='float32', img_sub_folder=img_sub_folder)
@@ -375,21 +413,6 @@ def normalize_image_data(img_dir, output_dir, fovs, pulse_height_dir, panel_info
         pulse_height_fov = pulse_height_df.loc[pulse_height_df['fov'] == fov, :]
         norm_vals = norm_func(pulse_height_fov['pulse_height_fit'].values)
 
-        # check if any values are outside expected range
-        extreme_mask = np.logical_or(norm_vals < extreme_vals[0], norm_vals > extreme_vals[1])
-        if np.any(extreme_mask):
-            bad_channels = channels[extreme_mask]
-            warnings.warn('The following channel(s) had an extreme normalization '
-                          'value for fov {}. Manual inspection for accuracy is '
-                          'recommended: {}'.format(fov, bad_channels))
-
-        # correct images and save
-        normalized_images = images / norm_vals.reshape((1, 1, 1, len(channels)))
-
-        for idx, chan in enumerate(channels):
-            io.imsave(os.path.join(output_fov_dir, chan + '.tiff'),
-                      normalized_images[0, :, :, idx], check_contrast=False)
-
-        log_df = pd.DataFrame({'channels': channels,
-                               'norm_vals': norm_vals})
-        log_df.to_csv(os.path.join(output_fov_dir, 'normalization_coefs.csv'), index=False)
+        # normalize and save
+        normalize_fov(img_data=images, norm_vals=norm_vals, norm_dir=norm_dir, fov=fov,
+                      channels=channels, extreme_vals=extreme_vals)
