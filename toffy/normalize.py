@@ -298,27 +298,29 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
 def create_combined_pulse_heights_file(pulse_height_dir, panel_info, output_dir, channel_obj_func):
     # create variables for mass fitting
     masses = panel_info['Mass'].values
-    norm_dir = os.path.join(output_dir, 'normalization_data')
+    fit_dir = os.path.join(output_dir, 'curve_fits')
+    os.makedirs(fit_dir)
 
     # combine fov-level files together
-    combine_run_metrics(run_dir=pulse_height_dir, substring='pulse_height')
+    combine_run_metrics(run_dir=pulse_height_dir, substring='pulse_heights')
     pulse_height_df = pd.read_csv(os.path.join(pulse_height_dir, 'pulse_heights_combined.csv'))
 
     # order by FOV
-    ordering = ns.natsorted(pulse_height_df['fov'].values.unique())
+    ordering = ns.natsorted((pulse_height_df['fov'].unique()))
     pulse_height_df['fov'] = pd.Categorical(pulse_height_df['fov'],
                                             ordered=True,
                                             categories=ordering)
+    pulse_height_df = pulse_height_df.sort_values('fov')
 
     # loop over each mass, and fit a curve for MPH over the course of the run
     for mass in masses:
         mph_vals = pulse_height_df.loc[pulse_height_df['mass'] == mass, 'pulse_height'].values
-        fit_mass_mph_curve(mph_vals=mph_vals, mass=mass, save_dir=norm_dir,
+        fit_mass_mph_curve(mph_vals=mph_vals, mass=mass, save_dir=fit_dir,
                            obj_func=channel_obj_func)
 
     # update pulse_height_df to include fitted mph values
     pulse_height_df = create_fitted_mass_mph_vals(pulse_height_df=pulse_height_df,
-                                                  obj_func_dir=norm_dir)
+                                                  obj_func_dir=fit_dir)
 
     return pulse_height_df
 

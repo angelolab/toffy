@@ -8,7 +8,7 @@ import xarray as xr
 
 from pytest_cases import parametrize_with_cases
 
-from ark.utils import test_utils, load_utils
+from ark.utils import test_utils, load_utils, io_utils
 from toffy import normalize
 import toffy.normalize_test_cases as test_cases
 
@@ -119,16 +119,16 @@ def test_combine_run_metrics(metrics):
             name, values_df = metric[0], pd.DataFrame(metric[1])
             values_df.to_csv(os.path.join(temp_dir, name), index=False)
 
-        normalize.combine_run_metrics(temp_dir, 'example_metric')
+        normalize.combine_run_metrics(temp_dir, 'pulse_height')
 
-        combined_data = pd.read_csv(os.path.join(temp_dir, 'example_metric_combined.csv'))
+        combined_data = pd.read_csv(os.path.join(temp_dir, 'pulse_height_combined.csv'))
 
-        assert np.array_equal(combined_data.columns, ['column_1', 'column_2', 'column_3'])
+        assert np.array_equal(combined_data.columns, ['pulse_height', 'mass', 'fov'])
         assert len(combined_data) == len(metrics) * 10
 
         # check that previously generated combined file is removed with warning
         with pytest.warns(UserWarning, match='previously generated'):
-            normalize.combine_run_metrics(temp_dir, 'example_metric')
+            normalize.combine_run_metrics(temp_dir, 'pulse_height')
 
         # check that files with different lengths raises error
         name, bad_vals = metrics[0][0], pd.DataFrame(metrics[0][1])
@@ -136,14 +136,14 @@ def test_combine_run_metrics(metrics):
         bad_vals.to_csv(os.path.join(temp_dir, name), index=False)
 
         with pytest.raises(ValueError, match='files are the same length'):
-            normalize.combine_run_metrics(temp_dir, 'example_metric')
+            normalize.combine_run_metrics(temp_dir, 'pulse_height')
 
         # empty directory raises error
         empty_dir = os.path.join(temp_dir, 'empty')
         os.makedirs(empty_dir)
 
         with pytest.raises(ValueError, match='No files'):
-            normalize.combine_run_metrics(empty_dir, 'example_metric')
+            normalize.combine_run_metrics(empty_dir, 'pulse_height')
 
 
 @parametrize_with_cases('dir_names, mph_dfs, count_dfs', test_cases.TuningCurveFiles)
@@ -214,10 +214,11 @@ def test_create_fitted_mass_mph_vals(tmpdir):
     fovs = ['fov1', 'fov2', 'fov3', 'fov4']
     obj_func = 'poly_2'
 
+    weights = [2, 0, 0]  # f(x) = 2x
+
     # create json for each channel
     for mass in masses:
-        weights = np.random.rand(3)
-        mass_json = {'name': obj_func, 'weights': weights.tolist()}
+        mass_json = {'name': obj_func, 'weights': weights}
         mass_path = os.path.join(tmpdir, mass + '_norm_func.json')
 
         with open(mass_path, 'w') as mp:
@@ -234,7 +235,34 @@ def test_create_fitted_mass_mph_vals(tmpdir):
     modified_df = normalize.create_fitted_mass_mph_vals(pulse_height_df=pulse_height_df,
                                                         obj_func_dir=tmpdir)
 
-    assert np.all(modified_df['pulse_height'].values != modified_df['pulse_height_fit'].values)
+    # all fitted values should be 2x original
+    assert np.all(modified_df['pulse_height'].values * 2 == modified_df['pulse_height_fit'].values)
+
+
+@parametrize_with_cases('metrics', cases=test_cases.CombineRunMetricFiles)
+def test_create_combined_pulse_heights_file(tmpdir, metrics):
+
+    # create metric files
+    pulse_dir = os.path.join(tmpdir, 'pulse_heights')
+    os.makedirs(pulse_dir)
+    for metric in metrics:
+        name, values_df = metric[0], pd.DataFrame(metric[1])
+        values_df.to_csv(os.path.join(pulse_dir, name), index=False)
+
+    panel = test_cases.panel
+
+    df = normalize.create_combined_pulse_heights_file(pulse_height_dir=pulse_dir, panel_info=panel,
+                                                      output_dir=tmpdir, channel_obj_func='poly_3')
+
+    # all four FOVs included
+    assert len(np.unique(df['fov'].values)) == 4
+
+    # FOVs are ordered in proper order
+    ordered_fovs = df.loc[df['mass'] == 10, 'fov'].values.astype('str')
+    assert np.array_equal(ordered_fovs, ['fov8', 'fov9', 'fov10', 'fov11'])
+
+    # fitted values are distinct from original
+    assert np.all(df['pulse_height'].values != df['pulse_height_fit'])
 
 
 def test_normalize_image_data():

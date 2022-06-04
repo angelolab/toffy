@@ -3,7 +3,9 @@ import pytest
 import numpy as np
 import pandas as pd
 
-masses = np.arange(5, 20)
+masses = np.arange(5, 15)
+channels = ['chan_{}'.format(i) for i in range(len(masses))]
+panel = pd.DataFrame({'Mass': masses, 'Target': channels})
 
 
 class TuningCurveFiles:
@@ -34,15 +36,15 @@ class TuningCurveFiles:
         return dirs, mph_dfs, count_dfs
 
 
-class CombineRunMetricFiles():
+class CombineRunMetricFiles:
 
     def case_default_metrics(self):
         # create full directory of files
         metrics = []
         for i in range(1, 5):
-            metric_name = 'example_metric_{}.csv'.format(i)
-            metric_values = {'column_1': np.random.rand(10),
-                             'column_2': np.random.rand(10),
-                             'column_3': np.random.rand(10)}
+            metric_name = 'pulse_heights_{}.csv'.format(i)
+            metric_values = {'pulse_height': np.random.rand(10),
+                             'mass': masses,
+                             'fov': ['fov{}'.format(12 - i)] * 10}
             metrics.append([metric_name, metric_values])
         return metrics
