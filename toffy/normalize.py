@@ -400,7 +400,7 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
 
 
 def normalize_image_data(img_dir, norm_dir, pulse_height_dir, panel_info,
-                         img_sub_folder='', mass_obj_func='poly_3', extreme_vals=(0.5, 1),
+                         img_sub_folder='', mass_obj_func='poly_3', extreme_vals=(0.4, 1.1),
                          norm_func_path=os.path.join('..', 'toffy', 'norm_func.json')):
     """Normalizes image data based on median pulse height from the run and a tuning curve
 
