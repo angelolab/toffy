@@ -6,6 +6,7 @@ import pandas as pd
 masses = np.arange(5, 15)
 channels = ['chan_{}'.format(i) for i in range(len(masses))]
 panel = pd.DataFrame({'Mass': masses, 'Target': channels})
+fovs = ['fov{}'.format(12 - i) for i in range(4)]
 
 
 class TuningCurveFiles:
@@ -41,10 +42,10 @@ class CombineRunMetricFiles:
     def case_default_metrics(self):
         # create full directory of files
         metrics = []
-        for i in range(1, 5):
+        for i in range(0, 4):
             metric_name = 'pulse_heights_{}.csv'.format(i)
             metric_values = {'pulse_height': np.random.rand(10),
                              'mass': masses,
-                             'fov': ['fov{}'.format(12 - i)] * 10}
+                             'fov': [fovs[i]] * 10}
             metrics.append([metric_name, metric_values])
         return metrics

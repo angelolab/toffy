@@ -12,7 +12,7 @@ import matplotlib.pyplot as plt
 import natsort as ns
 import pandas as pd
 
-from ark.utils import io_utils, load_utils
+from ark.utils import io_utils, load_utils, misc_utils
 from mibi_bin_tools.bin_files import extract_bin_files, get_median_pulse_height
 from mibi_bin_tools.panel_utils import make_panel
 
@@ -295,8 +295,8 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
     return pulse_height_df
 
 
-def create_combined_pulse_heights_file(pulse_height_dir, panel_info, norm_dir, mass_obj_func):
-    """Combine individual pulse height CSVs together into single formatted file
+def create_fitted_pulse_heights_file(pulse_height_dir, panel_info, norm_dir, mass_obj_func):
+    """Create a single file containing the pulse heights after fitting a curve per mass
 
     Args:
         pulse_height_dir (str): path to directory containing pulse height csvs
@@ -337,6 +337,7 @@ def create_combined_pulse_heights_file(pulse_height_dir, panel_info, norm_dir, m
 
 
 def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
+    """Normalize a single FOV with provided normalization constants for each channel"""
 
     # create directory to hold normalized images
     output_fov_dir = os.path.join(norm_dir, fov)
@@ -367,20 +368,19 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
     log_df.to_csv(os.path.join(output_fov_dir, 'normalization_coefs.csv'), index=False)
 
 
-def normalize_image_data(img_dir, norm_dir, fovs, pulse_height_dir, panel_info, img_sub_folder='',
-                         norm_func_path=os.path.join('..', 'toffy', 'norm_func.json'),
-                         mass_obj_func='poly_3', extreme_vals=(0.5, 1)):
+def normalize_image_data(img_dir, norm_dir, pulse_height_dir, panel_info,
+                         img_sub_folder='', mass_obj_func='poly_3', extreme_vals=(0.5, 1),
+                         norm_func_path=os.path.join('..', 'toffy', 'norm_func.json')):
     """Normalizes image data based on median pulse height from the run and a tuning curve
 
     Args:
         img_dir (str): directory with the image data
         norm_dir (str): directory where the normalized images will be saved
-        fovs (list): the fovs to normalize
         pulse_height_dir (str): directory containing per-fov pulse heights
         panel_info (pd.DataFrame): mapping between channels and masses
-        norm_func_path (str): file containing the saved weights for the normalization function
         mass_obj_func (str): class of function to use for modeling MPH over time per mass
         extreme_vals (tuple): determines the range for norm vals which will raise a warning
+        norm_func_path (str): file containing the saved weights for the normalization function
     """
 
     # error checks
@@ -389,22 +389,28 @@ def normalize_image_data(img_dir, norm_dir, fovs, pulse_height_dir, panel_info, 
                          "section 3 of the 1_set_up_toffy.ipynb notebook to generate the "
                          "necessary function before you can normalize your data")
 
-    # load normalization function for mapping MPH to counts
+    # create normalization function for mapping MPH to counts
     with open(norm_func_path, 'r') as cf:
         norm_json = json.load(cf)
 
-    norm_weights, norm_name = norm_json['weights'], norm_json['name']
+    img_fovs = io_utils.list_folders(img_dir, 'fov')
 
+    # TODO: check for mismatch between FOVs in image data and mph norm vals
+    norm_weights, norm_name = norm_json['weights'], norm_json['name']
     norm_func = create_prediction_function(norm_name, norm_weights)
 
     # combine pulse heights together into single df
-    pulse_height_df = create_combined_pulse_heights_file(pulse_height_dir=pulse_height_dir,
+    pulse_height_df = create_fitted_pulse_heights_file(pulse_height_dir=pulse_height_dir,
                                                          panel_info=panel_info, norm_dir=norm_dir,
                                                          mass_obj_func=mass_obj_func)
     channels = panel_info['Target']
+    pulse_fovs = np.unique(pulse_height_df['fov'])
+
+    # make sure same FOVs used to construct tuning curve are being modified
+    misc_utils.verify_same_elements(image_data_fovs=img_fovs, pulse_height_csv_files=pulse_fovs)
 
     # loop over each fov
-    for fov in fovs:
+    for fov in img_fovs:
         # get images and pulse heights
         images = load_utils.load_imgs_from_tree(img_dir, fovs=[fov], channels=channels,
                                                 dtype='float32', img_sub_folder=img_sub_folder)

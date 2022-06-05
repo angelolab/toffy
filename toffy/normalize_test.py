@@ -1,4 +1,7 @@
 import json
+import shutil
+
+import natsort
 import numpy as np
 import os
 import pandas as pd
@@ -240,7 +243,7 @@ def test_create_fitted_mass_mph_vals(tmpdir):
 
 
 @parametrize_with_cases('metrics', cases=test_cases.CombineRunMetricFiles)
-def test_create_combined_pulse_heights_file(tmpdir, metrics):
+def test_create_fitted_pulse_heights_file(tmpdir, metrics):
 
     # create metric files
     pulse_dir = os.path.join(tmpdir, 'pulse_heights')
@@ -250,16 +253,17 @@ def test_create_combined_pulse_heights_file(tmpdir, metrics):
         values_df.to_csv(os.path.join(pulse_dir, name), index=False)
 
     panel = test_cases.panel
+    fovs = natsort.natsorted(test_cases.fovs)
 
-    df = normalize.create_combined_pulse_heights_file(pulse_height_dir=pulse_dir, panel_info=panel,
-                                                      output_dir=tmpdir, channel_obj_func='poly_3')
+    df = normalize.create_fitted_pulse_heights_file(pulse_height_dir=pulse_dir, panel_info=panel,
+                                                    norm_dir=tmpdir, mass_obj_func='poly_3')
 
     # all four FOVs included
     assert len(np.unique(df['fov'].values)) == 4
 
     # FOVs are ordered in proper order
     ordered_fovs = df.loc[df['mass'] == 10, 'fov'].values.astype('str')
-    assert np.array_equal(ordered_fovs, ['fov8', 'fov9', 'fov10', 'fov11'])
+    assert np.array_equal(ordered_fovs, fovs)
 
     # fitted values are distinct from original
     assert np.all(df['pulse_height'].values != df['pulse_height_fit'])
@@ -297,53 +301,58 @@ def test_normalize_fov(tmpdir):
                                 fov=fovs[0], channels=chans, extreme_vals=extreme_vals)
 
 
-def test_normalize_image_data():
-    with tempfile.TemporaryDirectory() as top_level_dir:
-        data_dir = os.path.join(top_level_dir, 'data_dir')
-        os.makedirs(data_dir)
+@parametrize_with_cases('metrics', cases=test_cases.CombineRunMetricFiles)
+def test_normalize_image_data(tmpdir, metrics):
 
-        output_dir = os.path.join(top_level_dir, 'output_dir')
-        os.makedirs(output_dir)
+    # create directory of pulse height csvs
+    pulse_height_dir = os.path.join(tmpdir, 'pulse_height_dir')
+    os.makedirs(pulse_height_dir)
 
-        # make fake data for testing
-        fovs, chans = test_utils.gen_fov_chan_names(num_fovs=3, num_chans=10)
-        filelocs, data_xr = test_utils.create_paired_xarray_fovs(
-            data_dir, fovs, chans, img_shape=(10, 10), fills=True)
+    for metric in metrics:
+        name, values_df = metric[0], pd.DataFrame(metric[1])
+        values_df.to_csv(os.path.join(pulse_height_dir, name), index=False)
 
-        # weights of mph to norm const func: 0.01x + 0x^2 + 0.5
-        weights = [0.01, 0, 0.5]
-        name = 'poly_2'
-        func_json = {'name': name, 'weights': weights}
-        func_path = os.path.join(top_level_dir, 'norm_func.json')
+    # create directory with image data
+    img_dir = os.path.join(tmpdir, 'img_dir')
+    os.makedirs(img_dir)
 
-        with open(func_path, 'w') as fp:
-            json.dump(func_json, fp)
+    fovs, chans = test_cases.fovs, test_cases.channels
+    filelocs, data_xr = test_utils.create_paired_xarray_fovs(
+        img_dir, fovs, chans, img_shape=(10, 10))
 
-        # create pulse heights file with linearly increasing values
-        masses = np.array(range(1, len(chans) + 1))
-        panel_info_file = pd.DataFrame({'Mass': masses, 'Target': chans})
-        mph_vals = np.arange(1, len(masses) + 1)
+    # create mph norm func
+    weights = np.random.rand(3)
+    name = 'poly_2'
+    func_json = {'name': name, 'weights': weights.tolist()}
+    func_path = os.path.join(tmpdir, 'norm_func.json')
 
-        pulse_heights = pd.DataFrame({'mass': masses,
-                                     'fov': ['fov0' for _ in masses],
-                                      'pulse_height': mph_vals})
+    with open(func_path, 'w') as fp:
+        json.dump(func_json, fp)
 
-        # normalize images
-        normalize.normalize_image_data(data_dir, output_dir, fov='fov0',
-                                       pulse_heights=pulse_heights, panel_info=panel_info_file,
+    # get panel
+    panel = test_cases.panel
+
+    norm_dir = os.path.join(tmpdir, 'norm_dir')
+    os.makedirs(norm_dir)
+
+    # normalize images
+    normalize.normalize_image_data(img_dir=img_dir, norm_dir=norm_dir,
+                                   pulse_height_dir=pulse_height_dir, panel_info=panel,
+                                   norm_func_path=func_path)
+
+    assert np.array_equal(io_utils.list_folders(norm_dir, 'fov').sort(), fovs.sort())
+
+    # no normalization function
+    with pytest.raises(ValueError, match='section 3 of the 1_set_up_toffy'):
+        normalize.normalize_image_data(img_dir=img_dir, norm_dir=norm_dir,
+                                       pulse_height_dir=pulse_height_dir, panel_info=panel,
+                                       norm_func_path='bad_path')
+
+    # mismatch between FOVs
+    shutil.rmtree(os.path.join(img_dir, fovs[0]))
+    shutil.rmtree(norm_dir)
+    os.makedirs(norm_dir)
+    with pytest.raises(ValueError, match='image data fovs'):
+        normalize.normalize_image_data(img_dir=img_dir, norm_dir=norm_dir,
+                                       pulse_height_dir=pulse_height_dir, panel_info=panel,
                                        norm_func_path=func_path)
-
-        normalized = load_utils.load_imgs_from_tree(output_dir, fovs=['fov0'], channels=chans)
-
-        # compute expected multipliers for each mass
-        mults = mph_vals * weights[0] + weights[2]
-
-        # check that image data has been rescaled appropriately
-        mults = mults.reshape(1, 1, len(mults))
-        assert np.allclose(data_xr.values, normalized.values * mults)
-
-        # bad function path
-        with pytest.raises(ValueError, match='No normalization function'):
-            normalize.normalize_image_data(data_dir, output_dir, fov='fov0',
-                                           pulse_heights=pulse_heights, panel_info=panel_info_file,
-                                           norm_func_path='bad_func_path')
