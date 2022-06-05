@@ -226,12 +226,14 @@ def test_create_fitted_mass_mph_vals(tmpdir):
     fovs = ['fov1', 'fov2', 'fov3', 'fov4']
     obj_func = 'poly_2'
 
-    weights = [2, 0, 0]  # f(x) = 2x
+    # each mass has a unique multiplier for fitted function
+    mass_mults = [1, 2, 3]
 
     # create json for each channel
-    for mass in masses:
+    for mass_idx in range(len(masses)):
+        weights = [mass_mults[mass_idx], 0, 0]
         mass_json = {'name': obj_func, 'weights': weights}
-        mass_path = os.path.join(tmpdir, mass + '_norm_func.json')
+        mass_path = os.path.join(tmpdir, masses[mass_idx] + '_norm_func.json')
 
         with open(mass_path, 'w') as mp:
             json.dump(mass_json, mp)
@@ -247,8 +249,15 @@ def test_create_fitted_mass_mph_vals(tmpdir):
     modified_df = normalize.create_fitted_mass_mph_vals(pulse_height_df=pulse_height_df,
                                                         obj_func_dir=tmpdir)
 
-    # all fitted values should be 2x original
-    assert np.all(modified_df['pulse_height'].values * 2 == modified_df['pulse_height_fit'].values)
+    # check that fitted values are correct multiplier of FOV
+    for mass_idx in range(len(masses)):
+        mass = masses[mass_idx]
+        mult = mass_mults[mass_idx]
+
+        fov_order = np.linspace(0, len(fovs) - 1, len(fovs))
+        fitted_vals = modified_df.loc[modified_df['mass'] == mass, 'pulse_height_fit'].values
+
+        assert np.array_equal(fov_order * mult, fitted_vals)
 
 
 @parametrize_with_cases('metrics', cases=test_cases.CombineRunMetricFiles)
