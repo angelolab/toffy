@@ -244,15 +244,42 @@ def combine_tuning_curve_metrics(dir_list):
     return all_data
 
 
-def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func):
-    """Fits a curve for the MPH over time for the specified mass"""
+def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=5):
+    """Fits a curve for the MPH over time for the specified mass
+
+    Args:
+        mph_vals (list): mph for each FOV in the run
+        mass (str or int): the mass being fit
+        save_dir (str): the directory to save the fit parameters
+        obj_func (str): the function to use for constructing the fit
+        min_obs (int): the minimum number of observations to fit a curve, otherwise uses median"""
 
     fov_order = np.linspace(0, len(mph_vals) - 1, len(mph_vals))
-
     save_path = os.path.join(save_dir, str(mass) + '_mph_fit.jpg')
 
-    weights = fit_calibration_curve(x_vals=fov_order, y_vals=mph_vals, obj_func=obj_func,
-                                    plot_fit=True, save_path=save_path)
+    if len(mph_vals) > min_obs:
+        # fit standard curve
+        weights = fit_calibration_curve(x_vals=fov_order, y_vals=mph_vals, obj_func=obj_func,
+                                        plot_fit=True, save_path=save_path)
+    else:
+        # default to using the median instead for short runs with small number of FOVs
+        mph_median = np.median(mph_vals)
+        if obj_func == 'poly_2':
+            weight_len = 3
+        elif obj_func == 'poly_3':
+            weight_len = 4
+        else:
+            raise ValueError("Unsupported objective function provided: {}".format(obj_func))
+
+        # plot median
+        plt.axhline(y=mph_median, color='r', linestyle='-')
+        plt.plot(fov_order, mph_vals, '.')
+        plt.savefig(save_path)
+        plt.close()
+
+        # all coefficients except intercept are 0
+        weights = np.zeros(weight_len)
+        weights[-1] = mph_median
 
     mass_json = {'name': obj_func, 'weights': weights.tolist()}
     mass_path = os.path.join(save_dir, str(mass) + '_norm_func.json')
@@ -262,10 +289,14 @@ def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func):
 
 
 def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
-    """Uses the mph curves for each mass to generate a smoothed mph estimate"""
+    """Uses the mph curves for each mass to generate a smoothed mph estimate
 
+    Args:
+        pulse_height_df (pd.DataFrame): contains the MPH value per mass for all FOVs
+        obj_func_dir (str): directory containing the curves generated for each mass
 
-    # TODO: default to median if # of observations is too small
+    Returns:
+        pd.DataFrame: updated dataframe with fitted version of each MPH value for each mass"""
 
     # get all masses
     masses = np.unique(pulse_height_df['mass'].values)
@@ -395,7 +426,6 @@ def normalize_image_data(img_dir, norm_dir, pulse_height_dir, panel_info,
 
     img_fovs = io_utils.list_folders(img_dir, 'fov')
 
-    # TODO: check for mismatch between FOVs in image data and mph norm vals
     norm_weights, norm_name = norm_json['weights'], norm_json['name']
     norm_func = create_prediction_function(norm_name, norm_weights)
 
@@ -406,7 +436,7 @@ def normalize_image_data(img_dir, norm_dir, pulse_height_dir, panel_info,
     channels = panel_info['Target']
     pulse_fovs = np.unique(pulse_height_df['fov'])
 
-    # make sure same FOVs used to construct tuning curve are being modified
+    # make sure FOVs used to construct tuning curve are same ones being normalized
     misc_utils.verify_same_elements(image_data_fovs=img_fovs, pulse_height_csv_files=pulse_fovs)
 
     # loop over each fov

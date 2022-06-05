@@ -186,13 +186,14 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
             assert np.all(norm_vals == 1)
 
 
-def test_fit_mass_mph_curve(tmpdir):
+@parametrize('min_obs', [5, 12])
+def test_fit_mass_mph_curve(tmpdir, min_obs):
     mph_vals = np.random.randint(0, 10, 10)
     mass_name = '88'
     obj_func = 'poly_2'
 
     normalize.fit_mass_mph_curve(mph_vals=mph_vals, mass=mass_name, save_dir=tmpdir,
-                                 obj_func=obj_func)
+                                 obj_func=obj_func, min_obs=min_obs)
 
     # make sure plot was created
     plot_path = os.path.join(tmpdir, mass_name + '_mph_fit.jpg')
@@ -208,8 +209,16 @@ def test_fit_mass_mph_curve(tmpdir):
     weights = mass_json['weights']
     pred_func = normalize.create_prediction_function(name=obj_func, weights=weights)
 
-    # check that prediction function runs
-    _ = pred_func(np.arange(10))
+    # generate predictions
+    preds = pred_func(np.arange(10))
+
+    if min_obs == 5:
+        # check that prediction function generates unique output
+        assert len(np.unique(preds)) == len(preds)
+    else:
+        # check that prediction function generates same output for all
+        assert len(np.unique(preds)) == 1
+        assert np.allclose(preds[0], np.median(mph_vals))
 
 
 def test_create_fitted_mass_mph_vals(tmpdir):
