@@ -142,6 +142,7 @@ def fit_calibration_curve(x_vals, y_vals, obj_func, plot_fit=False, save_path=No
 
         if save_path is not None:
             plt.savefig(save_path)
+        plt.close()
 
     return popt
 
