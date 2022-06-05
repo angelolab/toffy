@@ -252,7 +252,7 @@ def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func):
     save_path = os.path.join(save_dir, str(mass) + '_mph_fit.jpg')
 
     weights = fit_calibration_curve(x_vals=fov_order, y_vals=mph_vals, obj_func=obj_func,
-                                   plot_fit=True, save_path=save_path)
+                                    plot_fit=True, save_path=save_path)
 
     mass_json = {'name': obj_func, 'weights': weights.tolist()}
     mass_path = os.path.join(save_dir, str(mass) + '_norm_func.json')
@@ -401,8 +401,8 @@ def normalize_image_data(img_dir, norm_dir, pulse_height_dir, panel_info,
 
     # combine pulse heights together into single df
     pulse_height_df = create_fitted_pulse_heights_file(pulse_height_dir=pulse_height_dir,
-                                                         panel_info=panel_info, norm_dir=norm_dir,
-                                                         mass_obj_func=mass_obj_func)
+                                                       panel_info=panel_info, norm_dir=norm_dir,
+                                                       mass_obj_func=mass_obj_func)
     channels = panel_info['Target']
     pulse_fovs = np.unique(pulse_height_df['fov'])
 
