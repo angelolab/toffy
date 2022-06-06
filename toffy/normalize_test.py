@@ -228,7 +228,10 @@ def test_smooth_outliers():
 
 @parametrize('min_obs', [5, 12])
 def test_fit_mass_mph_curve(tmpdir, min_obs):
+    # create random data with single outlier
     mph_vals = np.random.randint(0, 10, 10)
+    mph_vals[4] = 12
+
     mass_name = '88'
     obj_func = 'poly_2'
 

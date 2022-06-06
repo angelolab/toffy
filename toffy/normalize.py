@@ -144,6 +144,9 @@ def fit_calibration_curve(x_vals, y_vals, obj_func, outliers=None, plot_fit=Fals
         y_line = objective(x_line, *popt)
         plt.plot(x_line, y_line, '--', color='red')
 
+        if outliers is not None:
+            plt.scatter(outliers[0], outliers[1])
+
         if save_path is not None:
             plt.savefig(save_path)
         plt.close()
@@ -315,7 +318,8 @@ def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=5):
         # if outliers identified, pass to plotting function
         if len(outliers) > 0:
             outlier_x = fov_order[outliers]
-            outlier_tup = (outlier_x, outliers)
+            outlier_y = mph_vals[outliers]
+            outlier_tup = (outlier_x, outlier_y)
         else:
             outlier_tup = None
 
