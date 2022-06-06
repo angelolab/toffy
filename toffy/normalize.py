@@ -435,21 +435,25 @@ def normalize_image_data(img_dir, norm_dir, pulse_height_dir, panel_info,
     pulse_height_df = create_fitted_pulse_heights_file(pulse_height_dir=pulse_height_dir,
                                                        panel_info=panel_info, norm_dir=norm_dir,
                                                        mass_obj_func=mass_obj_func)
-    channels = panel_info['Target']
-    pulse_fovs = np.unique(pulse_height_df['fov'])
+    # add channel name to pulse_height_df
+    renamed_panel = panel_info.rename({'Mass': 'mass'}, axis=1)
+    pulse_height_df = pulse_height_df.merge(renamed_panel, how='left', on=['mass'])
+    pulse_height_df = pulse_height_df.sort_values('Target')
 
     # make sure FOVs used to construct tuning curve are same ones being normalized
+    pulse_fovs = np.unique(pulse_height_df['fov'])
     misc_utils.verify_same_elements(image_data_fovs=img_fovs, pulse_height_csv_files=pulse_fovs)
 
     # loop over each fov
     for fov in img_fovs:
-        # get images and pulse heights
-        images = load_utils.load_imgs_from_tree(img_dir, fovs=[fov], channels=channels,
-                                                dtype='float32', img_sub_folder=img_sub_folder)
-
-        # predict normalization based on MPH value for all masses
+        # compute per-mass normalization constant
         pulse_height_fov = pulse_height_df.loc[pulse_height_df['fov'] == fov, :]
         norm_vals = norm_func(pulse_height_fov['pulse_height_fit'].values)
+        channels = pulse_height_fov['Target'].values
+
+        # get images
+        images = load_utils.load_imgs_from_tree(img_dir, fovs=[fov], channels=channels,
+                                                dtype='float32', img_sub_folder=img_sub_folder)
 
         # normalize and save
         normalize_fov(img_data=images, norm_vals=norm_vals, norm_dir=norm_dir, fov=fov,
