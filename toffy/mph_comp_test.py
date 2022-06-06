@@ -26,11 +26,11 @@ def test_get_estimated_time():
 
     # bad FOV json file data should raise an error, no frameSize or dwellTimeMillis keys
     bad_data = {"fov": {"not_frameSize": 0, "not_dwellTimeMillis": 0}}
-    temp_json = tempfile.NamedTemporaryFile(mode="w", suffix='fov_name.json', delete=False)
-    json.dump(bad_data, temp_json)
-    json_dir = tempfile.gettempdir()
-    with pytest.raises(KeyError, match="missing one of the necessary keys"):
-        mph.get_estimated_time(json_dir, 'fov_name')
+    with tempfile.TemporaryDirectory() as tmpdir:
+        with open(os.path.join(tmpdir, 'fov_name.json'), 'w') as f:
+            json.dump(bad_data, f)
+        with pytest.raises(KeyError, match="missing one of the necessary keys"):
+            mph.get_estimated_time(tmpdir, 'fov_name')
 
     # test successful time data retrieval
     assert mph.get_estimated_time(good_path, good_fov) == 512
@@ -43,43 +43,41 @@ def test_compute_mph_metrics():
     start_mass = -0.3
     stop_mass = 0.0
 
-    # bad directory path should raise an error
-    bad_path = os.path.join(Path(__file__).parent, "data", "not-a-folder")
-    with pytest.raises(ValueError):
-        mph.compute_mph_metrics(bad_path, bin_file_path, fov_name,
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # bad directory path should raise an error
+        bad_path = os.path.join(Path(__file__).parent, "data", "not-a-folder")
+        with pytest.raises(ValueError):
+            mph.compute_mph_metrics(bad_path, tmpdir, fov_name,
+                                    target_name, start_mass, stop_mass)
+
+        # invalid fov name should raise an error
+        with pytest.raises(FileNotFoundError):
+            mph.compute_mph_metrics(bin_file_path, tmpdir, "not-a-fov",
+                                    target_name, start_mass, stop_mass)
+
+        # invalid target name should raise an error
+        with pytest.raises(ValueError, match="target name is invalid"):
+            mph.compute_mph_metrics(bin_file_path, tmpdir, fov_name,
+                                    "not-a-target", start_mass, stop_mass)
+
+        # test successful data retrieval and csv output
+        mph.compute_mph_metrics(bin_file_path, tmpdir, fov_name,
                                 target_name, start_mass, stop_mass)
+        csv_path = os.path.join(tmpdir, fov_name + '-pulse_height.csv')
+        assert os.path.exists(csv_path)
 
-    # invalid fov name should raise an error
-    with pytest.raises(FileNotFoundError):
-        mph.compute_mph_metrics(bin_file_path, bin_file_path, "not-a-fov",
-                                target_name, start_mass, stop_mass)
-
-    # invalid target name should raise an error
-    with pytest.raises(ValueError, match="target name is invalid"):
-        mph.compute_mph_metrics(bin_file_path, bin_file_path, fov_name,
-                                "not-a-target", start_mass, stop_mass)
-
-    # test successful data retrieval and csv output
-    mph.compute_mph_metrics(bin_file_path, bin_file_path, fov_name,
-                            target_name, start_mass, stop_mass)
-    csv_path = os.path.join(bin_file_path, fov_name + '-pulse_height.csv')
-    assert os.path.exists(csv_path)
-
-    # check the csv data is correct
-    mph_data = pd.DataFrame([{
-            'fov': fov_name,
-            'MPH': 2222,
-            'total_count': 72060,
-            'time': 512,
-        }])
-    csv_data = pd.read_csv(csv_path)
-    assert csv_data.equals(mph_data)
-
-    os.remove(os.path.join(bin_file_path, 'fov-1-scan-1-pulse_height.csv'))
+        # check the csv data is correct
+        mph_data = pd.DataFrame([{
+                'fov': fov_name,
+                'MPH': 2222,
+                'total_count': 72060,
+                'time': 512,
+            }])
+        csv_data = pd.read_csv(csv_path)
+        assert csv_data.equals(mph_data)
 
 
 def test_combine_mph_metrics():
-    csv_path = os.path.join(Path(__file__).parent, "data", "tissue")
     bad_path = os.path.join(Path(__file__).parent, "data", "not-a-folder")
 
     # bad directory path should raise an error
@@ -99,28 +97,27 @@ def test_combine_mph_metrics():
         'time': 512,
     }])
 
-    data1.to_csv(os.path.join(csv_path, 'fov-1-scan-1-pulse_height.csv'), index=False)
-    data2.to_csv(os.path.join(csv_path, 'fov-2-scan-1-pulse_height.csv'), index=False)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        csv_path = tmpdir
 
-    combined_data = pd.DataFrame({
-        'fov': ['fov-1-scan-1', 'fov-2-scan-1'],
-        'MPH': [2222, 3800],
-        'total_count': [72060, 74799],
-        'time': [512, 512],
-        'cum_total_count': [72060, 146859],
-        'cum_total_time': [512, 1024],
-        }, index=[0, 1])
+        data1.to_csv(os.path.join(csv_path, 'fov-1-scan-1-pulse_height.csv'), index=False)
+        data2.to_csv(os.path.join(csv_path, 'fov-2-scan-1-pulse_height.csv'), index=False)
 
-    # test successful data retrieval and csv output
-    mph_data = mph.combine_mph_metrics(csv_path, return_data=True)
-    combined_csv_path = os.path.join(csv_path, 'total_count_vs_mph_data.csv')
-    csv_data = pd.read_csv(combined_csv_path)
-    assert os.path.exists(combined_csv_path)
-    assert csv_data.equals(combined_data)
+        combined_data = pd.DataFrame({
+            'fov': ['fov-1-scan-1', 'fov-2-scan-1'],
+            'MPH': [2222, 3800],
+            'total_count': [72060, 74799],
+            'time': [512, 512],
+            'cum_total_count': [72060, 146859],
+            'cum_total_time': [512, 1024],
+            }, index=[0, 1])
 
-    os.remove(combined_csv_path)
-    os.remove(os.path.join(csv_path, 'fov-1-scan-1-pulse_height.csv'))
-    os.remove(os.path.join(csv_path, 'fov-2-scan-1-pulse_height.csv'))
+        # test successful data retrieval and csv output
+        mph.combine_mph_metrics(csv_path)
+        combined_csv_path = os.path.join(csv_path, 'total_count_vs_mph_data.csv')
+        csv_data = pd.read_csv(combined_csv_path)
+        assert os.path.exists(combined_csv_path)
+        assert csv_data.equals(combined_data)
 
 
 def test_visualize_mph():
