@@ -186,6 +186,46 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
             assert np.all(norm_vals == 1)
 
 
+def test__smooth_outliers():
+
+    # Check for outliers which are outside the smoothing range from another
+    smooth_range = 2
+
+    vals = np.arange(20)
+    outlier1 = np.random.randint(2, 7)
+    outlier2 = np.random.randint(9, 13)
+    outlier3 = np.random.randint(15, 18)
+    outliers = np.array([outlier1, outlier2, outlier3])
+    smoothed_vals = normalize._smooth_outliers(vals=vals, outlier_idx=outliers,
+                                               smooth_range=smooth_range)
+
+    assert np.array_equal(vals, smoothed_vals)
+
+    # check for outliers which are next to one another
+    outliers = np.array([5, 6])
+    smoothed_vals = normalize._smooth_outliers(vals=vals, outlier_idx=outliers,
+                                               smooth_range=smooth_range)
+
+    # 5th entry is two below, plus first two non-outliers above
+    smooth_5 = np.mean(np.concatenate([vals[3:5], vals[7:9]]))
+
+    # 6th entry is two below (one original and one smoothed from previous step), plus two above
+    smooth_6 = np.mean(np.concatenate([vals[4:5], [smooth_5], vals[7:9]]))
+    np.array_equal(smoothed_vals[outliers], [smooth_5, smooth_6])
+
+
+def test_smooth_outliers():
+    # create dataset with specified outliers
+    vals = np.arange(20)
+    outliers = [3, 10, 15]
+    vals[outliers] = [-5, 22, 2]
+
+    smoothed_vals, pred_outliers = normalize.smooth_outliers(y=vals, obj_func='poly_1',
+                                                             smooth_range=2)
+    # check that outliers are correctly identified
+    assert np.array_equal(outliers, pred_outliers)
+
+
 @parametrize('min_obs', [5, 12])
 def test_fit_mass_mph_curve(tmpdir, min_obs):
     mph_vals = np.random.randint(0, 10, 10)

@@ -1,5 +1,5 @@
 # adapted from https://machinelearningmastery.com/curve-fitting-with-python/
-
+import copy
 import json
 import os
 import shutil
@@ -11,6 +11,9 @@ import skimage.io as io
 import matplotlib.pyplot as plt
 import natsort as ns
 import pandas as pd
+
+from seaborn import algorithms as algo
+from seaborn.utils import ci
 
 from ark.utils import io_utils, load_utils, misc_utils
 from mibi_bin_tools.bin_files import extract_bin_files, get_median_pulse_height
@@ -114,13 +117,14 @@ def create_objective_function(obj_func):
     return objectives[obj_func]
 
 
-def fit_calibration_curve(x_vals, y_vals, obj_func, plot_fit=False, save_path=None):
+def fit_calibration_curve(x_vals, y_vals, obj_func, outliers=None, plot_fit=False, save_path=None):
     """Finds the optimal weights to fit the supplied values for the specified function
 
     Args:
         x_vals (list): the x values to be fit
         y_vals (list): the y value to be fit
         obj_func (str): the name of the function that will be fit to the data
+        outliers (tuple or None): optional tuple of outlier x/y coords to plot
         plot_fit (bool): whether or not to plot the fit of the function vs the values
         save_path (str or None): location to save the plot of the fitted values
 
@@ -245,6 +249,52 @@ def combine_tuning_curve_metrics(dir_list):
     return all_data
 
 
+def _smooth_outliers(vals, outlier_idx, smooth_range=2):
+    smoothed_vals = copy.deepcopy(vals)
+
+    for outlier in outlier_idx:
+        previous_vals = smoothed_vals[(outlier - smooth_range):outlier]
+        subsequent_indices = np.arange(outlier + 1, outlier + 10)
+        valid_subsequent_indices = [idx for idx in subsequent_indices if idx not in outlier_idx]
+        subsequent_indices = np.array(valid_subsequent_indices)[:smooth_range]
+        new_val = np.mean(np.concatenate([previous_vals, subsequent_indices]))
+        smoothed_vals[outlier] = new_val
+
+    return smoothed_vals
+
+
+def smooth_outliers(y, obj_func, smooth_range):
+
+    # determine order of polynomial
+    if obj_func == 'poly_1':
+        order = 1
+    elif obj_func == 'poly_2':
+        order = 2
+    elif obj_func == 'poly_3':
+        order = 3
+    else:
+        raise ValueError("unsupported objective function, must be poly_2 or poly_3, "
+                         "but got {}".format(obj_func))
+
+    # create fit function that is compatible with seaborn error bootstrapping
+    def reg_func(_x, _y):
+        return np.polyval(np.polyfit(_x, _y, order), np.linspace(0, len(_x), len(_x)))
+
+    # use function to bootstrapped confidence intervals
+    x = np.linspace(0, len(y) - 1, len(y))
+    yhat_boots = algo.bootstrap(pd.Series(x), pd.Series(y), func=reg_func, n_boot=1000, units=None)
+
+    # use confidence intervals to identify outliers
+    bottom_band, top_band = ci(yhat_boots, 99, axis=0)
+    outlier_mask = np.logical_or(y > top_band, y < bottom_band)
+    outlier_idx = np.where(outlier_mask)[0]
+
+    # replace outliers with the average of the adjacent non-outlier data points
+    smoothed_y = _smooth_outliers(vals=y, outlier_idx=outlier_idx, smooth_range=smooth_range)
+
+    return smoothed_y, outlier_idx
+
+
 def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=5):
     """Fits a curve for the MPH over time for the specified mass
 
@@ -259,9 +309,20 @@ def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=5):
     save_path = os.path.join(save_dir, str(mass) + '_mph_fit.jpg')
 
     if len(mph_vals) > min_obs:
-        # fit standard curve
-        weights = fit_calibration_curve(x_vals=fov_order, y_vals=mph_vals, obj_func=obj_func,
-                                        plot_fit=True, save_path=save_path)
+        # remove outliers
+        new_vals, outliers = smooth_outliers(y=mph_vals, obj_func=obj_func, smooth_range=2)
+
+        # if outliers identified, pass to plotting function
+        if len(outliers) > 0:
+            outlier_x = fov_order[outliers]
+            outlier_tup = (outlier_x, outliers)
+        else:
+            outlier_tup = None
+
+        # fit curve
+        weights = fit_calibration_curve(x_vals=fov_order, y_vals=new_vals, obj_func=obj_func,
+                                        outliers=outlier_tup, plot_fit=True, save_path=save_path)
+
     else:
         # default to using the median instead for short runs with small number of FOVs
         mph_median = np.median(mph_vals)
