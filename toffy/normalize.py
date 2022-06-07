@@ -313,19 +313,19 @@ def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=5):
 
     if len(mph_vals) > min_obs:
         # remove outliers
-        new_vals, outliers = smooth_outliers(y=mph_vals, obj_func=obj_func, smooth_range=2)
-
-        # if outliers identified, pass to plotting function
-        if len(outliers) > 0:
-            outlier_x = fov_order[outliers]
-            outlier_y = mph_vals[outliers]
-            outlier_tup = (outlier_x, outlier_y)
-        else:
-            outlier_tup = None
+        # new_vals, outliers = smooth_outliers(y=mph_vals, obj_func=obj_func, smooth_range=2)
+        #
+        # # if outliers identified, pass to plotting function
+        # if len(outliers) > 0:
+        #     outlier_x = fov_order[outliers]
+        #     outlier_y = mph_vals[outliers]
+        #     outlier_tup = (outlier_x, outlier_y)
+        # else:
+        #     outlier_tup = None
 
         # fit curve
-        weights = fit_calibration_curve(x_vals=fov_order, y_vals=new_vals, obj_func=obj_func,
-                                        outliers=outlier_tup, plot_fit=True, save_path=save_path)
+        weights = fit_calibration_curve(x_vals=fov_order, y_vals=mph_vals, obj_func=obj_func,
+                                        outliers=None, plot_fit=True, save_path=save_path)
 
     else:
         # default to using the median instead for short runs with small number of FOVs
