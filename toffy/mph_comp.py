@@ -51,10 +51,6 @@ def compute_mph_metrics(bin_file_dir, csv_dir, fov, target, mass_start, mass_sto
 
             """
 
-    # path validation
-    io_utils.validate_paths(bin_file_dir)
-    io_utils.validate_paths(csv_dir)
-
     # retrieve the data from bin file and output to individual csv
     pulse_height_file = fov + '-pulse_height.csv'
 
@@ -77,8 +73,7 @@ def compute_mph_metrics(bin_file_dir, csv_dir, fov, target, mass_start, mass_sto
         'time': [time]})
 
     # saves individual .csv  files to bin_file_path
-    if not os.path.exists(os.path.join(csv_dir, pulse_height_file)):
-        out_df.to_csv(os.path.join(csv_dir, pulse_height_file), index=False)
+    out_df.to_csv(os.path.join(csv_dir, pulse_height_file), index=False)
 
 
 def combine_mph_metrics(csv_dir, return_data=False):
@@ -153,8 +148,7 @@ def visualize_mph(mph_df, regression: bool, save_dir):
         ax1.plot(x2, m * x2 + b)
 
     # save figure
-    if save_dir is not None:
-        file_path = os.path.join(save_dir, 'fov_vs_mph.jpg')
-        if os.path.exists(file_path):
-            os.remove(file_path)
-        plt.savefig(file_path)
+    file_path = os.path.join(save_dir, 'fov_vs_mph.jpg')
+    if os.path.exists(file_path):
+        os.remove(file_path)
+    plt.savefig(file_path)

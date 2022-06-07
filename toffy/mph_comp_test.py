@@ -44,11 +44,6 @@ def test_compute_mph_metrics():
     stop_mass = 0.0
 
     with tempfile.TemporaryDirectory() as tmpdir:
-        # bad directory path should raise an error
-        bad_path = os.path.join(Path(__file__).parent, "data", "not-a-folder")
-        with pytest.raises(ValueError):
-            mph.compute_mph_metrics(bad_path, tmpdir, fov_name,
-                                    target_name, start_mass, stop_mass)
 
         # invalid fov name should raise an error
         with pytest.raises(FileNotFoundError):
@@ -133,10 +128,6 @@ def test_visualize_mph():
         mph.visualize_mph(mph_data, False, bad_path)
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        # test without saving
-        mph.visualize_mph(mph_data, True)
-        assert not os.path.exists(os.path.join(temp_dir, 'fov_vs_mph.jpg'))
-
-        # test with saving
+        # test for saving to directory
         mph.visualize_mph(mph_data, True, save_dir=temp_dir)
         assert os.path.exists(os.path.join(temp_dir, 'fov_vs_mph.jpg'))
