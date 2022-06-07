@@ -4,17 +4,19 @@ The toffy repo is designed to simplify the process of generating and processing 
 This repo is currently in beta testing. None of the code has been published yet, and we will be making breaking changes frequently. If you find bugs, please [open an issue](https://github.com/angelolab/toffy/issues/new/choose). If you have questions or want to collaborate, please reach out to Noah (nfgreen@stanford.edu)
 
 ## Table of Contents
-
 - [Overview](#overview)
-  1. [First time using toffy](#1-using-toffy-for-the-first-time)
-  2. [Setting up a MIBI run](#2-setting-up-a-mibi-run)
-  3. [Evaluating a MIBI run](#3-evaluating-a-mibi-run)
-  4. [Processing data after a MIBI run](#4-processing-mibi-data)
+  - [1. Using toffy for the first time](#1-using-toffy-for-the-first-time)
+  - [2. Setting up a MIBI run](#2-setting-up-a-mibi-run)
+  - [3. Evaluating a MIBI run](#3-evaluating-a-mibi-run)
+  - [4. Processing data after a MIBI run](#4-processing-mibi-data)
 - [Installation](#installation)
   - [Requirements for specific operating systems](#requirements-for-specific-operating-systems)
+    - [Windows](#windows)
+    - [macOS](#macos)
   - [Setting up the virtual environment](#setting-up-the-virtual-environment)
   - [Using the repo](#using-the-repo)
   - [Updating the repo](#updating-the-repo)
+- [Questions?](#questions)
 
 ## Overview
 The repo has four main parts, with associated code and jupyter notebooks for each
@@ -86,6 +88,8 @@ Move into directory and build the environment
 cd toffy
 conda env create -f environment.yml
 ```
+
+This creates a *Python 3.8* environment named `toffy_env`. You can view everything that gets installed by looking at the `environment.yml` file.
 
 ### Using the repo
 Once you're ready to use the repo, enter the following commands. 
