@@ -19,7 +19,7 @@ def compute_mph_intensities(data_dir, channel, panel, fov_list=None, bin_factor=
     # if os.path.exists(os.path.join(data_dir, 'mph_counts.csv')):
     #    return
 
-    # visualize all fovs in folder if list not specified
+    # visualize all FOVS in folder if list not specified
     if fov_list is None:
         fov_list = io_utils.remove_file_extensions(io_utils.list_files(data_dir, substrs='.bin'))
 
@@ -56,11 +56,11 @@ data_dir = os.path.join('data', 'tissue')
 data1 = compute_mph_intensities(data_dir, channel1, panel1)
 '''
 
-
 def visualize_mph_hist(base_dir, channel, panel, fov_list=None, bin_factor=100, x_cutoff=20000, normalize=True):
     data = compute_mph_intensities(base_dir, channel, panel, fov_list, bin_factor)
-    #data = pd.read_csv(os.path.join(base_dir, 'mph_counts.csv'))
-    # matplotlib fun
+
+    # plot each FOV
+    plt.style.use('dark_background')
     for idx, row in data.iterrows():
         if normalize:
             plt.plot(np.arange(row['binned_intensities'].shape[0])[0:x_cutoff // bin_factor] * bin_factor,
@@ -72,5 +72,7 @@ def visualize_mph_hist(base_dir, channel, panel, fov_list=None, bin_factor=100, 
     plt.gca().set_xlabel('pulse height')
     plt.gca().set_ylabel('occurrence count')
     plt.gcf().set_size_inches(18.5, 10.5)
+    plt.show()
 
-# visualize_mph_hist(data_dir, channel1, panel1)
+
+# visualize_mph_hist(data_dir, channel1, panel1, normalize=False)
