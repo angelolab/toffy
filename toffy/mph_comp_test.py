@@ -9,6 +9,16 @@ from pathlib import Path
 from toffy import mph_comp as mph
 
 
+def create_sample_mph_data(fov, mph_value, total_count, time):
+    data = pd.DataFrame([{
+        'fov': fov,
+        'MPH': mph_value,
+        'total_count': total_count,
+        'time': time,
+    }])
+    return data
+
+
 def test_get_estimated_time():
     bad_path = os.path.join(Path(__file__).parent, "data", "not-a-folder")
     bad_fov = "not-a-fov"
@@ -62,12 +72,7 @@ def test_compute_mph_metrics():
         assert os.path.exists(csv_path)
 
         # check the csv data is correct
-        mph_data = pd.DataFrame([{
-                'fov': fov_name,
-                'MPH': 2222,
-                'total_count': 72060,
-                'time': 512,
-            }])
+        mph_data = create_sample_mph_data(fov_name, 2222, 72060, 512)
         csv_data = pd.read_csv(csv_path)
         assert csv_data.equals(mph_data)
 
@@ -79,18 +84,8 @@ def test_combine_mph_metrics():
     with pytest.raises(ValueError):
         mph.combine_mph_metrics(bad_path)
 
-    data1 = pd.DataFrame([{
-        'fov': 'fov-1-scan-1',
-        'MPH': 2222,
-        'total_count': 72060,
-        'time': 512,
-    }])
-    data2 = pd.DataFrame([{
-        'fov': 'fov-2-scan-1',
-        'MPH': 3800,
-        'total_count': 74799,
-        'time': 512,
-    }])
+    data1 = create_sample_mph_data(fov='fov-1', mph_value=1000, total_count=50000, time=500)
+    data2 = create_sample_mph_data(fov='fov-2', mph_value=2000, total_count=70000, time=500)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = tmpdir
@@ -98,14 +93,9 @@ def test_combine_mph_metrics():
         data1.to_csv(os.path.join(csv_path, 'fov-1-scan-1-pulse_height.csv'), index=False)
         data2.to_csv(os.path.join(csv_path, 'fov-2-scan-1-pulse_height.csv'), index=False)
 
-        combined_data = pd.DataFrame({
-            'fov': ['fov-1-scan-1', 'fov-2-scan-1'],
-            'MPH': [2222, 3800],
-            'total_count': [72060, 74799],
-            'time': [512, 512],
-            'cum_total_count': [72060, 146859],
-            'cum_total_time': [512, 1024],
-            }, index=[0, 1])
+        combined_data = pd.concat([data1, data2], axis=0, ignore_index=True)
+        combined_data['cum_total_count'] = [50000, 120000]
+        combined_data['cum_total_time'] = [500, 1000]
 
         # test successful data retrieval and csv output
         mph.combine_mph_metrics(csv_path)
