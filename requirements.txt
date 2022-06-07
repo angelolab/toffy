@@ -3,5 +3,6 @@ mibi-bin-tools @ git+https://github.com/angelolab/mibi-bin-tools.git@master
 jupyter>=1.0.0,<2
 jupyter_contrib_nbextensions>=0.5.1,<1
 jupyterlab>=3.1.5,<4
+natsort>=0.8
 numpy>=1.22,<2
 watchdog>=2.1.6,<3
