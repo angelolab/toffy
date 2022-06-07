@@ -311,8 +311,8 @@ def smooth_outliers(vals, outlier_idx, smooth_range=2):
         else:
             # not the last value, we can use remaining values to get an estimate
             subsequent_indices = np.arange(outlier + 1, len(vals))
-            valid_subsequent_indices = [idx for idx in subsequent_indices if idx not in outlier_idx]
-            subsequent_indices = np.array(valid_subsequent_indices)[:smooth_range]
+            valid_subs_indices = [idx for idx in subsequent_indices if idx not in outlier_idx]
+            subsequent_indices = np.array(valid_subs_indices)[:smooth_range]
 
             # check to make sure there are valid subsequent indices
             if len(subsequent_indices) > 0:

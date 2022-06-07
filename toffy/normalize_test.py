@@ -197,14 +197,14 @@ def test_smooth_outliers():
     outlier3 = np.random.randint(15, 18)
     outliers = np.array([outlier1, outlier2, outlier3])
     smoothed_vals = normalize.smooth_outliers(vals=vals, outlier_idx=outliers,
-                                               smooth_range=smooth_range)
+                                              smooth_range=smooth_range)
 
     assert np.array_equal(vals, smoothed_vals)
 
     # check for outliers which are next to one another
     outliers = np.array([5, 6])
     smoothed_vals = normalize.smooth_outliers(vals=vals, outlier_idx=outliers,
-                                               smooth_range=smooth_range)
+                                              smooth_range=smooth_range)
 
     # 5th entry is two below, plus first two non-outliers above
     smooth_5 = np.mean(np.concatenate([vals[3:5], vals[7:9]]))
@@ -242,7 +242,7 @@ def test_identify_outliers():
 @parametrize('min_obs', [5, 12])
 def test_fit_mass_mph_curve(tmpdir, min_obs):
     # create random data with single outlier
-    mph_vals = np.random.randint(0, 10, 10)
+    mph_vals = np.random.randint(0, 10, 10) + np.arange(10)
     mph_vals[4] = 12
 
     mass_name = '88'
