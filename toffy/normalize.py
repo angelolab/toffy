@@ -252,50 +252,83 @@ def combine_tuning_curve_metrics(dir_list):
     return all_data
 
 
-def _smooth_outliers(vals, outlier_idx, smooth_range=2):
+def smooth_outliers(vals, outlier_idx, smooth_range=2):
     smoothed_vals = copy.deepcopy(vals)
+    vals = np.array(vals)
 
     for outlier in outlier_idx:
         previous_vals = smoothed_vals[(outlier - smooth_range):outlier]
-        subsequent_indices = np.arange(outlier + 1, outlier + 10)
-        valid_subsequent_indices = [idx for idx in subsequent_indices if idx not in outlier_idx]
-        subsequent_indices = np.array(valid_subsequent_indices)[:smooth_range]
-        new_val = np.mean(np.concatenate([previous_vals, subsequent_indices]))
+
+        if outlier == len(vals):
+            # last value in list, can't average using subsequent values
+            subsequent_vals = []
+        else:
+            # not the last value, we can use remaining values to get an estimate
+            subsequent_indices = np.arange(outlier + 1, len(vals))
+            valid_subsequent_indices = [idx for idx in subsequent_indices if idx not in outlier_idx]
+            subsequent_indices = np.array(valid_subsequent_indices)[:smooth_range]
+            subsequent_vals = vals[subsequent_indices]
+
+        new_val = np.mean(np.concatenate([previous_vals, subsequent_vals]))
         smoothed_vals[outlier] = new_val
 
     return smoothed_vals
 
 
-def smooth_outliers(y, obj_func, smooth_range):
+def identify_outliers(x_vals, y_vals, obj_func, outlier_fraction=0.1):
+    # get objective function
+    objective = create_objective_function(obj_func)
 
-    # determine order of polynomial
-    if obj_func == 'poly_1':
-        order = 1
-    elif obj_func == 'poly_2':
-        order = 2
-    elif obj_func == 'poly_3':
-        order = 3
-    else:
-        raise ValueError("unsupported objective function, must be poly_2 or poly_3, "
-                         "but got {}".format(obj_func))
+    # get fitted values
+    popt, _ = curve_fit(objective, x_vals, y_vals)
 
-    # create fit function that is compatible with seaborn error bootstrapping
-    def reg_func(_x, _y):
-        return np.polyval(np.polyfit(_x, _y, order), np.linspace(0, len(_x), len(_x)))
+    # create generate function
+    func = create_prediction_function(name=obj_func, weights=popt)
 
-    # use function to bootstrapped confidence intervals
-    x = np.linspace(0, len(y) - 1, len(y))
-    yhat_boots = algo.bootstrap(pd.Series(x), pd.Series(y), func=reg_func, n_boot=1000, units=None)
+    # generate predictions
+    preds = func(x_vals)
 
-    # use confidence intervals to identify outliers
-    bottom_band, top_band = ci(yhat_boots, 99, axis=0)
-    outlier_mask = np.logical_or(y > top_band, y < bottom_band)
+    # specify outlier bounds based on multiple of predicted value
+    upper_bound = preds * (1 + outlier_fraction)
+    lower_bound = preds * (1 - outlier_fraction)
+
+    # identify outliers
+    outlier_mask = np.logical_or(y_vals > upper_bound, y_vals < lower_bound)
     outlier_idx = np.where(outlier_mask)[0]
 
-    # replace outliers with the average of the adjacent non-outlier data points
-    smoothed_y = _smooth_outliers(vals=y, outlier_idx=outlier_idx, smooth_range=smooth_range)
+    return outlier_idx
 
-    return smoothed_y, outlier_idx
+
+# def smooth_outliers(y, obj_func, smooth_range):
+#
+#     # determine order of polynomial
+#     if obj_func == 'poly_1':
+#         order = 1
+#     elif obj_func == 'poly_2':
+#         order = 2
+#     elif obj_func == 'poly_3':
+#         order = 3
+#     else:
+#         raise ValueError("unsupported objective function, must be poly_2 or poly_3, "
+#                          "but got {}".format(obj_func))
+#
+#     # create fit function that is compatible with seaborn error bootstrapping
+#     def reg_func(_x, _y):
+#         return np.polyval(np.polyfit(_x, _y, order), np.linspace(0, len(_x), len(_x)))
+#
+#     # use function to bootstrapped confidence intervals
+#     x = np.linspace(0, len(y) - 1, len(y))
+#     yhat_boots = algo.bootstrap(pd.Series(x), pd.Series(y), func=reg_func, n_boot=1000, units=None)
+#
+#     # use confidence intervals to identify outliers
+#     bottom_band, top_band = ci(yhat_boots, 99, axis=0)
+#     outlier_mask = np.logical_or(y > top_band, y < bottom_band)
+#     outlier_idx = np.where(outlier_mask)[0]
+#
+#     # replace outliers with the average of the adjacent non-outlier data points
+#     smoothed_y = _smooth_outliers(vals=y, outlier_idx=outlier_idx, smooth_range=smooth_range)
+#
+#     return smoothed_y, outlier_idx
 
 
 def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=5):

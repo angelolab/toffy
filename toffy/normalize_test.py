@@ -186,24 +186,24 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
             assert np.all(norm_vals == 1)
 
 
-def test__smooth_outliers():
+def test_smooth_outliers():
 
-    # Check for outliers which are outside the smoothing range from another
+    # Check for outliers which are separated by smoothing_range
     smooth_range = 2
 
-    vals = np.arange(20)
-    outlier1 = np.random.randint(2, 7)
+    vals = np.arange(20, 40).astype('float')
+    outlier1 = np.random.randint(3, 7)
     outlier2 = np.random.randint(9, 13)
     outlier3 = np.random.randint(15, 18)
     outliers = np.array([outlier1, outlier2, outlier3])
-    smoothed_vals = normalize._smooth_outliers(vals=vals, outlier_idx=outliers,
+    smoothed_vals = normalize.smooth_outliers(vals=vals, outlier_idx=outliers,
                                                smooth_range=smooth_range)
 
     assert np.array_equal(vals, smoothed_vals)
 
     # check for outliers which are next to one another
     outliers = np.array([5, 6])
-    smoothed_vals = normalize._smooth_outliers(vals=vals, outlier_idx=outliers,
+    smoothed_vals = normalize.smooth_outliers(vals=vals, outlier_idx=outliers,
                                                smooth_range=smooth_range)
 
     # 5th entry is two below, plus first two non-outliers above
@@ -213,17 +213,30 @@ def test__smooth_outliers():
     smooth_6 = np.mean(np.concatenate([vals[4:5], [smooth_5], vals[7:9]]))
     np.array_equal(smoothed_vals[outliers], [smooth_5, smooth_6])
 
+    # check for outliers which are at the ends of the list
+    outliers = np.array([0, 18])
 
-def test_smooth_outliers():
+    smoothed_vals = normalize.smooth_outliers(vals=vals, outlier_idx=outliers,
+                                               smooth_range=smooth_range)
+    # first entry is the mean of two above it
+    outlier_0 = np.mean(vals[1:3])
+
+    # second to last entry is mean of one above, two below
+    outlier_18 = np.mean(np.concatenate([vals[16:18], vals[19:20]]))
+
+    assert np.allclose(smoothed_vals[outliers], np.array([outlier_0, outlier_18]))
+
+
+def test_identify_outliers():
     # create dataset with specified outliers
-    vals = np.arange(20)
-    outliers = [3, 10, 15]
-    vals[outliers] = [-5, 22, 2]
+    y_vals = np.arange(10, 30)
+    x_vals = np.linspace(0, len(y_vals) - 1, len(y_vals))
+    outlier_idx = [5, 10, 15]
+    y_vals[outlier_idx] = [7, 32, 12]
 
-    smoothed_vals, pred_outliers = normalize.smooth_outliers(y=vals, obj_func='poly_1',
-                                                             smooth_range=2)
+    pred_outliers = normalize.identify_outliers(x_vals=x_vals, y_vals=y_vals, obj_func='poly_2')
     # check that outliers are correctly identified
-    assert np.array_equal(outliers, pred_outliers)
+    assert np.array_equal(outlier_idx, pred_outliers)
 
 
 @parametrize('min_obs', [5, 12])
