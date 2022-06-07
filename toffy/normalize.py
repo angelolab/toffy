@@ -252,30 +252,19 @@ def combine_tuning_curve_metrics(dir_list):
     return all_data
 
 
-def smooth_outliers(vals, outlier_idx, smooth_range=2):
-    smoothed_vals = copy.deepcopy(vals)
-    vals = np.array(vals)
-
-    for outlier in outlier_idx:
-        previous_vals = smoothed_vals[(outlier - smooth_range):outlier]
-
-        if outlier == len(vals):
-            # last value in list, can't average using subsequent values
-            subsequent_vals = []
-        else:
-            # not the last value, we can use remaining values to get an estimate
-            subsequent_indices = np.arange(outlier + 1, len(vals))
-            valid_subsequent_indices = [idx for idx in subsequent_indices if idx not in outlier_idx]
-            subsequent_indices = np.array(valid_subsequent_indices)[:smooth_range]
-            subsequent_vals = vals[subsequent_indices]
-
-        new_val = np.mean(np.concatenate([previous_vals, subsequent_vals]))
-        smoothed_vals[outlier] = new_val
-
-    return smoothed_vals
-
-
 def identify_outliers(x_vals, y_vals, obj_func, outlier_fraction=0.1):
+    """Finds the indices of outliers in the provided data to prune for subsequent curve fitting
+
+    Args:
+        x_vals (np.array): the x values of the data being analyzed
+        y_vals (np.array): the y values of the data being analyzed
+        obj_func (str): the objective function to use for curve fitting to determine outliers
+        outlier_fraction (float): the fractional deviation from predicted value required in
+            order to classify a data point as an outlier
+
+    Returns:
+        np.array: the indices of the identified outliers"""
+
     # get objective function
     objective = create_objective_function(obj_func)
 
@@ -299,36 +288,42 @@ def identify_outliers(x_vals, y_vals, obj_func, outlier_fraction=0.1):
     return outlier_idx
 
 
-# def smooth_outliers(y, obj_func, smooth_range):
-#
-#     # determine order of polynomial
-#     if obj_func == 'poly_1':
-#         order = 1
-#     elif obj_func == 'poly_2':
-#         order = 2
-#     elif obj_func == 'poly_3':
-#         order = 3
-#     else:
-#         raise ValueError("unsupported objective function, must be poly_2 or poly_3, "
-#                          "but got {}".format(obj_func))
-#
-#     # create fit function that is compatible with seaborn error bootstrapping
-#     def reg_func(_x, _y):
-#         return np.polyval(np.polyfit(_x, _y, order), np.linspace(0, len(_x), len(_x)))
-#
-#     # use function to bootstrapped confidence intervals
-#     x = np.linspace(0, len(y) - 1, len(y))
-#     yhat_boots = algo.bootstrap(pd.Series(x), pd.Series(y), func=reg_func, n_boot=1000, units=None)
-#
-#     # use confidence intervals to identify outliers
-#     bottom_band, top_band = ci(yhat_boots, 99, axis=0)
-#     outlier_mask = np.logical_or(y > top_band, y < bottom_band)
-#     outlier_idx = np.where(outlier_mask)[0]
-#
-#     # replace outliers with the average of the adjacent non-outlier data points
-#     smoothed_y = _smooth_outliers(vals=y, outlier_idx=outlier_idx, smooth_range=smooth_range)
-#
-#     return smoothed_y, outlier_idx
+def smooth_outliers(vals, outlier_idx, smooth_range=2):
+    """Performs local smoothing on the provided outliers
+
+    Args:
+        vals (np.array): the complete list of values to be smoothed
+        outlier_idx (np.array): the indices of the outliers in *vals* argument
+        smooth_range (int): the number of adjacent values in each direction to use for smoothing
+
+    Returns:
+        np.array: the smoothed version of the provided vals"""
+
+    smoothed_vals = copy.deepcopy(vals)
+    vals = np.array(vals)
+
+    for outlier in outlier_idx:
+        previous_vals = smoothed_vals[(outlier - smooth_range):outlier]
+
+        if outlier == len(vals):
+            # last value in list, can't average using subsequent values
+            subsequent_vals = []
+        else:
+            # not the last value, we can use remaining values to get an estimate
+            subsequent_indices = np.arange(outlier + 1, len(vals))
+            valid_subsequent_indices = [idx for idx in subsequent_indices if idx not in outlier_idx]
+            subsequent_indices = np.array(valid_subsequent_indices)[:smooth_range]
+
+            # check to make sure there are valid subsequent indices
+            if len(subsequent_indices) > 0:
+                subsequent_vals = vals[subsequent_indices]
+            else:
+                subsequent_vals = np.array([])
+
+        new_val = np.mean(np.concatenate([previous_vals, subsequent_vals]))
+        smoothed_vals[outlier] = new_val
+
+    return smoothed_vals
 
 
 def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=5):
@@ -345,20 +340,23 @@ def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=5):
     save_path = os.path.join(save_dir, str(mass) + '_mph_fit.jpg')
 
     if len(mph_vals) > min_obs:
-        # remove outliers
-        # new_vals, outliers = smooth_outliers(y=mph_vals, obj_func=obj_func, smooth_range=2)
-        #
-        # # if outliers identified, pass to plotting function
-        # if len(outliers) > 0:
-        #     outlier_x = fov_order[outliers]
-        #     outlier_y = mph_vals[outliers]
-        #     outlier_tup = (outlier_x, outlier_y)
-        # else:
-        #     outlier_tup = None
+        # find outliers in the MPH vals
+        outlier_idx = identify_outliers(x_vals=fov_order, y_vals=mph_vals, obj_func=obj_func)
+
+        # replace with local smoothing around that point
+        smoothed_vals = smooth_outliers(vals=mph_vals, outlier_idx=outlier_idx)
+
+        # if outliers identified, generate tuple to pass to plotting function
+        if len(outlier_idx) > 0:
+            outlier_x = fov_order[outlier_idx]
+            outlier_y = mph_vals[outlier_idx]
+            outlier_tup = (outlier_x, outlier_y)
+        else:
+            outlier_tup = None
 
         # fit curve
-        weights = fit_calibration_curve(x_vals=fov_order, y_vals=mph_vals, obj_func=obj_func,
-                                        outliers=None, plot_fit=True, save_path=save_path)
+        weights = fit_calibration_curve(x_vals=fov_order, y_vals=smoothed_vals, obj_func=obj_func,
+                                        outliers=outlier_tup, plot_fit=True, save_path=save_path)
 
     else:
         # default to using the median instead for short runs with small number of FOVs

@@ -214,15 +214,15 @@ def test_smooth_outliers():
     np.array_equal(smoothed_vals[outliers], [smooth_5, smooth_6])
 
     # check for outliers which are at the ends of the list
-    outliers = np.array([0, 18])
+    outliers = np.array([0, 19])
 
     smoothed_vals = normalize.smooth_outliers(vals=vals, outlier_idx=outliers,
-                                               smooth_range=smooth_range)
+                                              smooth_range=smooth_range)
     # first entry is the mean of two above it
     outlier_0 = np.mean(vals[1:3])
 
-    # second to last entry is mean of one above, two below
-    outlier_18 = np.mean(np.concatenate([vals[16:18], vals[19:20]]))
+    # second entry is mean of two below
+    outlier_18 = np.mean(vals[17:19])
 
     assert np.allclose(smoothed_vals[outliers], np.array([outlier_0, outlier_18]))
 
