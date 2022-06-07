@@ -116,7 +116,7 @@ def _make_binary_mask(
     log_gain: float = 1.00,
     pmin: int = 2,
     pmax: int = 98,
-    threshold: float = 0.30,
+    threshold: float = 0.35,
     wavelet: str = "db2",
     mode: str = "soft",
     rescale_sigma: bool = True
@@ -137,7 +137,7 @@ def _make_binary_mask(
         pmax (int, optional): Upper bound for the `np.percentile` threshold, used for rescaling
         the intensity. Defaults to 98.
         threshold (float, optional): The lower bound for pixel values used to create a binary mask.
-        Defaults to 0.30.
+        Defaults to 0.35.
         wavelet (str): The type of wavelet to perform and can be any of the options
         `pywt.wavelist` outputs. Defaults to "db2".
         mode (str): An optional argument to choose the type of denoising performed. Its noted that
@@ -176,7 +176,7 @@ def _make_binary_mask(
     return binary_mask
 
 
-def _make_mask_dataframe(streak_data: StreakData, min_length: int = 50) -> None:
+def _make_mask_dataframe(streak_data: StreakData, min_length: int = 70) -> None:
     """Converts the binary mask created by `_make_binary_mask` into a dataframe for
     processing. The streaks are labeled, pixel information (min_row, min_col, max_row, max_col)
     is evaluated and streak lengths / areas are calculated. In addition the `min_length` argument
@@ -185,7 +185,7 @@ def _make_mask_dataframe(streak_data: StreakData, min_length: int = 50) -> None:
     Args:
         streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
         data for streak correction.
-        min_length (int): The lower threshold for filtering streaks in pixels. Defaults to 50.
+        min_length (int): The lower threshold for filtering streaks in pixels. Defaults to 70.
     """
     # Label all the candidate streaks
     labeled_streaks = measure.label(streak_data.streak_mask, connectivity=2, return_num=False)
@@ -212,6 +212,7 @@ def _make_mask_dataframe(streak_data: StreakData, min_length: int = 50) -> None:
             "bbox-1": "min_col",
             "bbox-2": "max_row",
             "bbox-3": "max_col",
+            "area": "length",
         },
         axis="columns",
         inplace=True,
@@ -221,10 +222,9 @@ def _make_mask_dataframe(streak_data: StreakData, min_length: int = 50) -> None:
 
     # Filter out eccentricities that are less than 0.99999 (only keep straight lines)
     # Filter out small areas (small lines)
-    eccentricity_value = 0.99999
-    area_value = min_length
+    eccentricity_value = 0.9999999
     streak_data.filtered_streak_df = streak_data.streak_df.query(
-        f"eccentricity > {eccentricity_value} and area > {area_value}"
+        "eccentricity > @eccentricity_value and length > @min_length"
     )
 
 
@@ -418,7 +418,7 @@ def streak_correction(
         streak_data.shape = channel_image.shape
         # Create and filter the binary masks
         streak_data.streak_mask = _make_binary_mask(input_image=channel_image)
-        _make_mask_dataframe(streak_data=streak_data, min_length=50)
+        _make_mask_dataframe(streak_data=streak_data)
 
     # Get the file names.
     channel_fn = fov_data.channels.values.tolist()
