@@ -8,25 +8,25 @@ from mibi_bin_tools import bin_files
 from ark.utils import io_utils
 
 
-def get_estimated_time(bin_file_path, fov):
+def get_estimated_time(bin_file_dir, fov):
     """Retrieve run time data for each fov json file
     Args:
-        bin_file_path (str): path to the FOV bin and json files
+        bin_file_dir (str): path to the FOV bin and json files
         fov (str): name of fov to get estimated time for
     Returns:
         fov_time (int): estimated run time for the given fov
     """
 
     # path validation
-    io_utils.validate_paths(bin_file_path)
+    io_utils.validate_paths(bin_file_dir)
 
     # get fov json file in bin_file_path
-    json_file = io_utils.list_files(bin_file_path, fov+".json")
+    json_file = io_utils.list_files(bin_file_dir, fov+".json")
     if len(json_file) == 0:
         raise FileNotFoundError(f"The FOV name supplied doesn't have a JSON file: {fov}")
 
     # retrieve estimated time (frame dimensions x pixel dwell time)
-    with open(os.path.join(bin_file_path, json_file[0])) as file:
+    with open(os.path.join(bin_file_dir, json_file[0])) as file:
         run_metadata = json.load(file)
         try:
             size = run_metadata.get('frameSize')
@@ -39,10 +39,10 @@ def get_estimated_time(bin_file_path, fov):
     return estimated_time
 
 
-def compute_mph_metrics(bin_file_path, csv_dir, fov, target, mass_start, mass_stop):
-    """Retrieves FOV total counts, pulse heights, & estimated time for all fovs in the directory
+def compute_mph_metrics(bin_file_dir, csv_dir, fov, target, mass_start, mass_stop):
+    """Retrieves total counts, pulse heights, & estimated time for a given FOV
         Args:
-            bin_file_path (str): path to the FOV bin and json files
+            bin_file_dir (str): path to the FOV bin and json files
             csv_dir (str): path to output csv to
             fov (string): name of fov bin file without the extension
             target (str): channel to use
@@ -52,23 +52,23 @@ def compute_mph_metrics(bin_file_path, csv_dir, fov, target, mass_start, mass_st
             """
 
     # path validation
-    io_utils.validate_paths(bin_file_path)
+    io_utils.validate_paths(bin_file_dir)
     io_utils.validate_paths(csv_dir)
 
     # retrieve the data from bin file and output to individual csv
     pulse_height_file = fov + '-pulse_height.csv'
 
     try:
-        median = bin_files.get_median_pulse_height(bin_file_path, fov,
+        median = bin_files.get_median_pulse_height(bin_file_dir, fov,
                                                    target, (mass_start, mass_stop))
-        count_dict = bin_files.get_total_counts(bin_file_path, [fov])
+        count_dict = bin_files.get_total_counts(bin_file_dir, [fov])
     except FileNotFoundError:
         raise FileNotFoundError(f"The FOV name supplied doesn't have a JSON file: {fov}")
     except ValueError:
         raise ValueError(f"The target name is invalid: {target}")
 
     count = count_dict[fov]
-    time = get_estimated_time(bin_file_path, fov)
+    time = get_estimated_time(bin_file_dir, fov)
 
     out_df = pd.DataFrame({
         'fov': [fov],
@@ -94,10 +94,8 @@ def combine_mph_metrics(csv_dir, return_data=False):
     # path validation checks
     io_utils.validate_paths(csv_dir)
 
-    # list bin files in directory
-    fov_files = io_utils.list_files(csv_dir, "-pulse_height.csv")
-
     # for each csv retrieve mph values
+    fov_files = io_utils.list_files(csv_dir, "-pulse_height.csv")
     combined_rows = []
     for i, file in enumerate(fov_files):
         combined_rows.append(pd.read_csv(os.path.join(csv_dir, file)))
@@ -118,7 +116,7 @@ def combine_mph_metrics(csv_dir, return_data=False):
         return combined_df
 
 
-def visualize_mph(mph_df, regression: bool, save_dir=None):
+def visualize_mph(mph_df, regression: bool, save_dir):
     """Create a scatterplot visualizing median pulse heights by FOV cumulative count
         Args:
             mph_df (pd.DataFrame): data detailing total counts and pulse heights
