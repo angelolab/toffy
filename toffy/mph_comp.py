@@ -135,8 +135,11 @@ def visualize_mph(mph_df, regression: bool, save_dir):
     ax1.scatter(x, y)
     ax1.set_xlabel('FOV cumulative count')
     ax1.set_ylabel('median pulse height')
-    ax2.set_xlabel('estimated time (ms)')
     ax2.scatter(x_alt, y)
+    ticks = ax2.get_xticks().tolist()
+    new_ticks = [round(tick/3600, 2) for tick in ticks]
+    ax2.set_xticklabels(new_ticks)
+    ax2.set_xlabel('estimated time (hours)')
     plt.gcf().set_size_inches(18.5, 10.5)
 
     # plot regression line
