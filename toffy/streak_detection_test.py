@@ -242,7 +242,7 @@ def test_make_mask_dataframe(create_image):
     # Create the mask_dataframes
     # Test various min_lengths: 50, 100, 150
     # Post filter streak counts: 40, 33, 26
-    for min_l, post_filter_streak_count in zip([50, 100, 150], [40, 33, 26]):
+    for min_l, post_filter_streak_count in zip([50, 100, 150, 1000], [40, 33, 26, 0]):
         sd._make_mask_dataframe(streak_data=streak_data, min_length=min_l)
 
         assert len(streak_data.streak_df) == 48

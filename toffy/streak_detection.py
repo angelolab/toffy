@@ -190,42 +190,48 @@ def _make_mask_dataframe(streak_data: StreakData, min_length: int = 70) -> None:
     # Label all the candidate streaks
     labeled_streaks = measure.label(streak_data.streak_mask, connectivity=2, return_num=False)
 
-    # Gather properties of all the candidate streaks using regionprops.
-    region_properties = measure.regionprops_table(
-        label_image=labeled_streaks,
-        cache=True,
-        properties=[
-            "label",
-            "bbox",
-            "eccentricity",
-            "area",
-        ],
-    )
+    # if streaks detected, filter dataframe
+    if len(np.unique(labeled_streaks)) > 1:
+        # Gather properties of all the candidate streaks using regionprops.
+        region_properties = measure.regionprops_table(
+            label_image=labeled_streaks,
+            cache=True,
+            properties=[
+                "label",
+                "bbox",
+                "eccentricity",
+                "area",
+            ],
+        )
 
-    # Convert dictionary of region properties to DataFrame.
-    streak_data.streak_df = pd.DataFrame(region_properties)
+        # Convert dictionary of region properties to DataFrame.
+        streak_data.streak_df = pd.DataFrame(region_properties)
 
-    # Rename the bounding box columns.
-    streak_data.streak_df.rename(
-        {
-            "bbox-0": "min_row",
-            "bbox-1": "min_col",
-            "bbox-2": "max_row",
-            "bbox-3": "max_col",
-            "area": "length",
-        },
-        axis="columns",
-        inplace=True,
-    )
-    # Give the index column a name.
-    streak_data.streak_df.index.names = ["index"]
+        # Rename the bounding box columns.
+        streak_data.streak_df.rename(
+            {
+                "bbox-0": "min_row",
+                "bbox-1": "min_col",
+                "bbox-2": "max_row",
+                "bbox-3": "max_col",
+                "area": "length",
+            },
+            axis="columns",
+            inplace=True,
+        )
+        # Give the index column a name.
+        streak_data.streak_df.index.names = ["index"]
 
-    # Filter out eccentricities that are less than 0.99999 (only keep straight lines)
-    # Filter out small areas (small lines)
-    eccentricity_value = 0.9999999
-    streak_data.filtered_streak_df = streak_data.streak_df.query(
-        "eccentricity > @eccentricity_value and length > @min_length"
-    )
+        # Filter out eccentricities that are less than 0.99999 (only keep straight lines)
+        # Filter out small areas (small lines)
+        eccentricity_value = 0.9999999
+        streak_data.filtered_streak_df = streak_data.streak_df.query(
+            "eccentricity > @eccentricity_value and length > @min_length"
+        )
+    else:
+        # otherwise, make a blank df
+        blank_df = pd.DataFrame({"min_row": [], "min_col": [], "max_row": [], "max_col": []})
+        streak_data.filtered_streak_df = blank_df
 
 
 def _make_filtered_mask(streak_data: StreakData) -> None:
