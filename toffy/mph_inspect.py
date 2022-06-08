@@ -33,13 +33,15 @@ def compute_mph_intensities(bin_file_dir, channel, panel, csv_dir, fov_list=None
 
     # compute for all FOVs in folder if list not specified
     if fov_list is None:
-        fov_list = io_utils.remove_file_extensions(io_utils.list_files(bin_file_dir, substrs='.bin'))
+        fov_list = io_utils.remove_file_extensions(io_utils.list_files
+                                                   (bin_file_dir, substrs='.bin'))
 
     out_df = []
 
     # retrieve and store data for each fov
     for fov in fov_list:
-        _, intensities, pulse_counts = bin_files.get_histograms_per_tof(bin_file_dir, fov, channel, panel)
+        _, intensities, pulse_counts = bin_files.get_histograms_per_tof(bin_file_dir, fov,
+                                                                        channel, panel)
 
         int_bin = np.cumsum(intensities) / intensities.sum()
         median = (np.abs(int_bin - 0.5)).argmin()
@@ -53,7 +55,8 @@ def compute_mph_intensities(bin_file_dir, channel, panel, csv_dir, fov_list=None
     final_df = pd.DataFrame(out_df)
 
     # create column of binned intensity values and output df to csv
-    final_df['binned_intensities'] = final_df['all_intensities'].apply(lambda x: bin_array(x, bin_factor))
+    final_df['binned_intensities'] = final_df['all_intensities'].apply(lambda x:
+                                                                       bin_array(x, bin_factor))
     final_df.to_csv(os.path.join(csv_dir, 'mph_counts.csv'), index=False)
 
     return final_df
@@ -82,11 +85,12 @@ def visualize_mph_hist(bin_file_dir, channel, panel, csv_dir, fov_list=None,
     plt.style.use('dark_background')
     for idx, row in data.iterrows():
         if normalize:
-            plt.plot(np.arange(row['binned_intensities'].shape[0])[0:x_cutoff // bin_factor] * bin_factor,
-                     row['binned_intensities'][0:x_cutoff // bin_factor] / np.max(row['binned_intensities']))
+            plt.plot(np.arange(row['binned_intensities'].shape[0])[0:x_cutoff // bin_factor]
+                     * bin_factor, row['binned_intensities'][0:x_cutoff // bin_factor]
+                     / np.max(row['binned_intensities']))
         else:
-            plt.plot(np.arange(row['binned_intensities'].shape[0])[0:x_cutoff // bin_factor] * bin_factor,
-                     row['binned_intensities'][0:x_cutoff // bin_factor])
+            plt.plot(np.arange(row['binned_intensities'].shape[0])[0:x_cutoff // bin_factor]
+                     * bin_factor, row['binned_intensities'][0:x_cutoff // bin_factor])
 
     plt.gca().set_xlabel('pulse height')
     plt.gca().set_ylabel('occurrence count')
