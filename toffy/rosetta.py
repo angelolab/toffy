@@ -105,11 +105,10 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
     verify_same_elements(acquired_masses=acquired_masses, compensation_masses=all_masses)
 
     # check first FOV to make sure all channels are present
-    test_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=fovs[0:1],
-                                    channels=acquired_targets, dtype='float32',
+    test_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=fovs[0:1], dtype='float32',
                                     img_sub_folder=raw_data_sub_folder)
 
-    verify_same_elements(image_files=test_data.channels.values, listed_channels=acquired_targets)
+    verify_in_list(listed_channels=acquired_targets, image_files=test_data.channels.values)
 
     # make sure supplied masses are present
     if input_masses is not None:
@@ -134,9 +133,51 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
         raise ValueError('gaus_rad parameter must be a non-negative integer')
 
 
+def flat_field_correction(img, gaus_rad=100):
+    """Apply flat field correction to an image
+
+    Args:
+        img (np.ndarray): image to be corrected
+        gaus_rad (int): radius for smoothing
+
+    Returns:
+        np.ndarray: corrected image """
+
+    # smooth image
+    img_smooth = gaussian_filter(img, sigma=gaus_rad)
+
+    # calculate mean to preserve overall intensity
+    img_mean = np.mean(img)
+
+    # apply correction
+    img_corr = (img / img_smooth) * img_mean
+
+    return img_corr
+
+
+def get_masses_from_channel_names(names, panel_df):
+    """Get the weights for the given names from the input dataframe.
+
+    Args:
+        names (list): the channels whose masses will be returned
+        panel_df (pd.DataFrame): the panel containing the masses and channel names
+
+    Returns:
+        list: the masses for the given channels
+    """
+
+    verify_in_list(supplied_channel_names=names,
+                   panel_channel_names=panel_df['Target'].values)
+
+    weights = panel_df.loc[np.isin(panel_df['Target'], names)]['Mass'].values
+
+    return weights
+
+
 def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info,
                           input_masses=None, output_masses=None, save_format='normalized',
-                          raw_data_sub_folder='', batch_size=10, gaus_rad=1, norm_const=100):
+                          raw_data_sub_folder='', batch_size=10, gaus_rad=1, norm_const=100,
+                          ffc_channels=['chan_39']):
     """Function to compensate MIBI data with a flow-cytometry style compensation matrix
 
     Args:
@@ -158,6 +199,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         batch_size: number of images to process at a time
         gaus_rad: radius for blurring image data. Passing 0 will result in no blurring
         norm_const: constant used for normalization if save_format == 'normalized'
+        ffc_channels (list): channels that need to be flat field corrected.
     """
 
     validate_paths([raw_data_dir, comp_data_dir, comp_mat_path],
@@ -203,6 +245,14 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                     batch_data[j, :, :, k] = gaussian_filter(batch_data[j, :, :, k],
                                                              sigma=gaus_rad)
 
+        # apply flat field correction if specified
+        if ffc_channels is not None:
+            verify_in_list(flat_field_correction_masses=ffc_channels, all_masses=acquired_targets)
+            for fov in batch_fovs:
+                for chan in ffc_channels:
+                    raw_img = batch_data.loc[fov, :, :, chan].values
+                    batch_data.loc[fov, :, :, chan] = flat_field_correction(raw_img)
+
         comp_data = _compensate_matrix_simple(raw_inputs=batch_data,
                                               comp_coeffs=comp_mat.values,
                                               out_indices=out_indices)
@@ -236,46 +286,56 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                     io.imsave(save_path, comp_data[j, :, :, idx], check_contrast=False)
 
 
-def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='normalized'):
+def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='normalized',
+                            channels=None):
     """Creates a tiled image comparing FOVs from all supplied runs for each channel.
 
     Args:
         input_dir_list: list of directories to compare
-        output_dir: directory where tifs will be saved"""
+        output_dir: directory where tifs will be saved
+        img_sub_folder: subfolder within each input directory to load images from
+        channels: list of channels to compare. """
 
-    # load images
-    dir_dict = {}
-    dir_shapes = []
-    for dir_name in input_dir_list:
-        dir_images = load_imgs_from_tree(dir_name, img_sub_folder=img_sub_folder,
-                                         dtype='float32')
-        dir_shapes.append(dir_images.shape)
-        dir_dict[dir_name] = dir_images
+    test_dir = input_dir_list[0]
+    test_fov = list_folders(test_dir)[0]
+    test_data = load_imgs_from_tree(data_dir=test_dir, fovs=[test_fov],
+                                    img_sub_folder=img_sub_folder, channels=channels)
 
-    if not np.all([shape == dir_shapes[0] for shape in dir_shapes]):
-        raise ValueError("All directories must contain the same number of fovs and images")
+    img_size = test_data.shape[1]
+    channels = test_data.channels.values
+    chanel_num = len(channels)
 
-    first_dir = dir_dict[input_dir_list[0]]
-    img_size = first_dir.shape[1]
-    fov_num = first_dir.shape[0]
+    # check that all dirs have the same number of fovs and correct subset of channels
+    fov_names = list_folders(input_dir_list[0])
+    for dir_name in input_dir_list[1:]:
+        current_folders = list_folders(dir_name)
+        verify_same_elements(fov_names1=fov_names, fov_names2=current_folders)
+        current_channels = load_imgs_from_tree(data_dir=dir_name,
+                                               img_sub_folder=img_sub_folder,
+                                               fovs=current_folders[:1]).channels.values
+        verify_in_list(specified_channels=channels, current_channels=current_channels)
+
+    fov_num = len(fov_names)
 
     # loop over each channel
-    for j in range(first_dir.shape[3]):
+    for j in range(chanel_num):
         # create tiled array of dirs x fovs
         tiled_image = np.zeros((img_size * len(input_dir_list),
-                                img_size * fov_num), dtype=first_dir.dtype)
+                                img_size * fov_num), dtype=test_data.dtype)
 
         # loop over each fov, and place into columns of tiled array
-        for i in range(first_dir.shape[0]):
+        for i in range(fov_num):
             start = i * img_size
             end = (i + 1) * img_size
 
-            # go through each of the directories and place in appropriate spot
+            # go through each of the directories, read in the images, and place in the right spot
             for idx, key in enumerate(input_dir_list):
+                dir_data = load_imgs_from_tree(key, channels=channels[j:j + 1],
+                                               img_sub_folder=img_sub_folder)
                 tiled_image[(img_size * idx):(img_size * (idx + 1)), start:end] = \
-                    dir_dict[key].values[i, :, :, j]
+                    dir_data.values[i, :, :, 0]
 
-        io.imsave(os.path.join(output_dir, first_dir.channels.values[j] + '_comparison.tiff'),
+        io.imsave(os.path.join(output_dir, channels[j] + '_comparison.tiff'),
                   tiled_image, check_contrast=False)
 
 
@@ -397,6 +457,10 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, masses=None):
     # Read input matrix
     comp_matrix = pd.read_csv(default_matrix, index_col=0)
     comp_masses = comp_matrix.index
+
+    # Check that all entries of comp_matrix are numeric
+    if not np.issubdtype(comp_matrix.values.dtype, np.number):
+        raise ValueError('Compensation matrix must include only numeric entries')
 
     # Check channel input
     if masses is None:

@@ -13,6 +13,7 @@ from mibi_bin_tools import io_utils
 
 from toffy.test_utils import WatcherCases, RunStructureTestContext, RunStructureCases
 from toffy.fov_watcher import start_watcher
+from toffy.watcher_callbacks import build_callbacks
 
 TISSUE_DATA_PATH = os.path.join(Path(__file__).parent, 'data', 'tissue')
 RUN_DIR_NAME = 'run_XXX'
@@ -59,26 +60,38 @@ def test_run_structure(run_json, expected_files):
 
 # TODO: add tests for per_run when per_run callbacks are created
 @pytest.mark.parametrize('add_blank', [False, True])
-@parametrize_with_cases('per_fov_partial, per_run, validators', cases=WatcherCases)
-def test_watcher(per_fov_partial, per_run, validators, add_blank):
+@parametrize_with_cases('run_cbs, fov_cbs, kwargs, validators', cases=WatcherCases)
+def test_watcher(run_cbs, fov_cbs, kwargs, validators, add_blank):
     with tempfile.TemporaryDirectory() as tmpdir:
-        per_fov = []
-        for i, func in enumerate(per_fov_partial):
-            cb_dir = os.path.join(tmpdir, f'cb_{i}', RUN_DIR_NAME)
-            os.makedirs(cb_dir)
-            per_fov.append(func(cb_dir))
+
+        tiff_out_dir = os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME)
+        qc_out_dir = os.path.join(tmpdir, 'cb_1', RUN_DIR_NAME)
+
+        # add directories to kwargs
+        kwargs['tiff_out_dir'] = tiff_out_dir
+        kwargs['qc_out_dir'] = qc_out_dir
 
         run_data = os.path.join(tmpdir, 'test_run')
         log_out = os.path.join(tmpdir, 'log_output')
         os.makedirs(run_data)
-        os.makedirs(log_out)
+
+        fov_callback, run_callback = build_callbacks(run_cbs, fov_cbs, **kwargs)
 
         with open(os.path.join(run_data, 'test_run.json'), 'w') as f:
             json.dump(TISSUE_RUN_JSON_SPOOF, f)
 
+        # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
+        # client access computer.  `start_watcher` is made async here since these processes
+        # wouldn't block each other in normal use
         with Pool(processes=4) as pool:
             pool.apply_async(_slow_copy_sample_tissue_data, (run_data, 6, add_blank))
-            res_scan = pool.apply_async(start_watcher, (run_data, log_out, per_fov, per_run, 2, 6))
+
+            # watcher completion is checked every 2 seconds
+            # zero-size files are halted for 6 seconds or until they have non zero-size
+            res_scan = pool.apply_async(
+                start_watcher,
+                (run_data, log_out, fov_callback, run_callback, 2, 6)
+            )
 
             res_scan.get()
 

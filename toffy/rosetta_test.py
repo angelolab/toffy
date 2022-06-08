@@ -118,7 +118,7 @@ def test_validate_inputs():
         # check that images and channels are the same
         input_dict_img_name = copy.copy(input_dict)
         input_dict_img_name['acquired_targets'] = chans + ['chan15']
-        with pytest.raises(ValueError, match='image files and list listed channels'):
+        with pytest.raises(ValueError, match='given in list listed channels'):
             rosetta.validate_inputs(**input_dict_img_name)
 
         # check that input masses are valid
@@ -160,6 +160,30 @@ def test_validate_inputs():
             rosetta.validate_inputs(**input_dict_gaus_rad)
 
 
+def test_flat_field_correction():
+    input_img = np.random.rand(10, 10)
+    corrected_img = rosetta.flat_field_correction(img=input_img)
+
+    assert corrected_img.shape == input_img.shape
+    assert not np.array_equal(corrected_img, input_img)
+
+
+def test_get_masses_from_channel_names():
+    targets = ['chan1', 'chan2', 'chan3']
+    masses = [1, 2, 3]
+    test_df = pd.DataFrame({'Target': targets,
+                            'Mass': masses})
+
+    all_masses = rosetta.get_masses_from_channel_names(targets, test_df)
+    assert np.array_equal(masses, all_masses)
+
+    subset_masses = rosetta.get_masses_from_channel_names(targets[:2], test_df)
+    assert np.array_equal(masses[:2], subset_masses)
+
+    with pytest.raises(ValueError, match='channel names'):
+        rosetta.get_masses_from_channel_names(['chan4'], test_df)
+
+
 @parametrize('output_masses', [None, [25, 50, 101], [25, 50]])
 @parametrize('input_masses', [None, [25, 50, 101], [25, 50]])
 @parametrize('gaus_rad', [0, 1, 2])
@@ -187,7 +211,8 @@ def test_compensate_image_data(output_masses, input_masses, gaus_rad, save_forma
         # call function
         rosetta.compensate_image_data(data_dir, output_dir, comp_mat_path, panel_info,
                                       input_masses=input_masses, output_masses=output_masses,
-                                      save_format=save_format, gaus_rad=gaus_rad)
+                                      save_format=save_format, gaus_rad=gaus_rad,
+                                      ffc_channels=['chan1'])
 
         # all folders created
         output_folders = list_folders(output_dir)
@@ -250,11 +275,16 @@ def test_create_tiled_comparison(dir_num):
             col_len = dir_num * 10
             assert chan_img.shape == (col_len, row_len)
 
-        # check that directories with different images raises error
+        # check that directories with different images are okay if overlapping channels specified
         for i in range(num_fovs):
-            os.remove(os.path.join(top_level_dir, dir_names[0], 'fov{}'.format(i),
+            os.remove(os.path.join(top_level_dir, dir_names[1], 'fov{}'.format(i),
                                    'normalized/chan0.tiff'))
-        with pytest.raises(ValueError):
+
+        # no error raised if subset directory is specified
+        rosetta.create_tiled_comparison(paths, output_dir, channels=['chan1', 'chan2'])
+
+        # but one is raised if no subset directory is specified
+        with pytest.raises(ValueError, match='1 of 1'):
             rosetta.create_tiled_comparison(paths, output_dir)
 
 
@@ -394,3 +424,11 @@ def test_create_rosetta_matrices():
 
             rescaled = test_matrix.divide(mult_vec, axis='index')
             assert np.array_equal(base_rosetta, rescaled)
+
+        # check that error is raised when non-numeric rosetta_matrix is passed
+        bad_matrix = pd.DataFrame({'col1': [1, 2, 3], 'col2': [4, 5, 6], 'col3': ['a', 'b', 'c']})
+        bad_matrix_path = os.path.join(temp_dir, 'bad_rosetta_matrix.csv')
+        bad_matrix.to_csv(bad_matrix_path)
+
+        with pytest.raises(ValueError, match='include only numeric'):
+            create_rosetta_matrices(bad_matrix_path, temp_dir, multipliers)
