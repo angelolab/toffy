@@ -15,13 +15,14 @@ def bin_array(arr, bin_factor):
     return arr_bin
 
 
-def compute_mph_intensities(bin_file_dir, channel, panel, fov_list=None, bin_factor=100):
+def compute_mph_intensities(bin_file_dir, channel, panel, csv_dir, fov_list=None, bin_factor=100):
     """ Compute the median pulse height intensities for given FOVs
 
     Args:
         bin_file_dir: path to the FOV bin files
         channel: channel to use
         panel: info for bin file extraction
+        csv_dir: path to where csv will be stored
         fov_list: which FOVs to include, if None will include all in data_dir
         bin_factor: size of the bins for the MPH histograms, default 100
 
@@ -30,12 +31,13 @@ def compute_mph_intensities(bin_file_dir, channel, panel, fov_list=None, bin_fac
 
     """
 
-    # visualize all FOVs in folder if list not specified
+    # compute for all FOVs in folder if list not specified
     if fov_list is None:
         fov_list = io_utils.remove_file_extensions(io_utils.list_files(bin_file_dir, substrs='.bin'))
 
     out_df = []
 
+    # retrieve and store data for each fov
     for fov in fov_list:
         _, intensities, pulse_counts = bin_files.get_histograms_per_tof(bin_file_dir, fov, channel, panel)
 
@@ -52,18 +54,20 @@ def compute_mph_intensities(bin_file_dir, channel, panel, fov_list=None, bin_fac
 
     # create column of binned intensity values and output df to csv
     final_df['binned_intensities'] = final_df['all_intensities'].apply(lambda x: bin_array(x, bin_factor))
-    final_df.to_csv(os.path.join(bin_file_dir, 'mph_counts.csv'), index=False)
+    final_df.to_csv(os.path.join(csv_dir, 'mph_counts.csv'), index=False)
 
     return final_df
 
 
-def visualize_mph_hist(bin_file_dir, channel, panel, fov_list=None, bin_factor=100, x_cutoff=20000, normalize=True):
+def visualize_mph_hist(bin_file_dir, channel, panel, csv_dir, fov_list=None,
+                       bin_factor=100, x_cutoff=20000, normalize=True):
     """ Create a histogram of the median pulse height intensities for given FOVs
 
     Args:
         bin_file_dir: path to the FOV bin files
         channel: channel to use
         panel: info for bin file extraction
+        csv_dir: path to where csv will be stored
         fov_list: which FOVs to include, if None will include all in data_dir
         bin_factor: size of the bins for the MPH histograms, default 100
         x_cutoff:
@@ -71,7 +75,8 @@ def visualize_mph_hist(bin_file_dir, channel, panel, fov_list=None, bin_factor=1
 
     """
 
-    data = compute_mph_intensities(bin_file_dir, channel, panel, fov_list, bin_factor)
+    # compute the mph intensities
+    data = compute_mph_intensities(bin_file_dir, channel, panel, csv_dir, fov_list, bin_factor)
 
     # plot each FOV
     plt.style.use('dark_background')
