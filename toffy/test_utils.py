@@ -92,8 +92,8 @@ def generate_sample_fovs_list(fov_coords, fov_names, fov_sizes):
 
 # generation parameters for the extraction/qc callback build
 # this should be limited to the panel, foldernames, and kwargs
-FOV_CALLBACKS = ('extract_tiffs', 'generate_qc')
-RUN_CALLBACKS = ('plot_qc_metrics',)
+FOV_CALLBACKS = ('extract_tiffs', 'generate_qc', 'generate_mph')
+RUN_CALLBACKS = ('plot_qc_metrics', 'plot_mph_metrics')
 
 
 class ExtractionQCGenerationCases:
@@ -105,7 +105,7 @@ class ExtractionQCGenerationCases:
         cbs, kwargs = self.case_both_callbacks()
         return cbs[:1], kwargs
 
-    def case_qc_only(self):
+    def case_qc_and_mph(self):
         cbs, kwargs = self.case_both_callbacks()
         return cbs[1:], kwargs
 
@@ -122,6 +122,8 @@ class ExtractionQCGenerationCases:
     @pytest.mark.xfail(raises=ValueError)
     def case_bad_callback(self):
         return ['invalid_callback'], {}
+
+    # mph bad target case
 
 
 class PlotQCMetricsCases:
@@ -190,6 +192,25 @@ def check_qc_dir_structure(out_dir: str, point_names: List[str], qc_plots: bool 
             assert(os.path.exists(os.path.join(out_dir, f'{point}_{ms}.csv')))
             if qc_plots:
                 assert(os.path.exists(os.path.join(out_dir, '%s_barplot_stats.png' % mn)))
+
+
+def check_mph_dir_structure(out_dir: str, point_names: List[str]):
+    """Checks MPH directory for minimum expected structure
+
+    Args:
+        out_dir (str):
+            Folder containing MPH output
+        point_names (list):
+            List of expected point names
+
+    Raises:
+        AssertionError:
+            Assertion error on missing csv
+    """
+    for point in point_names:
+        assert(os.path.exists(os.path.join(out_dir, f'{point}-pulse_height.csv')))
+
+    assert(os.path.exists(os.path.join(out_dir, 'fov_vs_mph.jpg')))
 
 
 def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False, bad=False):

@@ -140,7 +140,7 @@ class FovCallbacks:
         )
 
     def generate_qc(self, qc_out_dir: str, panel: pd.DataFrame = None, **kwargs):
-        """Genereates qc metrics from given panel, and saves output to provided directory
+        """Generates qc metrics from given panel, and saves output to provided directory
 
         Args:
             qc_out_dir (str):
@@ -171,11 +171,12 @@ class FovCallbacks:
         for metric_name, data in metric_data.items():
             data.to_csv(os.path.join(qc_out_dir, metric_name), index=False)
 
-    def generate_mph(self, mph_output_dir, panel: pd.DataFrame = None):
+    def generate_mph(self, mph_output_dir, target, panel: pd.DataFrame = None):
         """Generates mph metrics from given panel, and saves output to provided directory
 
         Args:
             mph_output_dir (str): where to output mph csvs to
+            target (str):
             panel (pd.DataFrame):
                 Target mass integration ranges
 
@@ -186,13 +187,18 @@ class FovCallbacks:
                 raise ValueError('Must provide panel if fov data is not already generated...')
             self._generate_fov_data(panel)
 
+        row = self.__panel[self.__panel['Target'] == target]
+        if len(row) == 0:
+            raise ValueError(f"The target supplied was not found in the panel: {target}")
+        row = row[0]
+
         compute_mph_metrics(
             bin_file_path=self.run_folder,
             csv_dir=mph_output_dir,
             fov=self.point_name,
-            target=self.__panel['Target'],
-            mass_start=self.__panel['Start'],
-            mass_stop=self.__panel['Stop']
+            target=target,
+            mass_start=row['Start'],
+            mass_stop=row['Stop']
         )
 
 

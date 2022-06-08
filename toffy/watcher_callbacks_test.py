@@ -11,6 +11,7 @@ from toffy.test_utils import (
     PlotQCMetricsCases,
     check_extraction_dir_structure,
     check_qc_dir_structure,
+    check_mph_dir_structure
 )
 
 
@@ -26,6 +27,7 @@ def test_build_fov_callback(callbacks, kwargs, data_path):
         qc_dir = os.path.join(tmp_dir, 'qc')
         kwargs['tiff_out_dir'] = extracted_dir
         kwargs['qc_out_dir'] = qc_dir
+        kwargs['mph_output_dir'] = qc_dir
 
         # test cb generates w/o errors
         cb = watcher_callbacks.build_fov_callback(*callbacks, **kwargs)
@@ -39,8 +41,10 @@ def test_build_fov_callback(callbacks, kwargs, data_path):
         # just check SMA
         if 'extract_tiffs' in callbacks:
             check_extraction_dir_structure(extracted_dir, point_names, ['SMA'], intensities)
-        if 'genereate_qc' in callbacks:
+        if 'generate_qc' in callbacks:
             check_qc_dir_structure(qc_dir, point_names)
+        if 'generate_mph' in callbacks:
+            check_mph_dir_structure(qc_dir, point_names)
 
 
 @parametrize_with_cases('callbacks, kwargs', cases=PlotQCMetricsCases)
@@ -52,6 +56,7 @@ def test_build_callbacks(callbacks, kwargs, data_path):
         qc_dir = os.path.join(tmp_dir, 'qc')
         kwargs['tiff_out_dir'] = extracted_dir
         kwargs['qc_out_dir'] = qc_dir
+        kwargs['mph_output_dir'] = qc_dir
 
         if kwargs.get('save_dir', False):
             kwargs['save_dir'] = qc_dir
@@ -68,3 +73,4 @@ def test_build_callbacks(callbacks, kwargs, data_path):
 
         check_extraction_dir_structure(extracted_dir, point_names, ['SMA'])
         check_qc_dir_structure(qc_dir, point_names, 'save_dir' in kwargs)
+        check_mph_dir_structure(qc_dir, point_names)
