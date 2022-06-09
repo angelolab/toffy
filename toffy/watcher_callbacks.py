@@ -171,7 +171,7 @@ class FovCallbacks:
         for metric_name, data in metric_data.items():
             data.to_csv(os.path.join(qc_out_dir, metric_name), index=False)
 
-    def generate_mph(self, mph_output_dir, target, panel: pd.DataFrame = None):
+    def generate_mph(self, mph_output_dir, target, input_mass_start, input_mass_stop):
         """Generates mph metrics from given panel, and saves output to provided directory
 
         Args:
@@ -181,24 +181,23 @@ class FovCallbacks:
                 Target mass integration ranges
 
         """
-
+        '''
         if self.__fov_data is None:
             if panel is None:
                 raise ValueError('Must provide panel if fov data is not already generated...')
             self._generate_fov_data(panel)
-
         row = self.__panel[self.__panel['Target'] == target]
         if len(row) == 0:
             raise ValueError(f"The target supplied was not found in the panel: {target}")
-        row = row[0]
+        row = row[0]'''
 
         compute_mph_metrics(
             bin_file_path=self.run_folder,
             csv_dir=mph_output_dir,
             fov=self.point_name,
             target=target,
-            mass_start=row['Start'],
-            mass_stop=row['Stop']
+            mass_start=input_mass_start,
+            mass_stop=input_mass_stop
         )
 
 
