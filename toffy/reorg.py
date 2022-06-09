@@ -8,11 +8,11 @@ from ark.utils.misc_utils import verify_in_list
 from toffy.json_utils import rename_missing_fovs, rename_duplicate_fovs
 
 
-def rename_fov_dirs(run_path, fov_dir, new_dir=None):
+def rename_fov_dirs(json_run_path, fov_dir, new_dir=None):
     """Renames FOV directories with default_name to have custom_name sourced from the run JSON file
 
     Args:
-        run_path (str): path to the JSON run file which contains the custom name values
+        json_run_path (str): path to the JSON run file which contains the custom name values
         fov_dir (str): directory where the FOV default named subdirectories are stored
         new_dir (str): path to new directory to output renamed folders to, defaults to None
 
@@ -23,7 +23,7 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
 
         """
 
-    io_utils.validate_paths(run_path)
+    io_utils.validate_paths(json_run_path)
     io_utils.validate_paths(fov_dir)
 
     # check that new_dir doesn't already exist
@@ -31,7 +31,7 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
         if os.path.exists(new_dir):
             raise ValueError(f"The new directory supplied already exists: {new_dir}")
 
-    with open(run_path) as file:
+    with open(json_run_path) as file:
         run_metadata = json.load(file)
 
     # check for missing or duplicate fov names
@@ -62,8 +62,8 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
         raise ValueError(f"All FOV folders in {fov_dir} have already been renamed")
 
     # check if custom fov names & scan counts match the number of existing default directories
-    verify_in_list(warn=True, fovs_in_run_file=list(fov_scan.keys()),
-                   existing_fov_folders=old_dirs)
+    # verify_in_list(warn=True, fovs_in_run_file=list(fov_scan.keys()),
+    #                existing_fov_folders=old_dirs)
     verify_in_list(existing_fov_folders=old_dirs, fovs_in_run_file=list(fov_scan.keys()))
 
     # validate new_dir and copy contents of fov_dir
