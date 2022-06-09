@@ -97,33 +97,35 @@ RUN_CALLBACKS = ('plot_qc_metrics', 'plot_mph_metrics')
 
 
 class ExtractionQCGenerationCases:
-    def case_both_callbacks(self):
+    def case_all_callbacks(self):
         panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv')
         return FOV_CALLBACKS, {'panel': pd.read_csv(panel_path)}
 
     def case_extract_only(self):
-        cbs, kwargs = self.case_both_callbacks()
+        cbs, kwargs = self.case_all_callbacks()
         return cbs[:1], kwargs
 
-    def case_qc_and_mph(self):
-        cbs, kwargs = self.case_both_callbacks()
-        return cbs[1:], kwargs
+    def case_qc_only(self):
+        cbs, kwargs = self.case_all_callbacks()
+        return cbs[1:2], kwargs
+
+    def case_mph_only(self):
+        cbs, kwargs = self.case_all_callbacks()
+        return cbs[2:3], kwargs
 
     def case_extraction_intensities(self):
-        cbs, kwargs = self.case_both_callbacks()
+        cbs, kwargs = self.case_all_callbacks()
         kwargs['intensities'] = True
         return cbs, kwargs
 
     @pytest.mark.xfail(raises=ValueError)
     def case_missing_panel(self):
-        cbs, _ = self.case_both_callbacks()
+        cbs, _ = self.case_all_callbacks()
         return cbs, {}
 
     @pytest.mark.xfail(raises=ValueError)
     def case_bad_callback(self):
         return ['invalid_callback'], {}
-
-    # mph bad target case
 
 
 class PlotQCMetricsCases:

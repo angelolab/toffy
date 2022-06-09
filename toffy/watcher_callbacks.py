@@ -176,7 +176,7 @@ class FovCallbacks:
 
         Args:
             mph_output_dir (str): where to output mph csvs to
-            target (str):
+            target (str): channel to use
             panel (pd.DataFrame):
                 Target mass integration ranges
 
