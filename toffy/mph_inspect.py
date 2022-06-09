@@ -15,20 +15,28 @@ def bin_array(arr, bin_factor):
     return arr_bin
 
 
-def compute_mph_intensities(bin_file_dir, channel, panel, fov_list=None, bin_factor=100):
+def compute_mph_intensities(bin_file_dir, mass, mass_start=-0.3, mass_stop=0.0, fov_list=None, bin_factor=100):
     """ Compute the median pulse height intensities for given FOVs
 
     Args:
-        bin_file_dir: path to the FOV bin files
-        channel: channel to use
-        panel: info for bin file extraction
-        fov_list: which FOVs to include, if None will include all in data_dir
-        bin_factor: size of the bins for the MPH histograms, default 100
+        bin_file_dir (str): path to the FOV bin files
+        mass (float): mass for the panel
+        mass_start (float): beginning of mass integration range
+        mass_stop (float): end of mass integration range
+        fov_list (list): which FOVs to include, if None will include all in data_dir
+        bin_factor (int): size of the bins for the MPH histograms, default 100
 
     Returns:
         pd.DataFrame containing the MPH intensity data
 
     """
+
+    panel = pd.DataFrame([{
+        'Mass': mass,
+        'Target': None,
+        'Start': mass_start,
+        'Stop': mass_stop,
+    }])
 
     # compute for all FOVs in folder if list not specified
     if fov_list is None:
@@ -39,8 +47,8 @@ def compute_mph_intensities(bin_file_dir, channel, panel, fov_list=None, bin_fac
 
     # retrieve and store data for each fov
     for fov in fov_list:
-        _, intensities, pulse_counts = bin_files.get_histograms_per_tof(bin_file_dir, fov,
-                                                                        channel, panel)
+        _, intensities, pulse_counts = bin_files.get_histograms_per_tof(
+            bin_file_dir, fov, None, panel)
 
         int_bin = np.cumsum(intensities) / intensities.sum()
         median = (np.abs(int_bin - 0.5)).argmin()
@@ -59,23 +67,24 @@ def compute_mph_intensities(bin_file_dir, channel, panel, fov_list=None, bin_fac
     return final_df
 
 
-def visualize_mph_hist(bin_file_dir, channel, panel, fov_list=None,
+def visualize_mph_hist(bin_file_dir, mass, mass_start, mass_stop, fov_list=None,
                        bin_factor=100, x_cutoff=20000, normalize=True):
     """ Create a histogram of the median pulse height intensities for given FOVs
 
     Args:
-        bin_file_dir: path to the FOV bin files
-        channel: channel to use
-        panel: info for bin file extraction
-        fov_list: which FOVs to include, if None will include all in data_dir
-        bin_factor: size of the bins for the MPH histograms, default 100
-        x_cutoff:
-        normalize: whether to normalize the histograms
+        bin_file_dir (str): path to the FOV bin files
+        mass (float): mass for the panel
+        mass_start (float): beginning of mass integration range
+        mass_stop (float): end of mass integration range
+        fov_list (list): which FOVs to include, if None will include all in data_dir
+        bin_factor (int): size of the bins for the MPH histograms, default 100
+        x_cutoff (int):
+        normalize (bool): whether to normalize the histograms
 
     """
 
     # compute the mph intensities
-    data = compute_mph_intensities(bin_file_dir, channel, panel, fov_list, bin_factor)
+    data = compute_mph_intensities(bin_file_dir, mass, mass_start, mass_stop, fov_list, bin_factor)
 
     # plot each FOV
     plt.style.use('dark_background')
