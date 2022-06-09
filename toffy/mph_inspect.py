@@ -15,7 +15,8 @@ def bin_array(arr, bin_factor):
     return arr_bin
 
 
-def compute_mph_intensities(bin_file_dir, mass, mass_start=-0.3, mass_stop=0.0, fov_list=None, bin_factor=100):
+def compute_mph_intensities(bin_file_dir, mass, mass_start=-0.3, mass_stop=0.0,
+                            fov_list=None, bin_factor=100):
     """ Compute the median pulse height intensities for given FOVs
 
     Args:
