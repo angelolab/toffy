@@ -29,8 +29,7 @@ def test_merge_partial_runs(tmpdir):
         run_path = os.path.join(tmpdir, run_names[i])
         os.makedirs(run_path)
         fovs = fov_names[i]
-        for fov in fovs:
-            os.makedirs(os.path.join(run_path, fov))
+        create_sample_fov_dirs(fovs=fovs, base_dir=run_path)
 
     # merge runs
     reorg.merge_partial_runs(cohort_dir=tmpdir, run_string='run1')
@@ -53,6 +52,29 @@ def test_merge_partial_runs(tmpdir):
     # check that bad string raises error
     with pytest.raises(ValueError, match='No matching'):
         reorg.merge_partial_runs(cohort_dir=tmpdir, run_string='run4')
+
+
+def test_combine_runs(tmpdir):
+    run_names = ['run1', 'run2', 'run4']
+    fov_names = [['fov1', 'fov2'], ['fov1', 'fov3'], ['fov5']]
+    expected_names = []
+
+    # create each fov within each run
+    for i in range(len(run_names)):
+        run = run_names[i]
+        run_path = os.path.join(tmpdir, run)
+        os.makedirs(run_path)
+
+        fovs = fov_names[i]
+        for fov in fovs:
+            os.makedirs(os.path.join(run_path, fov))
+            expected_names.append(run + '_' + fov)
+
+    reorg.combine_runs(tmpdir)
+    created_names = io_utils.list_folders(tmpdir)
+    created_names.sort()
+
+    assert np.array_equal(created_names, expected_names)
 
 
 def test_rename_fov_dirs():

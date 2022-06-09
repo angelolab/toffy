@@ -41,6 +41,27 @@ def merge_partial_runs(cohort_dir, run_string):
         shutil.rmtree(os.path.join(cohort_dir, partial))
 
 
+def combine_runs(cohort_dir):
+    """Combines FOVs from different runs together, using the run name as a unique identifier
+
+    Args:
+        cohort_dir (str): path to the directory containing individual run folders"""
+
+    # get all runs
+    run_folders = io_utils.list_folders(cohort_dir)
+
+    # loop over each run
+    for run in run_folders:
+        run_path = os.path.join(cohort_dir, run)
+
+        fovs = io_utils.list_folders(run_path)
+        for fov in fovs:
+            shutil.copytree(os.path.join(run_path, fov),
+                            os.path.join(cohort_dir, run + '_' + fov))
+
+        shutil.rmtree(run_path)
+
+
 def rename_fov_dirs(json_run_path, fov_dir, new_dir=None):
     """Renames FOV directories with default_name to have custom_name sourced from the run JSON file
 
