@@ -1,3 +1,4 @@
+import numpy as np
 import tempfile
 import os
 import pytest
@@ -18,6 +19,40 @@ def remove_fov_dirs(base_dir):
     fovs = io_utils.list_folders(base_dir)
     for fov in fovs:
         os.rmdir(os.path.join(base_dir, fov))
+
+
+def test_merge_partial_runs(tmpdir):
+    run_names = ['run1_start', 'run1_finish', 'run2', 'run3', 'run3_restart']
+    fov_names = [['fov1'], ['fov2', 'fov3', 'fov4'], ['fov1'], ['fov1', 'fov2'], ['fov3', 'fov5']]
+
+    for i in range(len(run_names)):
+        run_path = os.path.join(tmpdir, run_names[i])
+        os.makedirs(run_path)
+        fovs = fov_names[i]
+        for fov in fovs:
+            os.makedirs(os.path.join(run_path, fov))
+
+    # merge runs
+    reorg.merge_partial_runs(cohort_dir=tmpdir, run_string='run1')
+    reorg.merge_partial_runs(cohort_dir=tmpdir, run_string='run3')
+
+    # correct runs have been combined
+    merged_run_folders = io_utils.list_folders(tmpdir)
+    merged_run_folders.sort()
+    assert np.array_equal(merged_run_folders, ['run1', 'run2', 'run3'])
+
+    # correct sub-folders within each run
+    merged_fov_folders_run1 = io_utils.list_folders(os.path.join(tmpdir, 'run1'))
+    merged_fov_folders_run1.sort()
+    assert np.array_equal(merged_fov_folders_run1, ['fov1', 'fov2', 'fov3', 'fov4'])
+
+    merged_fov_folders_run3 = io_utils.list_folders(os.path.join(tmpdir, 'run3'))
+    merged_fov_folders_run3.sort()
+    assert np.array_equal(merged_fov_folders_run3, ['fov1', 'fov2', 'fov3', 'fov5'])
+
+    # check that bad string raises error
+    with pytest.raises(ValueError, match='No matching'):
+        reorg.merge_partial_runs(cohort_dir=tmpdir, run_string='run4')
 
 
 def test_rename_fov_dirs():

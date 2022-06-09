@@ -1,11 +1,44 @@
 import json
 import os
+import shutil
 import warnings
 from distutils.dir_util import copy_tree
 
 from ark.utils import io_utils
 from ark.utils.misc_utils import verify_in_list
 from toffy.json_utils import rename_missing_fovs, rename_duplicate_fovs
+
+
+def merge_partial_runs(cohort_dir, run_string):
+    """Combines different runs together into a single folder of FOVs
+
+    Args:
+        cohort_dir (str): the path to the directory containing the run folders
+        run_string (str): the substring that each run folder has"""
+
+    # create folder to hold contents of all partial runs
+    output_folder = os.path.join(cohort_dir, run_string)
+    if not os.path.exists(output_folder):
+        os.makedirs(output_folder)
+
+    # get list of matching subfolders
+    partial_folders = io_utils.list_folders(cohort_dir, substrs=run_string)
+    partial_folders = [partial for partial in partial_folders if partial != run_string]
+
+    if len(partial_folders) == 0:
+        raise ValueError("No matching folders found for {}".format(run_string))
+
+    # loop through each partial folder
+    for partial in partial_folders:
+        fov_folders = io_utils.list_folders(os.path.join(cohort_dir, partial))
+
+        # copy each fov from partial folder into output folder
+        for fov in fov_folders:
+            shutil.copytree(os.path.join(cohort_dir, partial, fov),
+                            os.path.join(output_folder, fov))
+
+        # remove partial folder
+        shutil.rmtree(os.path.join(cohort_dir, partial))
 
 
 def rename_fov_dirs(json_run_path, fov_dir, new_dir=None):
