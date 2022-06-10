@@ -279,7 +279,8 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
 
     # generate fitted curve
     coeffs = fit_calibration_curve(tuning_data['pulse_height'].values,
-                                   tuning_data['norm_channel_count'].values, 'exp', True)
+                                   tuning_data['norm_channel_count'].values, 'exp', plot_fit=True,
+                                   save_path=os.path.join(sweep_path, 'function_fit.jpg'))
 
     # save the fitted curve
     norm_json = {'name': 'exp', 'weights': coeffs.tolist()}

@@ -241,12 +241,13 @@ def test_create_tuning_function(tmpdir, mocker):
     mocker.patch('toffy.normalize.get_median_pulse_height', mocked_pulse_height)
     mocker.patch('toffy.normalize.extract_bin_files', mocked_extract_bin_file)
 
-    # create full path for saving norm func
+    # define paths for generated outputs
     save_path = os.path.join(tmpdir, 'norm_func.json')
+    plot_path = os.path.join(sweep_dir, 'function_fit.jpg')
 
     normalize.create_tuning_function(sweep_path=sweep_dir, save_path=save_path)
     assert os.path.exists(save_path)
-
+    assert os.path.exists(plot_path)
 
 
 def test_identify_outliers():
