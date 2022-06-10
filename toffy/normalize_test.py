@@ -44,8 +44,7 @@ def mocked_extract_bin_file(data_dir, include_fovs, panel, out_dir, intensities)
 
 
 def mocked_pulse_height(data_dir, fov, panel, channel):
-    mass = panel['Mass'].values[0]
-    return mass * 2
+    return channel * 2
 
 
 def test_write_counts_per_mass(mocker):
@@ -225,6 +224,29 @@ def test_smooth_outliers():
     outlier_18 = np.mean(vals[17:19])
 
     assert np.allclose(smoothed_vals[outliers], np.array([outlier_0, outlier_18]))
+
+
+def test_create_tuning_function(tmpdir, mocker):
+    # create directory to hold the sweep
+    sweep_dir = os.path.join(tmpdir, 'sweep_1')
+    os.makedirs(sweep_dir)
+
+    # create individual runs each with a single FOV
+    for voltage in ['25V', '50V', '75V']:
+        run_dir = os.path.join(sweep_dir, '20220101_{}'.format(voltage))
+        os.makedirs(run_dir)
+        os.makedirs(os.path.join(run_dir, 'fov-1-scan-1'))
+
+    # mock functions that interact with bin files directly
+    mocker.patch('toffy.normalize.get_median_pulse_height', mocked_pulse_height)
+    mocker.patch('toffy.normalize.extract_bin_files', mocked_extract_bin_file)
+
+    # create full path for saving norm func
+    save_path = os.path.join(tmpdir, 'norm_func.json')
+
+    normalize.create_tuning_function(sweep_path=sweep_dir, save_path=save_path)
+    assert os.path.exists(save_path)
+
 
 
 def test_identify_outliers():

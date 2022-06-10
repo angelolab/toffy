@@ -20,7 +20,8 @@ from mibi_bin_tools.bin_files import extract_bin_files, get_median_pulse_height
 from mibi_bin_tools.panel_utils import make_panel
 
 
-def write_counts_per_mass(base_dir, output_dir, fov, masses, integration_window=(0.5, 0.5)):
+def write_counts_per_mass(base_dir, output_dir, fov, masses, start_offset=0.5,
+                          stop_offset=0.5):
     """Records the total counts per mass for the specified FOV
 
     Args:
@@ -28,10 +29,9 @@ def write_counts_per_mass(base_dir, output_dir, fov, masses, integration_window=
         output_dir (str): the directory where the csv file will be saved
         fov (str): the name of the fov to extract
         masses (list): the list of masses to extract counts from
-        integration_window (tuple): start and stop offset for integrating mass peak
+        start_offset (float): beginning value for integrating mass peak
+        stop_offset (float): ending value for integrating mass peak
     """
-
-    start_offset, stop_offset = integration_window
 
     # create panel with extraction criteria
     panel = make_panel(mass=masses, low_range=start_offset, high_range=stop_offset)
@@ -50,7 +50,7 @@ def write_counts_per_mass(base_dir, output_dir, fov, masses, integration_window=
     out_df.to_csv(os.path.join(output_dir, fov + '_channel_counts.csv'), index=False)
 
 
-def write_mph_per_mass(base_dir, output_dir, fov, masses, integration_window=(0.5, 0.5)):
+def write_mph_per_mass(base_dir, output_dir, fov, masses, start_offset=0.5, stop_offset=0.5):
     """Records the mean pulse height (MPH) per mass for the specified FOV
 
     Args:
@@ -58,16 +58,17 @@ def write_mph_per_mass(base_dir, output_dir, fov, masses, integration_window=(0.
         output_dir (str): the directory where the csv file will be saved
         fov (str): the name of the fov to extract
         masses (list): the list of masses to extract MPH from
-        integration_window (tuple): start and stop offset for integrating mass peak
+        start_offset (float): beginning value for calculating mph values
+        stop_offset (float): ending value for calculating mph values
     """
-    start_offset, stop_offset = integration_window
-
     # hold computed values
     mph_vals = []
 
+    # compute pulse heights
+    panel = make_panel(mass=masses, target_name=masses, low_range=start_offset,
+                       high_range=stop_offset)
     for mass in masses:
-        panel = make_panel(mass=mass, low_range=start_offset, high_range=stop_offset)
-        mph_vals.append(get_median_pulse_height(data_dir=base_dir, fov=fov, channel='targ0',
+        mph_vals.append(get_median_pulse_height(data_dir=base_dir, fov=fov, channel=mass,
                                                 panel=panel))
     # create df to hold output
     fovs = np.repeat(fov, len(masses))
@@ -124,7 +125,7 @@ def fit_calibration_curve(x_vals, y_vals, obj_func, outliers=None, plot_fit=Fals
         x_vals (list): the x values to be fit
         y_vals (list): the y value to be fit
         obj_func (str): the name of the function that will be fit to the data
-        outliers (tuple or None): optional tuple of outlier x/y coords to plot
+        outliers (tuple or None): optional tuple of ([x_coords], [y_coords]) to plot
         plot_fit (bool): whether or not to plot the fit of the function vs the values
         save_path (str or None): location to save the plot of the fitted values
 
@@ -250,6 +251,41 @@ def combine_tuning_curve_metrics(dir_list):
     all_data['norm_channel_count'] = subset.groupby('mass').transform(lambda x: (x / x.max()))
 
     return all_data
+
+
+def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100],
+                           save_path=os.path.join('..', 'toffy', 'norm_func.json')):
+    """Creates a tuning curve for an instrument based on the provided moly sweep
+
+    Args:
+        sweep_path (str): path to folder containing a detector sweep
+        moly_masses (list): list of masses to use for fitting the curve
+        save_path (str): path to save the weights of the tuning curve
+    """
+
+    # get all folders from the sweep
+    sweep_fovs = io_utils.list_folders(sweep_path)
+    sweep_fov_paths = [os.path.join(sweep_path, fov) for fov in sweep_fovs]
+
+    # compute pulse heights and channel counts for each FOV
+    for fov_path in sweep_fov_paths:
+        write_mph_per_mass(base_dir=fov_path, output_dir=fov_path, fov='fov-1-scan-1',
+                           masses=moly_masses)
+        write_counts_per_mass(base_dir=fov_path, output_dir=fov_path, fov='fov-1-scan-1',
+                              masses=moly_masses)
+
+    # combine data together into single df
+    tuning_data = combine_tuning_curve_metrics(sweep_fov_paths)
+
+    # generate fitted curve
+    coeffs = fit_calibration_curve(tuning_data['pulse_height'].values,
+                                   tuning_data['norm_channel_count'].values, 'exp', True)
+
+    # save the fitted curve
+    norm_json = {'name': 'exp', 'weights': coeffs.tolist()}
+
+    with open(save_path, 'w') as sp:
+        json.dump(norm_json, sp)
 
 
 def identify_outliers(x_vals, y_vals, obj_func, outlier_fraction=0.1):
