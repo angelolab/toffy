@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 from ark.utils import io_utils
-from mibi_bin_tools import bin_files
+from mibi_bin_tools.bin_files import get_histograms_per_tof
 
 
 def bin_array(arr, bin_factor):
@@ -48,7 +48,7 @@ def compute_mph_intensities(bin_file_dir, mass, mass_start=-0.3, mass_stop=0.0,
 
     # retrieve and store data for each fov
     for fov in fov_list:
-        _, intensities, pulse_counts = bin_files.get_histograms_per_tof(
+        _, intensities, pulse_counts = get_histograms_per_tof(
             bin_file_dir, fov, None, panel)
 
         int_bin = np.cumsum(intensities) / intensities.sum()
@@ -61,6 +61,7 @@ def compute_mph_intensities(bin_file_dir, mass, mass_start=-0.3, mass_stop=0.0,
             'median_intensity': median,
         })
     final_df = pd.DataFrame(out_df)
+
 
     # create column of binned intensity values and output df to csv
     final_df['binned_intensities'] = final_df['all_intensities'].apply(lambda x:
