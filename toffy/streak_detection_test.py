@@ -482,7 +482,7 @@ def test_streak_correction():
         chan_number=chan_num,
         img_shape=(row_size, col_size),
         fills=False,
-        dtype=np.int16,
+        dtype=np.float32,
     )
     test_fov_data_xr = test_utils.make_images_xarray(tif_data=test_fov_data)
 
@@ -520,3 +520,6 @@ def test_streak_correction():
         assert getattr(streak_data_test, vf) is not None
     for sf in streak_fields:
         assert getattr(streak_data_test, sf) is not None
+
+    # Ensure that dtype is preserved
+    assert corrected_channels_test.dtype == test_fov_data.dtype

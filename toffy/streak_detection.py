@@ -83,7 +83,7 @@ def _save_streak_data(streak_data: StreakData, name: str):
     st = partial(_get_save_dir, data_dir, name)
 
     if type(data) is np.ndarray:
-        io.imsave(st("tiff"), data.astype(np.uint8), check_contrast=False)
+        io.imsave(st("tiff"), data, check_contrast=False)
     elif type(data) is pd.DataFrame:
         data.to_csv(st("csv"), index=True)
 
@@ -352,7 +352,7 @@ def _correct_mean_alg(
             input_image[max_row + 1, min_col + 1: max_col + 1],
         ],
         axis=0,
-        dtype=np.uint8,
+        dtype=input_image.dtype,
     )
 
     return streak_corrected
@@ -432,7 +432,7 @@ def streak_correction(
     # Initialize the corrected image fov dimensions.
     fov_dim_size: int = len(channel_fn)
     row_size, col_size = streak_data.shape
-    cor_img_data = np.zeros(shape=(row_size, col_size, fov_dim_size), dtype=np.uint8)
+    cor_img_data = np.zeros(shape=(row_size, col_size, fov_dim_size), dtype=fov_data.dtype)
 
     # Correct streaks and add them to the np.array
     for idx, channel in enumerate(fov_data.channels.values):
