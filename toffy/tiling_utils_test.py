@@ -315,15 +315,15 @@ def test_set_tiled_region_params(monkeypatch, region_corners_file, fov_coords, f
         assert sample_region_info[1]['region_rand'] == 'Y'
 
         # assert moly_region set properly
-        assert sample_tiling_params.get('moly_region', 'Y') == 'Y'
+        assert sample_tiling_params['moly_region'] == 'Y'
 
         # if moly_interval set to 0 assert it doesn't exist,
         # otherwise ensure it exists and it's set to 1
         if moly_interval_val == 0:
             assert 'moly_interval' not in sample_tiling_params
         else:
-            # assert 'moly_interval' in sample_tiling_params
-            assert sample_tiling_params.get('moly_interval', 1) == 1
+            assert 'moly_interval' in sample_tiling_params
+            assert sample_tiling_params['moly_interval'] == 1
 
 
 def test_generate_x_y_fov_pairs():
