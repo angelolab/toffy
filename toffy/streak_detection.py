@@ -1,3 +1,4 @@
+from matplotlib.pyplot import connect
 import numpy as np
 import os
 from typing import Union, Tuple
@@ -82,7 +83,7 @@ def _save_streak_data(streak_data: StreakData, name: str):
     st = partial(_get_save_dir, data_dir, name)
 
     if type(data) is np.ndarray:
-        io.imsave(st("tiff"), data.astype(np.uint8), check_contrast=False)
+        io.imsave(st("tiff"), data, check_contrast=False)
     elif type(data) is pd.DataFrame:
         data.to_csv(st("csv"), index=True)
 
@@ -109,15 +110,15 @@ def _save_streak_masks(streak_data: StreakData):
 
 def _make_binary_mask(
     input_image: np.ndarray,
-    gaussian_sigma: float = 40,
-    gamma: float = 3.80,
-    gamma_gain: float = 0.10,
+    gaussian_sigma: float = 5.00,
+    gamma: float = 4.0,
+    gamma_gain: float = 1.00,
     log_gain: float = 1.00,
     pmin: int = 2,
     pmax: int = 98,
-    threshold: float = 0.30,
+    threshold: float = 0.35,
     wavelet: str = "db2",
-    mode: str = "hard",
+    mode: str = "soft",
     rescale_sigma: bool = True
 ) -> np.ndarray:
     """Performs a series of denoiseing, filtering, and exposure adjustments to create a binary
@@ -126,7 +127,7 @@ def _make_binary_mask(
     Args:
         input_image (np.ndarray): The image to perform the streak masking on.
         gaussian_sigma (float, optional): Parameter for `skimage.filters.gaussian`. Defaults to
-        40.
+        5.00.
         gamma (float, optional): Parameter for `skimage.exposure.adjust_gamma`. Defaults to 3.80.
         gamma_gain (float, optional): Parameter for `skimage.exposure.adjust_gamma`. Defaults to
         0.10.
@@ -136,12 +137,12 @@ def _make_binary_mask(
         pmax (int, optional): Upper bound for the `np.percentile` threshold, used for rescaling
         the intensity. Defaults to 98.
         threshold (float, optional): The lower bound for pixel values used to create a binary mask.
-        Defaults to 0.30.
+        Defaults to 0.35.
         wavelet (str): The type of wavelet to perform and can be any of the options
         `pywt.wavelist` outputs. Defaults to "db2".
         mode (str): An optional argument to choose the type of denoising performed. Its noted that
         choosing soft thresholding given additive noise finds the best approximation of the
-        original image. Defaults to "hard".
+        original image. Defaults to "soft".
         rescale_sigma (bool): If False, no rescaling of the user-provided `sigma` will be
         performed. The default of `True` rescales `sigma` appropriately if the image is rescaled
         internally. Defaults to "True".
@@ -150,7 +151,6 @@ def _make_binary_mask(
     Returns:
         np.ndarray: The binary mask containing all of the candidate strokes.
     """
-    # Denoise the Image
     input_image = restoration.denoise_wavelet(
         input_image, wavelet=wavelet, mode=mode, rescale_sigma=rescale_sigma
     )
@@ -176,7 +176,7 @@ def _make_binary_mask(
     return binary_mask
 
 
-def _make_mask_dataframe(streak_data: StreakData, min_length: int = 50) -> None:
+def _make_mask_dataframe(streak_data: StreakData, min_length: int = 70) -> None:
     """Converts the binary mask created by `_make_binary_mask` into a dataframe for
     processing. The streaks are labeled, pixel information (min_row, min_col, max_row, max_col)
     is evaluated and streak lengths / areas are calculated. In addition the `min_length` argument
@@ -185,47 +185,53 @@ def _make_mask_dataframe(streak_data: StreakData, min_length: int = 50) -> None:
     Args:
         streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
         data for streak correction.
-        min_length (int): The lower threshold for filtering streaks in pixels. Defaults to 50.
+        min_length (int): The lower threshold for filtering streaks in pixels. Defaults to 70.
     """
     # Label all the candidate streaks
     labeled_streaks = measure.label(streak_data.streak_mask, connectivity=2, return_num=False)
 
-    # Gather properties of all the candidate streaks using regionprops.
-    region_properties = measure.regionprops_table(
-        label_image=labeled_streaks,
-        cache=True,
-        properties=[
-            "label",
-            "bbox",
-            "eccentricity",
-            "area",
-        ],
-    )
+    # if streaks detected, filter dataframe
+    if len(np.unique(labeled_streaks)) > 1:
+        # Gather properties of all the candidate streaks using regionprops.
+        region_properties = measure.regionprops_table(
+            label_image=labeled_streaks,
+            cache=True,
+            properties=[
+                "label",
+                "bbox",
+                "eccentricity",
+                "area",
+            ],
+        )
 
-    # Convert dictionary of region properties to DataFrame.
-    streak_data.streak_df = pd.DataFrame(region_properties)
+        # Convert dictionary of region properties to DataFrame.
+        streak_data.streak_df = pd.DataFrame(region_properties)
 
-    # Rename the bounding box columns.
-    streak_data.streak_df.rename(
-        {
-            "bbox-0": "min_row",
-            "bbox-1": "min_col",
-            "bbox-2": "max_row",
-            "bbox-3": "max_col",
-        },
-        axis="columns",
-        inplace=True,
-    )
-    # Give the index column a name.
-    streak_data.streak_df.index.names = ["index"]
+        # Rename the bounding box columns.
+        streak_data.streak_df.rename(
+            {
+                "bbox-0": "min_row",
+                "bbox-1": "min_col",
+                "bbox-2": "max_row",
+                "bbox-3": "max_col",
+                "area": "length",
+            },
+            axis="columns",
+            inplace=True,
+        )
+        # Give the index column a name.
+        streak_data.streak_df.index.names = ["index"]
 
-    # Filter out eccentricities that are less than 0.99999 (only keep straight lines)
-    # Filter out small areas (small lines)
-    eccentricity_value = 0.99999
-    area_value = min_length
-    streak_data.filtered_streak_df = streak_data.streak_df.query(
-        f"eccentricity > {eccentricity_value} and area > {area_value}"
-    )
+        # Filter out eccentricities that are less than 0.99999 (only keep straight lines)
+        # Filter out small areas (small lines)
+        eccentricity_value = 0.9999999
+        streak_data.filtered_streak_df = streak_data.streak_df.query(
+            "eccentricity > @eccentricity_value and length > @min_length"
+        )
+    else:
+        # otherwise, make a blank df
+        blank_df = pd.DataFrame({"min_row": [], "min_col": [], "max_row": [], "max_col": []})
+        streak_data.filtered_streak_df = blank_df
 
 
 def _make_filtered_mask(streak_data: StreakData) -> None:
@@ -258,8 +264,8 @@ def _make_box_outline(streak_data: StreakData) -> None:
     )
     for region in streak_data.filtered_streak_df.itertuples():
         y, x = draw.rectangle_perimeter(
-            start=(region.min_row, region.min_col),
-            end=(region.max_row - 1, region.max_col - 1),
+            start=(region.min_row + 1, region.min_col + 1),
+            end=(region.max_row, region.max_col),
             clip=True,
             shape=streak_data.shape,
         )
@@ -346,7 +352,7 @@ def _correct_mean_alg(
             input_image[max_row + 1, min_col + 1: max_col + 1],
         ],
         axis=0,
-        dtype=np.uint8,
+        dtype=input_image.dtype,
     )
 
     return streak_corrected
@@ -418,7 +424,7 @@ def streak_correction(
         streak_data.shape = channel_image.shape
         # Create and filter the binary masks
         streak_data.streak_mask = _make_binary_mask(input_image=channel_image)
-        _make_mask_dataframe(streak_data=streak_data, min_length=50)
+        _make_mask_dataframe(streak_data=streak_data)
 
     # Get the file names.
     channel_fn = fov_data.channels.values.tolist()
@@ -426,7 +432,7 @@ def streak_correction(
     # Initialize the corrected image fov dimensions.
     fov_dim_size: int = len(channel_fn)
     row_size, col_size = streak_data.shape
-    cor_img_data = np.zeros(shape=(row_size, col_size, fov_dim_size), dtype=np.uint8)
+    cor_img_data = np.zeros(shape=(row_size, col_size, fov_dim_size), dtype=fov_data.dtype)
 
     # Correct streaks and add them to the np.array
     for idx, channel in enumerate(fov_data.channels.values):
