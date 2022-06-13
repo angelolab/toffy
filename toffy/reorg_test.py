@@ -152,4 +152,3 @@ def test_rename_fov_dirs():
         # with pytest.raises(ValueError, match="Not all values"):
         #     reorg.rename_fov_dirs(ex_run_path, fov_dir)
         remove_fov_dirs(fov_dir)
-
