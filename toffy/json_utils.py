@@ -1,4 +1,8 @@
 import copy
+import json
+import os
+
+from ark.utils import io_utils
 
 
 def rename_missing_fovs(fov_data):
@@ -52,3 +56,27 @@ def rename_duplicate_fovs(tma_fovs):
             fov['name'] = '%s_duplicate%d' % (fov['name'], fov_count[fov['name']] - 1)
 
     return tma_fovs
+
+
+def list_moly_fovs(bin_file_dir):
+    """Lists all of the FOVs in a directory which are moly FOVs
+
+    Args:
+        bin_file_dir (str): path to bin files
+
+    Returns:
+        list: list of FOVs which are moly FOVs"""
+
+    json_files = io_utils.list_files(bin_file_dir, '.json')
+    moly_fovs = []
+
+    for file in json_files:
+        json_path = os.path.join(bin_file_dir, file)
+        with open(json_path, 'r') as jp:
+            json_file = json.load(jp)
+
+        if json_file.get('standardTarget', "") == "Molybdenum Foil":
+            moly_name = file.split('.json')[0]
+            moly_fovs.append(moly_name)
+
+    return moly_fovs
