@@ -84,6 +84,9 @@ def visualize_mph_hist(bin_file_dir, mass, mass_start, mass_stop, fov_list=None,
 
     """
 
+    # validate path
+    io_utils.validate_paths(bin_file_dir)
+
     # compute the mph intensities
     data = compute_mph_intensities(bin_file_dir, mass, mass_start, mass_stop, fov_list, bin_factor)
 

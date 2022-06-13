@@ -1,4 +1,6 @@
 import os
+
+import pytest
 import pytest_mock
 import tempfile
 
@@ -39,5 +41,11 @@ def test_compute_mph_intensities(mocker):
         assert mph_data['median_intensity'][0] == 70
 
 
-#def test_visualize_mph_hist():
-#    pass
+def test_visualize_mph_hist():
+    bad_path = os.path.join('data', 'not_bin_file_dir')
+    mass = 98
+    mass_start = 97.5
+    mass_stop = 98.5
+
+    with pytest.raises(ValueError):
+        mph_inspect.visualize_mph_hist(bad_path, mass, mass_start, mass_stop)
