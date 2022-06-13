@@ -62,7 +62,6 @@ def compute_mph_intensities(bin_file_dir, mass, mass_start=-0.3, mass_stop=0.0,
         })
     final_df = pd.DataFrame(out_df)
 
-
     # create column of binned intensity values and output df to csv
     final_df['binned_intensities'] = final_df['all_intensities'].apply(lambda x:
                                                                        bin_array(x, bin_factor))
