@@ -1,11 +1,10 @@
 import os
 
 import pytest
-import pytest_mock
 import tempfile
 
 import numpy as np
-import pandas as pd
+from pathlib import Path
 
 from toffy import mph_inspect
 
@@ -16,6 +15,7 @@ def test_bin_array():
     expected_binned = np.array([230, 630, 1030, 1430])
     binned_intensities = mph_inspect.bin_array(sample_intensities, bin_factor)
 
+    # test successful binning
     assert (binned_intensities == expected_binned).all()
 
 
@@ -35,17 +35,26 @@ def test_compute_mph_intensities(mocker):
 
     with tempfile.TemporaryDirectory() as tmp_dir:
         open(os.path.join(tmp_dir, "fov-1.bin"), 'w')
-        mph_data = mph_inspect.compute_mph_intensities(tmp_dir, mass, mass_start, mass_stop,
-                                                       bin_factor=20)
+        mph_data = mph_inspect.compute_mph_intensities(tmp_dir, ["fov-1"], mass, mass_start,
+                                                       mass_stop, bin_factor=20)
 
+        # test remaining columns
+        assert mph_data['fov'][0] == "fov-1"
         assert mph_data['median_intensity'][0] == 70
 
 
 def test_visualize_mph_hist():
     bad_path = os.path.join('data', 'not_bin_file_dir')
+    bin_file_dir = good_path = os.path.join(Path(__file__).parent, "data", "tissue")
     mass = 98
     mass_start = 97.5
     mass_stop = 98.5
 
+    # bad path should raise an error
     with pytest.raises(ValueError):
         mph_inspect.visualize_mph_hist(bad_path, mass, mass_start, mass_stop)
+
+    # bad fov name should raise error
+    bad_fov_list = ['fov-1-scan-1', 'bad_fov']
+    with pytest.raises(ValueError, match="Not all values given in list"):
+        mph_inspect.visualize_mph_hist(bin_file_dir, mass, mass_start, mass_stop, bad_fov_list)

@@ -3,7 +3,7 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 
-from ark.utils import io_utils
+from ark.utils import io_utils, misc_utils
 from mibi_bin_tools.bin_files import get_histograms_per_tof
 
 
@@ -15,16 +15,16 @@ def bin_array(arr, bin_factor):
     return arr_bin
 
 
-def compute_mph_intensities(bin_file_dir, mass, mass_start=-0.3, mass_stop=0.0,
-                            fov_list=None, bin_factor=100):
+def compute_mph_intensities(bin_file_dir, fov_list, mass, mass_start=-0.3, mass_stop=0.0,
+                            bin_factor=100):
     """ Compute the median pulse height intensities for given FOVs
 
     Args:
         bin_file_dir (str): path to the FOV bin files
+        fov_list (list): which FOVs to include
         mass (float): mass for the panel
         mass_start (float): beginning of mass integration range
         mass_stop (float): end of mass integration range
-        fov_list (list): which FOVs to include, if None will include all in data_dir
         bin_factor (int): size of the bins for the MPH histograms, default 100
 
     Returns:
@@ -38,11 +38,6 @@ def compute_mph_intensities(bin_file_dir, mass, mass_start=-0.3, mass_stop=0.0,
         'Start': mass_start,
         'Stop': mass_stop,
     }])
-
-    # compute for all FOVs in folder if list not specified
-    if fov_list is None:
-        fov_list = io_utils.remove_file_extensions(io_utils.list_files
-                                                   (bin_file_dir, substrs='.bin'))
 
     out_df = []
 
@@ -79,7 +74,6 @@ def visualize_mph_hist(bin_file_dir, mass, mass_start, mass_stop, fov_list=None,
         mass_stop (float): end of mass integration range
         fov_list (list): which FOVs to include, if None will include all in data_dir
         bin_factor (int): size of the bins for the MPH histograms, default 100
-        x_cutoff (int):
         normalize (bool): whether to normalize the histograms
 
     """
@@ -87,8 +81,16 @@ def visualize_mph_hist(bin_file_dir, mass, mass_start, mass_stop, fov_list=None,
     # validate path
     io_utils.validate_paths(bin_file_dir)
 
+    # compute for all FOVs in folder if list not specified, verify valid fov names
+    all_fovs = io_utils.remove_file_extensions(io_utils.list_files
+                                               (bin_file_dir, substrs='.bin'))
+    if fov_list is None:
+        fov_list = all_fovs
+    else:
+        misc_utils.verify_in_list(provided_fovs=fov_list, fovs_in_directory=all_fovs)
+
     # compute the mph intensities
-    data = compute_mph_intensities(bin_file_dir, mass, mass_start, mass_stop, fov_list, bin_factor)
+    data = compute_mph_intensities(bin_file_dir, fov_list, mass, mass_start, mass_stop, bin_factor)
 
     # plot each FOV
     plt.style.use('dark_background')
