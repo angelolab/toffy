@@ -19,7 +19,7 @@ def test_bin_array():
     assert (binned_intensities == expected_binned).all()
 
 
-def sample_data(bin_file_dir, fov, target, panel):
+def create_hist_per_tof_data(bin_file_dir, fov, target, panel):
     sample_intensities = np.array([range(1, 101)])
     sample_pulse_counts = np.array([range(1, 101)])
 
@@ -27,7 +27,7 @@ def sample_data(bin_file_dir, fov, target, panel):
 
 
 def test_compute_mph_intensities(mocker):
-    mocker.patch('toffy.mph_inspect.get_histograms_per_tof', sample_data)
+    mocker.patch('toffy.mph_inspect.get_histograms_per_tof', create_hist_per_tof_data)
 
     mass = 98
     mass_start = 97.5
