@@ -1,4 +1,6 @@
+import json
 import numpy as np
+import os
 
 from toffy import json_utils, test_utils
 
@@ -48,3 +50,30 @@ def test_rename_duplicate_fovs():
 
     fov_list_mult_dup = json_utils.rename_duplicate_fovs(fov_list)
     assert [fov['name'] for fov in fov_list_mult_dup['fovs']] == fov_names
+
+
+def test_list_moly_fovs(tmpdir):
+    # create fake jsons
+    moly_json = {'name': 'bob',
+                 'standardTarget': 'Molybdenum Foil'}
+
+    tissue_json = {'name': 'carl'}
+
+    # create list of moly and non-moly FOVs
+    moly_fovs = ['fov-1-scan-1', 'fov-2-scan-2', 'fov-2-scan-3']
+    tissue_fovs = ['fov-1-scan-2', 'fov-3-scan-1']
+
+    # save jsons
+    for fov in moly_fovs:
+        json_path = os.path.join(tmpdir, fov + '.json')
+        with open(json_path, 'w') as jp:
+            json.dump(moly_json, jp)
+
+    for fov in tissue_fovs:
+        json_path = os.path.join(tmpdir, fov + '.json')
+        with open(json_path, 'w') as jp:
+            json.dump(tissue_json, jp)
+
+    pred_moly_fovs = json_utils.list_moly_fovs(tmpdir)
+
+    assert np.array_equal(pred_moly_fovs.sort(), moly_fovs.sort())

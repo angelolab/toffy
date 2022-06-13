@@ -13,6 +13,8 @@ from ark.utils.load_utils import load_imgs_from_tree, load_imgs_from_dir
 from ark.utils.io_utils import list_folders, validate_paths, list_files
 from ark.utils.misc_utils import verify_same_elements, verify_in_list
 
+from toffy.streak_detection import streak_correction
+
 
 def transform_compensation_json(json_path, comp_mat_path):
     """Converts the JSON file from ionpath into a compensation matrix
@@ -176,8 +178,8 @@ def get_masses_from_channel_names(names, panel_df):
 
 def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info,
                           input_masses=None, output_masses=None, save_format='normalized',
-                          raw_data_sub_folder='', batch_size=10, gaus_rad=1, norm_const=100,
-                          ffc_channels=['chan_39']):
+                          raw_data_sub_folder='', batch_size=1, gaus_rad=1, norm_const=100,
+                          ffc_channels=['chan_39'], correct_streaks=False, streak_chan='Noodle'):
     """Function to compensate MIBI data with a flow-cytometry style compensation matrix
 
     Args:
@@ -200,6 +202,8 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         gaus_rad: radius for blurring image data. Passing 0 will result in no blurring
         norm_const: constant used for normalization if save_format == 'normalized'
         ffc_channels (list): channels that need to be flat field corrected.
+        correct_streaks (bool): whether to correct streaks in the image
+        streak_chan (str): the channel to use for streak correction
     """
 
     validate_paths([raw_data_dir, comp_data_dir, comp_mat_path],
@@ -244,6 +248,11 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                 for k in range(batch_data.shape[-1]):
                     batch_data[j, :, :, k] = gaussian_filter(batch_data[j, :, :, k],
                                                              sigma=gaus_rad)
+
+        if correct_streaks:
+            corrected_channels, _ = streak_correction(fov_data=batch_data,
+                                                      streak_channel=streak_chan)
+            batch_data[0] = corrected_channels.values
 
         # apply flat field correction if specified
         if ffc_channels is not None:
