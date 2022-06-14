@@ -362,6 +362,7 @@ class WatcherCases:
                 channels=list(panel['Target']),
                 intensities=intensity),
             check_qc_dir_structure,
+            check_mph_dir_structure,
         ]
 
         kwargs = {'panel': panel, 'intensities': intensity}
@@ -369,6 +370,7 @@ class WatcherCases:
         return (
             ['plot_qc_metrics'],
             ['extract_tiffs'],
+            ['plot_mph_metrics'],
             kwargs,
             validators
         )
