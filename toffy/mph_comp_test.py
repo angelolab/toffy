@@ -105,9 +105,9 @@ def test_visualize_mph():
 
     # bad output directory path should raise an error
     with pytest.raises(ValueError):
-        mph.visualize_mph(mph_data, False, bad_path)
+        mph.visualize_mph(mph_data, bad_path, regression=False)
 
     with tempfile.TemporaryDirectory() as temp_dir:
         # test for saving to directory
-        mph.visualize_mph(mph_data, True, out_dir=temp_dir)
+        mph.visualize_mph(mph_data, out_dir=temp_dir, regression=True)
         assert os.path.exists(os.path.join(temp_dir, 'fov_vs_mph.jpg'))

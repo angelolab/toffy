@@ -116,12 +116,12 @@ def combine_mph_metrics(csv_dir, return_data=False):
         return combined_df
 
 
-def visualize_mph(mph_df, regression: bool, out_dir):
+def visualize_mph(mph_df, out_dir, regression: bool = False):
     """Create a scatterplot visualizing median pulse heights by FOV cumulative count
         Args:
             mph_df (pd.DataFrame): data detailing total counts and pulse heights
-            regression (bool): whether to plot regression line
             out_dir (str): path of directory to save plot to
+            regression (bool): whether to plot regression line, default is False
             """
 
     # path validation checks
