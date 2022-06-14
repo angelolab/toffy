@@ -45,11 +45,9 @@ def compute_mph_metrics(bin_file_dir, csv_dir, fov, mass, mass_start, mass_stop)
             bin_file_dir (str): path to the FOV bin and json files
             csv_dir (str): path to output csv to
             fov (string): name of fov bin file without the extension
-            target (str): channel to use
             mass (float): mass for the panel
             mass_start (float): beginning of mass integration range
             mass_stop (float): end of mass integration range
-
             """
 
     target = None
@@ -118,17 +116,17 @@ def combine_mph_metrics(csv_dir, return_data=False):
         return combined_df
 
 
-def visualize_mph(mph_df, regression: bool, save_dir):
+def visualize_mph(mph_df, regression: bool, out_dir):
     """Create a scatterplot visualizing median pulse heights by FOV cumulative count
         Args:
             mph_df (pd.DataFrame): data detailing total counts and pulse heights
             regression (bool): whether or not to plot regression line
-            save_dir (str): path of directory to save plot to
+            out_dir (str): path of directory to save plot to
             """
 
     # path validation checks
-    if save_dir is not None:
-        io_utils.validate_paths(save_dir)
+    if out_dir is not None:
+        io_utils.validate_paths(out_dir)
 
     # visualize the median pulse heights
     plt.style.use('dark_background')
@@ -158,7 +156,7 @@ def visualize_mph(mph_df, regression: bool, save_dir):
         ax1.plot(x2, m * x2 + b)
 
     # save figure
-    file_path = os.path.join(save_dir, 'fov_vs_mph.jpg')
+    file_path = os.path.join(out_dir, 'fov_vs_mph.jpg')
     if os.path.exists(file_path):
         os.remove(file_path)
     plt.savefig(file_path)
