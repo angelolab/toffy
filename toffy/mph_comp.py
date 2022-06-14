@@ -39,29 +39,36 @@ def get_estimated_time(bin_file_dir, fov):
     return estimated_time
 
 
-def compute_mph_metrics(bin_file_dir, csv_dir, fov, target, mass_start, mass_stop):
+def compute_mph_metrics(bin_file_dir, csv_dir, fov, mass, mass_start, mass_stop):
     """Retrieves total counts, pulse heights, & estimated time for a given FOV
         Args:
             bin_file_dir (str): path to the FOV bin and json files
             csv_dir (str): path to output csv to
             fov (string): name of fov bin file without the extension
             target (str): channel to use
+            mass (float): mass for the panel
             mass_start (float): beginning of mass integration range
             mass_stop (float): end of mass integration range
 
             """
+
+    target = None
+    panel = pd.DataFrame([{
+        'Mass': mass,
+        'Target': target,
+        'Start': mass_start,
+        'Stop': mass_stop,
+    }])
 
     # retrieve the data from bin file and output to individual csv
     pulse_height_file = fov + '-pulse_height.csv'
 
     try:
         median = bin_files.get_median_pulse_height(bin_file_dir, fov,
-                                                   target, (mass_start, mass_stop))
+                                                   target, panel)
         count_dict = bin_files.get_total_counts(bin_file_dir, [fov])
     except FileNotFoundError:
         raise FileNotFoundError(f"The FOV name supplied doesn't have a JSON file: {fov}")
-    except ValueError:
-        raise ValueError(f"The target name is invalid: {target}")
 
     count = count_dict[fov]
     time = get_estimated_time(bin_file_dir, fov)
