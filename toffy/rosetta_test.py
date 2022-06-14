@@ -212,7 +212,8 @@ def test_compensate_image_data(output_masses, input_masses, gaus_rad, save_forma
         rosetta.compensate_image_data(data_dir, output_dir, comp_mat_path, panel_info,
                                       input_masses=input_masses, output_masses=output_masses,
                                       save_format=save_format, gaus_rad=gaus_rad,
-                                      ffc_channels=['chan1'])
+                                      ffc_channels=['chan1'], correct_streaks=True,
+                                      streak_chan='chan1')
 
         # all folders created
         output_folders = list_folders(output_dir)

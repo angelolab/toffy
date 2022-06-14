@@ -4,17 +4,19 @@ The toffy repo is designed to simplify the process of generating and processing 
 This repo is currently in beta testing. None of the code has been published yet, and we will be making breaking changes frequently. If you find bugs, please [open an issue](https://github.com/angelolab/toffy/issues/new/choose). If you have questions or want to collaborate, please reach out to Noah (nfgreen@stanford.edu)
 
 ## Table of Contents
-
 - [Overview](#overview)
-  1. [First time using toffy](#1-using-toffy-for-the-first-time)
-  2. [Setting up a MIBI run](#2-setting-up-a-mibi-run)
-  3. [Evaluating a MIBI run](#3-evaluating-a-mibi-run)
-  4. [Processing data after a MIBI run](#4-processing-mibi-data)
+  - [1. Using toffy for the first time](#1-using-toffy-for-the-first-time)
+  - [2. Setting up a MIBI run](#2-setting-up-a-mibi-run)
+  - [3. Evaluating a MIBI run](#3-evaluating-a-mibi-run)
+  - [4. Processing data after a MIBI run](#4-processing-mibi-data)
 - [Installation](#installation)
   - [Requirements for specific operating systems](#requirements-for-specific-operating-systems)
+    - [Windows](#windows)
+    - [macOS](#macos)
   - [Setting up the virtual environment](#setting-up-the-virtual-environment)
   - [Using the repo](#using-the-repo)
   - [Updating the repo](#updating-the-repo)
+- [Questions?](#questions)
 
 ## Overview
 The repo has four main parts, with associated code and jupyter notebooks for each
@@ -34,7 +36,7 @@ There are a number of different computational tasks to complete once a MIBI run 
 - 3b: post-run monitoring. For each step in the monitoring notebook, we have a dedicated notebook that can perform the same tasks once a run is complete. This includes [the image extraction notebook](./templates/extract_bin_file.ipynb) and the [qc metrics notebook](./templates/3b_generate_qc_metrics.ipynb). 
 
 
-### 4. Processing MIBI data
+### 4. Processing MIBI Data
 Once your run has finished, you can begin to process the data to make it ready for analysis. To remove background signal contamination, as well as compensate for channel crosstalk, you can use the [compensation](./templates/4_compensate_image_data.ipynb) notebook. This will guide you through the Rosetta algorithm, which uses a flow-cytometry style compensation approach to remove spurious signal. 
 
 Following compensation, you will want to normalize your images to ensure consistent intensity across the run. This functionality is currently in the works, and we'll have a beta version available to test soon. 
@@ -87,6 +89,8 @@ Move into directory and build the environment
 cd toffy
 conda env create -f environment.yml
 ```
+
+This creates a *Python 3.8* environment named `toffy_env`. You can view everything that gets installed by looking at the `environment.yml` file.
 
 ### Using the repo
 Once you're ready to use the repo, enter the following commands. 
