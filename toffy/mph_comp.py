@@ -77,14 +77,14 @@ def compute_mph_metrics(bin_file_dir, csv_dir, fov, mass=98, mass_start=97.5, ma
         'total_count': [count],
         'time': [time]})
 
-    # saves individual .csv  files to bin_file_path
+    # saves individual .csv files to csv_dir
     out_df.to_csv(os.path.join(csv_dir, pulse_height_file), index=False)
 
 
 def combine_mph_metrics(csv_dir, return_data=False):
     """Combines data from individual csvs into one
         Args:
-            csv_dir (str): path where FOV csvs are stored
+            csv_dir (str): path where FOV mph data csvs are stored
             return_data (bool): whether to return dataframe with mph metrics, default False
 
         Returns:
@@ -105,7 +105,7 @@ def combine_mph_metrics(csv_dir, return_data=False):
     combined_df['cum_total_count'] = combined_df['total_count'].cumsum()
     combined_df['cum_total_time'] = combined_df['time'].cumsum()
 
-    # save csv to output_dir
+    # save csv to csv_dir
     file_path = os.path.join(csv_dir, 'total_count_vs_mph_data.csv')
     if os.path.exists(file_path):
         os.remove(file_path)
