@@ -167,15 +167,18 @@ class FovCallbacks:
         for metric_name, data in metric_data.items():
             data.to_csv(os.path.join(qc_out_dir, metric_name), index=False)
 
-    def generate_mph(self, mph_output_dir, input_mass, input_mass_start, input_mass_stop,
-                     **kwargs):
+    def generate_mph(self, mph_output_dir, **kwargs):
         """Generates mph metrics from given panel, and saves output to provided directory
 
         Args:
             mph_output_dir (str): where to output mph csvs to
-            input_mass (float): mass for the panel
-            input_mass_start (float): beginning of mass integration range
-            input_mass_stop (float): end of mass integration range
+
+            **kwargs (dict):
+                Additional arguments for `toffy.qc_comp.compute_mph_metrics`. Accepted kwargs are:
+
+             - mass
+             - mass_start
+             - mass_stop
 
         """
 
@@ -186,9 +189,9 @@ class FovCallbacks:
             bin_file_dir=self.run_folder,
             csv_dir=mph_output_dir,
             fov=self.point_name,
-            mass=input_mass,
-            mass_start=input_mass_start,
-            mass_stop=input_mass_stop
+            mass=kwargs.get('mass', 98),
+            mass_start=kwargs.get('mass_start', 97.5),
+            mass_stop=kwargs.get('mass_stop', 98.5),
         )
 
 

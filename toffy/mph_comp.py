@@ -39,7 +39,7 @@ def get_estimated_time(bin_file_dir, fov):
     return estimated_time
 
 
-def compute_mph_metrics(bin_file_dir, csv_dir, fov, mass, mass_start, mass_stop):
+def compute_mph_metrics(bin_file_dir, csv_dir, fov, mass=98, mass_start=97.5, mass_stop=98.5):
     """Retrieves total counts, pulse heights, & estimated time for a given FOV
         Args:
             bin_file_dir (str): path to the FOV bin and json files
@@ -120,7 +120,7 @@ def visualize_mph(mph_df, regression: bool, out_dir):
     """Create a scatterplot visualizing median pulse heights by FOV cumulative count
         Args:
             mph_df (pd.DataFrame): data detailing total counts and pulse heights
-            regression (bool): whether or not to plot regression line
+            regression (bool): whether to plot regression line
             out_dir (str): path of directory to save plot to
             """
 

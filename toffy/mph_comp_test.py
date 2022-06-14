@@ -49,20 +49,15 @@ def test_get_estimated_time():
 def test_compute_mph_metrics():
     bin_file_path = os.path.join(Path(__file__).parent, "data", "tissue")
     fov_name = 'fov-1-scan-1'
-    mass = 98
-    start_mass = 97.5
-    stop_mass = 98.5
 
     with tempfile.TemporaryDirectory() as tmpdir:
 
         # invalid fov name should raise an error
         with pytest.raises(FileNotFoundError):
-            mph.compute_mph_metrics(bin_file_path, tmpdir, "not-a-fov",
-                                    mass, start_mass, stop_mass)
+            mph.compute_mph_metrics(bin_file_path, tmpdir, "not-a-fov")
 
         # test successful data retrieval and csv output
-        mph.compute_mph_metrics(bin_file_path, tmpdir, fov_name,
-                                mass, start_mass, stop_mass)
+        mph.compute_mph_metrics(bin_file_path, tmpdir, fov_name)
         csv_path = os.path.join(tmpdir, fov_name + '-pulse_height.csv')
         assert os.path.exists(csv_path)
 
