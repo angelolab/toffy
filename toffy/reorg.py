@@ -34,8 +34,12 @@ def merge_partial_runs(cohort_dir, run_string):
 
         # copy each fov from partial folder into output folder
         for fov in fov_folders:
-            shutil.copytree(os.path.join(cohort_dir, partial, fov),
-                            os.path.join(output_folder, fov))
+            new_path = os.path.join(output_folder, fov)
+            if os.path.exists(new_path):
+                raise ValueError("The following folder {} already exists in {}. If there are "
+                                 "duplicates in your partial run folders, you'll need to determine"
+                                 " which to keep before merging".format(fov, output_folder))
+            shutil.move(os.path.join(cohort_dir, partial, fov), new_path)
 
         # remove partial folder
         shutil.rmtree(os.path.join(cohort_dir, partial))
