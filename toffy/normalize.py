@@ -363,7 +363,7 @@ def smooth_outliers(vals, outlier_idx, smooth_range=2):
     return smoothed_vals
 
 
-def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=5):
+def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=10):
     """Fits a curve for the MPH over time for the specified mass
 
     Args:
