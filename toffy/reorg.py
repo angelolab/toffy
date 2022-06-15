@@ -54,14 +54,18 @@ def combine_runs(cohort_dir):
     # get all runs
     run_folders = io_utils.list_folders(cohort_dir)
 
+    # create folder to hold all images
+    output_dir = os.path.join(cohort_dir, 'image_data')
+    os.makedirs(output_dir)
+
     # loop over each run
     for run in run_folders:
         run_path = os.path.join(cohort_dir, run)
 
         fovs = io_utils.list_folders(run_path)
         for fov in fovs:
-            shutil.copytree(os.path.join(run_path, fov),
-                            os.path.join(cohort_dir, run + '_' + fov))
+            shutil.move(os.path.join(run_path, fov),
+                        os.path.join(output_dir, run + '_' + fov))
 
         shutil.rmtree(run_path)
 

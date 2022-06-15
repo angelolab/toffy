@@ -76,7 +76,7 @@ def test_combine_runs(tmpdir):
             expected_names.append(run + '_' + fov)
 
     reorg.combine_runs(tmpdir)
-    created_names = io_utils.list_folders(tmpdir)
+    created_names = io_utils.list_folders(os.path.join(tmpdir, 'image_data'))
     created_names.sort()
 
     assert np.array_equal(created_names, expected_names)
