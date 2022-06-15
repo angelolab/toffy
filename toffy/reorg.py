@@ -111,7 +111,7 @@ def rename_fov_dirs(json_run_path, fov_dir, new_dir=None):
             fov_scan[default_name] = custom_name
 
     # retrieve current default directory names, check if already renamed
-    old_dirs = io_utils.list_folders(fov_dir)
+    old_dirs = io_utils.list_folders(fov_dir, 'fov')
     if set(old_dirs) == set(fov_scan.values()):
         raise ValueError(f"All FOV folders in {fov_dir} have already been renamed")
 
