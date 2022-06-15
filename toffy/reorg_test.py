@@ -144,8 +144,8 @@ def test_rename_fov_dirs():
         create_sample_fov_dirs(less_fovs, fov_dir)
 
         # fovs in rule file without an existing dir should raise an error
-        # with pytest.warns(UserWarning, match="Not all values"):
-        #     reorg.rename_fov_dirs(ex_run_path, fov_dir)
+        with pytest.warns(UserWarning, match="Not all values"):
+            reorg.rename_fov_dirs(ex_run_path, fov_dir)
         remove_fov_dirs(fov_dir)
 
         # create extra fov folders
@@ -154,6 +154,6 @@ def test_rename_fov_dirs():
         create_sample_fov_dirs(extra_fovs, fov_dir)
 
         # extra dirs not listed in run file should raise an error
-        # with pytest.raises(ValueError, match="Not all values"):
-        #     reorg.rename_fov_dirs(ex_run_path, fov_dir)
+        with pytest.raises(ValueError, match="Not all values"):
+            reorg.rename_fov_dirs(ex_run_path, fov_dir)
         remove_fov_dirs(fov_dir)
