@@ -368,9 +368,8 @@ class WatcherCases:
         kwargs = {'panel': panel, 'intensities': intensity}
 
         return (
-            ['plot_qc_metrics'],
+            ['plot_qc_metrics', 'plot_mph_metrics'],
             ['extract_tiffs'],
-            ['plot_mph_metrics'],
             kwargs,
             validators
         )
