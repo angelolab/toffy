@@ -62,13 +62,13 @@ def combine_runs(cohort_dir):
         shutil.rmtree(run_path)
 
 
-def rename_fov_dirs(json_run_path, fov_dir, new_dir=None):
+def rename_fov_dirs(json_run_path, default_run_dir, output_run_dir=None):
     """Renames FOV directories with default_name to have custom_name sourced from the run JSON file
 
     Args:
         json_run_path (str): path to the JSON run file which contains the custom name values
-        fov_dir (str): directory where the FOV default named subdirectories are stored
-        new_dir (str): path to new directory to output renamed folders to, defaults to None
+        default_run_dir (str): directory containing default named FOVs
+        output_run_dir (str): directory for renamed FOVs. If None, changed in place
 
     Raises:
         KeyError: issue reading keys from the JSON file
@@ -78,12 +78,12 @@ def rename_fov_dirs(json_run_path, fov_dir, new_dir=None):
         """
 
     io_utils.validate_paths(json_run_path)
-    io_utils.validate_paths(fov_dir)
+    io_utils.validate_paths(default_run_dir)
 
     # check that new_dir doesn't already exist
-    if new_dir is not None:
-        if os.path.exists(new_dir):
-            raise ValueError(f"The new directory supplied already exists: {new_dir}")
+    if output_run_dir is not None:
+        if os.path.exists(output_run_dir):
+            raise ValueError(f"The new directory supplied already exists: {output_run_dir}")
 
     with open(json_run_path) as file:
         run_metadata = json.load(file)
@@ -111,25 +111,27 @@ def rename_fov_dirs(json_run_path, fov_dir, new_dir=None):
             fov_scan[default_name] = custom_name
 
     # retrieve current default directory names, check if already renamed
-    old_dirs = io_utils.list_folders(fov_dir, 'fov')
-    if set(old_dirs) == set(fov_scan.values()):
-        raise ValueError(f"All FOV folders in {fov_dir} have already been renamed")
+    old_dirs = io_utils.list_folders(default_run_dir, 'fov')
+    if len(old_dirs) == 0:
+        raise ValueError(f"All FOV folders in {default_run_dir} have already been renamed")
 
     # check if custom fov names & scan counts match the number of existing default directories
     # verify_in_list(warn=True, fovs_in_run_file=list(fov_scan.keys()),
     #                existing_fov_folders=old_dirs)
     verify_in_list(existing_fov_folders=old_dirs, fovs_in_run_file=list(fov_scan.keys()))
 
-    # validate new_dir and copy contents of fov_dir
-    if new_dir is not None:
-        copy_tree(fov_dir, new_dir)
-        change_dir = new_dir
-    else:
-        change_dir = fov_dir
+    # if no output specified, FOVs will be renamed inplace
+    if output_run_dir is None:
+        output_run_dir = default_run_dir
 
     # change the default directory names to custom names
-    for folder in fov_scan:
-        fov_subdir = os.path.join(change_dir, folder)
-        if os.path.isdir(fov_subdir):
-            new_name = os.path.join(change_dir, fov_scan[folder])
-            os.rename(fov_subdir, new_name)
+    for folder in old_dirs:
+        original_path = os.path.join(default_run_dir, folder)
+        new_path = os.path.join(output_run_dir, fov_scan[folder])
+
+        if output_run_dir == default_run_dir:
+            # rename in place
+            os.rename(original_path, new_path)
+        else:
+            # copy to new folder
+            shutil.copytree(original_path, new_path)
