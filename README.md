@@ -33,7 +33,7 @@ The [second notebook](./templates/2_create_tma_mibi_run.ipynb) is for TMAs. This
 There are a number of different computational tasks to complete once a MIBI run has finished to ensure everything went smoothly. 
 
 - 3a: real time monitoring. The [MIBI monitoring](./templates/3a_monitor_MIBI_run.ipynb) notebook will monitor an ongoing MIBI run, and begin processing the image data as soon as it is generated. This notebook is being continually be updated as we move more of our processing pipeline to happen in real time as the data is generated.
-- 3b: post-run monitoring. For each step in the monitoring notebook, we have a dedicated notebook that can perform the same tasks once a run is complete. This includes [the image extraction notebook](./templates/extract_bin_file.ipynb) and the [qc metrics notebook](./templates/3b_generate_qc_metrics.ipynb). 
+- 3b: post-run monitoring. For each step in the monitoring notebook, we have a dedicated notebook that can perform the same tasks once a run is complete. This includes [the image extraction notebook](./templates/3b_extract_bin_file.ipynb) and the [qc metrics notebook](./templates/3b_generate_qc_metrics.ipynb). 
 
 
 ### 4. Processing MIBI Data
