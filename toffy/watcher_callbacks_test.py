@@ -57,7 +57,6 @@ def test_build_callbacks(callbacks, kwargs, data_path):
         kwargs['tiff_out_dir'] = extracted_dir
         kwargs['qc_out_dir'] = qc_dir
         kwargs['mph_out_dir'] = qc_dir
-        kwargs['regression'] = True
         kwargs['img_out_dir'] = qc_dir
 
         if kwargs.get('save_dir', False):
