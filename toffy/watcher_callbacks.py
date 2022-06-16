@@ -186,7 +186,7 @@ class FovCallbacks:
         """
 
         if not os.path.exists(mph_out_dir):
-            os.mkdir(mph_out_dir)
+            os.makedirs(mph_out_dir)
 
         compute_mph_metrics(
             bin_file_dir=self.run_folder,
