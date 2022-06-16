@@ -183,7 +183,10 @@ class TiledRegionReadCases:
 
 class TiledRegionMolySettingCases:
     @xfail(raises=FileNotFoundError, strict=True)
-    def case_bad_moly_path(self):
+    def case_bad_moly_path_roi_Y(self):
+        return 'bad_moly_point.json', 'Y', False, 0, [], 8
+
+    def case_bad_moly_path_roi_N(self):
         return 'bad_moly_point.json', 'N', False, 0, [], 8
 
     def case_no_region_no_interval(self):
