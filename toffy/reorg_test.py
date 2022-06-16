@@ -1,3 +1,4 @@
+import json
 import numpy as np
 import tempfile
 import os
@@ -157,3 +158,50 @@ def test_rename_fov_dirs():
         with pytest.raises(ValueError, match="Not all values"):
             reorg.rename_fov_dirs(ex_run_path, fov_dir)
         remove_fov_dirs(fov_dir)
+
+
+def test_rename_fovs_in_cohort(tmpdir):
+    bin_base_dir = os.path.join(tmpdir, 'bins')
+    cohort_dir = os.path.join(tmpdir, 'cohort')
+    processed_base_dir = os.path.join(tmpdir, 'processed')
+
+    # create directories
+    for dir in [bin_base_dir, cohort_dir, processed_base_dir]:
+        os.makedirs(dir)
+
+    # create json for first run
+    custom_names1 = ['custom_1', 'custom_2', 'custom_3']
+    run_order = list(range(1, 4))
+    scan_count = [1, 1, 1]
+    json1 = test_utils.create_sample_run(custom_names1, run_order, scan_count)
+
+    # create json for second run
+    custom_names2 = ['custom_5', 'custom_6', 'custom_7']
+    json2 = test_utils.create_sample_run(custom_names2, run_order, scan_count)
+
+    # create json in run-specific subfolder
+    runs = ['run1', 'run2']
+    for run, json_file in zip(runs, [json1, json2]):
+        run_path = os.path.join(bin_base_dir, run)
+        os.makedirs(run_path)
+        json_path = os.path.join(run_path, run + '.json')
+
+        with open(json_path, 'w') as jp:
+            json.dump(json_file, jp)
+
+    # create run FOVs
+    fovs = ['fov-1-scan-1', 'fov-2-scan-1', 'fov-3-scan-1']
+    for run in runs:
+        run_path = os.path.join(processed_base_dir, run)
+        os.makedirs(run_path)
+
+        create_sample_fov_dirs(fovs=fovs, base_dir=run_path)
+
+    reorg.rename_fovs_in_cohort(run_names=runs, processed_base_dir=processed_base_dir,
+                                cohort_path=cohort_dir, bin_base_dir=bin_base_dir)
+
+    for run, fov_names in zip(runs, [custom_names1, custom_names2]):
+        renamed_dir = os.path.join(cohort_dir, run)
+        renamed_fovs = io_utils.list_folders(renamed_dir)
+
+        assert set(renamed_fovs) == set(fov_names)

@@ -85,8 +85,8 @@ def rename_fov_dirs(json_run_path, default_run_dir, output_run_dir=None):
 
         """
 
-    io_utils.validate_paths(json_run_path)
-    io_utils.validate_paths(default_run_dir)
+    io_utils.validate_paths(json_run_path, data_prefix=False)
+    io_utils.validate_paths(default_run_dir, data_prefix=False)
 
     # check that new_dir doesn't already exist
     if output_run_dir is not None:
@@ -104,10 +104,8 @@ def rename_fov_dirs(json_run_path, default_run_dir, output_run_dir=None):
     fov_scan = dict()
     for fov in run_metadata.get('fovs', ()):
         custom_name = fov.get('name')
-        run_order = fov.get('runOrder', -1)
-        scans = fov.get('scanCount', -1)
-        if run_order * scans < 0:
-            raise KeyError(f"Could not locate keys in {run_path}")
+        run_order = fov.get('runOrder')
+        scans = fov.get('scanCount')
 
         # fovs with multiple scans have scan number specified
         if scans > 1:
@@ -143,3 +141,21 @@ def rename_fov_dirs(json_run_path, default_run_dir, output_run_dir=None):
         else:
             # copy to new folder
             shutil.copytree(original_path, new_path)
+
+
+def rename_fovs_in_cohort(run_names, processed_base_dir, cohort_path, bin_base_dir):
+    """Renames the FOVs in each of the supplied runs
+
+    Args:
+        run_names (list): list of runs to rename
+        processed_base_dir (str): the directory containing the processed data for each
+        cohort_path (str): the path to the folder where renamed FOVs will be saved
+        bin_base_dir (str): the directory holding the bin files for each run"""
+
+    for run in run_names:
+        print("Renaming FOVs in {}".format(run))
+        input_dir = os.path.join(processed_base_dir, run)
+        output_dir = os.path.join(cohort_path, run)
+        json_path = os.path.join(bin_base_dir, run, run + '.json')
+        rename_fov_dirs(json_run_path=json_path, default_run_dir=input_dir,
+                        output_run_dir=output_dir)
