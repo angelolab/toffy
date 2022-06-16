@@ -66,12 +66,14 @@ def test_watcher(run_cbs, fov_cbs, kwargs, validators, add_blank):
 
         tiff_out_dir = os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME)
         qc_out_dir = os.path.join(tmpdir, 'cb_1', RUN_DIR_NAME)
+        mph_out_dir = os.path.join(tmpdir, 'cb_2', RUN_DIR_NAME)
+        img_out_dir = os.path.join(tmpdir, 'cb_3', RUN_DIR_NAME)
 
         # add directories to kwargs
         kwargs['tiff_out_dir'] = tiff_out_dir
         kwargs['qc_out_dir'] = qc_out_dir
-        kwargs['mph_out_dir'] = qc_out_dir
-        kwargs['img_out_dir'] = qc_out_dir
+        kwargs['mph_out_dir'] = mph_out_dir
+        kwargs['img_out_dir'] = img_out_dir
 
         run_data = os.path.join(tmpdir, 'test_run')
         log_out = os.path.join(tmpdir, 'log_output')
