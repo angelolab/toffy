@@ -80,3 +80,40 @@ def list_moly_fovs(bin_file_dir):
             moly_fovs.append(moly_name)
 
     return moly_fovs
+
+def read_json_file(json_path):
+    """Reads json file and returns json file object while verifying dirs exist
+
+    Args:
+        json_path (str): path to json file
+
+    Returns:
+        json file object"""
+
+    # call to validate paths will raise errors if anything wrong, and do nothing if 
+    # file path valid
+    io_utils.validate_paths(json_path)
+
+    with open(json_path, 'r') as jp:
+        json_file = json.load(jp)
+
+    return json_file
+
+def write_json_file(json_path,json_object):
+    """Writes json file object to json file. Raises error if directory doesnt exist.
+
+    Args:
+        json_path: full path to write json file
+    Returns:
+        nothing"""
+    
+    # get the path minus the proposed file name.
+    dir_path = os.path.dirname(os.path.abspath(json_path))
+
+    # Raises error if path doesnt exist
+    io_utils.validate_paths(dir_path)
+
+    with open(json_path, 'w') as jp:
+        json.dump(json_object, jp)
+
+    return
