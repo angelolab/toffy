@@ -116,4 +116,3 @@ def write_json_file(json_path,json_object):
     with open(json_path, 'w') as jp:
         json.dump(json_object, jp)
 
-    return

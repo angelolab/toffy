@@ -1,6 +1,7 @@
 import json
 import numpy as np
 import os
+import tempfile
 
 from toffy import json_utils, test_utils
 
@@ -80,25 +81,27 @@ def test_list_moly_fovs(tmpdir):
 
 
 def test_read_json_file():
-    cwd = os.getgwd()
-    # create fake jsons
-    moly_json = {'name': 'bob',
-                 'standardTarget': 'Molybdenum Foil'}
-    json_path = cwd+"/test.json",
-    
-    # write test json
-    with open(json_path, 'w') as jp:
-        json.dump(moly_json, jp)
 
-    # Make sure errors come up when the directory is bad
-     with pytest.raises(ValueError, match='files are the same length'):
-            json_utils.read_json_file("/neasdf1246ljea/asdfje12ua3421ndsf/asdf.json")
+    with tempfile.TemporaryDirectory() as temp_dir:
 
-    ## Now read json with new function assuming path is legit
-    newfile_test = json_utils.read_json_file(json_path)
-    with open(path, 'r') as jp:
-        newfile_standard = json.load(jp)
+        # create fake jsons
+        moly_json = {'name': 'bob',
+                     'standardTarget': 'Molybdenum Foil'}
+        json_path = tmp_dir+"/test.json",
+        
+        # write test json
+        with open(json_path, 'w') as jp:
+            json.dump(moly_json, jp)
 
-    assert newfile_test == newfile_standard
+        # Make sure errors come up when the directory is bad
+        with pytest.raises(ValueError, match='files are the same length'):
+                json_utils.read_json_file("/neasdf1246ljea/asdfje12ua3421ndsf/asdf.json")
+
+        ## Now read json with new function assuming path is legit
+        newfile_test = json_utils.read_json_file(json_path)
+        with open(path, 'r') as jp:
+            newfile_standard = json.load(jp)
+
+        assert newfile_test == newfile_standard
 
     return
