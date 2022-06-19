@@ -93,13 +93,24 @@ def test_read_json_file():
         with open(json_path, 'w') as jp:
             json.dump(moly_json, jp)
 
-        # Make sure errors come up when the directory is bad
+        # Make sure errors come up when the directory is bad. Doesnt check to see
+        # if filename itself exists somewhere else bc that would involve recursion into directories
         # This relies upon io_utils.validate_paths() being fully functional and tested
-        with pytest.raises(ValueError, match='files are the same length'):
-                json_utils.read_json_file("/neasdf1246ljea/asdfje12ua3421ndsf/asdf.json")
-        # Make sure errors raised when dirs are good but file is bad
-        with pytest.raises(ValueError, match='files are the same length'):
-                json_utils.read_json_file("/neasdf1246ljea/asdfje12ua3421ndsf/asdf.json")
+        bad_path = "/neasdf1246ljea/asdfje12ua3421ndsf/asdf.json"
+        with pytest.raises(ValueError, match=f'The path, {bad_path}, is not prefixed with \'../data\'.\n'
+                    f'Be sure to add all images/files/data to the \'data\' folder, '
+                    f'and to reference as \'../data/path_to_data/myfile.tif\''):
+                json_utils.read_json_file(bad_path)
+
+        # Create bad dir path to invoke all 3 possibilities of validate_paths()
+        # not sure how to do this because i dont know what the dir structure is supposed to be
+        
+        # Make sure errors raised when dirpath is good but file is bad
+        # I guess dont need this because native python already has "file does not exist" errors?
+        # But also not sure why this is allowed to pass PyTest because read_json_file
+        # should return a file not found error?
+        with pytest.raises(ValueError, match=''):
+               json_utils.read_json_file(tmp_dir+"/dkwn4823hjf08371gjsdfasdfa20135ndjsa.json")
 
         # Read json with read_json_file function assuming file path is good
         newfile_test = json_utils.read_json_file(json_path)
