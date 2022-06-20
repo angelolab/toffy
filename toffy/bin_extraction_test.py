@@ -9,7 +9,7 @@ from ark.utils import io_utils
 
 
 def test_extract_missing_fovs():
-    panel =  pd.DataFrame([{
+    panel = pd.DataFrame([{
         'Mass': 98,
         'Target': None,
         'Start': 97.5,
@@ -21,7 +21,7 @@ def test_extract_missing_fovs():
     with tempfile.TemporaryDirectory() as extraction_dir:
         bin_extraction.extract_missing_fovs(bin_file_dir, extraction_dir,
                                             panel, extract_intensities=False)
-        fovs = io_utils.list_folders(bin_file_dir)
+        fovs = ['fov-1-scan-1', 'fov-2-scan-1']
         fovs_extracted = io_utils.list_folders(extraction_dir)
 
         assert fovs == fovs_extracted
