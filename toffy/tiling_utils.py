@@ -595,6 +595,8 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
            region_index != len(tiling_params['region_params']) - 1:
             fov_regions['fovs'].append(moly_point)
 
+        print("Finished generating FOVs for region %s" % region_info['name'])
+
     return fov_regions
 
 
