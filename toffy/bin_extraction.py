@@ -1,7 +1,7 @@
 import os
 
 from ark.utils import io_utils
-from json_utils import list_moly_fovs
+from toffy.json_utils import list_moly_fovs
 from mibi_bin_tools import bin_files
 
 
