@@ -88,7 +88,7 @@ def test_read_json_file():
         moly_json = {'name': 'bob',
                      'standardTarget': 'Molybdenum Foil'}
         json_path = tmp_dir+"/test.json"
-        
+
         # write test json
         with open(json_path, 'w') as jp:
             json.dump(moly_json, jp)
@@ -96,15 +96,13 @@ def test_read_json_file():
         # Test bad path
         bad_path = "/neasdf1246ljea/asdfje12ua3421ndsf/asdf.json"
         with pytest.raises(ValueError, match=r'A bad path*'):
-                json_utils.read_json_file(bad_path)
+            json_utils.read_json_file(bad_path)
 
         # Read json with read_json_file function assuming file path is good
         newfile_test = json_utils.read_json_file(json_path)
 
         # Make sure using the read_json_file leads to the same object as moly_json
         assert newfile_test == moly_json
-
-    return
 
 
 def test_write_json_file():
@@ -115,21 +113,20 @@ def test_write_json_file():
         moly_json = {'name': 'bob',
                      'standardTarget': 'Molybdenum Foil'}
         json_path = tmp_dir+"/test.json"
-        
+
         # To be 100% you would want to create some massive random string instead of hardcode
         bad_path = "/mf8575b20d/bgjeidu45483hdck/asdf.json"
-        
+
         # test bad path
-        with pytest.raises(ValueError, match = r"A bad path*"):
-            json_utils.write_json_file(json_path=bad_path,json_object=moly_json)
-        
+        with pytest.raises(ValueError, match=r"A bad path*"):
+            json_utils.write_json_file(json_path=bad_path, json_object=moly_json)
+
         # Write file after file path is validated
-        json_utils.write_json_file(json_path=json_path,json_object=moly_json)
-        
+        json_utils.write_json_file(json_path=json_path, json_object=moly_json)
+
         # Read file with standard method
         with open(json_path, 'r') as jp:
             newfile_test = json.load(jp)
-        
+
         # Make sure the file written with write_json_file is the same as starting point
         assert newfile_test == moly_json
-
