@@ -24,7 +24,7 @@ def test_extract_missing_fovs():
         fovs = ['fov-1-scan-1', 'fov-2-scan-1']
         fovs_extracted = io_utils.list_folders(extraction_dir)
 
-        assert fovs == fovs_extracted
+        assert fovs.sort() == fovs_extracted.sort()
 
     # test that moly fovs are not extracted
     moly_bin_file_dir = os.path.join(Path(__file__).parent, "data", "moly")
