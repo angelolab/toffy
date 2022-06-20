@@ -1,6 +1,7 @@
 import os
 import tempfile
 
+import pandas as pd
 from pathlib import Path
 
 from toffy import bin_extraction
@@ -8,7 +9,12 @@ from ark.utils import io_utils
 
 
 def test_extract_missing_fovs():
-    panel = {'Mass': 98, 'Target': None, 'Mass start': 97.5, 'Mass stop': 97.5}
+    panel =  pd.DataFrame([{
+        'Mass': 98,
+        'Target': None,
+        'Start': 97.5,
+        'Stop': 98.5,
+    }])
 
     # test successful extraction
     bin_file_dir = os.path.join(Path(__file__).parent, "data", "tissue")
