@@ -382,8 +382,8 @@ def set_tiled_region_params(region_corners_path):
 
     # whether to insert moly points between regions
     moly_region_insert = read_tiling_param(
-        "Insert a moly point between each tiled region? \
-            If yes, you must provide a path to the example moly_FOV json file. Y/N: ",
+        ("Insert a moly point between each tiled region? " +
+         "If yes, you must provide a path to the example moly_FOV json file. Y/N: "),
         "Error: moly point region parameter must be either Y or N",
         lambda mri: mri in ['Y', 'N', 'y', 'n'],
         dtype=str
@@ -395,9 +395,9 @@ def set_tiled_region_params(region_corners_path):
 
     # whether to insert moly points between fovs
     moly_interval = read_tiling_param(
-        "Enter the FOV interval size to insert Moly points. If yes, you must provide \
-            a path to the example moly_FOV json file and enter the number of FOVs "
-        "between each Moly point. If no, enter 0: ",
+        ("Enter the FOV interval size to insert Moly points. If yes, you must provide " +
+         "a path to the example moly_FOV json file and enter the number of FOVs " +
+         "between each Moly point. If no, enter 0: "),
         "Error: moly interval must be 0 or a positive integer",
         lambda mi: mi >= 0,
         dtype=int
