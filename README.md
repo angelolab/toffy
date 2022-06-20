@@ -16,6 +16,7 @@ This repo is currently in beta testing. None of the code has been published yet,
   - [Setting up the virtual environment](#setting-up-the-virtual-environment)
   - [Using the repo](#using-the-repo)
   - [Updating the repo](#updating-the-repo)
+- [Panel format](#panel-format)
 - [Questions?](#questions)
 
 ## Overview
@@ -122,6 +123,8 @@ conda remove --name toffy_env --all
 conda env create -f environment.yml
 ```
 
+## Panel format
+Many of the scripts in `toffy` require a panel file. This file identifies which targets have been put on which masses. For an example of what the format should be, you can look at the [example panel file](https://github.com/angelolab/toffy/blob/main/files/example_panel_file.csv). Some panels will not have targets on every mass; in this case, it's important that you just leave the placeholder row in the panel, and not delete it, in order to ensure that all the notebooks work as expected. Similarly, if you have multiple targets on the same mass, don't add a unique row for each, just give them a consolidated name. 
 
 ## Questions?
 
