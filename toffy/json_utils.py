@@ -92,7 +92,7 @@ def read_json_file(json_path):
 
     # call to validate paths will raise errors if anything wrong, and do nothing if 
     # file path valid
-    io_utils.validate_paths(json_path)
+    io_utils.validate_paths(json_path,data_prefix=False)
 
     with open(json_path, 'r') as jp:
         json_file = json.load(jp)
@@ -111,7 +111,7 @@ def write_json_file(json_path,json_object):
     dir_path = os.path.dirname(os.path.abspath(json_path))
 
     # Raises error if path doesnt exist
-    io_utils.validate_paths(dir_path)
+    io_utils.validate_paths(dir_path,data_prefix=False)
 
     with open(json_path, 'w') as jp:
         json.dump(json_object, jp)
