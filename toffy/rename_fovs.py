@@ -8,6 +8,7 @@ from ark.utils.misc_utils import verify_in_list
 from toffy.json_utils import rename_missing_fovs, rename_duplicate_fovs
 from toffy.json_utils import read_json_file
 
+
 def rename_fov_dirs(run_path, fov_dir, new_dir=None):
     """Renames FOV directories with default_name to have custom_name sourced from the run JSON file
 

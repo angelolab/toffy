@@ -82,7 +82,7 @@ def list_moly_fovs(bin_file_dir):
     return moly_fovs
 
 
-def read_json_file(json_path,encoding=None):
+def read_json_file(json_path, encoding=None):
     """Reads json file and returns json file object while verifying dirs exist
 
     Args:
@@ -95,13 +95,13 @@ def read_json_file(json_path,encoding=None):
     # file path valid
     io_utils.validate_paths(json_path, data_prefix=False)
 
-    with open(json_path, mode='r',encoding=encoding) as jp:
+    with open(json_path, mode='r', encoding=encoding) as jp:
         json_file = json.load(jp)
 
     return json_file
 
 
-def write_json_file(json_path, json_object,encoding=None):
+def write_json_file(json_path, json_object, encoding=None):
     """Writes json file object to json file. Raises error if directory doesnt exist.
 
     Args:
@@ -115,5 +115,5 @@ def write_json_file(json_path, json_object,encoding=None):
     # Raises error if path doesnt exist
     io_utils.validate_paths(dir_path, data_prefix=False)
 
-    with open(json_path, mode='w',encoding=encoding) as jp:
+    with open(json_path, mode='w', encoding=encoding) as jp:
         json.dump(json_object, jp)

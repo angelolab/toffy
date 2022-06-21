@@ -16,6 +16,7 @@ from ark.utils.misc_utils import verify_same_elements, verify_in_list
 from toffy.streak_detection import streak_correction
 from toffy.json_utils import read_json_file
 
+
 def transform_compensation_json(json_path, comp_mat_path):
     """Converts the JSON file from ionpath into a compensation matrix
 
