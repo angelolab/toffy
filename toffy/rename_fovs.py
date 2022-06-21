@@ -6,7 +6,7 @@ from distutils.dir_util import copy_tree
 from ark.utils import io_utils
 from ark.utils.misc_utils import verify_in_list
 from toffy.json_utils import rename_missing_fovs, rename_duplicate_fovs
-
+from toffy.json_utils import read_json_file
 
 def rename_fov_dirs(run_path, fov_dir, new_dir=None):
     """Renames FOV directories with default_name to have custom_name sourced from the run JSON file
@@ -31,8 +31,7 @@ def rename_fov_dirs(run_path, fov_dir, new_dir=None):
         if os.path.exists(new_dir):
             raise ValueError(f"The new directory supplied already exists: {new_dir}")
 
-    with open(run_path) as file:
-        run_metadata = json.load(file)
+    run_metadata = read_json_file(run_path)
 
     # check for missing or duplicate fov names
     run_metadata = rename_missing_fovs(run_metadata)
