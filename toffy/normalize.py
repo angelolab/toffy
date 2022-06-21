@@ -12,6 +12,7 @@ import matplotlib.pyplot as plt
 import pandas as pd
 
 from ark.utils import io_utils, load_utils
+from toffy.json_utils import read_json_file
 
 
 def create_objective_function(obj_func):
@@ -210,8 +211,8 @@ def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info,
         fovs = io_utils.list_folders(data_dir)
 
     # load calibration function
-    with open(norm_func_path, 'r') as cf:
-        norm_json = json.load(cf)
+
+    norm_json = read_json_file(norm_func_path)
 
     norm_weights, norm_name = norm_json['weights'], norm_json['name']
 
