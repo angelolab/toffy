@@ -22,6 +22,7 @@ from ark.utils import misc_utils
 from toffy.json_utils import read_json_file
 from toffy.json_utils import write_json_file
 
+
 def assign_metadata_vals(input_dict, output_dict, keys_ignore):
     """Copy the `str`, `int`, `float`, and `bool` metadata keys of
     `input_dict` over to `output_dict`, ignoring `keys_ignore` metadata keys
@@ -227,7 +228,7 @@ def save_coreg_params(coreg_params):
         }
 
         write_json_file(json_path=os.path.join('..', 'toffy', 'coreg_params.json'),
-            json_object=coreg_data)
+                        json_object=coreg_data)
 
     # append to the existing coreg_params key if coreg_params.json already exists
     else:
@@ -237,7 +238,7 @@ def save_coreg_params(coreg_params):
         coreg_data['coreg_params'].append(coreg_params)
 
         write_json_file(json_path=os.path.join('..', 'toffy', 'coreg_params.json'),
-            json_object=coreg_data)
+                        json_object=coreg_data)
 
 
 def generate_region_info(region_params):
@@ -519,7 +520,7 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
         raise FileNotFoundError("Moly point file %s does not exist" % moly_path)
 
     # read in the moly point data
-    moly_point = read_json_file(moly_path,encoding="utf-8")
+    moly_point = read_json_file(moly_path, encoding="utf-8")
 
     # define the fov_regions dict
     fov_regions = {}
@@ -1330,7 +1331,9 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
 
     # load the co-registration parameters in
     # NOTE: the last set of params in the coreg_params list is the most up-to-date
-    stage_optical_coreg_params = read_json_file(os.path.join('..', 'toffy', 'coreg_params.json'))['coreg_params'][-1]
+
+    toffy_coreg_params_path = os.path.join('..', 'toffy','coreg_params.json')
+    stage_optical_coreg_params = read_json_file(toffy_coreg_params_path)['coreg_params'][-1]
     # define the initial mapping and a distance lookup table between manual and auto FOVs
     manual_to_auto_map, manual_auto_dist = assign_closest_fovs(manual_fovs, auto_fovs)
 

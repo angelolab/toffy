@@ -277,7 +277,7 @@ class RunStructureTestContext:
         self.tmpdir = tempfile.mkdtemp()
 
         write_json_file(json_path=os.path.join(self.tmpdir, f'{self.tempdir_name}.json'),
-            json_object=self.run_json)
+                        json_object=self.run_json)
 
         for file in self.files:
             _make_small_file(self.tmpdir, file)

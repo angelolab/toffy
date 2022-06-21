@@ -78,8 +78,8 @@ def test_watcher(run_cbs, fov_cbs, kwargs, validators, add_blank):
 
         fov_callback, run_callback = build_callbacks(run_cbs, fov_cbs, **kwargs)
 
-        write_json_file(json_path=os.path.join(run_data, 'test_run.json'), 
-            json_object=TISSUE_RUN_JSON_SPOOF)
+        write_json_file(json_path=os.path.join(run_data, 'test_run.json'),
+                        json_object=TISSUE_RUN_JSON_SPOOF)
 
         # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
         # client access computer.  `start_watcher` is made async here since these processes

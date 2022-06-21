@@ -291,7 +291,7 @@ def test_set_tiled_region_params(monkeypatch, region_corners_file, fov_coords, f
     with tempfile.TemporaryDirectory() as temp_dir:
         # write fov list
         sample_fov_list_path = os.path.join(temp_dir, 'tiled_region_corners.json')
-        
+
         write_json_file(json_path=sample_fov_list_path, json_object=sample_fovs_list)
 
         # run tiling parameter setting process with predefined user inputs
@@ -1030,8 +1030,9 @@ def test_tma_interactive_remap():
                 }
             ]
         }
-        
-        write_json_file(json_path=os.path.join('..', 'toffy', 'coreg_params.json'), json_object=sample_coreg_params)
+
+        write_json_file(json_path=os.path.join('..', 'toffy', 'coreg_params.json'),
+                        json_object=sample_coreg_params)
 
         # this should now run
         tiling_utils.tma_interactive_remap(
