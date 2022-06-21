@@ -13,6 +13,7 @@ import pandas as pd
 
 from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 from toffy.fov_watcher import RunStructure
+from toffy.json_utils import write_json_file
 
 
 def generate_sample_fov_tiling_entry(coord, name, size):
@@ -232,7 +233,7 @@ def create_sample_run(name_list, run_order_list, scan_count_list, create_json=Fa
     # create json file for the data
     if create_json:
         temp = tempfile.NamedTemporaryFile(mode="w", delete=False)
-        json.dump(sample_run, temp)
+        write_json_file(json_path=temp, json_object=sample_run)
         return temp.name
 
     return sample_run
@@ -274,8 +275,9 @@ class RunStructureTestContext:
 
     def __enter__(self):
         self.tmpdir = tempfile.mkdtemp()
-        with open(os.path.join(self.tmpdir, f'{self.tempdir_name}.json'), 'w') as f:
-            json.dump(self.run_json, f)
+
+        write_json_file(json_path=os.path.join(self.tmpdir, f'{self.tempdir_name}.json'),
+            json_object=self.run_json)
 
         for file in self.files:
             _make_small_file(self.tmpdir, file)

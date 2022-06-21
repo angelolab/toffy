@@ -11,6 +11,7 @@ from pytest_cases import parametrize_with_cases
 from ark.utils import test_utils, load_utils
 from toffy import normalize
 import toffy.normalize_test_cases as test_cases
+from toffy.json_utils import write_json_file
 
 parametrize = pytest.mark.parametrize
 
@@ -150,8 +151,7 @@ def test_normalize_image_data():
         func_json = {'name': name, 'weights': weights}
         func_path = os.path.join(top_level_dir, 'norm_func.json')
 
-        with open(func_path, 'w') as fp:
-            json.dump(func_json, fp)
+        write_json_file(json_path=func_path, json_object=func_json)
 
         masses = np.array(range(1, len(chans) + 1))
         panel_info_file = pd.DataFrame({'masses': masses, 'targets': chans})

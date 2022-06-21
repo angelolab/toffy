@@ -13,6 +13,7 @@ from requests.adapters import HTTPAdapter
 from requests.exceptions import HTTPError
 from skimage import io as skio
 from urllib3.util.retry import Retry
+from toffy.json_utils import write_json_file
 
 # The number of retries will be applied to these code and methods only.
 MAX_RETRIES = 3
