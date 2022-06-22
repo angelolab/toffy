@@ -59,7 +59,7 @@ def compute_mph_metrics(bin_file_dir, csv_dir, fov, mass=98, mass_start=97.5, ma
     }])
 
     # retrieve the data from bin file and output to individual csv
-    pulse_height_file = fov + '-pulse_height.csv'
+    pulse_height_file = fov + '-mph_pulse.csv'
 
     try:
         median = bin_files.get_median_pulse_height(bin_file_dir, fov,
@@ -95,7 +95,7 @@ def combine_mph_metrics(csv_dir, return_data=False):
     io_utils.validate_paths(csv_dir)
 
     # for each csv retrieve mph values
-    fov_files = io_utils.list_files(csv_dir, "-pulse_height.csv")
+    fov_files = io_utils.list_files(csv_dir, "-mph_pulse.csv")
     combined_rows = []
     for i, file in enumerate(fov_files):
         combined_rows.append(pd.read_csv(os.path.join(csv_dir, file)))
