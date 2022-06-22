@@ -1332,7 +1332,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
     # load the co-registration parameters in
     # NOTE: the last set of params in the coreg_params list is the most up-to-date
 
-    toffy_coreg_params_path = os.path.join('..', 'toffy','coreg_params.json')
+    toffy_coreg_params_path = os.path.join('..', 'toffy', 'coreg_params.json')
     stage_optical_coreg_params = read_json_file(toffy_coreg_params_path)['coreg_params'][-1]
     # define the initial mapping and a distance lookup table between manual and auto FOVs
     manual_to_auto_map, manual_auto_dist = assign_closest_fovs(manual_fovs, auto_fovs)
