@@ -196,11 +196,11 @@ def check_qc_dir_structure(out_dir: str, point_names: List[str], qc_plots: bool 
                 assert(os.path.exists(os.path.join(out_dir, '%s_barplot_stats.png' % mn)))
 
 
-def check_mph_dir_structure(img_out_dir: str, point_names: List[str], combined: bool = False):
+def check_mph_dir_structure(plot_dir: str, point_names: List[str], combined: bool = False):
     """Checks MPH directory for minimum expected structure
 
     Args:
-        img_out_dir (str):
+        plot_dir (str):
             Folder containing MPH plot output
         point_names (list):
             List of expected point names
@@ -212,11 +212,11 @@ def check_mph_dir_structure(img_out_dir: str, point_names: List[str], combined: 
             Assertion error on missing csv
     """
     for point in point_names:
-        assert(os.path.exists(os.path.join(img_out_dir, f'{point}-pulse_height.csv')))
+        assert(os.path.exists(os.path.join(plot_dir, f'{point}-pulse_height.csv')))
 
     if combined:
-        assert(os.path.exists(os.path.join(img_out_dir, 'total_count_vs_mph_data.csv')))
-        assert(os.path.exists(os.path.join(img_out_dir, 'fov_vs_mph.jpg')))
+        assert(os.path.exists(os.path.join(plot_dir, 'total_count_vs_mph_data.csv')))
+        assert(os.path.exists(os.path.join(plot_dir, 'fov_vs_mph.jpg')))
 
 
 def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False, bad=False):
