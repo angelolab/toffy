@@ -9,6 +9,7 @@ This repo is currently in beta testing. None of the code has been published yet,
   - [2. Setting up a MIBI run](#2-setting-up-a-mibi-run)
   - [3. Evaluating a MIBI run](#3-evaluating-a-mibi-run)
   - [4. Processing data after a MIBI run](#4-processing-mibi-data)
+  - [5. Formatting data for downstream analysis](#5-formatting-mibi-runs-for-analysis)
 - [Installation](#installation)
   - [Requirements for specific operating systems](#requirements-for-specific-operating-systems)
     - [Windows](#windows)
@@ -39,6 +40,10 @@ There are a number of different computational tasks to complete once a MIBI run 
 Once your run has finished, you can begin to process the data to make it ready for analysis. To remove background signal contamination, as well as compensate for channel crosstalk, you can use the [compensation](./templates/4a_compensate_image_data.ipynb) notebook. This will guide you through the Rosetta algorithm, which uses a flow-cytometry style compensation approach to remove spurious signal. 
 
 Following compensation, you will want to normalize your images to ensure consistent intensity across the run. You can use the [normalization](./templates/4b_normalize_image_data.ipynb) notebook to perform this step. 
+
+
+### 5. Formatting MIBI runs for analysis
+After the image processing and cleanup from *toffy* is complete, the final step is to format your data to faciliate easy downstream analysis. The [reorganization](./templates/5_rename_and_reorganize.ipynb) notebook will walk you through the process of renaming FOVs, combining partial runs, and consolidating your images.
 
 ## Installation
 In order to get toffy working, you'll need to first install the repo. 
