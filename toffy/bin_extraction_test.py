@@ -4,6 +4,8 @@ import tempfile
 import pandas as pd
 from pathlib import Path
 
+import pytest
+
 from toffy import bin_extraction
 from ark.utils import io_utils
 
@@ -26,13 +28,10 @@ def test_extract_missing_fovs():
 
         assert fovs.sort() == fovs_extracted.sort()
 
-    # test that moly fovs are not extracted
-    moly_bin_file_dir = os.path.join(Path(__file__).parent, "data", "moly")
-    with tempfile.TemporaryDirectory() as tmpdir:
-        extraction_dir = tmpdir
+        # when given only moly fovs will raise error
+        moly_bin_file_dir = os.path.join(Path(__file__).parent, "data", "moly")
 
-        bin_extraction.extract_missing_fovs(moly_bin_file_dir, extraction_dir,
-                                            panel, extract_intensities=False)
-        fovs_extracted = io_utils.list_folders(extraction_dir)
+        with pytest.raises(FileNotFoundError, match="No viable bin files were found"):
+            bin_extraction.extract_missing_fovs(moly_bin_file_dir, extraction_dir,
+                                                panel, extract_intensities=False)
 
-        assert len(fovs_extracted) == 0
