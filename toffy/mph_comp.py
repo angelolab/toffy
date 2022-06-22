@@ -136,7 +136,7 @@ def visualize_mph(mph_df, out_dir, regression: bool = False):
     ax2 = ax1.twiny()
     x = mph_df['cum_total_count']/1000000
     y = mph_df['MPH']
-    x_alt = mph_df['cum_total_time']/3600
+    x_alt = mph_df['cum_total_time']/(3600*1000)
     ax1.set_xlabel('FOV cumulative count (in millions)')
     ax1.set_ylabel('median pulse height')
     ax2.set_xlabel('estimated time (hours)')
