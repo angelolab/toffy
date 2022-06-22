@@ -8,6 +8,7 @@ from unittest.mock import patch, call
 from toffy import bin_extraction
 from ark.utils import io_utils
 
+
 @patch('builtins.print')
 def test_extract_missing_fovs(mocked_print):
     bin_file_dir = os.path.join(Path(__file__).parent, "data", "tissue")
