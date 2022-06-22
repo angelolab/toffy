@@ -9,6 +9,7 @@ This repo is currently in beta testing. None of the code has been published yet,
   - [2. Setting up a MIBI run](#2-setting-up-a-mibi-run)
   - [3. Evaluating a MIBI run](#3-evaluating-a-mibi-run)
   - [4. Processing data after a MIBI run](#4-processing-mibi-data)
+  - [5. Formatting data for downstream analysis](#5-formatting-mibi-runs-for-analysis)
 - [Installation](#installation)
   - [Requirements for specific operating systems](#requirements-for-specific-operating-systems)
     - [Windows](#windows)
@@ -36,10 +37,14 @@ There are a number of different computational tasks to complete once a MIBI run 
 - 3b: post-run monitoring. For each step in the monitoring notebook, we have a dedicated notebook that can perform the same tasks once a run is complete. This includes [the image extraction notebook](./templates/extract_bin_file.ipynb) and the [qc metrics notebook](./templates/3b_generate_qc_metrics.ipynb). 
 - 3d: visualizing. The [example MPH plots notebook](./templates/3d_example_MPH_plots.ipynb) can be run to generate plots showing median pulse heights for each FOV along with estimated run time.
 
-### 4. Processing MIBI Data
-Once your run has finished, you can begin to process the data to make it ready for analysis. To remove background signal contamination, as well as compensate for channel crosstalk, you can use the [compensation](./templates/4_compensate_image_data.ipynb) notebook. This will guide you through the Rosetta algorithm, which uses a flow-cytometry style compensation approach to remove spurious signal. 
+### 4. Processing MIBI data
+Once your run has finished, you can begin to process the data to make it ready for analysis. To remove background signal contamination, as well as compensate for channel crosstalk, you can use the [compensation](./templates/4a_compensate_image_data.ipynb) notebook. This will guide you through the Rosetta algorithm, which uses a flow-cytometry style compensation approach to remove spurious signal. 
 
-Following compensation, you will want to normalize your images to ensure consistent intensity across the run. This functionality is currently in the works, and we'll have a beta version available to test soon. 
+Following compensation, you will want to normalize your images to ensure consistent intensity across the run. You can use the [normalization](./templates/4b_normalize_image_data.ipynb) notebook to perform this step. 
+
+
+### 5. Formatting MIBI runs for analysis
+After the image processing and cleanup from *toffy* is complete, the final step is to format your data to faciliate easy downstream analysis. The [reorganization](./templates/5_rename_and_reorganize.ipynb) notebook will walk you through the process of renaming FOVs, combining partial runs, and consolidating your images.
 
 ## Installation
 In order to get toffy working, you'll need to first install the repo. 
