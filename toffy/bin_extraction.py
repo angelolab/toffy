@@ -1,11 +1,17 @@
-import os
-
 from ark.utils import io_utils
 from toffy.json_utils import list_moly_fovs
 from mibi_bin_tools import bin_files
 
 
 def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensities):
+    """Check for already extracted FOV bin files, and extract the remaining (excluding moly)
+
+    Args:
+        bin_file_dir (str): path to directory containing the bin and json files
+        extraction_dir (str): path to directory of already extracted FOVs
+        panel (pd.DataFrame): file defining the panel info for bin file extraction
+        extract_intensities (bool): whether to extract intensities from the bin files
+    """
 
     # retrieve all fov names from base_dir and extracted fovs from extraction_dir
     fovs = io_utils.remove_file_extensions(io_utils.list_files(bin_file_dir, substrs='.bin'))
