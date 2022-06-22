@@ -1,5 +1,5 @@
 # adapted from https://machinelearningmastery.com/curve-fitting-with-python/
-
+import copy
 import json
 import os
 import shutil
@@ -9,9 +9,73 @@ import numpy as np
 from scipy.optimize import curve_fit
 import skimage.io as io
 import matplotlib.pyplot as plt
+import natsort as ns
 import pandas as pd
 
-from ark.utils import io_utils, load_utils
+from seaborn import algorithms as algo
+from seaborn.utils import ci
+
+from ark.utils import io_utils, load_utils, misc_utils
+from mibi_bin_tools.bin_files import extract_bin_files, get_median_pulse_height
+from mibi_bin_tools.panel_utils import make_panel
+
+
+def write_counts_per_mass(base_dir, output_dir, fov, masses, start_offset=0.5,
+                          stop_offset=0.5):
+    """Records the total counts per mass for the specified FOV
+
+    Args:
+        base_dir (str): the directory containing the FOV
+        output_dir (str): the directory where the csv file will be saved
+        fov (str): the name of the fov to extract
+        masses (list): the list of masses to extract counts from
+        start_offset (float): beginning value for integrating mass peak
+        stop_offset (float): ending value for integrating mass peak
+    """
+
+    # create panel with extraction criteria
+    panel = make_panel(mass=masses, low_range=start_offset, high_range=stop_offset)
+
+    array = extract_bin_files(data_dir=base_dir, out_dir=None, include_fovs=[fov], panel=panel,
+                              intensities=False)
+    # we only care about pulse counts, not intensities
+    array = array.loc[fov, 'pulse', :, :, :]
+    channel_count = np.sum(array, axis=(0, 1))
+
+    # create df to hold output
+    fovs = np.repeat(fov, len(masses))
+    out_df = pd.DataFrame({'mass': masses,
+                           'fov': fovs,
+                           'channel_count': channel_count})
+    out_df.to_csv(os.path.join(output_dir, fov + '_channel_counts.csv'), index=False)
+
+
+def write_mph_per_mass(base_dir, output_dir, fov, masses, start_offset=0.5, stop_offset=0.5):
+    """Records the mean pulse height (MPH) per mass for the specified FOV
+
+    Args:
+        base_dir (str): the directory containing the FOV
+        output_dir (str): the directory where the csv file will be saved
+        fov (str): the name of the fov to extract
+        masses (list): the list of masses to extract MPH from
+        start_offset (float): beginning value for calculating mph values
+        stop_offset (float): ending value for calculating mph values
+    """
+    # hold computed values
+    mph_vals = []
+
+    # compute pulse heights
+    panel = make_panel(mass=masses, target_name=masses, low_range=start_offset,
+                       high_range=stop_offset)
+    for mass in masses:
+        mph_vals.append(get_median_pulse_height(data_dir=base_dir, fov=fov, channel=mass,
+                                                panel=panel))
+    # create df to hold output
+    fovs = np.repeat(fov, len(masses))
+    out_df = pd.DataFrame({'mass': masses,
+                           'fov': fovs,
+                           'pulse_height': mph_vals})
+    out_df.to_csv(os.path.join(output_dir, fov + '_pulse_heights.csv'), index=False)
 
 
 def create_objective_function(obj_func):
@@ -54,14 +118,16 @@ def create_objective_function(obj_func):
     return objectives[obj_func]
 
 
-def fit_calibration_curve(x_vals, y_vals, obj_func, plot_fit=False):
+def fit_calibration_curve(x_vals, y_vals, obj_func, outliers=None, plot_fit=False, save_path=None):
     """Finds the optimal weights to fit the supplied values for the specified function
 
     Args:
         x_vals (list): the x values to be fit
         y_vals (list): the y value to be fit
         obj_func (str): the name of the function that will be fit to the data
+        outliers (tuple or None): optional tuple of ([x_coords], [y_coords]) to plot
         plot_fit (bool): whether or not to plot the fit of the function vs the values
+        save_path (str or None): location to save the plot of the fitted values
 
     Returns:
         list: the weights of the fitted function"""
@@ -78,6 +144,13 @@ def fit_calibration_curve(x_vals, y_vals, obj_func, plot_fit=False):
         x_line = np.arange(min(x_vals), max(x_vals), 1)
         y_line = objective(x_line, *popt)
         plt.plot(x_line, y_line, '--', color='red')
+
+        if outliers is not None:
+            plt.scatter(outliers[0], outliers[1])
+
+        if save_path is not None:
+            plt.savefig(save_path)
+        plt.close()
 
     return popt
 
@@ -103,29 +176,24 @@ def create_prediction_function(name, weights):
     return pred_func
 
 
-def combine_run_metrics(run_dir, file_prefix):
+def combine_run_metrics(run_dir, substring):
     """Combines the specified metrics from different FOVs into a single file
 
     Args:
         run_dir (str): the directory containing the files
-        file_prefix (str): the prefix of the files to be combined"""
+        substring(str): the substring contained within the files to be combined"""
 
-    files = io_utils.list_files(run_dir, file_prefix)
-    bins = io_utils.list_files(run_dir, '.bin')
+    files = io_utils.list_files(run_dir, substring)
 
     # validate inputs
-    if len(bins) == 0:
-        raise ValueError('No bin files found in {}'.format(run_dir))
+    if len(files) == 0:
+        raise ValueError('No files found in {}'.format(run_dir))
 
-    if file_prefix + '_combined.csv' in files:
-        warnings.warn('removing previously generated '
-                      'combined {} file in {}'.format(file_prefix, run_dir))
-        os.remove(os.path.join(run_dir, file_prefix + '_combined.csv'))
+    if substring + '_combined.csv' in files:
+        warnings.warn('Removing previously generated '
+                      'combined {} file in {}'.format(substring, run_dir))
+        os.remove(os.path.join(run_dir, substring + '_combined.csv'))
         files = [file for file in files if 'combined' not in file]
-
-    if len(bins) != len(files):
-        raise ValueError('Mismatch between the number of bins and number '
-                         'of {} files'.format(file_prefix))
 
     # collect all metrics files
     metrics = []
@@ -138,11 +206,11 @@ def combine_run_metrics(run_dir, file_prefix):
         for i in range(1, len(metrics)):
             if len(metrics[i]) != base_len:
                 raise ValueError('Not all {} files are the same length: file {} does not match'
-                                 'file {}'.format(file_prefix, files[0], files[i]))
+                                 'file {}'.format(substring, files[0], files[i]))
 
     metrics = pd.concat(metrics)
 
-    metrics.to_csv(os.path.join(run_dir, file_prefix + '_combined.csv'), index=False)
+    metrics.to_csv(os.path.join(run_dir, substring + '_combined.csv'), index=False)
 
 
 def combine_tuning_curve_metrics(dir_list):
@@ -157,18 +225,13 @@ def combine_tuning_curve_metrics(dir_list):
     # create list to hold all extracted data
     all_dirs = []
 
-    # loop through directories, and if present, multiple fovs within directories
+    # loop through each run folder
     for dir in dir_list:
 
-        # generate aggregated table if it doesn't already exist
-        for prefix in ['pulse_heights', 'channel_counts']:
-            if not os.path.exists(os.path.join(dir, prefix + '_combined.csv')):
-                combine_run_metrics(dir, prefix)
-
         # combine tables together
-        pulse_heights = pd.read_csv(os.path.join(dir, 'pulse_heights_combined.csv'))
-        channel_counts = pd.read_csv(os.path.join(dir, 'channel_counts_combined.csv'))
-        combined = pulse_heights.merge(channel_counts, 'outer', on=['fovs', 'masses'])
+        pulse_heights = pd.read_csv(os.path.join(dir, 'fov-1-scan-1_pulse_heights.csv'))
+        channel_counts = pd.read_csv(os.path.join(dir, 'fov-1-scan-1_channel_counts.csv'))
+        combined = pulse_heights.merge(channel_counts, 'outer', on=['fov', 'mass'])
 
         if len(combined) != len(pulse_heights):
             raise ValueError("Pulse heights and channel counts must be generated for the same "
@@ -184,69 +247,347 @@ def combine_tuning_curve_metrics(dir_list):
     all_data.reset_index()
 
     # create normalized counts column
-    subset = all_data[['channel_counts', 'masses']]
-    all_data['norm_channel_counts'] = subset.groupby('masses').transform(lambda x: (x / x.max()))
+    subset = all_data[['channel_count', 'mass']]
+    all_data['norm_channel_count'] = subset.groupby('mass').transform(lambda x: (x / x.max()))
 
     return all_data
 
 
-def normalize_image_data(data_dir, output_dir, fovs, pulse_heights, panel_info,
-                         norm_func_path, mph_func_type='poly_2', extreme_vals=(0.5, 1)):
+def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100],
+                           save_path=os.path.join('..', 'toffy', 'norm_func.json')):
+    """Creates a tuning curve for an instrument based on the provided moly sweep
+
+    Args:
+        sweep_path (str): path to folder containing a detector sweep
+        moly_masses (list): list of masses to use for fitting the curve
+        save_path (str): path to save the weights of the tuning curve
+    """
+
+    # get all folders from the sweep
+    sweep_fovs = io_utils.list_folders(sweep_path)
+    sweep_fov_paths = [os.path.join(sweep_path, fov) for fov in sweep_fovs]
+
+    # compute pulse heights and channel counts for each FOV
+    for fov_path in sweep_fov_paths:
+        write_mph_per_mass(base_dir=fov_path, output_dir=fov_path, fov='fov-1-scan-1',
+                           masses=moly_masses)
+        write_counts_per_mass(base_dir=fov_path, output_dir=fov_path, fov='fov-1-scan-1',
+                              masses=moly_masses)
+
+    # combine data together into single df
+    tuning_data = combine_tuning_curve_metrics(sweep_fov_paths)
+
+    # generate fitted curve
+    coeffs = fit_calibration_curve(tuning_data['pulse_height'].values,
+                                   tuning_data['norm_channel_count'].values, 'exp', plot_fit=True,
+                                   save_path=os.path.join(sweep_path, 'function_fit.jpg'))
+
+    # save the fitted curve
+    norm_json = {'name': 'exp', 'weights': coeffs.tolist()}
+
+    with open(save_path, 'w') as sp:
+        json.dump(norm_json, sp)
+
+
+def identify_outliers(x_vals, y_vals, obj_func, outlier_fraction=0.1):
+    """Finds the indices of outliers in the provided data to prune for subsequent curve fitting
+
+    Args:
+        x_vals (np.array): the x values of the data being analyzed
+        y_vals (np.array): the y values of the data being analyzed
+        obj_func (str): the objective function to use for curve fitting to determine outliers
+        outlier_fraction (float): the fractional deviation from predicted value required in
+            order to classify a data point as an outlier
+
+    Returns:
+        np.array: the indices of the identified outliers"""
+
+    # get objective function
+    objective = create_objective_function(obj_func)
+
+    # get fitted values
+    popt, _ = curve_fit(objective, x_vals, y_vals)
+
+    # create generate function
+    func = create_prediction_function(name=obj_func, weights=popt)
+
+    # generate predictions
+    preds = func(x_vals)
+
+    # specify outlier bounds based on multiple of predicted value
+    upper_bound = preds * (1 + outlier_fraction)
+    lower_bound = preds * (1 - outlier_fraction)
+
+    # identify outliers
+    outlier_mask = np.logical_or(y_vals > upper_bound, y_vals < lower_bound)
+    outlier_idx = np.where(outlier_mask)[0]
+
+    return outlier_idx
+
+
+def smooth_outliers(vals, outlier_idx, smooth_range=2):
+    """Performs local smoothing on the provided outliers
+
+    Args:
+        vals (np.array): the complete list of values to be smoothed
+        outlier_idx (np.array): the indices of the outliers in *vals* argument
+        smooth_range (int): the number of adjacent values in each direction to use for smoothing
+
+    Returns:
+        np.array: the smoothed version of the provided vals"""
+
+    smoothed_vals = copy.deepcopy(vals)
+    vals = np.array(vals)
+
+    for outlier in outlier_idx:
+        previous_vals = smoothed_vals[(outlier - smooth_range):outlier]
+
+        if outlier == len(vals):
+            # last value in list, can't average using subsequent values
+            subsequent_vals = []
+        else:
+            # not the last value, we can use remaining values to get an estimate
+            subsequent_indices = np.arange(outlier + 1, len(vals))
+            valid_subs_indices = [idx for idx in subsequent_indices if idx not in outlier_idx]
+            subsequent_indices = np.array(valid_subs_indices)[:smooth_range]
+
+            # check to make sure there are valid subsequent indices
+            if len(subsequent_indices) > 0:
+                subsequent_vals = vals[subsequent_indices]
+            else:
+                subsequent_vals = np.array([])
+
+        new_val = np.mean(np.concatenate([previous_vals, subsequent_vals]))
+        smoothed_vals[outlier] = new_val
+
+    return smoothed_vals
+
+
+def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=10):
+    """Fits a curve for the MPH over time for the specified mass
+
+    Args:
+        mph_vals (list): mph for each FOV in the run
+        mass (str or int): the mass being fit
+        save_dir (str): the directory to save the fit parameters
+        obj_func (str): the function to use for constructing the fit
+        min_obs (int): the minimum number of observations to fit a curve, otherwise uses median"""
+
+    fov_order = np.linspace(0, len(mph_vals) - 1, len(mph_vals))
+    save_path = os.path.join(save_dir, str(mass) + '_mph_fit.jpg')
+
+    if len(mph_vals) > min_obs:
+        # find outliers in the MPH vals
+        outlier_idx = identify_outliers(x_vals=fov_order, y_vals=mph_vals, obj_func=obj_func)
+
+        # replace with local smoothing around that point
+        smoothed_vals = smooth_outliers(vals=mph_vals, outlier_idx=outlier_idx)
+
+        # if outliers identified, generate tuple to pass to plotting function
+        if len(outlier_idx) > 0:
+            outlier_x = fov_order[outlier_idx]
+            outlier_y = mph_vals[outlier_idx]
+            outlier_tup = (outlier_x, outlier_y)
+        else:
+            outlier_tup = None
+
+        # fit curve
+        weights = fit_calibration_curve(x_vals=fov_order, y_vals=smoothed_vals, obj_func=obj_func,
+                                        outliers=outlier_tup, plot_fit=True, save_path=save_path)
+
+    else:
+        # default to using the median instead for short runs with small number of FOVs
+        mph_median = np.median(mph_vals)
+        if obj_func == 'poly_2':
+            weight_len = 3
+        elif obj_func == 'poly_3':
+            weight_len = 4
+        else:
+            raise ValueError("Unsupported objective function provided: {}".format(obj_func))
+
+        # plot median
+        plt.axhline(y=mph_median, color='r', linestyle='-')
+        plt.plot(fov_order, mph_vals, '.')
+        plt.savefig(save_path)
+        plt.close()
+
+        # all coefficients except intercept are 0
+        weights = np.zeros(weight_len)
+        weights[-1] = mph_median
+
+    mass_json = {'name': obj_func, 'weights': weights.tolist()}
+    mass_path = os.path.join(save_dir, str(mass) + '_norm_func.json')
+
+    with open(mass_path, 'w') as mp:
+        json.dump(mass_json, mp)
+
+
+def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
+    """Uses the mph curves for each mass to generate a smoothed mph estimate
+
+    Args:
+        pulse_height_df (pd.DataFrame): contains the MPH value per mass for all FOVs
+        obj_func_dir (str): directory containing the curves generated for each mass
+
+    Returns:
+        pd.DataFrame: updated dataframe with fitted version of each MPH value for each mass"""
+
+    # get all masses
+    masses = np.unique(pulse_height_df['mass'].values)
+
+    # create column to hold fitted values
+    pulse_height_df['pulse_height_fit'] = 0
+
+    # create x axis values
+    num_fovs = len(np.unique(pulse_height_df['fov']))
+    fov_order = np.linspace(0, num_fovs - 1, num_fovs)
+
+    for mass in masses:
+        # load channel-specific prediction function
+        mass_path = os.path.join(obj_func_dir, str(mass) + '_norm_func.json')
+
+        with open(mass_path, 'r') as mp:
+            mass_json = json.load(mp)
+
+        # compute predicted MPH
+        name, weights = mass_json['name'], mass_json['weights']
+        pred_func = create_prediction_function(name=name, weights=weights)
+        pred_vals = pred_func(fov_order)
+
+        # update df
+        mass_idx = pulse_height_df['mass'] == mass
+        pulse_height_df.loc[mass_idx, 'pulse_height_fit'] = pred_vals
+
+    return pulse_height_df
+
+
+def create_fitted_pulse_heights_file(pulse_height_dir, panel_info, norm_dir, mass_obj_func):
+    """Create a single file containing the pulse heights after fitting a curve per mass
+
+    Args:
+        pulse_height_dir (str): path to directory containing pulse height csvs
+        panel_info (pd.DataFrame): the panel for this dataset
+        norm_dir (str): the directory where normalized images will be saved
+        mass_obj_func (str): the objective function used to fit the MPH over time per mass
+
+    Returns:
+        pd.DataFrame: the combined pulse heights file"""
+
+    # create variables for mass fitting
+    masses = panel_info['Mass'].values
+    fit_dir = os.path.join(norm_dir, 'curve_fits')
+    os.makedirs(fit_dir)
+
+    # combine fov-level files together
+    combine_run_metrics(run_dir=pulse_height_dir, substring='pulse_heights')
+    pulse_height_df = pd.read_csv(os.path.join(pulse_height_dir, 'pulse_heights_combined.csv'))
+
+    # order by FOV
+    ordering = ns.natsorted((pulse_height_df['fov'].unique()))
+    pulse_height_df['fov'] = pd.Categorical(pulse_height_df['fov'],
+                                            ordered=True,
+                                            categories=ordering)
+    pulse_height_df = pulse_height_df.sort_values('fov')
+
+    # loop over each mass, and fit a curve for MPH over the course of the run
+    for mass in masses:
+        mph_vals = pulse_height_df.loc[pulse_height_df['mass'] == mass, 'pulse_height'].values
+        fit_mass_mph_curve(mph_vals=mph_vals, mass=mass, save_dir=fit_dir,
+                           obj_func=mass_obj_func)
+
+    # update pulse_height_df to include fitted mph values
+    pulse_height_df = create_fitted_mass_mph_vals(pulse_height_df=pulse_height_df,
+                                                  obj_func_dir=fit_dir)
+
+    return pulse_height_df
+
+
+def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
+    """Normalize a single FOV with provided normalization constants for each channel"""
+
+    # create directory to hold normalized images
+    output_fov_dir = os.path.join(norm_dir, fov)
+    if os.path.exists(output_fov_dir):
+        print("output directory {} already exists, "
+              "data will be overwritten".format(output_fov_dir))
+    else:
+        os.makedirs(output_fov_dir)
+
+    # check if any values are outside expected range
+    extreme_mask = np.logical_or(norm_vals < extreme_vals[0], norm_vals > extreme_vals[1])
+    if np.any(extreme_mask):
+        bad_channels = np.array(channels)[extreme_mask]
+        warnings.warn('The following channel(s) had an extreme normalization '
+                      'value for fov {}. Manual inspection for accuracy is '
+                      'recommended: {}'.format(fov, bad_channels))
+
+    # correct images and save
+    normalized_images = img_data / norm_vals.reshape((1, 1, 1, len(norm_vals)))
+
+    for idx, chan in enumerate(channels):
+        io.imsave(os.path.join(output_fov_dir, chan + '.tiff'),
+                  normalized_images[0, :, :, idx], check_contrast=False)
+
+    # save logs
+    log_df = pd.DataFrame({'channels': channels,
+                           'norm_vals': norm_vals})
+    log_df.to_csv(os.path.join(output_fov_dir, 'normalization_coefs.csv'), index=False)
+
+
+def normalize_image_data(img_dir, norm_dir, pulse_height_dir, panel_info,
+                         img_sub_folder='', mass_obj_func='poly_2', extreme_vals=(0.4, 1.1),
+                         norm_func_path=os.path.join('..', 'toffy', 'norm_func.json')):
     """Normalizes image data based on median pulse height from the run and a tuning curve
 
     Args:
-        data_dir (str): directory with the image data
-        output_dir (str): directory where the normalized images will be saved
-        fovs (list or None): which fovs to include in normalization. If None, uses all fovs
-        pulse_heights (pd.DataFrame): pulse heights per mass per fov
+        img_dir (str): directory with the image data
+        norm_dir (str): directory where the normalized images will be saved
+        pulse_height_dir (str): directory containing per-fov pulse heights
         panel_info (pd.DataFrame): mapping between channels and masses
-        norm_func_path (str): file containing the saved weights for the normalization function
-        mph_func_type (str): name of the function to use for fitting the mass vs mph curve
+        mass_obj_func (str): class of function to use for modeling MPH over time per mass
         extreme_vals (tuple): determines the range for norm vals which will raise a warning
+        norm_func_path (str): file containing the saved weights for the normalization function
     """
 
-    # get FOVs to loop over
-    if fovs is None:
-        fovs = io_utils.list_folders(data_dir)
+    # error checks
+    if not os.path.exists(norm_func_path):
+        raise ValueError("No normalization function found. You will need to run "
+                         "section 3 of the 1_set_up_toffy.ipynb notebook to generate the "
+                         "necessary function before you can normalize your data")
 
-    # load calibration function
+    # create normalization function for mapping MPH to counts
     with open(norm_func_path, 'r') as cf:
         norm_json = json.load(cf)
 
+    img_fovs = io_utils.list_folders(img_dir, 'fov')
+
     norm_weights, norm_name = norm_json['weights'], norm_json['name']
-
-    channels = panel_info['targets'].values
-
-    # instantiate function which translates pulse height to a normalization constant
     norm_func = create_prediction_function(norm_name, norm_weights)
 
-    for fov in fovs:
-        output_fov_dir = os.path.join(output_dir, fov)
-        os.makedirs(output_fov_dir)
+    # combine pulse heights together into single df
+    pulse_height_df = create_fitted_pulse_heights_file(pulse_height_dir=pulse_height_dir,
+                                                       panel_info=panel_info, norm_dir=norm_dir,
+                                                       mass_obj_func=mass_obj_func)
+    # add channel name to pulse_height_df
+    renamed_panel = panel_info.rename({'Mass': 'mass'}, axis=1)
+    pulse_height_df = pulse_height_df.merge(renamed_panel, how='left', on=['mass'])
+    pulse_height_df = pulse_height_df.sort_values('Target')
 
-        # get images and pulse heights for current fov
-        images = load_utils.load_imgs_from_tree(data_dir, fovs=[fov], channels=channels,
-                                                dtype='float32')
-        fov_pulse_heights = pulse_heights.loc[pulse_heights['fov'] == fov, :]
+    # make sure FOVs used to construct tuning curve are same ones being normalized
+    pulse_fovs = np.unique(pulse_height_df['fov'])
+    misc_utils.verify_same_elements(image_data_fovs=img_fovs, pulse_height_csv_files=pulse_fovs)
 
-        # fit a function to model pulse height as a function of mass
-        mph_weights = fit_calibration_curve(x_vals=fov_pulse_heights['masses'].values,
-                                            y_vals=fov_pulse_heights['mphs'].values,
-                                            obj_func=mph_func_type)
+    # loop over each fov
+    for fov in img_fovs:
+        # compute per-mass normalization constant
+        pulse_height_fov = pulse_height_df.loc[pulse_height_df['fov'] == fov, :]
+        norm_vals = norm_func(pulse_height_fov['pulse_height_fit'].values)
+        channels = pulse_height_fov['Target'].values
 
-        # predict mph for each mass in the panel
-        mph_func = create_prediction_function(name=mph_func_type, weights=mph_weights)
-        mph_vals = mph_func(panel_info['masses'].values)
+        # get images
+        images = load_utils.load_imgs_from_tree(img_dir, fovs=[fov], channels=channels,
+                                                dtype='float32', img_sub_folder=img_sub_folder)
 
-        # predict normalization for each mph in the panel
-        norm_vals = norm_func(mph_vals)
-
-        if np.any(norm_vals < extreme_vals[0]) or np.any(norm_vals > extreme_vals[1]):
-            warnings.warn('The following FOV had an extreme normalization value. Manually '
-                          'inspection for accuracy is recommended: fov {}'.format(fov))
-
-        normalized_images = images / norm_vals.reshape((1, 1, 1, len(channels)))
-
-        for idx, chan in enumerate(channels):
-            io.imsave(os.path.join(output_fov_dir, chan + '.tiff'),
-                      normalized_images[0, :, :, idx], check_contrast=False)
+        # normalize and save
+        normalize_fov(img_data=images, norm_vals=norm_vals, norm_dir=norm_dir, fov=fov,
+                      channels=channels, extreme_vals=extreme_vals)
