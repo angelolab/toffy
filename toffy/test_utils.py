@@ -233,7 +233,7 @@ def create_sample_run(name_list, run_order_list, scan_count_list, create_json=Fa
     # create json file for the data
     if create_json:
         temp = tempfile.NamedTemporaryFile(mode="w", delete=False)
-        write_json_file(json_path=temp, json_object=sample_run)
+        json.dump(sample_run, temp)
         return temp.name
 
     return sample_run
