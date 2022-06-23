@@ -58,7 +58,7 @@ def test_compute_mph_metrics():
 
         # test successful data retrieval and csv output
         mph.compute_mph_metrics(bin_file_path, tmpdir, fov_name)
-        csv_path = os.path.join(tmpdir, fov_name + '-pulse_height.csv')
+        csv_path = os.path.join(tmpdir, fov_name + '-mph_pulse.csv')
         assert os.path.exists(csv_path)
 
         # check the csv data is correct
@@ -80,8 +80,8 @@ def test_combine_mph_metrics():
     with tempfile.TemporaryDirectory() as tmpdir:
         csv_path = tmpdir
 
-        data1.to_csv(os.path.join(csv_path, 'fov-1-scan-1-pulse_height.csv'), index=False)
-        data2.to_csv(os.path.join(csv_path, 'fov-2-scan-1-pulse_height.csv'), index=False)
+        data1.to_csv(os.path.join(csv_path, 'fov-1-scan-1-mph_pulse.csv'), index=False)
+        data2.to_csv(os.path.join(csv_path, 'fov-2-scan-1-mph_pulse.csv'), index=False)
 
         combined_data = pd.concat([data1, data2], axis=0, ignore_index=True)
         combined_data['cum_total_count'] = [50000, 120000]
