@@ -19,6 +19,9 @@ from ark.utils import io_utils, load_utils, misc_utils
 from mibi_bin_tools.bin_files import extract_bin_files, get_median_pulse_height
 from mibi_bin_tools.panel_utils import make_panel
 
+from toffy.json_utils import read_json_file
+from toffy.json_utils import write_json_file
+
 
 def write_counts_per_mass(base_dir, output_dir, fov, masses, start_offset=0.5,
                           stop_offset=0.5):
@@ -284,9 +287,7 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
 
     # save the fitted curve
     norm_json = {'name': 'exp', 'weights': coeffs.tolist()}
-
-    with open(save_path, 'w') as sp:
-        json.dump(norm_json, sp)
+    write_json_file(json_path=save_path, json_object=norm_json)
 
 
 def identify_outliers(x_vals, y_vals, obj_func, outlier_fraction=0.1):
@@ -418,8 +419,7 @@ def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=10):
     mass_json = {'name': obj_func, 'weights': weights.tolist()}
     mass_path = os.path.join(save_dir, str(mass) + '_norm_func.json')
 
-    with open(mass_path, 'w') as mp:
-        json.dump(mass_json, mp)
+    write_json_file(json_path=mass_path, json_object=mass_json)
 
 
 def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
@@ -445,9 +445,7 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
     for mass in masses:
         # load channel-specific prediction function
         mass_path = os.path.join(obj_func_dir, str(mass) + '_norm_func.json')
-
-        with open(mass_path, 'r') as mp:
-            mass_json = json.load(mp)
+        mass_json = read_json_file(mass_path)
 
         # compute predicted MPH
         name, weights = mass_json['name'], mass_json['weights']
@@ -556,8 +554,7 @@ def normalize_image_data(img_dir, norm_dir, pulse_height_dir, panel_info,
                          "necessary function before you can normalize your data")
 
     # create normalization function for mapping MPH to counts
-    with open(norm_func_path, 'r') as cf:
-        norm_json = json.load(cf)
+    norm_json = read_json_file(norm_func_path)
 
     img_fovs = io_utils.list_folders(img_dir, 'fov')
 

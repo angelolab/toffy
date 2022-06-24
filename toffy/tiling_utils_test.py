@@ -19,6 +19,8 @@ from toffy import tiling_utils
 from toffy import tiling_utils_test_cases as test_cases
 
 from ark.utils import misc_utils
+from toffy.json_utils import read_json_file
+from toffy.json_utils import write_json_file
 
 param = pytest.param
 parametrize = pytest.mark.parametrize
@@ -177,8 +179,7 @@ def test_save_coreg_params():
         assert os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json'))
 
         # load the first co-registration save data in
-        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'r') as cp:
-            coreg_data = json.load(cp)
+        coreg_data = read_json_file(os.path.join('..', 'toffy', 'coreg_params.json'))
 
         # assert 1 element in the coreg_params key and it contains the right coreg vals
         assert len(coreg_data['coreg_params']) == 1
@@ -196,8 +197,7 @@ def test_save_coreg_params():
 
         # load the second co-registration save data in
         # NOTE: since the previous step only appended, coreg_params.json will not disappear
-        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'r') as cp:
-            coreg_data = json.load(cp)
+        coreg_data = read_json_file(os.path.join('..', 'toffy', 'coreg_params.json'))
 
         # assert 2 elements in the coreg_params key and they contain the right coreg vals
         assert len(coreg_data['coreg_params']) == 2
@@ -290,8 +290,7 @@ def test_set_tiled_region_params(monkeypatch, region_corners_file, fov_coords, f
     with tempfile.TemporaryDirectory() as temp_dir:
         # write fov list
         sample_fov_list_path = os.path.join(temp_dir, 'tiled_region_corners.json')
-        with open(sample_fov_list_path, 'w') as fl:
-            json.dump(sample_fovs_list, fl)
+        write_json_file(json_path=sample_fov_list_path, json_object=sample_fovs_list)
 
         # run tiling parameter setting process with predefined user inputs
         sample_tiling_params = tiling_utils.set_tiled_region_params(
@@ -389,8 +388,7 @@ def test_generate_tiled_region_fov_list(moly_path, moly_roi_setting,
         )
         sample_moly_path = os.path.join(td, 'sample_moly_point.json')
 
-        with open(sample_moly_path, 'w') as smp:
-            json.dump(sample_moly_point, smp)
+        write_json_file(json_path=sample_moly_path, json_object=sample_moly_point)
 
         sample_tiling_params['moly_region'] = moly_roi_setting
 
@@ -529,8 +527,8 @@ def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_
     with tempfile.TemporaryDirectory() as td:
         # save sample FOVs list
         sample_tma_corners_path = os.path.join(td, 'sample_tma_corners.json')
-        with open(sample_tma_corners_path, 'w') as sfl:
-            json.dump(sample_fovs_list, sfl)
+
+        write_json_file(json_path=sample_tma_corners_path, json_object=sample_fovs_list)
 
         # NOTE: we leave the coordinate validation tests for test_validate_tma_corners
 
@@ -1031,8 +1029,8 @@ def test_tma_interactive_remap():
             ]
         }
 
-        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'w') as cp:
-            json.dump(sample_coreg_params, cp)
+        write_json_file(json_path=os.path.join('..', 'toffy', 'coreg_params.json'),
+                        json_object=sample_coreg_params)
 
         # this should now run
         tiling_utils.tma_interactive_remap(
@@ -1054,8 +1052,7 @@ def test_remap_and_reorder_fovs(moly_path, randomize_setting, moly_insert, moly_
     with tempfile.TemporaryDirectory() as td:
         moly_point_path = os.path.join(td, 'sample_moly_point.json')
 
-        with open(moly_point_path, 'w') as smp:
-            json.dump(sample_moly_point, smp)
+        write_json_file(json_path=moly_point_path, json_object=sample_moly_point)
 
         # define the coordinates and fov names manual by the user
         manual_coords = [(0, 25), (50, 25), (50, 50), (75, 50), (100, 25), (100, 75)]

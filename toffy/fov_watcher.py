@@ -6,7 +6,7 @@ from datetime import datetime
 from typing import Callable, Tuple
 from watchdog.events import FileCreatedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
-
+from toffy.json_utils import read_json_file
 
 class RunStructure:
     """Expected bin and json files
@@ -29,8 +29,7 @@ class RunStructure:
 
         # find run .json and get parameters
         run_name = Path(run_folder).parts[-1]
-        with open(os.path.join(run_folder, f'{run_name}.json'), 'r') as f:
-            run_metadata = json.load(f)
+        run_metadata = read_json_file(os.path.join(run_folder, f'{run_name}.json'))
 
         # parse run_metadata and populate expected structure
         for fov in run_metadata.get('fovs', ()):

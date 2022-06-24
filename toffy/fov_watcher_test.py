@@ -14,6 +14,8 @@ from mibi_bin_tools import io_utils
 from toffy.test_utils import WatcherCases, RunStructureTestContext, RunStructureCases
 from toffy.fov_watcher import start_watcher
 from toffy.watcher_callbacks import build_callbacks
+from toffy.json_utils import read_json_file
+from toffy.json_utils import write_json_file
 
 TISSUE_DATA_PATH = os.path.join(Path(__file__).parent, 'data', 'tissue')
 RUN_DIR_NAME = 'run_XXX'
@@ -76,9 +78,8 @@ def test_watcher(run_cbs, fov_cbs, kwargs, validators, add_blank):
         os.makedirs(run_data)
 
         fov_callback, run_callback = build_callbacks(run_cbs, fov_cbs, **kwargs)
-
-        with open(os.path.join(run_data, 'test_run.json'), 'w') as f:
-            json.dump(TISSUE_RUN_JSON_SPOOF, f)
+        write_json_file(json_path=os.path.join(run_data, 'test_run.json'),
+                        json_object=TISSUE_RUN_JSON_SPOOF)
 
         # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
         # client access computer.  `start_watcher` is made async here since these processes
