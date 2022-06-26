@@ -1,5 +1,5 @@
 ark-analysis @ git+https://github.com/angelolab/ark-analysis.git@02b4549731c2204e727073d6f23d3a91123e69d8
-mibi-bin-tools @ git+https://github.com/angelolab/mibi-bin-tools.git@master
+mibi-bin-tools @ git+https://github.com/angelolab/mibi-bin-tools.git@v0.2.1
 jupyter>=1.0.0,<2
 jupyter_contrib_nbextensions>=0.5.1,<1
 jupyterlab>=3.1.5,<4
