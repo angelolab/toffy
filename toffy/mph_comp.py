@@ -102,8 +102,14 @@ def combine_mph_metrics(csv_dir, return_data=False):
 
     # calculate cumulative sums of total counts and time
     combined_df = pd.concat(combined_rows)
+    run_order = []
+    for index, row in combined_df.iterrows():
+        run_order.append(int(''.join(filter(str.isdigit, row['fov']))))
+    combined_df['run_order'] = run_order
+    combined_df = combined_df.sort_values(by=['run_order'])
     combined_df['cum_total_count'] = combined_df['total_count'].cumsum()
     combined_df['cum_total_time'] = combined_df['time'].cumsum()
+    combined_df = combined_df.drop(columns=['run_order'])
 
     # save csv to csv_dir
     file_path = os.path.join(csv_dir, 'total_count_vs_mph_data.csv')
