@@ -8,6 +8,7 @@ from watchdog.events import FileCreatedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 from toffy.json_utils import read_json_file
 
+
 class RunStructure:
     """Expected bin and json files
 
