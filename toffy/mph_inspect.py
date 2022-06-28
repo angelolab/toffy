@@ -14,9 +14,8 @@ def bin_array(arr, bin_factor):
     return arr_bin
 
 
-def compute_mph_intensities(bin_file_dir, fov_list, mass, mass_start, mass_stop,
-                            bin_factor=100):
-    """ Compute the median pulse height intensities for given FOVs
+def compute_intensities(bin_file_dir, fov_list, mass, mass_start, mass_stop, bin_factor=100):
+    """ Compute the pulse height intensities for given FOVs
 
     Args:
         bin_file_dir (str): path to the FOV bin files
@@ -24,7 +23,7 @@ def compute_mph_intensities(bin_file_dir, fov_list, mass, mass_start, mass_stop,
         mass (float): mass for the panel
         mass_start (float): beginning of mass integration range
         mass_stop (float): end of mass integration range
-        bin_factor (int): size of the bins for the MPH histograms, default 100
+        bin_factor (int): size of the bins for the histograms, default 100
 
     Returns:
         pd.DataFrame containing the MPH intensity data
@@ -62,9 +61,9 @@ def compute_mph_intensities(bin_file_dir, fov_list, mass, mass_start, mass_stop,
     return final_df
 
 
-def visualize_mph_hist(bin_file_dir, mass, mass_start, mass_stop, fov_list=None,
-                       bin_factor=100, x_cutoff=20000, normalize=True):
-    """ Create a histogram of the median pulse height intensities for given FOVs
+def visualize_intensity_data(bin_file_dir, mass, mass_start, mass_stop, fov_list=None,
+                             bin_factor=100, x_cutoff=20000, normalize=True):
+    """ Create a histogram of the pulse height intensities for given FOVs
 
     Args:
         bin_file_dir (str): path to the FOV bin files
@@ -72,7 +71,7 @@ def visualize_mph_hist(bin_file_dir, mass, mass_start, mass_stop, fov_list=None,
         mass_start (float): beginning of mass integration range
         mass_stop (float): end of mass integration range
         fov_list (list): which FOVs to include, if None will include all in data_dir
-        bin_factor (int): size of the bins for the MPH histograms, default 100
+        bin_factor (int): size of the bins for the histograms, default 100
         normalize (bool): whether to normalize the histograms
 
     """
@@ -88,8 +87,8 @@ def visualize_mph_hist(bin_file_dir, mass, mass_start, mass_stop, fov_list=None,
     else:
         misc_utils.verify_in_list(provided_fovs=fov_list, fovs_in_directory=all_fovs)
 
-    # compute the mph intensities
-    data = compute_mph_intensities(bin_file_dir, fov_list, mass, mass_start, mass_stop, bin_factor)
+    # compute the pulse height intensities
+    data = compute_intensities(bin_file_dir, fov_list, mass, mass_start, mass_stop, bin_factor)
 
     # plot each FOV
     plt.style.use('dark_background')
