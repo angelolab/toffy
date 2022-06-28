@@ -7,6 +7,15 @@ from mibi_bin_tools.bin_files import get_histograms_per_tof
 
 
 def bin_array(arr, bin_factor):
+    """ Bin data for visualization according to a bin_factor
+    Args:
+        arr (array_like): original data
+        bin_factor (int): size of the bins for the histograms
+
+    Returns:
+        the binned data
+
+    """
     arr_bin = np.cumsum(arr)
     arr_bin[bin_factor:] = arr_bin[bin_factor:] - arr_bin[:-bin_factor]
     arr_bin = arr_bin[bin_factor::bin_factor]
