@@ -139,15 +139,30 @@ def visualize_mph(mph_df, out_dir, regression: bool = False):
     # plt.title('FOV total counts vs median pulse height')
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
-    ax2 = ax1.twiny()
     x = mph_df['cum_total_count']/1000000
     y = mph_df['MPH']
-    x_alt = mph_df['cum_total_time']/(3600*1000)
     ax1.set_xlabel('FOV cumulative count (in millions)')
     ax1.set_ylabel('median pulse height')
-    ax2.set_xlabel('estimated time (hours)')
     ax1.scatter(x, y)
-    ax2.scatter(x_alt, y, s=0)
+    ax2 = ax1.twiny()
+    ax2.set_xlabel('estimated time (hours)')
+
+    # create time axis
+    sub_df = mph_df[['cum_total_count', 'cum_total_time']]
+    total_time = sub_df.at[len(sub_df.index)-1, 'cum_total_time']
+    tick_num = int(total_time / (6*(3600*1000)))
+    tick_labels = [i * 6 for i in range(0, tick_num+1)]
+    time_ticks = [tick*(3600*1000) for tick in tick_labels[1:len(tick_labels)]]
+
+    tick_locations = [0]
+    for tick in time_ticks:
+        count_tick = (sub_df.iloc[(sub_df['cum_total_time'] - tick).abs().argsort()[:1]])['cum_total_count']
+        count_tick = (count_tick.to_string()).split(' ')[4]
+        tick_locations.append(int(count_tick)/1000000)
+
+    ax2.set_xlim(ax1.get_xlim())
+    ax2.set_xticks(tick_locations)
+    ax2.set_xticklabels(tick_labels)
     plt.gcf().set_size_inches(18.5, 10.5)
 
     # plot regression line
