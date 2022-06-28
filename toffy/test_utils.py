@@ -212,7 +212,7 @@ def check_mph_dir_structure(plot_dir: str, point_names: List[str], combined: boo
             Assertion error on missing csv
     """
     for point in point_names:
-        assert(os.path.exists(os.path.join(plot_dir, f'{point}-pulse_height.csv')))
+        assert(os.path.exists(os.path.join(plot_dir, f'{point}-mph_pulse.csv')))
 
     if combined:
         assert(os.path.exists(os.path.join(plot_dir, 'total_count_vs_mph_data.csv')))
