@@ -7,6 +7,7 @@ from distutils.dir_util import copy_tree
 from ark.utils import io_utils
 from ark.utils.misc_utils import verify_in_list
 from toffy.json_utils import rename_missing_fovs, rename_duplicate_fovs
+from toffy.json_utils import read_json_file
 
 
 def merge_partial_runs(cohort_dir, run_string):
@@ -93,8 +94,7 @@ def rename_fov_dirs(json_run_path, default_run_dir, output_run_dir=None):
         if os.path.exists(output_run_dir):
             raise ValueError(f"The new directory supplied already exists: {output_run_dir}")
 
-    with open(json_run_path) as file:
-        run_metadata = json.load(file)
+    run_metadata = read_json_file(json_run_path)
 
     # check for missing or duplicate fov names
     run_metadata = rename_missing_fovs(run_metadata)
