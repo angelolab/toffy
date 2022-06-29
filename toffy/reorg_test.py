@@ -7,7 +7,6 @@ import pytest
 from ark.utils import io_utils
 from toffy import reorg
 from toffy import test_utils
-from toffy.json_utils import read_json_file
 from toffy.json_utils import write_json_file
 
 

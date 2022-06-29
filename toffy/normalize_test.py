@@ -14,8 +14,8 @@ from pytest_cases import parametrize_with_cases
 from ark.utils import test_utils, load_utils, io_utils
 from toffy import normalize
 import toffy.normalize_test_cases as test_cases
-from toffy.json_utils import read_json_file
-from toffy.json_utils import write_json_file
+from toffy.json_utils import read_json_file, write_json_file
+
 
 parametrize = pytest.mark.parametrize
 

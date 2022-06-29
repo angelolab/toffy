@@ -8,7 +8,6 @@ from ark.utils import io_utils
 from ark.utils.misc_utils import verify_in_list
 from toffy.json_utils import rename_missing_fovs, rename_duplicate_fovs
 from toffy.json_utils import read_json_file
-from toffy.json_utils import write_json_file
 
 
 def merge_partial_runs(cohort_dir, run_string):

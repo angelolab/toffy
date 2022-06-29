@@ -14,7 +14,6 @@ from mibi_bin_tools import io_utils
 from toffy.test_utils import WatcherCases, RunStructureTestContext, RunStructureCases
 from toffy.fov_watcher import start_watcher
 from toffy.watcher_callbacks import build_callbacks
-from toffy.json_utils import read_json_file
 from toffy.json_utils import write_json_file
 
 TISSUE_DATA_PATH = os.path.join(Path(__file__).parent, 'data', 'tissue')

@@ -19,8 +19,7 @@ from toffy import tiling_utils
 from toffy import tiling_utils_test_cases as test_cases
 
 from ark.utils import misc_utils
-from toffy.json_utils import read_json_file
-from toffy.json_utils import write_json_file
+from toffy.json_utils import read_json_file, write_json_file
 
 param = pytest.param
 parametrize = pytest.mark.parametrize
