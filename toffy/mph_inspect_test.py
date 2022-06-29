@@ -57,7 +57,8 @@ def test_visualize_intensity_data(mocker):
     # bad fov name should raise error
     bad_fov_list = ['fov-1-scan-1', 'bad_fov']
     with pytest.raises(ValueError, match="Not all values given in list"):
-        mph_inspect.visualize_intensity_data(bin_file_dir, mass, mass_start, mass_stop, bad_fov_list)
+        mph_inspect.visualize_intensity_data(bin_file_dir, mass, mass_start, mass_stop,
+                                             bad_fov_list)
 
     # successful function should raise no errors
     mocker.patch('toffy.mph_inspect.get_histograms_per_tof', create_hist_per_tof_data)
