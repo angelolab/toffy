@@ -46,6 +46,22 @@ def test_get_estimated_time():
     assert mph.get_estimated_time(good_path, good_fov) == 512
 
 
+def test_generate_time_ticks():
+    example_df = {'cum_total_count': [1,2,3,4,5,6,7,8,9], 'cum_total_time': [5, 9, 11, 12.5, 14, 16, 19, 20, 23]}
+    example_df = pd.DataFrame(example_df)
+    for i in range(0, len(example_df)):
+        example_df['cum_total_time'][i] = example_df['cum_total_time'][i] * 3600 * 1000
+        example_df['cum_total_count'][i] = example_df['cum_total_count'][i] * 1000000
+    new_ticks = mph.generate_time_ticks(example_df)
+
+    correct_locations = [0, 1, 4, 7]
+    correct_labels = [0, 6, 12, 18]
+
+    # test successful new ticks
+    assert new_ticks[0] == correct_locations
+    assert new_ticks[1] == correct_labels
+
+
 def test_compute_mph_metrics():
     bin_file_path = os.path.join(Path(__file__).parent, "data", "tissue")
     fov_name = 'fov-1-scan-1'
