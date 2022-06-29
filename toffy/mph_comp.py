@@ -58,7 +58,8 @@ def generate_time_ticks(mph_df):
     # find count value associated with the time closest to each tick
     tick_locations = [0]
     for tick in time_ticks:
-        count_tick = (sub_df.iloc[(sub_df['cum_total_time'] - tick).abs().argsort()[:1]])['cum_total_count']
+        count_tick = (sub_df.iloc[(sub_df['cum_total_time']
+                                   - tick).abs().argsort()[:1]])['cum_total_count']
         count_tick = (count_tick.to_string()).split(' ')[4]
         tick_locations.append(int(count_tick)/1000000)
 
