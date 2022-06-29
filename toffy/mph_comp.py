@@ -39,6 +39,31 @@ def get_estimated_time(bin_file_dir, fov):
     return estimated_time
 
 
+def generate_time_ticks(mph_df):
+    """Create a time axis for median pulse heights with ticks at approx. 6 hour increments
+    Args:
+         mph_df: contains mph date, specifically requires cum_total_count and cum_total_time columns
+    Returns:
+        list of two lists detailing tick locations and tick number labels
+    """
+
+    # determine number of ticks and what the labels should be based on total run time
+    sub_df = mph_df[['cum_total_count', 'cum_total_time']]
+    total_time = sub_df['cum_total_time'].iloc[-1]
+    tick_num = int(total_time / (6*(3600*1000)))
+    tick_labels = [i * 6 for i in range(0, tick_num+1)]
+    time_ticks = [tick*(3600*1000) for tick in tick_labels[1:len(tick_labels)]]
+
+    # find count value associated with the time closest to each tick
+    tick_locations = [0]
+    for tick in time_ticks:
+        count_tick = (sub_df.iloc[(sub_df['cum_total_time'] - tick).abs().argsort()[:1]])['cum_total_count']
+        count_tick = (count_tick.to_string()).split(' ')[4]
+        tick_locations.append(int(count_tick)/1000000)
+
+    return [tick_locations, tick_labels]
+
+
 def compute_mph_metrics(bin_file_dir, csv_dir, fov, mass=98, mass_start=97.5, mass_stop=98.5):
     """Retrieves total counts, pulse heights, & estimated time for a given FOV
         Args:
@@ -148,18 +173,9 @@ def visualize_mph(mph_df, out_dir, regression: bool = False):
     ax2.set_xlabel('estimated time (hours)')
 
     # create time axis
-    sub_df = mph_df[['cum_total_count', 'cum_total_time']]
-    total_time = sub_df.at[len(sub_df.index)-1, 'cum_total_time']
-    tick_num = int(total_time / (6*(3600*1000)))
-    tick_labels = [i * 6 for i in range(0, tick_num+1)]
-    time_ticks = [tick*(3600*1000) for tick in tick_labels[1:len(tick_labels)]]
-
-    tick_locations = [0]
-    for tick in time_ticks:
-        count_tick = (sub_df.iloc[(sub_df['cum_total_time'] - tick).abs().argsort()[:1]])['cum_total_count']
-        count_tick = (count_tick.to_string()).split(' ')[4]
-        tick_locations.append(int(count_tick)/1000000)
-
+    new_ticks = generate_time_ticks(mph_df)
+    tick_locations = new_ticks[0]
+    tick_labels = new_ticks[1]
     ax2.set_xlim(ax1.get_xlim())
     ax2.set_xticks(tick_locations)
     ax2.set_xticklabels(tick_labels)
