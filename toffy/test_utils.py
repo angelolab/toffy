@@ -215,7 +215,7 @@ def check_mph_dir_structure(plot_dir: str, point_names: List[str], combined: boo
         assert(os.path.exists(os.path.join(plot_dir, f'{point}-mph_pulse.csv')))
 
     if combined:
-        assert(os.path.exists(os.path.join(plot_dir, 'total_count_vs_mph_data.csv')))
+        assert(os.path.exists(os.path.join(plot_dir, 'mph_pulse_combined.csv')))
         assert(os.path.exists(os.path.join(plot_dir, 'fov_vs_mph.jpg')))
 
 

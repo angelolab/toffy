@@ -47,7 +47,7 @@ def test_get_estimated_time():
 
 
 def test_generate_time_ticks():
-    example_df = {'cum_total_count': [1,2,3,4,5,6,7,8,9], 'cum_total_time': [5, 9, 11, 12.5, 14, 16, 19, 20, 23]}
+    example_df = {'cum_total_count': list(range(1, 10)), 'cum_total_time': [5, 9, 11, 12.5, 14, 16, 19, 20, 23]}
     example_df = pd.DataFrame(example_df)
     for i in range(0, len(example_df)):
         example_df['cum_total_time'][i] = example_df['cum_total_time'][i] * 3600 * 1000
@@ -105,7 +105,7 @@ def test_combine_mph_metrics():
 
         # test successful data retrieval and csv output
         mph.combine_mph_metrics(csv_path)
-        combined_csv_path = os.path.join(csv_path, 'total_count_vs_mph_data.csv')
+        combined_csv_path = os.path.join(csv_path, 'mph_pulse_combined.csv')
         csv_data = pd.read_csv(combined_csv_path)
         assert os.path.exists(combined_csv_path)
         assert csv_data.equals(combined_data)

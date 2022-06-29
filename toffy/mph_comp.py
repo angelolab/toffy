@@ -6,6 +6,7 @@ import matplotlib.pyplot as plt
 
 from mibi_bin_tools import bin_files
 from ark.utils import io_utils
+from toffy.normalize import combine_run_metrics
 
 
 def get_estimated_time(bin_file_dir, fov):
@@ -119,14 +120,11 @@ def combine_mph_metrics(csv_dir, return_data=False):
     # path validation checks
     io_utils.validate_paths(csv_dir)
 
-    # for each csv retrieve mph values
-    fov_files = io_utils.list_files(csv_dir, "-mph_pulse.csv")
-    combined_rows = []
-    for i, file in enumerate(fov_files):
-        combined_rows.append(pd.read_csv(os.path.join(csv_dir, file)))
+    # combine individual csv files
+    combine_run_metrics(csv_dir, 'mph_pulse')
 
     # calculate cumulative sums of total counts and time
-    combined_df = pd.concat(combined_rows)
+    combined_df = pd.read_csv(os.path.join(csv_dir, 'mph_pulse_combined.csv'))
     run_order = []
     for index, row in combined_df.iterrows():
         run_order.append(int(''.join(filter(str.isdigit, row['fov']))))
@@ -136,11 +134,7 @@ def combine_mph_metrics(csv_dir, return_data=False):
     combined_df['cum_total_time'] = combined_df['time'].cumsum()
     combined_df = combined_df.drop(columns=['run_order'])
 
-    # save csv to csv_dir
-    file_path = os.path.join(csv_dir, 'total_count_vs_mph_data.csv')
-    if os.path.exists(file_path):
-        os.remove(file_path)
-    combined_df.to_csv(file_path, index=False)
+    combined_df.to_csv(os.path.join(csv_dir, 'mph_pulse_combined.csv'), index=False)
 
     # return data
     if return_data:
