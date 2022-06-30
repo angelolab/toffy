@@ -1,6 +1,4 @@
-import setuptools
 from os import path, pardir
-from distutils.command.build_ext import build_ext as DistUtilsBuildExt
 from setuptools import setup, find_packages
 
 VERSION = '0.1.0'
@@ -13,7 +11,6 @@ with open(path.join(PKG_FOLDER, 'requirements.txt')) as req_file:
 # set a long description which is basically the README
 with open(path.join(PKG_FOLDER, 'README.md')) as f:
     long_description = f.read()
-
 
 setup(
     name='toffy',
