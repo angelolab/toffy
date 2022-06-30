@@ -43,7 +43,8 @@ def get_estimated_time(bin_file_dir, fov):
 def generate_time_ticks(mph_df):
     """Create a time axis for median pulse heights with ticks at approx. 6 hour increments
     Args:
-         mph_df: contains mph date, specifically requires cum_total_count and cum_total_time columns
+         mph_df: contains mph date, specifically requires cum_total_count and cum_total_time
+         columns
     Returns:
         list of two lists detailing tick locations and tick number labels
     """
