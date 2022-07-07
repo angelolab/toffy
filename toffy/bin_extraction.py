@@ -3,7 +3,7 @@ from toffy.json_utils import list_moly_fovs
 from mibi_bin_tools import bin_files
 
 
-def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensities):
+def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensities, replace=True):
     """Check for already extracted FOV bin files, and extract the remaining (excluding moly)
 
     Args:
@@ -11,6 +11,7 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensitie
         extraction_dir (str): path to directory of already extracted FOVs
         panel (pd.DataFrame): file defining the panel info for bin file extraction
         extract_intensities (bool): whether to extract intensities from the bin files
+        replace (bool): whether to replace pulse images with intensity
     """
 
     # retrieve all fov names from base_dir and extracted fovs from extraction_dir
@@ -27,4 +28,4 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensitie
     non_moly_fovs = list(set(fovs).difference(moly_fovs))
     missing_fovs = list(set(non_moly_fovs).difference(extracted_fovs))
     bin_files.extract_bin_files(bin_file_dir, extraction_dir, include_fovs=missing_fovs,
-                                panel=panel, intensities=extract_intensities)
+                                panel=panel, intensities=extract_intensities, replace=replace)
