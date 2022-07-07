@@ -7,6 +7,7 @@ import pytest
 from ark.utils import io_utils
 from toffy import reorg
 from toffy import test_utils
+from toffy.json_utils import write_json_file
 
 
 def create_sample_fov_dirs(fovs, base_dir):
@@ -186,8 +187,7 @@ def test_rename_fovs_in_cohort(tmpdir):
         os.makedirs(run_path)
         json_path = os.path.join(run_path, run + '.json')
 
-        with open(json_path, 'w') as jp:
-            json.dump(json_file, jp)
+        write_json_file(json_path=json_path, json_object=json_file)
 
     # create run FOVs
     fovs = ['fov-1-scan-1', 'fov-2-scan-1', 'fov-3-scan-1']
