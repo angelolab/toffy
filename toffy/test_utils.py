@@ -112,6 +112,13 @@ class ExtractionQCGenerationCases:
     def case_extraction_intensities(self):
         cbs, kwargs = self.case_both_callbacks()
         kwargs['intensities'] = True
+        kwargs['replace'] = False
+        return cbs, kwargs
+
+    def case_extraction_intensities_replace(self):
+        cbs, kwargs = self.case_both_callbacks()
+        kwargs['intensities'] = True
+        kwargs['replace'] = True
         return cbs, kwargs
 
     @pytest.mark.xfail(raises=ValueError)
@@ -145,7 +152,7 @@ class PlotQCMetricsCases:
 
 
 def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channels: List[str],
-                                   intensities: bool = False):
+                                   intensities: bool = False, replace: bool = True):
     """Checks extraction directory for minimum expected structure
 
     Args:
@@ -157,6 +164,8 @@ def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channel
             List of expected channel names
         intensities (bool):
             Whether or not to check for intensities
+        replace (bool):
+            Whether to replace pulse images with intensity
 
     Raises:
         AssertionError:
@@ -166,7 +175,7 @@ def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channel
         for channel in channels:
             assert(os.path.exists(os.path.join(ext_dir, point, f'{channel}.tiff')))
 
-        if intensities:
+        if intensities and not replace:
             assert(os.path.exists(os.path.join(ext_dir, point, 'intensities')))
 
 
@@ -327,17 +336,19 @@ class WatcherCases:
     passed to the validators (i.e out directory and point names).
     """
     @parametrize(intensity=(False, True))
-    def case_default(self, intensity):
+    @parametrize(replace=(False, True))
+    def case_default(self, intensity, replace):
         panel = pd.read_csv(os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv'))
         validators = [
             functools.partial(
                 check_extraction_dir_structure,
                 channels=list(panel['Target']),
-                intensities=intensity),
+                intensities=intensity,
+                replace=replace),
             check_qc_dir_structure,
         ]
 
-        kwargs = {'panel': panel, 'intensities': intensity}
+        kwargs = {'panel': panel, 'intensities': intensity, 'replace': replace}
 
         return (
             ['plot_qc_metrics'],

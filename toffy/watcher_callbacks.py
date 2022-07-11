@@ -59,8 +59,8 @@ class FovCallbacks:
     __panel: pd.DataFrame = field(default=None, init=False)
     __fov_data: xr.DataArray = field(default=None, init=False)
 
-    def _generate_fov_data(self, panel: pd.DataFrame, intensities=False, time_res=0.0005,
-                           **kwargs):
+    def _generate_fov_data(self, panel: pd.DataFrame, intensities=False, replace=True,
+                           time_res=0.0005, **kwargs):
         """Extracts data from bin files using the given panel
 
         The data and the panel are then cached members of the FovCallbacks object
@@ -70,6 +70,8 @@ class FovCallbacks:
                 Panel used for extraction
             intensities (bool | List[str]):
                 Intensities argument for `mibi_bin_tools.bin_files.extract_bin_files`
+            replace (bool):
+                Whether to replace pulse images with intensity
             time_res (float):
                 Time resolution argument for `mibi_bin_tool.bin_files.extract_bin_files`
             **kwargs (dict):
@@ -81,6 +83,7 @@ class FovCallbacks:
             include_fovs=[self.point_name],
             panel=panel,
             intensities=intensities,
+            replace=replace,
             time_res=time_res
         )
 
