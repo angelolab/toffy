@@ -10,6 +10,7 @@ import xarray as xr
 from ark.utils import misc_utils
 
 from mibi_bin_tools.bin_files import extract_bin_files, _write_out
+from mibi_bin_tools.type_utils import any_true
 
 from toffy.qc_comp import compute_qc_metrics_direct, combine_qc_metrics, visualize_qc_metrics
 
@@ -111,6 +112,9 @@ class FovCallbacks:
             self._generate_fov_data(panel, **kwargs)
 
         intensities = kwargs.get('intensities', False)
+        if any_true(intensities) and type(intensities) is not list:
+            intensities = list(self.__fov_data.channel.values)
+
         _write_out(
             img_data=self.__fov_data[0, :, :, :, :].values,
             out_dir=tiff_out_dir,
