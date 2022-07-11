@@ -1,6 +1,6 @@
-from ark.utils import io_utils
+#from ark.utils import io_utils
 from toffy.json_utils import list_moly_fovs
-from mibi_bin_tools import bin_files
+from mibi_bin_tools import bin_files, io_utils
 
 
 def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensities, replace=True):

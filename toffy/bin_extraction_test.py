@@ -6,7 +6,7 @@ from pathlib import Path
 from unittest.mock import patch, call
 
 from toffy import bin_extraction
-from ark.utils import io_utils
+from mibi_bin_tools import io_utils
 
 
 @patch('builtins.print')
