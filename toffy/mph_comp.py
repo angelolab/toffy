@@ -3,6 +3,7 @@ import pandas as pd
 import numpy as np
 import json
 import matplotlib.pyplot as plt
+from natsort import natsort_keygen
 
 from mibi_bin_tools import bin_files
 from ark.utils import io_utils
@@ -127,14 +128,9 @@ def combine_mph_metrics(csv_dir, return_data=False):
 
     # calculate cumulative sums of total counts and time
     combined_df = pd.read_csv(os.path.join(csv_dir, 'mph_pulse_combined.csv'))
-    run_order = []
-    for index, row in combined_df.iterrows():
-        run_order.append(int(''.join(filter(str.isdigit, row['fov']))))
-    combined_df['run_order'] = run_order
-    combined_df = combined_df.sort_values(by=['run_order'])
+    combined_df = combined_df.sort_values(by="fov", key=natsort_keygen())
     combined_df['cum_total_count'] = combined_df['total_count'].cumsum()
     combined_df['cum_total_time'] = combined_df['time'].cumsum()
-    combined_df = combined_df.drop(columns=['run_order'])
 
     combined_df.to_csv(os.path.join(csv_dir, 'mph_pulse_combined.csv'), index=False)
 
