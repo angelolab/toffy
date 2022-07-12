@@ -116,18 +116,18 @@ def write_json_file(json_path, json_object, encoding=None):
         json.dump(json_object, jp)
 
 
-def split_run_file(tma_dir, run_file_name, file_split: list):
+def split_run_file(run_dir, run_file_name, file_split: list):
     """Splits a run json file into smaller fov amount files as defined by the user
 
     Args:
-        tma_dir (str): path to directory containing tma files
+        run_dir (str): path to directory containing the run file
         run_file_name (str): name of the run file to split
         file_split (list): list of ints defining how to break up the fovs into new jsons
 
     Returns:
-        saves the new json files to the tma_dir """
+        saves the new json files to the base_dir """
 
-    json_path = os.path.join(tma_dir, run_file_name)
+    json_path = os.path.join(run_dir, run_file_name)
     full_json = read_json_file(json_path, encoding='utf-8')
 
     # check list is valid FOV split
@@ -143,6 +143,6 @@ def split_run_file(tma_dir, run_file_name, file_split: list):
         json_i['fovs'] = json_i['fovs'][start:stop]
         start = start+file_split[i]
 
-        save_path = os.path.join(tma_dir, run_file_name.split('.json')[0] + '_part'
+        save_path = os.path.join(run_dir, run_file_name.split('.json')[0] + '_part'
                                  + str(i+1) + '.json')
         write_json_file(save_path, json_i, encoding='utf-8')
