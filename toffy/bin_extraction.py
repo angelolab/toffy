@@ -20,11 +20,16 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensitie
     # filter out moly fovs
     moly_fovs = list_moly_fovs(bin_file_dir)
 
-    print("Previous extracted FOVs: ", extracted_fovs)
-    print("Moly FOVs which will not be extracted: ", moly_fovs)
+    print("Previous extracted FOVs: ", ", ".join(extracted_fovs))
+    print("Moly FOVs which will not be extracted: ", ", ".join(moly_fovs))
 
     # extract missing fovs to extraction_dir
     non_moly_fovs = list(set(fovs).difference(moly_fovs))
     missing_fovs = list(set(non_moly_fovs).difference(extracted_fovs))
-    bin_files.extract_bin_files(bin_file_dir, extraction_dir, include_fovs=missing_fovs,
-                                panel=panel, intensities=extract_intensities, replace=replace)
+
+    if missing_fovs:
+        bin_files.extract_bin_files(bin_file_dir, extraction_dir, include_fovs=missing_fovs,
+                                    panel=panel, intensities=extract_intensities, replace=replace)
+    else:
+        raise Warning("No viable bin files were found in ", bin_file_dir)
+
