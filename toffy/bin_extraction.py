@@ -32,4 +32,3 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensitie
                                     panel=panel, intensities=extract_intensities, replace=replace)
     else:
         raise Warning("No viable bin files were found in ", bin_file_dir)
-
