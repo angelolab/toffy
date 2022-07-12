@@ -120,7 +120,7 @@ class ExtractionQCGenerationCases:
         return cbs, kwargs
 
     def case_extraction_intensities_not_replace(self):
-        cbs, kwargs = self.case_both_callbacks()
+        cbs, kwargs = self.case_all_callbacks()
         kwargs['intensities'] = True
         kwargs['replace'] = False
         return cbs, kwargs
