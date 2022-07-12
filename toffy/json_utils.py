@@ -114,3 +114,35 @@ def write_json_file(json_path, json_object, encoding=None):
 
     with open(json_path, mode='w', encoding=encoding) as jp:
         json.dump(json_object, jp)
+
+
+def split_run_file(tma_dir, run_file_name, file_split: list):
+    """Splits a run json file into smaller fov amount files as defined by the user
+
+    Args:
+        tma_dir (str): path to directory containing tma files
+        run_file_name (str): name of the run file to split
+        file_split (list): list of ints defining how to break up the fovs into new jsons
+
+    Returns:
+        saves the new json files to the tma_dir """
+
+    json_path = os.path.join(tma_dir, run_file_name)
+    full_json = read_json_file(json_path, encoding='utf-8')
+
+    # check list is valid FOV split
+    if not sum(file_split) == len(full_json['fovs']):
+        raise ValueError(
+            "Sum of the provided list does not match the number of FOVs in the run file.")
+
+    # split the run json into smaller files and save to tma_dir
+    start = 0
+    for i in range(0, len(file_split)):
+        json_i = copy.deepcopy(full_json)
+        stop = start+file_split[i]
+        json_i['fovs'] = json_i['fovs'][start:stop]
+        start = start+file_split[i]
+
+        save_path = os.path.join(tma_dir, run_file_name.split('.json')[0] + '_part'
+                                 + str(i+1) + '.json')
+        write_json_file(save_path, json_i, encoding='utf-8')
