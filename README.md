@@ -34,7 +34,10 @@ The [second notebook](./templates/2_create_tma_mibi_run.ipynb) is for TMAs. This
 There are a number of different computational tasks to complete once a MIBI run has finished to ensure everything went smoothly. 
 
 - 3a: real time monitoring. The [MIBI monitoring](./templates/3a_monitor_MIBI_run.ipynb) notebook will monitor an ongoing MIBI run, and begin processing the image data as soon as it is generated. This notebook is being continually be updated as we move more of our processing pipeline to happen in real time as the data is generated.
-- 3b: post-run monitoring. For each step in the monitoring notebook, we have a dedicated notebook that can perform the same tasks once a run is complete. This includes [the image extraction notebook](./templates/extract_bin_file.ipynb) and the [qc metrics notebook](./templates/3b_generate_qc_metrics.ipynb). 
+- 3b - 3d: post-run monitoring. For each step in the monitoring notebook, we have a dedicated notebook that can perform the same tasks once a run is complete. 
+  - 3b: [the image extraction notebook](./templates/extract_bin_file.ipynb) will extract images from bin files that have not already been processed
+  - 3c: [qc metrics notebook](./templates/3c_generate_qc_metrics.ipynb) computes and visualizes the QC metrics for the images
+  - 3d: [median pulse heights notebook](./templates/3d_compute_median_pulse_height.ipynb) generates plots showing median pulse heights for each FOV, along with estimated run time
 
 ### 4. Processing MIBI data
 Once your run has finished, you can begin to process the data to make it ready for analysis. To remove background signal contamination, as well as compensate for channel crosstalk, you can use the [compensation](./templates/4a_compensate_image_data.ipynb) notebook. This will guide you through the Rosetta algorithm, which uses a flow-cytometry style compensation approach to remove spurious signal. 
