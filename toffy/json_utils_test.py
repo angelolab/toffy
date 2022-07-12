@@ -130,3 +130,32 @@ def test_write_json_file():
 
         # Make sure the file written with write_json_file is the same as starting point
         assert newfile_test == moly_json
+
+
+def test_split_run_file():
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        run_file_name = 'test.json'
+        run_file = {'fovs': ['fov1', 'fov2', 'fov3', 'fov4', 'fov5', 'fov6', 'fov7', 'fov8']}
+        json_utils.write_json_file(os.path.join(tmp_dir, run_file_name), run_file, 'utf-8')
+
+        # list not summing to fov amount will raise an error
+        bad_split = [5, 5]
+        with pytest.raises(ValueError, match=r'does not match the number of FOVs'):
+            json_utils.split_run_file(tmp_dir, run_file_name, bad_split)
+
+        # test successful json split
+        good_split = [2, 4, 2]
+        json_utils.split_run_file(tmp_dir, run_file_name, good_split)
+
+        # check the new files exist
+        new_data = {}
+        for i in list(range(1, len(good_split)+1)):
+            new_json = os.path.join(tmp_dir, 'test_part' + str(i) + '.json')
+            new_data['test_part{0}'.format(i)] = json_utils.read_json_file(new_json, 'utf-8')
+            assert os.path.exists(new_json)
+
+        # check for correct fov splitting
+        assert new_data['test_part1']['fovs'] == ['fov1', 'fov2']
+        assert new_data['test_part2']['fovs'] == ['fov3', 'fov4', 'fov5', 'fov6']
+        assert new_data['test_part3']['fovs'] == ['fov7', 'fov8']
