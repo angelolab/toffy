@@ -20,7 +20,7 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensitie
     # filter out moly fovs
     moly_fovs = list_moly_fovs(bin_file_dir)
 
-    print("Previous extracted FOVs: ", ", ".join(extracted_fovs))
+    print("Skipping the following previously extracted FOVs: ", ", ".join(extracted_fovs))
     print("Moly FOVs which will not be extracted: ", ", ".join(moly_fovs))
 
     # extract missing fovs to extraction_dir
