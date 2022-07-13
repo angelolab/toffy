@@ -20,6 +20,7 @@ from toffy.test_utils import (
 def test_build_fov_callback(callbacks, kwargs, data_path):
 
     intensities = kwargs.get('intensities', False)
+    replace = kwargs.get('replace', True)
 
     with tempfile.TemporaryDirectory() as tmp_dir:
 
@@ -40,7 +41,8 @@ def test_build_fov_callback(callbacks, kwargs, data_path):
 
         # just check SMA
         if 'extract_tiffs' in callbacks:
-            check_extraction_dir_structure(extracted_dir, point_names, ['SMA'], intensities)
+            check_extraction_dir_structure(extracted_dir, point_names, ['SMA'],
+                                           intensities, replace)
         if 'generate_qc' in callbacks:
             check_qc_dir_structure(qc_dir, point_names)
         if 'generate_mph' in callbacks:

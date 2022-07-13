@@ -10,6 +10,7 @@ import xarray as xr
 from ark.utils import misc_utils
 
 from mibi_bin_tools.bin_files import extract_bin_files, _write_out
+from mibi_bin_tools.type_utils import any_true
 
 from toffy.qc_comp import compute_qc_metrics_direct, combine_qc_metrics, visualize_qc_metrics
 
@@ -81,8 +82,8 @@ class FovCallbacks:
     __panel: pd.DataFrame = field(default=None, init=False)
     __fov_data: xr.DataArray = field(default=None, init=False)
 
-    def _generate_fov_data(self, panel: pd.DataFrame, intensities=False, time_res=0.0005,
-                           **kwargs):
+    def _generate_fov_data(self, panel: pd.DataFrame, intensities=False, replace=True,
+                           time_res=0.0005, **kwargs):
         """Extracts data from bin files using the given panel
 
         The data and the panel are then cached members of the FovCallbacks object
@@ -92,6 +93,8 @@ class FovCallbacks:
                 Panel used for extraction
             intensities (bool | List[str]):
                 Intensities argument for `mibi_bin_tools.bin_files.extract_bin_files`
+            replace (bool):
+                Whether to replace pulse images with intensity
             time_res (float):
                 Time resolution argument for `mibi_bin_tool.bin_files.extract_bin_files`
             **kwargs (dict):
@@ -103,6 +106,7 @@ class FovCallbacks:
             include_fovs=[self.point_name],
             panel=panel,
             intensities=intensities,
+            replace=replace,
             time_res=time_res
         )
 
@@ -130,6 +134,9 @@ class FovCallbacks:
             self._generate_fov_data(panel, **kwargs)
 
         intensities = kwargs.get('intensities', False)
+        if any_true(intensities) and type(intensities) is not list:
+            intensities = list(self.__fov_data.channel.values)
+
         _write_out(
             img_data=self.__fov_data[0, :, :, :, :].values,
             out_dir=tiff_out_dir,
