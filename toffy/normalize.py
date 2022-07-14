@@ -602,19 +602,26 @@ def check_detector_voltage(run_dir):
     fovs = ns.natsorted(fovs)
     changes_in_voltage = []
 
+    # check for voltage changes and add to list of dictionaries
     for i, fov in enumerate(fovs):
         fov_data = read_json_file(os.path.join(run_dir, fov+'.json'))
+
+        # locate index storing the detector voltage
         for j in range(0, len(fov_data['hvDac'])):
             if fov_data['hvDac'][j]['name'] == 'Detector':
                 index = j
                 break
         fov_voltage = fov_data['hvDac'][index]['currentSetPoint']
+
         if i == 0:
             voltage_level = fov_voltage
+
+        # detector voltage for current fov is different than previous
         elif fov_voltage != voltage_level:
             changes_in_voltage.append({fovs[i - 1]: voltage_level, fovs[i]: fov_voltage})
             voltage_level = fov_voltage
 
+    # non-empty list of chnages will raise an error
     if changes_in_voltage:
         raise ValueError(f'Changes in detector voltage were found during '
                          f'the run: {changes_in_voltage}')
