@@ -135,7 +135,7 @@ def split_run_file(run_dir, run_file_name, file_split: list):
         raise ValueError(
             "Sum of the provided list does not match the number of FOVs in the run file.")
 
-    # split the run json into smaller files and save to tma_dir
+    # split the run json into smaller files and save to run_dir
     start = 0
     for i in range(0, len(file_split)):
         json_i = copy.deepcopy(full_json)
