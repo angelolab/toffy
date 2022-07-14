@@ -5,7 +5,7 @@ from toffy import json_utils
 
 
 def check_detector_voltage(run_dir):
-    """
+    """ Check all FOVs in a run to determine whether the detector voltage stays constant
     Args:
         run_dir(string): path to directory containing json files of all fovs in the run
     Return:
@@ -18,7 +18,7 @@ def check_detector_voltage(run_dir):
     for i, fov in enumerate(fovs):
         fov_data = json_utils.read_json_file(os.path.join(run_dir, fov+'.json'))
         for j in range(0, len(fov_data['hvDac'])):
-            if fov_data['hvDac'][i]['name'] == 'Detector':
+            if fov_data['hvDac'][j]['name'] == 'Detector':
                 index = j
                 break
         fov_voltage = fov_data['hvDac'][index]['currentSetPoint']
