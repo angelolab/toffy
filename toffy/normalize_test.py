@@ -452,3 +452,31 @@ def test_normalize_image_data(tmpdir, metrics):
         normalize.normalize_image_data(img_dir=img_dir, norm_dir=norm_dir,
                                        pulse_height_dir=pulse_height_dir, panel_info=panel,
                                        norm_func_path=func_path)
+
+
+def test_check_detector_voltage():
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+
+        for i in list(range(1, 4)):
+            fov_data = {"hvDac": [{"name": "Detector", "currentSetPoint": 1000}]}
+            json_path = os.path.join(tmp_dir, 'fov-' + str(i) + '.json')
+            test_utils._make_blank_file(tmp_dir, 'fov-' + str(i) + '.bin')
+            write_json_file(json_path, fov_data)
+
+        # constant voltage should run smoothly
+            normalize.check_detector_voltage(tmp_dir)
+
+        for i in list(range(4, 11)):
+            if i < 7:
+                fov_data = {"hvDac": [{"name": "Detector", "currentSetPoint": 2000}]}
+            else:
+                fov_data = {"hvDac": [{"name": "Detector", "currentSetPoint": 3000}]}
+            json_path = os.path.join(tmp_dir, 'fov-' + str(i) + '.json')
+            test_utils._make_blank_file(tmp_dir, 'fov-' + str(i) + '.bin')
+            write_json_file(json_path, fov_data)
+
+        # change in voltage should raise an error
+        with pytest.raises(ValueError,
+                           match="{'fov-3': 1000, 'fov-4': 2000}, {'fov-6': 2000, 'fov-7': 3000}"):
+            normalize.check_detector_voltage(tmp_dir)

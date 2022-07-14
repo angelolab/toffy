@@ -599,6 +599,7 @@ def check_detector_voltage(run_dir):
     """
 
     fovs = remove_file_extensions(io_utils.list_files(run_dir, substrs='.bin'))
+    fovs = ns.natsorted(fovs)
     changes_in_voltage = []
 
     for i, fov in enumerate(fovs):
