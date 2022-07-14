@@ -16,6 +16,7 @@ from seaborn import algorithms as algo
 from seaborn.utils import ci
 
 from ark.utils import io_utils, load_utils, misc_utils
+from mibi_bin_tools.io_utils import remove_file_extensions
 from mibi_bin_tools.bin_files import extract_bin_files, get_median_pulse_height
 from mibi_bin_tools.panel_utils import make_panel
 
@@ -587,3 +588,32 @@ def normalize_image_data(img_dir, norm_dir, pulse_height_dir, panel_info,
         # normalize and save
         normalize_fov(img_data=images, norm_vals=norm_vals, norm_dir=norm_dir, fov=fov,
                       channels=channels, extreme_vals=extreme_vals)
+
+
+def check_detector_voltage(run_dir):
+    """ Check all FOVs in a run to determine whether the detector voltage stays constant
+    Args:
+        run_dir(string): path to directory containing json files of all fovs in the run
+    Return:
+        raise error if changes in voltage were found between fovs
+    """
+
+    fovs = remove_file_extensions(io_utils.list_files(run_dir, substrs='.bin'))
+    changes_in_voltage = []
+
+    for i, fov in enumerate(fovs):
+        fov_data = read_json_file(os.path.join(run_dir, fov+'.json'))
+        for j in range(0, len(fov_data['hvDac'])):
+            if fov_data['hvDac'][j]['name'] == 'Detector':
+                index = j
+                break
+        fov_voltage = fov_data['hvDac'][index]['currentSetPoint']
+        if i == 0:
+            voltage_level = fov_voltage
+        elif fov_voltage != voltage_level:
+            changes_in_voltage.append({fovs[i - 1]: voltage_level, fovs[i]: fov_voltage})
+            voltage_level = fov_voltage
+
+    if changes_in_voltage:
+        raise ValueError(f'Changes in detector voltage were found during '
+                         f'the run: {changes_in_voltage}')
