@@ -133,7 +133,8 @@ def split_run_file(run_dir, run_file_name, file_split: list):
     # check list is valid FOV split
     if not sum(file_split) == len(full_json['fovs']):
         raise ValueError(
-            "Sum of the provided list does not match the number of FOVs in the run file.")
+            f"Sum of the provided list does not match the number of FOVs in the run file.\n"
+            f"list sum: {sum(file_split)}, total FOVs in the JSON: {len(full_json['fovs'])}")
 
     # split the run json into smaller files and save to run_dir
     start = 0

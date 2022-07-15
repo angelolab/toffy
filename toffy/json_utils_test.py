@@ -153,7 +153,6 @@ def test_split_run_file():
         for i in list(range(1, len(good_split)+1)):
             new_json = os.path.join(tmp_dir, 'test_part' + str(i) + '.json')
             new_data['test_part{0}'.format(i)] = json_utils.read_json_file(new_json, 'utf-8')
-            assert os.path.exists(new_json)
 
         # check for correct fov splitting
         assert new_data['test_part1']['fovs'] == ['fov1', 'fov2']
