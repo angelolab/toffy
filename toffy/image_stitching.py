@@ -3,7 +3,7 @@ import shutil
 import natsort as ns
 import skimage.io as io
 
-from ark.utils import data_utils, load_utils, io_utils
+from ark.utils import data_utils, load_utils, io_utils, misc_utils
 from mibi_bin_tools.io_utils import remove_file_extensions
 
 
@@ -20,6 +20,9 @@ def stitch_images(img_dir, channels=None, max_img_size=2048, num_cols=7):
     if channels is None:
         channels = remove_file_extensions(io_utils.list_files(
             dir_name=os.path.join(img_dir, folders[0]), substrs='.tiff'))
+    else:
+        misc_utils.verify_in_list(channel_inputs=channels, valid_channels=remove_file_extensions(
+            io_utils.list_files(dir_name=os.path.join(img_dir, folders[0]), substrs='.tiff')))
 
     qc_fovs = []
     for folder in folders:
