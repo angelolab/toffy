@@ -478,5 +478,6 @@ def test_check_detector_voltage():
 
         # change in voltage should raise an error
         with pytest.raises(ValueError,
-                           match="{'fov-3': 1000, 'fov-4': 2000}, {'fov-6': 2000, 'fov-7': 3000}"):
+                           match="Between fov-3 and fov-4 the voltage changed from 1000 to 2000.\n"
+                                 "Between fov-6 and fov-7 the voltage changed from 2000 to 3000."):
             normalize.check_detector_voltage(tmp_dir)

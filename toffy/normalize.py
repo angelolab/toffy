@@ -621,7 +621,13 @@ def check_detector_voltage(run_dir):
             changes_in_voltage.append({fovs[i - 1]: voltage_level, fovs[i]: fov_voltage})
             voltage_level = fov_voltage
 
-    # non-empty list of chnages will raise an error
+    err_str = ''
+    for i, change in enumerate(changes_in_voltage):
+        keys = list(change.keys())
+        err_i = 'Between {0} and {1} the voltage changed from {2} to {3}.'\
+            .format(keys[0], keys[1], change[keys[0]], change[keys[1]])
+        err_str = err_str + '\n' + err_i
+
+    # non-empty list of changes will raise an error
     if changes_in_voltage:
-        raise ValueError(f'Changes in detector voltage were found during '
-                         f'the run: {changes_in_voltage}')
+        raise ValueError('Changes in detector voltage were found during the run:\n' + err_str)
