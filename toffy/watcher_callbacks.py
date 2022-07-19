@@ -96,6 +96,7 @@ class RunCallbacks:
 
         stitch_images(img_dir, **viz_kwargs)
 
+
 @dataclass
 class FovCallbacks:
     run_folder: str
