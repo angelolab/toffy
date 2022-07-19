@@ -379,7 +379,9 @@ class WatcherCases:
                 replace=replace),
             check_qc_dir_structure,
             check_mph_dir_structure,
-            check_stitched_dir_structure
+            functools.partial(
+                check_stitched_dir_structure,
+                channels=list(panel['Target']))
         ]
 
         kwargs = {'panel': panel, 'intensities': intensity, 'replace': replace}
