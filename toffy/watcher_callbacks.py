@@ -16,12 +16,15 @@ from toffy.qc_comp import compute_qc_metrics_direct, combine_qc_metrics, visuali
 
 from toffy.mph_comp import compute_mph_metrics, combine_mph_metrics, visualize_mph
 
+from toffy.image_stitching import stitch_images
+
 from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 
 
 RUN_PREREQUISITES = {
     'plot_qc_metrics': set(['generate_qc']),
-    'plot_mph_metrics': set(['generate_mph'])
+    'plot_mph_metrics': set(['generate_mph']),
+    'image_stitching': set(['extract_tiffs'])
 }
 
 
@@ -74,6 +77,24 @@ class RunCallbacks:
         mph_df = combine_mph_metrics(mph_out_dir, return_data=True)
         visualize_mph(mph_df, plot_dir, **viz_kwargs)
 
+    def image_stitching(self, img_dir, **kwargs):
+        """Stitches individual FOV channel images together into one tiff
+
+        Args:
+            img_dir (str): directory containing extracted images
+            **kwargs (Dict[str, Any]):
+                Additional arguments for `toffy.image_stitching.stitch_images`.
+                Accepted kwargs are
+
+             - channels
+             - max_img_size
+             - num_cols
+        """
+        # filter kwargs
+        valid_kwargs = ['channels', 'max_img_size', 'num_cols']
+        viz_kwargs = {k: v for k, v in kwargs.items() if k in valid_kwargs}
+
+        stitch_images(img_dir, **viz_kwargs)
 
 @dataclass
 class FovCallbacks:
