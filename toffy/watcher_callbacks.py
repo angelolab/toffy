@@ -77,11 +77,11 @@ class RunCallbacks:
         mph_df = combine_mph_metrics(mph_out_dir, return_data=True)
         visualize_mph(mph_df, plot_dir, **viz_kwargs)
 
-    def image_stitching(self, img_dir, **kwargs):
+    def image_stitching(self, tiff_out_dir, **kwargs):
         """Stitches individual FOV channel images together into one tiff
 
         Args:
-            img_dir (str): directory containing extracted images
+            tiff_out_dir (str): directory containing extracted images
             **kwargs (Dict[str, Any]):
                 Additional arguments for `toffy.image_stitching.stitch_images`.
                 Accepted kwargs are
@@ -94,7 +94,7 @@ class RunCallbacks:
         valid_kwargs = ['channels', 'max_img_size', 'num_cols']
         viz_kwargs = {k: v for k, v in kwargs.items() if k in valid_kwargs}
 
-        stitch_images(img_dir, **viz_kwargs)
+        stitch_images(tiff_out_dir, **viz_kwargs)
 
 
 @dataclass
