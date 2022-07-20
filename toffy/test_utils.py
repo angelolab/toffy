@@ -228,9 +228,9 @@ def check_mph_dir_structure(plot_dir: str, point_names: List[str], combined: boo
         assert(os.path.exists(os.path.join(plot_dir, 'fov_vs_mph.jpg')))
 
 
-def check_stitched_dir_structure(ext_dir: str, channels: List[str]):
+def check_stitched_dir_structure(stitched_dir: str, channels: List[str]):
     for channel in channels:
-        assert(os.path.exists(os.path.join(ext_dir, 'stitched_images', f'{channel}.tiff')))
+        assert(os.path.exists(os.path.join(stitched_dir, f'{channel}.tiff')))
 
 
 def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False, bad=False):
