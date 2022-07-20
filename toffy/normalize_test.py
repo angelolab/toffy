@@ -386,6 +386,9 @@ def test_normalize_fov(tmpdir):
     norm_imgs = load_utils.load_imgs_from_tree(norm_dir, channels=chans)
     assert np.allclose(data_xr.values, norm_imgs.values * norm_vals)
 
+    # check correct data type
+    assert norm_imgs.dtype == 'float32'
+
     # check that log file has correct values
     log_file = pd.read_csv(os.path.join(norm_dir, 'fov0', 'normalization_coefs.csv'))
     assert np.array_equal(log_file['channels'], chans)
