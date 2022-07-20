@@ -56,6 +56,7 @@ def test_build_callbacks(callbacks, kwargs, data_path):
     with tempfile.TemporaryDirectory() as tmp_dir:
 
         extracted_dir = os.path.join(tmp_dir, 'extracted')
+        stitched_dir = os.path.join(extracted_dir, 'stitched_images')
         qc_dir = os.path.join(tmp_dir, 'qc')
         kwargs['tiff_out_dir'] = extracted_dir
         kwargs['qc_out_dir'] = qc_dir
@@ -77,4 +78,4 @@ def test_build_callbacks(callbacks, kwargs, data_path):
         check_extraction_dir_structure(extracted_dir, point_names, ['SMA'])
         check_qc_dir_structure(qc_dir, point_names, 'save_dir' in kwargs)
         check_mph_dir_structure(qc_dir, point_names, combined=True)
-        check_stitched_dir_structure(extracted_dir, ['SMA'])
+        check_stitched_dir_structure(stitched_dir, ['SMA'])
