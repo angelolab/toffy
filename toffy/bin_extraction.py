@@ -1,3 +1,5 @@
+import natsort as ns
+
 from toffy.json_utils import list_moly_fovs
 from mibi_bin_tools import bin_files, io_utils
 
@@ -26,6 +28,7 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensitie
     # extract missing fovs to extraction_dir
     non_moly_fovs = list(set(fovs).difference(moly_fovs))
     missing_fovs = list(set(non_moly_fovs).difference(extracted_fovs))
+    missing_fovs = ns.natsorted(missing_fovs)
 
     if missing_fovs:
         bin_files.extract_bin_files(bin_file_dir, extraction_dir, include_fovs=missing_fovs,
