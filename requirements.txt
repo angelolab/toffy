@@ -7,4 +7,3 @@ natsort>=0.8
 numpy>=1.22,<2
 watchdog>=2.1.6,<3
 traitlets>= 5.2.2
-natsort>= 0.8
