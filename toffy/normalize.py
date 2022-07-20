@@ -520,8 +520,8 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
                       'recommended: {}'.format(fov, bad_channels))
 
     # correct images and save
+    norm_vals = norm_vals.astype(img_data.dtype)
     normalized_images = img_data / norm_vals.reshape((1, 1, 1, len(norm_vals)))
-    normalized_images = normalized_images.astype(np.float32)
 
     for idx, chan in enumerate(channels):
         io.imsave(os.path.join(output_fov_dir, chan + '.tiff'),
