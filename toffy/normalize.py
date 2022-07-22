@@ -16,8 +16,11 @@ from seaborn import algorithms as algo
 from seaborn.utils import ci
 
 from ark.utils import io_utils, load_utils, misc_utils
+from mibi_bin_tools.io_utils import remove_file_extensions
 from mibi_bin_tools.bin_files import extract_bin_files, get_median_pulse_height
 from mibi_bin_tools.panel_utils import make_panel
+
+from toffy.json_utils import read_json_file, write_json_file
 
 
 def write_counts_per_mass(base_dir, output_dir, fov, masses, start_offset=0.5,
@@ -284,9 +287,7 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
 
     # save the fitted curve
     norm_json = {'name': 'exp', 'weights': coeffs.tolist()}
-
-    with open(save_path, 'w') as sp:
-        json.dump(norm_json, sp)
+    write_json_file(json_path=save_path, json_object=norm_json)
 
 
 def identify_outliers(x_vals, y_vals, obj_func, outlier_fraction=0.1):
@@ -418,8 +419,7 @@ def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=10):
     mass_json = {'name': obj_func, 'weights': weights.tolist()}
     mass_path = os.path.join(save_dir, str(mass) + '_norm_func.json')
 
-    with open(mass_path, 'w') as mp:
-        json.dump(mass_json, mp)
+    write_json_file(json_path=mass_path, json_object=mass_json)
 
 
 def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
@@ -445,9 +445,7 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
     for mass in masses:
         # load channel-specific prediction function
         mass_path = os.path.join(obj_func_dir, str(mass) + '_norm_func.json')
-
-        with open(mass_path, 'r') as mp:
-            mass_json = json.load(mp)
+        mass_json = read_json_file(mass_path)
 
         # compute predicted MPH
         name, weights = mass_json['name'], mass_json['weights']
@@ -522,6 +520,7 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
                       'recommended: {}'.format(fov, bad_channels))
 
     # correct images and save
+    norm_vals = norm_vals.astype(img_data.dtype)
     normalized_images = img_data / norm_vals.reshape((1, 1, 1, len(norm_vals)))
 
     for idx, chan in enumerate(channels):
@@ -556,8 +555,7 @@ def normalize_image_data(img_dir, norm_dir, pulse_height_dir, panel_info,
                          "necessary function before you can normalize your data")
 
     # create normalization function for mapping MPH to counts
-    with open(norm_func_path, 'r') as cf:
-        norm_json = json.load(cf)
+    norm_json = read_json_file(norm_func_path)
 
     img_fovs = io_utils.list_folders(img_dir, 'fov')
 
@@ -591,3 +589,46 @@ def normalize_image_data(img_dir, norm_dir, pulse_height_dir, panel_info,
         # normalize and save
         normalize_fov(img_data=images, norm_vals=norm_vals, norm_dir=norm_dir, fov=fov,
                       channels=channels, extreme_vals=extreme_vals)
+
+
+def check_detector_voltage(run_dir):
+    """ Check all FOVs in a run to determine whether the detector voltage stays constant
+    Args:
+        run_dir(string): path to directory containing json files of all fovs in the run
+    Return:
+        raise error if changes in voltage were found between fovs
+    """
+
+    fovs = remove_file_extensions(io_utils.list_files(run_dir, substrs='.bin'))
+    fovs = ns.natsorted(fovs)
+    changes_in_voltage = []
+
+    # check for voltage changes and add to list of dictionaries
+    for i, fov in enumerate(fovs):
+        fov_data = read_json_file(os.path.join(run_dir, fov+'.json'))
+
+        # locate index storing the detector voltage
+        for j in range(0, len(fov_data['hvDac'])):
+            if fov_data['hvDac'][j]['name'] == 'Detector':
+                index = j
+                break
+        fov_voltage = fov_data['hvDac'][index]['currentSetPoint']
+
+        if i == 0:
+            voltage_level = fov_voltage
+
+        # detector voltage for current fov is different than previous
+        elif fov_voltage != voltage_level:
+            changes_in_voltage.append({fovs[i - 1]: voltage_level, fovs[i]: fov_voltage})
+            voltage_level = fov_voltage
+
+    err_str = ''
+    for i, change in enumerate(changes_in_voltage):
+        keys = list(change.keys())
+        err_i = 'Between {0} and {1} the voltage changed from {2} to {3}.'\
+            .format(keys[0], keys[1], change[keys[0]], change[keys[1]])
+        err_str = err_str + '\n' + err_i
+
+    # non-empty list of changes will raise an error
+    if changes_in_voltage:
+        raise ValueError('Changes in detector voltage were found during the run:\n' + err_str)

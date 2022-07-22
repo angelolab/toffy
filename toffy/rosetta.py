@@ -14,6 +14,7 @@ from ark.utils.io_utils import list_folders, validate_paths, list_files
 from ark.utils.misc_utils import verify_same_elements, verify_in_list
 
 from toffy.streak_detection import streak_correction
+from toffy.json_utils import read_json_file
 
 
 def transform_compensation_json(json_path, comp_mat_path):
@@ -26,8 +27,7 @@ def transform_compensation_json(json_path, comp_mat_path):
     returns:
         pd.DataTable: matrix with sources channels as rows and target channels as columns"""
 
-    with open(json_path) as f:
-        data = json.load(f)['Data']
+    data = read_json_file(json_path)['Data']
 
     comp_mat = pd.read_csv(comp_mat_path, index_col=0)
 
