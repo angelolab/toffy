@@ -118,13 +118,13 @@ class ExtractionQCGenerationCases:
         kwargs['intensities'] = True
         kwargs['replace'] = True
         return cbs, kwargs
-
+    '''
     def case_extraction_intensities_not_replace(self):
         cbs, kwargs = self.case_all_callbacks()
         kwargs['intensities'] = True
         kwargs['replace'] = False
         return cbs, kwargs
-
+    '''
     @pytest.mark.xfail(raises=ValueError)
     def case_missing_panel(self):
         cbs, _ = self.case_all_callbacks()
