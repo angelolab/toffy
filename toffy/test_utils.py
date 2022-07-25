@@ -229,6 +229,18 @@ def check_mph_dir_structure(plot_dir: str, point_names: List[str], combined: boo
 
 
 def check_stitched_dir_structure(stitched_dir: str, channels: List[str]):
+    """Checks extraction directory for stitching strucure
+
+    Args:
+        stitched_dir (str):
+            Folder containing stitched output
+        channels (list):
+            List of expected channel names
+
+    Raises:
+        AssertionError:
+            Assertion error on missing expected tiff
+    """
     for channel in channels:
         assert(os.path.exists(os.path.join(stitched_dir, f'{channel}.tiff')))
 
