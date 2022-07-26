@@ -32,7 +32,7 @@ def stitch_images(tiff_out_dir, channels=None, max_img_size=2048, num_cols=7):
     folders = [folder for folder in folders if folder not in qc_fovs]
 
     image_data = load_utils.load_imgs_from_tree(tiff_out_dir, fovs=folders, channels=channels,
-                                                max_image_size=max_img_size)
+                                                max_image_size=max_img_size, dtype='uint32')
     stitched = data_utils.stitch_images(image_data, num_cols)
 
     # recreate directory
