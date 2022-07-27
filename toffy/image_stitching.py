@@ -17,6 +17,8 @@ def get_max_img_size(run_dir):
     run_name = os.path.basename(run_dir)
     run_file_path = os.path.join(run_dir, run_name + '.json')
 
+    print('--------- RUN FILE PATH ' + run_file_path)
+
     # retrieve all pixel width dimensions of the fovs
     run_data = json_utils.read_json_file(run_file_path)
     img_sizes = []
