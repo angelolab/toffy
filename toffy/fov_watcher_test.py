@@ -42,8 +42,8 @@ def _slow_copy_sample_tissue_data(dest: str, delta: int = 10, one_blank: bool = 
 
 TISSUE_RUN_JSON_SPOOF = {
     'fovs': [
-        {'runOrder': 1, 'scanCount': 1},
-        {'runOrder': 2, 'scanCount': 1},
+        {'runOrder': 1, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}},
+        {'runOrder': 2, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}},
     ],
 }
 

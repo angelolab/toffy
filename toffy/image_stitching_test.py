@@ -1,18 +1,30 @@
 import os
 import tempfile
 import pytest
-from pathlib import Path
+import json
 
-from toffy import image_stitching
+from toffy import image_stitching, json_utils
 from ark.utils import io_utils, test_utils
 
 
 def test_get_max_img_size():
-    run_dir = os.path.join(Path(__file__).parent, 'data', 'tissue')
 
-    # test success
-    max_img_size = image_stitching.get_max_img_size(run_dir)
-    assert max_img_size == 32
+    RUN_JSON_SPOOF = {
+        'fovs': [
+            {'runOrder': 1, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}},
+            {'runOrder': 2, 'scanCount': 1, 'frameSizePixels': {'width': 16, 'height': 16}},
+        ],
+    }
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        test_dir = os.path.join(tmp_dir, 'data', 'test_run')
+        os.makedirs(test_dir)
+        json_path = os.path.join(test_dir, 'test_run.json')
+        json_utils.write_json_file(json_path, RUN_JSON_SPOOF)
+
+        # test success
+        max_img_size = image_stitching.get_max_img_size(test_dir)
+        assert max_img_size == 32
 
 
 def test_stitch_images(mocker):
