@@ -73,7 +73,7 @@ def test_build_callbacks(callbacks, kwargs, data_path):
 
         for name in point_names:
             fcb(data_path, name)
-        rcb()
+        rcb(data_path)
 
         check_extraction_dir_structure(extracted_dir, point_names, ['SMA'])
         check_qc_dir_structure(qc_dir, point_names, 'save_dir' in kwargs)
