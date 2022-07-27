@@ -9,7 +9,7 @@ from ark.utils import io_utils, test_utils
 def test_get_max_img_size():
     run_dir = os.path.join('data', 'tissue')
 
-    #test sucess
+    # test success
     max_img_size = image_stitching.get_max_img_size(run_dir)
     assert max_img_size == 32
 

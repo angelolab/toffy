@@ -9,7 +9,6 @@ from ark.utils import data_utils, load_utils, io_utils, misc_utils
 from mibi_bin_tools.io_utils import remove_file_extensions
 
 
-# helper function that scans the run json for max image size, key = frameSize
 def get_max_img_size(run_dir):
     """Retrieves the maximum FOV image size listed in the fun file
         Args:
