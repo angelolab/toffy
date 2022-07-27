@@ -39,6 +39,7 @@ def make_batch_effect_plot(data_dir,
         channels = list(data.channels.values)
         if exclude_channels:
             channels = [x for x in channels if x not in exclude_channels]
+        
         plotting_df = pd.DataFrame(columns=["sample", "channel", "tma", "99.9th_percentile"])
    
         for j in range(len(channels)):
