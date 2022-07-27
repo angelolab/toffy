@@ -1,13 +1,14 @@
 import os
 import tempfile
 import pytest
+from pathlib import Path
 
 from toffy import image_stitching
 from ark.utils import io_utils, test_utils
 
 
 def test_get_max_img_size():
-    run_dir = os.path.join('data', 'tissue')
+    run_dir = os.path.join(Path(__file__).parent, 'data', 'tissue')
 
     # test success
     max_img_size = image_stitching.get_max_img_size(run_dir)
