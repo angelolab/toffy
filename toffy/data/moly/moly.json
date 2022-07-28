@@ -1,0 +1,23 @@
+{
+  "id": "218fb4de-31b8-4ea1-b5a9-a9e9a7f7cb05",
+  "name": "2022-07-04_NBL_TMA2_part1",
+  "status": "completed",
+  "fovs": [
+    {"run":{"id":"639c8d8f-a885-8c0e-b935-1485ffcb229c","name":"2022-01-22_adam_control_moly_2700V","status":"inProgress","opticalImage":{"id":223,"originalFilename":"220123_014036_0000000045_CAM1_OK_cropped.bmp","path":"/mnt/data/ICB/optical-image/2022-01-22T08-39-50.bmp","format":"image/bmp","imageCaptureTimestampMillis":1642869590415,"slideId":206,"customProject":null,"customSlide":null,"customSection":null,"uncroppedOriginalFilename":"220123_014036_0000000045_CAM1_OK.bmp","uncroppedPath":"/mnt/data/ICB/optical-image/2022-01-22T08-39-50_uncropped.bmp"}},"scanCount":1,"runOrder":1,"timingChoice":10,"timingDescription":"0.5 ms","fovSizeMicrons":200,"standardTarget":"Molybdenum Foil","imagingPreset":{"preset":"Tuning","aperture":"3","displayName":"QC - 100µm","defaults":{"timingChoice":7}},"fullTiming":{"id":10,"description":"0.5 ms","tofPeriodNanoS":10000,"pushPull":{"active":true,"delayNanoS":1000,"widthNanoS":700,"polarity":1},"flapper":{"active":true,"delayNanoS":880,"widthNanoS":4000,"polarity":-1},"pulse":{"active":true,"delayNanoS":1000,"widthNanoS":700,"polarity":1},"sp":{"active":true,"delayNanoS":3800,"widthNanoS":500,"polarity":1},"tofApp":{"triggerPerPixel":50,"recordLength":13800,"triggerDelay":0,"triggerThresholdVoltage":1300,"triggerResetVoltage":0,"filterBand":[0,0]},"isActive":true,"massCalibration":{"masses":[88.905848,175.9426],"bins":[7264,12383],"massGain":0.6673452885569623,"massOffset":-2.6603918959324235,"timeResolution":0.5,"timeResolutionNanoS":0.5}},"scans":[{"id":"45b5e59c-4afc-4978-b247-baa2a32b336f","backupStatus":"queued","acquisitionStatus":"inProgress","fovOrder":1,"acquisitionStart":1642872400462,"acquisitionEnd":1642872425573}],"massStart":-0.3,"massStop":0.3,"backgroundThresholds":"","id":"28ac006c-4fef-4d8d-9ff6-d48621ebc14f","centerPointMicrons":{"x":12897,"y":17545},"centerPointPixels":{"x":581.0819941414325,"y":868.9430896889305},"frameSizePixels":{"width":32,"height":32},"dwellTimeMillis":0.5,"backupStatus":"wontDo","uploadStatus":"wontDo","uploadCountsStatus":"queued","processStatus":"wontDo","estimatedSizeBytes":1740800,"status":"inProgress","completedScans":0,"triggerCount":51200,"estimatedTimeMillis":512,"acquisitionStart":1642872391628,"tiffName":"fov-1.tiff","tiffRelativePath":"2022-01-22_adam_control_moly_2700V/fov-1.tiff","mibitrackerFovId":"FOV1","standardTargetId":2,"standardTargetParameters":{"x":14500,"y":-10710,"leftOffset":-0.3,"rightOffset":0.3,"masses":[92,98]},"spectrumFileName":"fov-1-scan-1_spectrum.csv"}
+  ],
+  "opticalImage": {
+    "id": 200,
+    "originalFilename": "220702_011346_0000000170_CAM1_OK_cropped.jpg",
+    "path": "/mnt/data/ICB/optical-image/2022-07-01T09-15-01.jpg",
+    "format": "image/jpeg",
+    "imageCaptureTimestampMillis": 1656692101451,
+    "slideId": 236,
+    "customProject": null,
+    "customSlide": null,
+    "customSection": null,
+    "uncroppedOriginalFilename": "220702_011346_0000000170_CAM1_OK.jpg",
+    "uncroppedPath": "/mnt/data/ICB/optical-image/2022-07-01T09-15-01_uncropped.jpg"
+  },
+  "acquisitionStart": 1656962231231,
+  "acquisitionEnd": 1657004210656
+}

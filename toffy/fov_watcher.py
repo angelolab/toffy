@@ -231,7 +231,7 @@ class FOV_EventHandler(FileSystemEventHandler):
                 f'Running {self.run_func.__name__} on whole run\n'
             )
 
-            self.run_func()
+            self.run_func(self.run_folder)
 
 
 def start_watcher(run_folder: str, log_folder: str, fov_callback: Callable[[str, str], None],

@@ -93,7 +93,7 @@ def generate_sample_fovs_list(fov_coords, fov_names, fov_sizes):
 # generation parameters for the extraction/qc callback build
 # this should be limited to the panel, foldernames, and kwargs
 FOV_CALLBACKS = ('extract_tiffs', 'generate_qc', 'generate_mph')
-RUN_CALLBACKS = ('plot_qc_metrics', 'plot_mph_metrics')
+RUN_CALLBACKS = ('plot_qc_metrics', 'plot_mph_metrics', 'image_stitching')
 
 
 class ExtractionQCGenerationCases:
@@ -226,6 +226,23 @@ def check_mph_dir_structure(plot_dir: str, point_names: List[str], combined: boo
     if combined:
         assert(os.path.exists(os.path.join(plot_dir, 'mph_pulse_combined.csv')))
         assert(os.path.exists(os.path.join(plot_dir, 'fov_vs_mph.jpg')))
+
+
+def check_stitched_dir_structure(stitched_dir: str, channels: List[str]):
+    """Checks extraction directory for stitching strucure
+
+    Args:
+        stitched_dir (str):
+            Folder containing stitched output
+        channels (list):
+            List of expected channel names
+
+    Raises:
+        AssertionError:
+            Assertion error on missing expected tiff
+    """
+    for channel in channels:
+        assert(os.path.exists(os.path.join(stitched_dir, f'{channel}.tiff')))
 
 
 def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False, bad=False):
@@ -373,13 +390,16 @@ class WatcherCases:
                 intensities=intensity,
                 replace=replace),
             check_qc_dir_structure,
-            check_mph_dir_structure
+            check_mph_dir_structure,
+            functools.partial(
+                check_stitched_dir_structure,
+                channels=list(panel['Target']))
         ]
 
         kwargs = {'panel': panel, 'intensities': intensity, 'replace': replace}
 
         return (
-            ['plot_qc_metrics', 'plot_mph_metrics'],
+            ['plot_qc_metrics', 'plot_mph_metrics', 'image_stitching'],
             ['extract_tiffs'],
             kwargs,
             validators
