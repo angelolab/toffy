@@ -42,6 +42,8 @@ def stitch_images(tiff_out_dir, run_dir, channels=None):
         shutil.rmtree(stitched_dir)
 
     folders = io_utils.list_folders(tiff_out_dir)
+    if 'intensities' in folders:
+        folders.remove('intensities')
     folders = ns.natsorted(folders)
 
     # retrieve all extracted channel names, or verify the list provided
