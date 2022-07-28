@@ -4,24 +4,26 @@ The toffy repo is designed to simplify the process of generating and processing 
 This repo is currently in beta testing. None of the code has been published yet, and we will be making breaking changes frequently. If you find bugs, please [open an issue](https://github.com/angelolab/toffy/issues/new/choose). If you have questions or want to collaborate, please reach out to Noah (nfgreen@stanford.edu)
 
 ## Table of Contents
-- [Overview](#overview)
-  - [1. Using toffy for the first time](#1-using-toffy-for-the-first-time)
-  - [2. Setting up a MIBI run](#2-setting-up-a-mibi-run)
-  - [3. Evaluating a MIBI run](#3-evaluating-a-mibi-run)
-  - [4. Processing data after a MIBI run](#4-processing-mibi-data)
-  - [5. Formatting data for downstream analysis](#5-formatting-mibi-runs-for-analysis)
-- [Installation](#installation)
-  - [Requirements for specific operating systems](#requirements-for-specific-operating-systems)
-    - [Windows](#windows)
-    - [macOS](#macos)
-  - [Setting up the virtual environment](#setting-up-the-virtual-environment)
-  - [Using the repo](#using-the-repo)
-  - [Updating the repo](#updating-the-repo)
-- [Panel format](#panel-format)
-- [Questions?](#questions)
+- [toffy](#toffy)
+  - [Table of Contents](#table-of-contents)
+  - [Overview](#overview)
+    - [1. Using toffy for the first time](#1-using-toffy-for-the-first-time)
+    - [2. Setting up a MIBI run](#2-setting-up-a-mibi-run)
+    - [3. Evaluating a MIBI run](#3-evaluating-a-mibi-run)
+    - [4. Processing data after a MIBI run](#4-processing-data-after-a-mibi-run)
+    - [5. Formatting data for downstream analysis](#5-formatting-data-for-downstream-analysis)
+  - [Installation](#installation)
+    - [Requirements for specific operating systems](#requirements-for-specific-operating-systems)
+      - [Windows](#windows)
+      - [macOS](#macos)
+    - [Setting up the virtual environment](#setting-up-the-virtual-environment)
+    - [Using the repo](#using-the-repo)
+    - [Updating the repo](#updating-the-repo)
+  - [Panel format](#panel-format)
+  - [Questions?](#questions)
 
 ## Overview
-The repo has four main parts, with associated code and jupyter notebooks for each
+The repo has four main parts, with associated code and jupyter notebooks for each.
 
 ### 1. Using toffy for the first time
 The first time you use toffy on one of the commercial instruments, you'll need to perform some basic tasks to ensure everything is working properly. The [set up](./templates/1_set_up_toffy.ipynb) jupyter notebook will guide you through this process
@@ -40,17 +42,17 @@ There are a number of different computational tasks to complete once a MIBI run 
   - 3c: [qc metrics notebook](./templates/3c_generate_qc_metrics.ipynb) computes and visualizes the QC metrics for the images
   - 3d: [median pulse heights notebook](./templates/3d_compute_median_pulse_height.ipynb) generates plots showing median pulse heights for each FOV, along with estimated run time
 
-### 4. Processing MIBI data
+### 4. Processing data after a MIBI run
 Once your run has finished, you can begin to process the data to make it ready for analysis. To remove background signal contamination, as well as compensate for channel crosstalk, you can use the [compensation](./templates/4a_compensate_image_data.ipynb) notebook. This will guide you through the Rosetta algorithm, which uses a flow-cytometry style compensation approach to remove spurious signal. 
 
 Following compensation, you will want to normalize your images to ensure consistent intensity across the run. You can use the [normalization](./templates/4b_normalize_image_data.ipynb) notebook to perform this step. 
 
 
-### 5. Formatting MIBI runs for analysis
+### 5. Formatting data for downstream analysis
 After the image processing and cleanup from *toffy* is complete, the final step is to format your data to faciliate easy downstream analysis. The [reorganization](./templates/5_rename_and_reorganize.ipynb) notebook will walk you through the process of renaming FOVs, combining partial runs, and consolidating your images.
 
 ## Installation
-In order to get toffy working, you'll need to first install the repo. 
+In order to get toffy working, you'll need to first install some dependencies and the repository itself.
 
 ### Requirements for specific operating systems
 The process of setting up is largely the same for different operating systems. However, there are a few key differences. 
@@ -61,6 +63,26 @@ The process of setting up is largely the same for different operating systems. H
 Go to  https://visualstudio.microsoft.com/visual-cpp-build-tools/ and click 'Download Build Tools'.
 Open the installer and make sure you are installing the package labeled *C++ build tools*, then follow the prompts.
     - **(If installing on CAC, you will need the admin password and must contact support@ionpath.com)**
+    - **Git - CAC:** We highly recommend installing git system-wide on the CAC, by downloading the installation utility [here](https://git-scm.com/downloads).
+       1. Under Standalone Installer, click the 64-bit Git for Windows Setup link to download the proper installer.
+       2. Run the Git setup `.exe` file. It should be version 2.37.1 or higher.
+       3. Click `Yes` to allow Git to make the necessary changes.
+       4. Click `Next` to accept the GNU License. 
+       5. Click `Next` to save Git in it's default location. ![alt text](templates/img/git_install/step_01.png "Select Destination Location")
+       6. Click `Next` to download the default components ![alt text](templates/img/git_install/step_02.png "Download Default Components")
+       7. Click `Next` to select the default shortcut folder. ![alt text](templates/img/git_install/step_03.png "Default Shortcut Folder")
+       8. Click `Next` to use the default text editor. ![alt text](templates/img/git_install/step_04.png "Vim as default text editor")
+       9. Click `Next` to let Git decide on the default branch. ![alt text](templates/img/git_install/step_05.png "Git uses it's default Branch Name")
+       10. Click `Next` to follow the installers' recommended path option for Git. This will allow Git to be visible to Anaconda. ![alt text](templates/img/git_install/step_06.png "Git uses it's default path options")
+       11. Click `Next` to leave the SSH as the default. ![alt text](templates/img/git_install/step_07.png "Git uses Bundled OpenSSH")
+       12. Click `Next` to leave OpenSSl as the default. ![alt text](templates/img/git_install/step_08.png "Git uses OpenSSL")
+       13. Click `Next` to leave the default checkout style. ![alt text](templates/img/git_install/step_09.png "Git uses Checkout Windows Style, commit Unix Style")
+       14. Click `Next` to leave the default terminal emulator. ![alt text](templates/img/git_install/step_10.png "MinTTY as the default terminal emulator")
+       15. Click `Next` to leave the default behavior of `git pull`. ![alt text](templates/img/git_install/step_11.png "git pull Default option")
+       16. Click `Next` to leave the credential helper as the default value. ![alt text](templates/img/git_install/step_12.png "Git Credential manager as teh default credential helper.")
+       17. Click `Next` to leave the default extra options. ![alt text](templates/img/git_install/step_13.png)
+       18. Click `Install`, and leave the experimental options unchecked. This will now install Git. ![alt text](templates/img/git_install/step_14.png).
+       19. Open Windows Powershell, and type `Git` and hit `Return` or `Enter` on your keyboard. If it prints common Git commands, then Git has been installed successfully.
 
 - You will need the latest version of Anaconda (**Miniconda** preferred). 
 Download here: https://docs.conda.io/en/latest/miniconda.html and select the appropriate download for your system.
