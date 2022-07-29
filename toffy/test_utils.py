@@ -92,31 +92,42 @@ def generate_sample_fovs_list(fov_coords, fov_names, fov_sizes):
 
 # generation parameters for the extraction/qc callback build
 # this should be limited to the panel, foldernames, and kwargs
-FOV_CALLBACKS = ('extract_tiffs', 'generate_qc')
-RUN_CALLBACKS = ('plot_qc_metrics',)
+FOV_CALLBACKS = ('extract_tiffs', 'generate_qc', 'generate_mph')
+RUN_CALLBACKS = ('plot_qc_metrics', 'plot_mph_metrics')
 
 
 class ExtractionQCGenerationCases:
-    def case_both_callbacks(self):
+    def case_all_callbacks(self):
         panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv')
         return FOV_CALLBACKS, {'panel': pd.read_csv(panel_path)}
 
     def case_extract_only(self):
-        cbs, kwargs = self.case_both_callbacks()
+        cbs, kwargs = self.case_all_callbacks()
         return cbs[:1], kwargs
 
     def case_qc_only(self):
-        cbs, kwargs = self.case_both_callbacks()
-        return cbs[1:], kwargs
+        cbs, kwargs = self.case_all_callbacks()
+        return cbs[1:2], kwargs
+
+    def case_mph_only(self):
+        cbs, kwargs = self.case_all_callbacks()
+        return cbs[2:3], kwargs
 
     def case_extraction_intensities(self):
-        cbs, kwargs = self.case_both_callbacks()
+        cbs, kwargs = self.case_all_callbacks()
         kwargs['intensities'] = True
+        kwargs['replace'] = True
+        return cbs, kwargs
+
+    def case_extraction_intensities_not_replace(self):
+        cbs, kwargs = self.case_all_callbacks()
+        kwargs['intensities'] = True
+        kwargs['replace'] = False
         return cbs, kwargs
 
     @pytest.mark.xfail(raises=ValueError)
     def case_missing_panel(self):
-        cbs, _ = self.case_both_callbacks()
+        cbs, _ = self.case_all_callbacks()
         return cbs, {}
 
     @pytest.mark.xfail(raises=ValueError)
@@ -145,7 +156,7 @@ class PlotQCMetricsCases:
 
 
 def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channels: List[str],
-                                   intensities: bool = False):
+                                   intensities: bool = False, replace: bool = True):
     """Checks extraction directory for minimum expected structure
 
     Args:
@@ -157,6 +168,8 @@ def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channel
             List of expected channel names
         intensities (bool):
             Whether or not to check for intensities
+        replace (bool):
+            Whether to replace pulse images with intensity
 
     Raises:
         AssertionError:
@@ -166,7 +179,7 @@ def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channel
         for channel in channels:
             assert(os.path.exists(os.path.join(ext_dir, point, f'{channel}.tiff')))
 
-        if intensities:
+        if intensities and not replace:
             assert(os.path.exists(os.path.join(ext_dir, point, 'intensities')))
 
 
@@ -190,6 +203,29 @@ def check_qc_dir_structure(out_dir: str, point_names: List[str], qc_plots: bool 
             assert(os.path.exists(os.path.join(out_dir, f'{point}_{ms}.csv')))
             if qc_plots:
                 assert(os.path.exists(os.path.join(out_dir, '%s_barplot_stats.png' % mn)))
+
+
+def check_mph_dir_structure(plot_dir: str, point_names: List[str], combined: bool = False):
+    """Checks MPH directory for minimum expected structure
+
+    Args:
+        plot_dir (str):
+            Folder containing MPH plot output
+        point_names (list):
+            List of expected point names
+        combined (bool):
+            whether to check for combined mph data csv and plot image
+
+    Raises:
+        AssertionError:
+            Assertion error on missing csv
+    """
+    for point in point_names:
+        assert(os.path.exists(os.path.join(plot_dir, f'{point}-mph_pulse.csv')))
+
+    if combined:
+        assert(os.path.exists(os.path.join(plot_dir, 'mph_pulse_combined.csv')))
+        assert(os.path.exists(os.path.join(plot_dir, 'fov_vs_mph.jpg')))
 
 
 def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False, bad=False):
@@ -327,20 +363,23 @@ class WatcherCases:
     passed to the validators (i.e out directory and point names).
     """
     @parametrize(intensity=(False, True))
-    def case_default(self, intensity):
+    @parametrize(replace=(False, True))
+    def case_default(self, intensity, replace):
         panel = pd.read_csv(os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv'))
         validators = [
             functools.partial(
                 check_extraction_dir_structure,
                 channels=list(panel['Target']),
-                intensities=intensity),
+                intensities=intensity,
+                replace=replace),
             check_qc_dir_structure,
+            check_mph_dir_structure
         ]
 
-        kwargs = {'panel': panel, 'intensities': intensity}
+        kwargs = {'panel': panel, 'intensities': intensity, 'replace': replace}
 
         return (
-            ['plot_qc_metrics'],
+            ['plot_qc_metrics', 'plot_mph_metrics'],
             ['extract_tiffs'],
             kwargs,
             validators
