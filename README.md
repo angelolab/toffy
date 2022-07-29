@@ -69,20 +69,9 @@ Open the installer and make sure you are installing the package labeled *C++ bui
        3. Click `Yes` to allow Git to make the necessary changes.
        4. Click `Next` to accept the GNU License. 
        5. Click `Next` to save Git in it's default location. ![alt text](templates/img/git_install/step_01.png "Select Destination Location")
-       6. Click `Next` to download the default components ![alt text](templates/img/git_install/step_02.png "Download Default Components")
-       7. Click `Next` to select the default shortcut folder. ![alt text](templates/img/git_install/step_03.png "Default Shortcut Folder")
-       8. Click `Next` to use the default text editor. ![alt text](templates/img/git_install/step_04.png "Vim as default text editor")
-       9. Click `Next` to let Git decide on the default branch. ![alt text](templates/img/git_install/step_05.png "Git uses it's default Branch Name")
-       10. Click `Next` to follow the installers' recommended path option for Git. This will allow Git to be visible to Anaconda. ![alt text](templates/img/git_install/step_06.png "Git uses it's default path options")
-       11. Click `Next` to leave the SSH as the default. ![alt text](templates/img/git_install/step_07.png "Git uses Bundled OpenSSH")
-       12. Click `Next` to leave OpenSSl as the default. ![alt text](templates/img/git_install/step_08.png "Git uses OpenSSL")
-       13. Click `Next` to leave the default checkout style. ![alt text](templates/img/git_install/step_09.png "Git uses Checkout Windows Style, commit Unix Style")
-       14. Click `Next` to leave the default terminal emulator. ![alt text](templates/img/git_install/step_10.png "MinTTY as the default terminal emulator")
-       15. Click `Next` to leave the default behavior of `git pull`. ![alt text](templates/img/git_install/step_11.png "git pull Default option")
-       16. Click `Next` to leave the credential helper as the default value. ![alt text](templates/img/git_install/step_12.png "Git Credential manager as teh default credential helper.")
-       17. Click `Next` to leave the default extra options. ![alt text](templates/img/git_install/step_13.png)
-       18. Click `Install`, and leave the experimental options unchecked. This will now install Git. ![alt text](templates/img/git_install/step_14.png).
-       19. Open Windows Powershell, and type `Git` and hit `Return` or `Enter` on your keyboard. If it prints common Git commands, then Git has been installed successfully.
+       6. Next, the installer will give you a list of options for each menu. Leave everything to it's default. **We recommend to not change anything, unless you are confident on what you are doing.**
+       7. The last menu, will ask if you would like to use any experimental options. Click `Install`, and leave the experimental options unchecked. This will now install Git. ![alt text](templates/img/git_install/step_02.png).
+       8.  Open the windows Terminal, and within the Powershell Tab type `Git` and hit enter. If you see the following output, you're good to go! ![alt text](templates/img/git_install/step_03.png)
 
 - You will need the latest version of Anaconda (**Miniconda** preferred). 
 Download here: https://docs.conda.io/en/latest/miniconda.html and select the appropriate download for your system.
