@@ -29,7 +29,8 @@ def test_extract_missing_fovs(mocked_print):
                                             panel, extract_intensities=False)
         assert mocked_print.mock_calls == \
                [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1'),
-                call('Moly FOVs which will not be extracted: ', '')]
+                call('Moly FOVs which will not be extracted: ', ''),
+                call('Extraction completed!')]
     mocked_print.reset_mock()
 
     # test that it does not re-extract fovs and no moly extraction
@@ -57,7 +58,8 @@ def test_extract_missing_fovs(mocked_print):
                                                 panel, extract_intensities=False)
             assert mocked_print.mock_calls == \
                    [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1'),
-                    call('Moly FOVs which will not be extracted: ', 'moly_fov')]
+                    call('Moly FOVs which will not be extracted: ', 'moly_fov'),
+                    call('Extraction completed!')]
 
     # test successful extraction of fovs
     with tempfile.TemporaryDirectory() as extraction_dir:

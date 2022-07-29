@@ -4,7 +4,8 @@ from toffy.json_utils import list_moly_fovs
 from mibi_bin_tools import bin_files, io_utils
 
 
-def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensities, replace=True):
+def extract_missing_fovs(bin_file_dir, extraction_dir, panel,
+                         extract_intensities=['Au', 'chan_39'], replace=True):
     """Check for already extracted FOV bin files, and extract the remaining (excluding moly)
 
     Args:
@@ -35,3 +36,5 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensitie
                                     panel=panel, intensities=extract_intensities, replace=replace)
     else:
         raise Warning("No viable bin files were found in ", bin_file_dir)
+
+    print("Extraction completed!")
