@@ -32,7 +32,8 @@ def test_stitch_images(mocker):
 
     with tempfile.TemporaryDirectory() as tmpdir:
         channel_list = ['Au', 'CD3', 'CD4', 'CD8', 'CD11c']
-        stitched_tifs = ['Au.tiff', 'CD3.tiff', 'CD4.tiff', 'CD8.tiff', 'CD11c.tiff']
+        stitched_tifs = ['Au_stitched.tiff', 'CD3_stitched.tiff', 'CD4_stitched.tiff',
+                         'CD8_stitched.tiff', 'CD11c_stitched.tiff']
         fov_list = ['fov-1-scan-1', 'fov-2-scan-1', 'fov-3-scan-1', 'intensities']
         test_utils._write_tifs(tmpdir, fov_list, channel_list, (10, 10), '', False, int)
 
@@ -49,4 +50,4 @@ def test_stitch_images(mocker):
         # test stitching for specific channels
         image_stitching.stitch_images(tmpdir, tmpdir, ['Au', 'CD3'])
         assert sorted(io_utils.list_files(os.path.join(tmpdir, 'stitched_images'))) == \
-               sorted(['Au.tiff', 'CD3.tiff'])
+               sorted(['Au_stitched.tiff', 'CD3_stitched.tiff'])

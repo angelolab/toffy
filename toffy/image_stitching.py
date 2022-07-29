@@ -32,7 +32,7 @@ def get_max_img_size(run_dir):
 def stitch_images(tiff_out_dir, run_dir, channels=None):
     """Creates a new directory containing stitched channel images for the run
         Args:
-            tiff_out_dir (str): path to the extracted images
+            tiff_out_dir (str): path to the extracted images for the specific run
             run_dir (str): path to the run directory containing the run json files
             channels (list): list of channels to produce stitched images for, None will do all """
 
@@ -67,5 +67,5 @@ def stitch_images(tiff_out_dir, run_dir, channels=None):
     # save the stitched images to the stitched_image subdir
     for chan in stitched.channels.values:
         current_img = stitched.loc['stitched_image', :, :, chan].values
-        io.imsave(os.path.join(stitched_dir, chan + '.tiff'), current_img.astype('uint8'),
+        io.imsave(os.path.join(stitched_dir, chan + '_stitched.tiff'), current_img.astype('uint8'),
                   check_contrast=False)

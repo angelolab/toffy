@@ -229,7 +229,7 @@ def check_mph_dir_structure(plot_dir: str, point_names: List[str], combined: boo
 
 
 def check_stitched_dir_structure(stitched_dir: str, channels: List[str]):
-    """Checks extraction directory for stitching strucure
+    """Checks extraction directory for stitching structure
 
     Args:
         stitched_dir (str):
@@ -242,7 +242,7 @@ def check_stitched_dir_structure(stitched_dir: str, channels: List[str]):
             Assertion error on missing expected tiff
     """
     for channel in channels:
-        assert(os.path.exists(os.path.join(stitched_dir, f'{channel}.tiff')))
+        assert(os.path.exists(os.path.join(stitched_dir, f'{channel}_stitched.tiff')))
 
 
 def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False, bad=False):
