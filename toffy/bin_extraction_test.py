@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch, call
 
 from toffy import bin_extraction
+from ark.utils import test_utils
 from mibi_bin_tools import io_utils, bin_files
 
 
@@ -27,6 +28,7 @@ def test_extract_missing_fovs(mocked_print):
         os.makedirs(os.path.join(extraction_dir, 'fov-1-scan-1'))
         bin_extraction.extract_missing_fovs(bin_file_dir, extraction_dir,
                                             panel, extract_intensities=False)
+
         assert mocked_print.mock_calls == \
                [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1'),
                 call('Moly FOVs which will not be extracted: ', '')]
@@ -50,6 +52,10 @@ def test_extract_missing_fovs(mocked_print):
             shutil.copy(os.path.join(bin_file_dir, file_name),
                         os.path.join(combined_bin_file_dir, file_name))
 
+        # create empty json fov
+        test_utils._make_blank_file(combined_bin_file_dir, 'emtpy.bin')
+        test_utils._make_blank_file(combined_bin_file_dir, 'emtpy.json')
+
         # check for correct output
         with tempfile.TemporaryDirectory() as extraction_dir:
             os.makedirs(os.path.join(extraction_dir, 'fov-1-scan-1'))
@@ -58,6 +64,14 @@ def test_extract_missing_fovs(mocked_print):
             assert mocked_print.mock_calls == \
                    [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1'),
                     call('Moly FOVs which will not be extracted: ', 'moly_fov')]
+
+            # when given empty fov files will raise a warning
+            with pytest.warns(UserWarning, match="The following FOVs have empty json files"):
+                bin_extraction.extract_missing_fovs(combined_bin_file_dir, extraction_dir,
+                                                    panel, extract_intensities=False)
+
+            # test that neither moly nor empty fov were extracted
+            assert io_utils.list_folders(extraction_dir) == ['fov-2-scan-1', 'fov-1-scan-1']
 
     # test successful extraction of fovs
     with tempfile.TemporaryDirectory() as extraction_dir:

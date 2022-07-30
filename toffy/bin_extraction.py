@@ -2,7 +2,7 @@ import warnings
 
 import natsort as ns
 
-from toffy.json_utils import list_moly_fovs
+from toffy.json_utils import list_moly_fovs, check_for_empty_files
 from mibi_bin_tools import bin_files, io_utils
 
 
@@ -21,8 +21,13 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensitie
     fovs = io_utils.remove_file_extensions(io_utils.list_files(bin_file_dir, substrs='.bin'))
     extracted_fovs = io_utils.list_folders(extraction_dir, substrs='fov')
 
-    # filter out moly fovs
-    moly_fovs = list_moly_fovs(bin_file_dir)
+    # filter out empty json file fovs
+    empty_fovs = check_for_empty_files(bin_file_dir, return_json_names=True, warn=True)
+    if empty_fovs:
+        fovs = list(set(fovs).difference(empty_fovs))
+
+    # check for moly fovs
+    moly_fovs = list_moly_fovs(bin_file_dir, fovs)
 
     print("Skipping the following previously extracted FOVs: ", ", ".join(extracted_fovs))
     print("Moly FOVs which will not be extracted: ", ", ".join(moly_fovs))

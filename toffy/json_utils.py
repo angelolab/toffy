@@ -60,7 +60,7 @@ def rename_duplicate_fovs(tma_fovs):
     return tma_fovs
 
 
-def list_moly_fovs(bin_file_dir):
+def list_moly_fovs(bin_file_dir, fov_list=None):
     """Lists all of the FOVs in a directory which are moly FOVs
 
     Args:
@@ -69,7 +69,10 @@ def list_moly_fovs(bin_file_dir):
     Returns:
         list: list of FOVs which are moly FOVs"""
 
-    json_files = io_utils.list_files(bin_file_dir, '.json')
+    if fov_list:
+        json_files = [fov + '.json' for fov in fov_list]
+    else:
+        json_files = io_utils.list_files(bin_file_dir, '.json')
     moly_fovs = []
 
     for file in json_files:
@@ -165,10 +168,10 @@ def check_for_empty_files(bin_file_dir, return_json_names = False, warn=True):
     for fov in fov_names:
         fov_path = os.path.join(bin_file_dir, fov + '.json')
         if os.path.getsize(fov_path) == 0:
-            empty_json_files.append(fov + '.json')
+            empty_json_files.append(fov)
 
     if empty_json_files:
-        warnings.warn(f'The following files are empty:'
+        warnings.warn(f'The following FOVs have empty json files:'
                       f'\n {empty_json_files}', UserWarning)
 
     return empty_json_files
