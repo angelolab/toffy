@@ -4,6 +4,7 @@ import os
 import tempfile
 import pytest
 from toffy import json_utils, test_utils
+from ark.utils import test_utils
 
 
 def test_rename_missing_fovs():
@@ -158,3 +159,25 @@ def test_split_run_file():
         assert new_data['test_part1']['fovs'] == ['fov1', 'fov2']
         assert new_data['test_part2']['fovs'] == ['fov3', 'fov4', 'fov5', 'fov6']
         assert new_data['test_part3']['fovs'] == ['fov7', 'fov8']
+
+
+def test_check_for_empty_files():
+    test_data = [1, 2, 3, 4, 5]
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        test_utils._make_blank_file(temp_dir, 'empty_file.json')
+        json_utils.write_json_file(os.path.join(temp_dir, 'non_empty_file.json'), test_data)
+
+        test_utils._make_blank_file(temp_dir, 'empty_file.bin')
+        test_utils._make_blank_file(temp_dir, 'non_empty_file.bin')
+
+        # test successful empty file detection
+        empty_files = json_utils.check_for_empty_files(temp_dir, return_json_names=True,
+                                                       warn=False)
+        assert empty_files == ['empty_file.json']
+
+        # test successful warning message
+        with pytest.warns(UserWarning, match='The following files are empty'):
+            json_utils.check_for_empty_files(temp_dir, warn=True)
+
+

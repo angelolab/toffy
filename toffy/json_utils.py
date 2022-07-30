@@ -1,8 +1,10 @@
 import copy
 import json
 import os
+import warnings
 
 from ark.utils import io_utils
+from mibi_bin_tools.io_utils import remove_file_extensions
 
 
 def rename_missing_fovs(fov_data):
@@ -147,3 +149,26 @@ def split_run_file(run_dir, run_file_name, file_split: list):
         save_path = os.path.join(run_dir, run_file_name.split('.json')[0] + '_part'
                                  + str(i+1) + '.json')
         write_json_file(save_path, json_i, encoding='utf-8')
+
+
+def check_for_empty_files(bin_file_dir, return_json_names = False, warn=True):
+    """ Check for any empty json files and warn the user
+    Args:
+        bin_file_dir (str): directory containing the bin and json files
+    Return:
+    """
+
+    fov_names = remove_file_extensions(io_utils.list_files(bin_file_dir, substrs='.bin'))
+
+    empty_json_files = []
+
+    for fov in fov_names:
+        fov_path = os.path.join(bin_file_dir, fov + '.json')
+        if os.path.getsize(fov_path) == 0:
+            empty_json_files.append(fov + '.json')
+
+    if empty_json_files:
+        warnings.warn(f'The following files are empty:'
+                      f'\n {empty_json_files}', UserWarning)
+
+    return empty_json_files

@@ -68,11 +68,11 @@ def test_extract_missing_fovs(mocked_print):
         assert fovs.sort() == fovs_extracted.sort()
 
         # all fovs extracted already will raise a warning
-        with pytest.raises(Warning, match="No viable bin files were found"):
+        with pytest.warns(UserWarning, match="No viable bin files were found"):
             bin_extraction.extract_missing_fovs(bin_file_dir, extraction_dir,
                                                 panel, extract_intensities=False)
 
         # when given only moly fovs will raise a warning
-        with pytest.raises(Warning, match="No viable bin files were found"):
+        with pytest.warns(UserWarning, match="No viable bin files were found"):
             bin_extraction.extract_missing_fovs(moly_bin_file_dir, extraction_dir,
                                                 panel, extract_intensities=False)

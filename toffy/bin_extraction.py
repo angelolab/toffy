@@ -1,3 +1,5 @@
+import warnings
+
 import natsort as ns
 
 from toffy.json_utils import list_moly_fovs
@@ -34,4 +36,4 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensitie
         bin_files.extract_bin_files(bin_file_dir, extraction_dir, include_fovs=missing_fovs,
                                     panel=panel, intensities=extract_intensities, replace=replace)
     else:
-        raise Warning("No viable bin files were found in ", bin_file_dir)
+        warnings.warn(f"No viable bin files were found in {bin_file_dir}", UserWarning)
