@@ -6,9 +6,11 @@ import xarray as xr
 from toffy.mibitracker_utils import MibiRequests
 from toffy import qc_comp
 from toffy import settings
+from mibi_bin_tools import bin_files
 import ark.utils.io_utils as io_utils
 import ark.utils.misc_utils as misc_utils
 import ark.utils.test_utils as test_utils
+import ark.utils.load_utils as load_utils
 
 import os
 from pathlib import Path
@@ -232,12 +234,13 @@ def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
             'Stop': 89.0,
         }])
 
-        # write the panel to csv
-        panel_path = os.path.join(temp_dir, 'sample_panel.csv')
-        panel.to_csv(panel_path, index=False)
-
         # define the full path to the bin file folder
         bin_file_path = os.path.join(Path(__file__).parent, 'data', bin_file_folder)
+
+        # define a sample extraction directory
+        extracted_imgs_path = os.path.join(temp_dir, 'extracted_images', bin_file_folder)
+        os.makedirs(extracted_imgs_path)
+        bin_files.extract_bin_files(bin_file_path, extracted_imgs_path, panel=panel)
 
         # define a sample qc_path to write to
         qc_path = os.path.join(temp_dir, 'sample_qc_dir')
@@ -245,24 +248,24 @@ def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
         # bin folder error check
         with pytest.raises(FileNotFoundError):
             qc_comp.compute_qc_metrics(
-                'bad_bin_path', fovs[0], panel_path, gaussian_blur
+                'bad_bin_path', extracted_imgs_path, fovs[0], gaussian_blur
             )
 
-        # panel file error check
+        # extraction folder error check
         with pytest.raises(FileNotFoundError):
             qc_comp.compute_qc_metrics(
-                bin_file_path, fovs[0], 'bad_panel_path', gaussian_blur
+                bin_file_path, 'bad_extraction_path', fovs[0], gaussian_blur
             )
 
         # fov error check
         with pytest.raises(FileNotFoundError):
             qc_comp.compute_qc_metrics(
-                bin_file_path, 'bad_fov', panel_path, gaussian_blur
+                bin_file_path, extracted_imgs_path, 'bad_fov', gaussian_blur
             )
 
         # first time: create new files, also asserts qc_path is created
         qc_comp.compute_qc_metrics(
-            bin_file_path, fovs[0], panel_path, gaussian_blur
+            bin_file_path, extracted_imgs_path, fovs[0], gaussian_blur
         )
 
         for ms, mc in zip(settings.QC_SUFFIXES, settings.QC_COLUMNS):
@@ -382,3 +385,36 @@ def test_visualize_qc_metrics():
         # test with saving
         qc_comp.visualize_qc_metrics(sample_qc_metric_data, 'sample_qc_metric', save_dir=temp_dir)
         assert os.path.exists(os.path.join(temp_dir, 'sample_qc_metric_barplot_stats.png'))
+
+
+def test_format_img_data():
+    # define a sample panel, leave panel correctness/incorrectness test for mibi_bin_tools
+    panel = pd.DataFrame([{
+        'Mass': 89,
+        'Target': 'SMA',
+        'Start': 88.7,
+        'Stop': 89.0,
+    }])
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        # define the full path to the bin file folder
+        bin_file_path = os.path.join(Path(__file__).parent, 'data', 'tissue')
+
+        # define a sample extraction directory
+        extracted_imgs_path = os.path.join(temp_dir, 'extracted_images', 'tissue')
+        os.makedirs(extracted_imgs_path)
+        bin_files.extract_bin_files(bin_file_path, extracted_imgs_path, panel=panel)
+
+        # retrieve image array from tiffs
+        load_data = load_utils.load_imgs_from_tree(extracted_imgs_path, fovs=['fov-1-scan-1'])
+
+        # retrieve image array from bin files
+        extracted_data = bin_files.extract_bin_files(bin_file_path, out_dir=None,
+                                                     include_fovs=['fov-1-scan-1'], panel=panel)
+
+        # check that they have inherently different structures
+        assert not load_data.equals(extracted_data)
+
+        # test for successful reformatting
+        load_data = qc_comp.format_img_data(load_data)
+        assert load_data.equals(extracted_data)
