@@ -61,11 +61,11 @@ def rename_duplicate_fovs(tma_fovs):
 
 
 def list_moly_fovs(bin_file_dir, fov_list=None):
-    """Lists all of the FOVs in a directory which are moly FOVs
+    """Lists all of the FOVs in a directory or provided list which are moly FOVs
 
     Args:
         bin_file_dir (str): path to bin files
-        fov_list (list): list of fov names to check
+        fov_list (list): list of fov names to check, default None will check all fovs in dir
 
     Returns:
         list: list of FOVs which are moly FOVs"""
@@ -73,7 +73,7 @@ def list_moly_fovs(bin_file_dir, fov_list=None):
     # check provided fovs
     if fov_list:
         json_files = [fov + '.json' for fov in fov_list]
-    # check all fovs iin bin_file_dir
+    # check all fovs in bin_file_dir
     else:
         json_files = io_utils.list_files(bin_file_dir, '.json')
     moly_fovs = []

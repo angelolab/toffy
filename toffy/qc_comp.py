@@ -308,7 +308,7 @@ def compute_qc_metrics(bin_file_path, extracted_imgs_path, fov_name,
     if not os.path.exists(extracted_imgs_path):
         raise FileNotFoundError("extracted_imgs_path %s does not exist" % extracted_imgs_path)
 
-    # retrive the image data from extracted tiff files
+    # retrieve the image data from extracted tiff files
     # the image coords should be: ['fov', 'type', 'x', 'y', 'channel']
     image_data = load_utils.load_imgs_from_tree(extracted_imgs_path, fovs=[fov_name])
     image_data = format_img_data(image_data)
@@ -521,8 +521,11 @@ def format_img_data(img_data):
          xarray.DataArray: image data array with shape [fov, type, x, y, channel]
     """
 
+    # add type dimension
     img_data = img_data.assign_coords(type='pulse')
     img_data = img_data.expand_dims('type', 1)
+
+    # edit dimension names
     img_data = img_data.rename({'fovs': 'fov', 'rows': 'x', 'cols': 'y', 'channels': 'channel'})
 
     return img_data
