@@ -172,7 +172,7 @@ def check_for_empty_files(bin_file_dir, return_json_names=False, warn=True):
             empty_json_files.append(fov)
 
     if empty_json_files:
-        warnings.warn(f'The following FOVs have empty json files:'
+        warnings.warn(f'The following FOVs have empty json files and will not be processed:'
                       f'\n {empty_json_files}', UserWarning)
 
     return empty_json_files
