@@ -119,7 +119,7 @@ def test_watcher(run_cbs, fov_cbs, kwargs, validators, add_blank):
             elif i == 2:
                 validator(os.path.join(tmpdir, f'cb_{i}', RUN_DIR_NAME),
                           os.path.join(tmpdir, f'cb_{i}_plots', RUN_DIR_NAME), fovs)
-            else:
+            elif i == 3:
                 validator(os.path.join(tmpdir, f'cb_{0}', RUN_DIR_NAME, 'stitched_images'))
 
     pass

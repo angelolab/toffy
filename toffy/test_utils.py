@@ -205,7 +205,8 @@ def check_qc_dir_structure(out_dir: str, point_names: List[str], qc_plots: bool 
                 assert os.path.exists(os.path.join(out_dir, '%s_barplot_stats.png' % mn))
 
 
-def check_mph_dir_structure(mph_out_dir: str, plot_dir: str, point_names: List[str], combined: bool = False):
+def check_mph_dir_structure(mph_out_dir: str, plot_dir: str, point_names: List[str],
+                            combined: bool = False):
     """Checks MPH directory for minimum expected structure
 
     Args:
