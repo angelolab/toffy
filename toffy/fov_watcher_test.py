@@ -69,6 +69,7 @@ def test_watcher(run_cbs, fov_cbs, kwargs, validators, add_blank):
         qc_out_dir = os.path.join(tmpdir, 'cb_1', RUN_DIR_NAME)
         mph_out_dir = os.path.join(tmpdir, 'cb_2', RUN_DIR_NAME)
         plot_dir = os.path.join(tmpdir, 'cb_2_plots', RUN_DIR_NAME)
+        os.makedirs(plot_dir)
         stitched_dir = os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME, 'stitched_images')
 
         # add directories to kwargs
