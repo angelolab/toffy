@@ -7,7 +7,8 @@ from mibi_bin_tools import bin_files, io_utils
 
 
 def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensities, replace=True):
-    """Check for already extracted FOV bin files, and extract the remaining (excluding moly)
+    """Check for already extracted FOV bin files, and extract the remaining
+    (excluding moly fovs and fovs with empty json files)
 
     Args:
         bin_file_dir (str): path to directory containing the bin and json files

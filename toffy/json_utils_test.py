@@ -80,6 +80,11 @@ def test_list_moly_fovs(tmpdir):
 
     assert np.array_equal(pred_moly_fovs.sort(), moly_fovs.sort())
 
+    # check fov_list functionality
+    pred_moly_fovs_subset = json_utils.list_moly_fovs(tmpdir, ['fov-1-scan-1', 'fov-1-scan-2'])
+
+    assert np.array_equal(pred_moly_fovs_subset.sort(), ['fov-1-scan-1'].sort())
+
 
 def test_read_json_file():
 
