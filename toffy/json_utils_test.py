@@ -179,5 +179,3 @@ def test_check_for_empty_files():
         # test successful warning message
         with pytest.warns(UserWarning, match='The following FOVs have empty json files'):
             json_utils.check_for_empty_files(temp_dir, warn=True)
-
-
