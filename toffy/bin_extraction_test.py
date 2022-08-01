@@ -30,8 +30,7 @@ def test_extract_missing_fovs(mocked_print):
                                             panel, extract_intensities=False)
 
         assert mocked_print.mock_calls == \
-               [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1'),
-                call('Moly FOVs which will not be extracted: ', '')]
+               [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1')]
     mocked_print.reset_mock()
 
     # test that it does not re-extract fovs and no moly extraction
@@ -53,8 +52,8 @@ def test_extract_missing_fovs(mocked_print):
                         os.path.join(combined_bin_file_dir, file_name))
 
         # create empty json fov
-        test_utils._make_blank_file(combined_bin_file_dir, 'emtpy.bin')
-        test_utils._make_blank_file(combined_bin_file_dir, 'emtpy.json')
+        test_utils._make_blank_file(combined_bin_file_dir, 'empty.bin')
+        test_utils._make_blank_file(combined_bin_file_dir, 'empty.json')
 
         # check for correct output
         with tempfile.TemporaryDirectory() as extraction_dir:
@@ -63,7 +62,8 @@ def test_extract_missing_fovs(mocked_print):
                                                 panel, extract_intensities=False)
             assert mocked_print.mock_calls == \
                    [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1'),
-                    call('Moly FOVs which will not be extracted: ', 'moly_fov')]
+                    call('Moly FOVs which will not be extracted: ', 'moly_fov'),
+                    call('FOVs with empty json files which will not be extracted: ', 'empty')]
 
             # when given empty fov files will raise a warning
             with pytest.warns(UserWarning, match="The following FOVs have empty json files"):
@@ -75,10 +75,16 @@ def test_extract_missing_fovs(mocked_print):
 
     # test successful extraction of fovs
     with tempfile.TemporaryDirectory() as extraction_dir:
+        mocked_print.reset_mock()
         bin_extraction.extract_missing_fovs(bin_file_dir, extraction_dir,
                                             panel, extract_intensities=False)
         fovs = ['fov-1-scan-1', 'fov-2-scan-1']
         fovs_extracted = io_utils.list_folders(extraction_dir)
+
+        # test no extra print statements
+        assert mocked_print.mock_calls == [call('Found 2 FOVs to extract.')]
+
+        # check both fovs were extracted
         assert fovs.sort() == fovs_extracted.sort()
 
         # all fovs extracted already will raise a warning

@@ -29,8 +29,14 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensitie
     # check for moly fovs
     moly_fovs = list_moly_fovs(bin_file_dir, fovs)
 
-    print("Skipping the following previously extracted FOVs: ", ", ".join(extracted_fovs))
-    print("Moly FOVs which will not be extracted: ", ", ".join(moly_fovs))
+    if extracted_fovs:
+        print("Skipping the following previously extracted FOVs: ", ", ".join(extracted_fovs))
+    if moly_fovs:
+        print("Moly FOVs which will not be extracted: ", ", ".join(moly_fovs))
+    if empty_fovs:
+        print("FOVs with empty json files which will not be extracted: ", ", ".join(empty_fovs))
+    if not extracted_fovs and not moly_fovs and not empty_fovs:
+        print(f"Found {len(fovs)} FOVs to extract.")
 
     # extract missing fovs to extraction_dir
     non_moly_fovs = list(set(fovs).difference(moly_fovs))

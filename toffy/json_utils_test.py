@@ -165,11 +165,16 @@ def test_check_for_empty_files():
     test_data = [1, 2, 3, 4, 5]
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        _make_blank_file(temp_dir, 'empty_file.json')
         json_utils.write_json_file(os.path.join(temp_dir, 'non_empty_file.json'), test_data)
-
-        _make_blank_file(temp_dir, 'empty_file.bin')
         _make_blank_file(temp_dir, 'non_empty_file.bin')
+
+        # test that no empty files detected returns empty list
+        no_empty_files = json_utils.check_for_empty_files(temp_dir, return_json_names=True,
+                                                          warn=False)
+        assert no_empty_files == []
+
+        _make_blank_file(temp_dir, 'empty_file.json')
+        _make_blank_file(temp_dir, 'empty_file.bin')
 
         # test successful empty file detection
         empty_files = json_utils.check_for_empty_files(temp_dir, return_json_names=True,

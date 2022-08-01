@@ -287,10 +287,6 @@ def compute_qc_metrics(bin_file_path, extracted_imgs_path, fov_name,
             the directory when extracted images are stored
         fov_name (str):
             the name of the FOV to extract from `bin_file_path`, needs to correspond with JSON name
-        panel_path (str):
-            the path to the file defining the panel info for bin file extraction
-        manual_panel (tuple | pd.DataFrame):
-            manual input of panel. This is used if panel_path is set to None
         gaussian_blur (bool):
             whether or not to add Gaussian blurring
         blur_factor (int):
@@ -521,6 +517,8 @@ def format_img_data(img_data):
     by extract_bin_files. Works for one FOV data at a time.
     Args:
         img_data (str): current image data array as produced by load function
+    Returns:
+         xarray.DataArray: image data array with shape [fov, type, x, y, channel]
     """
 
     img_data = img_data.assign_coords(type='pulse')
