@@ -4,7 +4,7 @@ import os
 import tempfile
 import pytest
 from toffy import json_utils, test_utils
-from ark.utils import test_utils
+from ark.utils.test_utils import _make_blank_file
 
 
 def test_rename_missing_fovs():
@@ -165,11 +165,11 @@ def test_check_for_empty_files():
     test_data = [1, 2, 3, 4, 5]
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        test_utils._make_blank_file(temp_dir, 'empty_file.json')
+        _make_blank_file(temp_dir, 'empty_file.json')
         json_utils.write_json_file(os.path.join(temp_dir, 'non_empty_file.json'), test_data)
 
-        test_utils._make_blank_file(temp_dir, 'empty_file.bin')
-        test_utils._make_blank_file(temp_dir, 'non_empty_file.bin')
+        _make_blank_file(temp_dir, 'empty_file.bin')
+        _make_blank_file(temp_dir, 'non_empty_file.bin')
 
         # test successful empty file detection
         empty_files = json_utils.check_for_empty_files(temp_dir, return_json_names=True,

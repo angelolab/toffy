@@ -154,10 +154,11 @@ def split_run_file(run_dir, run_file_name, file_split: list):
         write_json_file(save_path, json_i, encoding='utf-8')
 
 
-def check_for_empty_files(bin_file_dir, return_json_names = False, warn=True):
+def check_for_empty_files(bin_file_dir, return_json_names=False, warn=True):
     """ Check for any empty json files and warn the user
     Args:
         bin_file_dir (str): directory containing the bin and json files
+
     Return:
     """
 
