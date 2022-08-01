@@ -177,10 +177,10 @@ def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channel
     """
     for point in point_names:
         for channel in channels:
-            assert(os.path.exists(os.path.join(ext_dir, point, f'{channel}.tiff')))
+            assert os.path.exists(os.path.join(ext_dir, point, f'{channel}.tiff'))
 
         if intensities and not replace:
-            assert(os.path.exists(os.path.join(ext_dir, point, 'intensities')))
+            assert os.path.exists(os.path.join(ext_dir, point, 'intensities'))
 
 
 def check_qc_dir_structure(out_dir: str, point_names: List[str], qc_plots: bool = False):
@@ -200,9 +200,9 @@ def check_qc_dir_structure(out_dir: str, point_names: List[str], qc_plots: bool 
     """
     for point in point_names:
         for mn, ms in zip(QC_COLUMNS, QC_SUFFIXES):
-            assert(os.path.exists(os.path.join(out_dir, f'{point}_{ms}.csv')))
+            assert os.path.exists(os.path.join(out_dir, f'{point}_{ms}.csv'))
             if qc_plots:
-                assert(os.path.exists(os.path.join(out_dir, '%s_barplot_stats.png' % mn)))
+                assert os.path.exists(os.path.join(out_dir, '%s_barplot_stats.png' % mn))
 
 
 def check_mph_dir_structure(mph_out_dir: str, plot_dir: str, point_names: List[str], combined: bool = False):
@@ -223,11 +223,11 @@ def check_mph_dir_structure(mph_out_dir: str, plot_dir: str, point_names: List[s
             Assertion error on missing csv
     """
     for point in point_names:
-        assert(os.path.exists(os.path.join(mph_out_dir, f'{point}-mph_pulse.csv')))
+        assert os.path.exists(os.path.join(mph_out_dir, f'{point}-mph_pulse.csv'))
 
     if combined:
-        assert(os.path.exists(os.path.join(mph_out_dir, 'mph_pulse_combined.csv')))
-        assert(os.path.exists(os.path.join(plot_dir, 'fov_vs_mph.jpg')))
+        assert os.path.exists(os.path.join(mph_out_dir, 'mph_pulse_combined.csv'))
+        assert os.path.exists(os.path.join(plot_dir, 'fov_vs_mph.jpg'))
 
 
 def check_stitched_dir_structure(stitched_dir: str, channels: List[str]):
@@ -244,7 +244,7 @@ def check_stitched_dir_structure(stitched_dir: str, channels: List[str]):
             Assertion error on missing expected tiff
     """
     for channel in channels:
-        assert(os.path.exists(os.path.join(stitched_dir, f'{channel}_stitched.tiff')))
+        assert os.path.exists(os.path.join(stitched_dir, f'{channel}_stitched.tiff'))
 
 
 def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False, bad=False):
