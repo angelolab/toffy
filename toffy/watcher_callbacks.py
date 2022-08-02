@@ -72,6 +72,9 @@ class RunCallbacks:
 
              - regression
         """
+        if not os.path.exists(plot_dir):
+            os.makedirs(plot_dir)
+
         # filter kwargs
         valid_kwargs = ['regression', ]
         viz_kwargs = {k: v for k, v in kwargs.items() if k in valid_kwargs}

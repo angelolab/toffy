@@ -61,7 +61,6 @@ def test_build_callbacks(callbacks, kwargs, data_path):
         stitched_dir = os.path.join(extracted_dir, 'stitched_images')
         qc_dir = os.path.join(tmp_dir, 'qc')
         plot_dir = os.path.join(tmp_dir, 'plots')
-        os.makedirs(plot_dir)
         kwargs['tiff_out_dir'] = extracted_dir
         kwargs['qc_out_dir'] = qc_dir
         kwargs['mph_out_dir'] = qc_dir
