@@ -162,6 +162,11 @@ Within `C:\\Users\\Customer.ION\\Documents` are directories that store necessary
 - `normalization_curve`: directory which stores the normalization curve file for the machine that was produced by the [set up notebook](./templates/1_set_up_toffy.ipynb) and necessary for [notebook 4b](./templates/4b_normalize_image_data.ipynb)
 
 ![alt text](templates/img/C_dirs.gif)
+<br><br>
+You can see below how to pin a folder to quick access. We suggest pinning the following folders: `tiled_image_jsons`, `autolabeled_jsons`, `run_metrics`.
+
+![alt text](templates/img/quick_access.gif)
+
 
 ## Panel format
 Many of the scripts in `toffy` require a panel file. This file identifies which targets have been put on which masses. For an example of what the format should be, you can look at the [example panel file](https://github.com/angelolab/toffy/blob/main/files/example_panel_file.csv). Some panels will not have targets on every mass; in this case, it's important that you just leave the placeholder row in the panel, and not delete it, in order to ensure that all the notebooks work as expected. Similarly, if you have multiple targets on the same mass, don't add a unique row for each, just give them a consolidated name. 
