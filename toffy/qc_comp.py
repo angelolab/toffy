@@ -485,10 +485,10 @@ def visualize_qc_metrics(metric_name, qc_metric_dir, axes_size=16, wrap=6,
     # read in the QC metric data
     qc_metric_df = pd.read_csv(qc_metric_path)
 
-    # filter out Au, Noodle
-    qc_metric_df = qc_metric_df[~qc_metric_df['channel'].isin(['Au', 'Noodle'])]
+    # filter out naturally-occurring elements as well as Noodle
+    qc_metric_df = qc_metric_df[~qc_metric_df['channel'].isin(settings.QC_CHANNEL_IGNORE)]
 
-    # filter out anything with 'chan_' prefix
+    # filter out anything prefixed with 'chan_'
     qc_metric_df = qc_metric_df[~qc_metric_df['channel'].str.startswith('chan_')]
 
     # catplot allows for easy facets on a barplot
