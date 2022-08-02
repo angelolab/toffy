@@ -13,6 +13,9 @@ MICRON_TO_STAGE_X_OFFSET = 0.3116
 MICRON_TO_STAGE_Y_MULTIPLIER = 0.001018
 MICRON_TO_STAGE_Y_OFFSET = 0.6294
 
+# QC channels to ignore
+QC_CHANNEL_IGNORE = ['Au', 'Fe', 'Na', 'Ta', 'Noodle']
+
 # QC metric .csv suffix and column naming
 QC_SUFFIXES = ['nonzero_mean_stats', 'total_intensity_stats', 'percentile_99_9_stats']
 QC_COLUMNS = ['Non-zero mean intensity', 'Total intensity', '99.9% intensity value']
