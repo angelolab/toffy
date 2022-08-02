@@ -155,7 +155,7 @@ Four new folders are created on the D drive:
 <br><br>
 Within `C:\\Users\\Customer.ION\\Documents` are directories that store necessary files used to set up and monitor a MIBI run.
 - `tiled_image_jsons`: stores all files used to set up a tiled run in the [tiling notebook](./templates/2_create_tiled_mibi_run.ipynb)
-- `automlabeled_tma_jsons`: stores all files used to set up a tma run in the [tma notebook](./templates/2_create_tma_mibi_run.ipynb)
+- `autolabeled_tma_jsons`: stores all files used to set up a tma run in the [tma notebook](./templates/2_create_tma_mibi_run.ipynb)
 - `panel_files`: directory containing the run panel file, needed for notebooks 3a, 3b, 4a, and 4b.
 - `run_metrics`: contains the data files produced by the [QC](./templates/3c_generate_qc_metrics.ipynb) and [MPH notebooks](./templates/3d_compute_median_pulse_height.ipynb)
 - `watcher_logs`: contains the log file of FOVs which have been processed in the [monitoring notebook](./templates/3a_monitor_MIBI_run.ipynb)
