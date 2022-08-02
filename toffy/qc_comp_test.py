@@ -363,22 +363,58 @@ def test_visualize_qc_metrics():
     # define the fov names to use for each channel
     fov_batches = [['fov0', 'fov1'], ['fov2', 'fov3'], ['fov4', 'fov5']]
 
-    # define the test melted DataFrame for an arbitrary QC metric
-    sample_qc_metric_data = pd.DataFrame()
-
-    # for each channel append a random set of data for each fov associated with the QC metric
-    for chan, fovs in zip(chans, fov_batches):
-        chan_data = pd.DataFrame(np.random.rand(len(fovs)), columns=['sample_qc_metric'])
-        chan_data['fov'] = fovs
-        chan_data['channel'] = chan
-
-        sample_qc_metric_data = pd.concat([sample_qc_metric_data, chan_data])
+    # define the supported metrics to iterate over
+    metrics = ['Non-zero mean intensity', 'Total intensity', '99.9% intensity value']
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        # test without saving
-        qc_comp.visualize_qc_metrics(sample_qc_metric_data, 'sample_qc_metric')
-        assert not os.path.exists(os.path.join(temp_dir, 'sample_qc_metric_barplot_stats.png'))
+        # save sample combined .csv files for each metric
+        for metric in metrics:
+            # define the test melted DataFrame for an arbitrary QC metric
+            sample_qc_metric_data = pd.DataFrame()
 
-        # test with saving
-        qc_comp.visualize_qc_metrics(sample_qc_metric_data, 'sample_qc_metric', save_dir=temp_dir)
-        assert os.path.exists(os.path.join(temp_dir, 'sample_qc_metric_barplot_stats.png'))
+            for chan, fovs in zip(chans, fov_batches):
+                chan_data = pd.DataFrame(
+                    np.random.rand(len(fovs)),
+                    columns=[metric]
+                )
+
+                chan_data['fov'] = fovs
+                chan_data['channel'] = chan
+
+                sample_qc_metric_data = pd.concat([sample_qc_metric_data, chan_data])
+
+            # get the file name of the combined QC metric .csv file to use
+            qc_metric_index = settings.QC_COLUMNS.index(metric)
+            qc_metric_suffix = settings.QC_SUFFIXES[qc_metric_index] + '.csv'
+
+            # save the combined data
+            sample_qc_metric_data.to_csv(
+                os.path.join(temp_dir, 'combined_%s' % qc_metric_suffix),
+                index=False
+            )
+
+        # pass an invalid metric
+        with pytest.raises(ValueError):
+            qc_comp.visualize_qc_metrics('bad_metric', '')
+
+        # pass an invalid qc_metric_dir
+        with pytest.raises(FileNotFoundError):
+            qc_comp.visualize_qc_metrics('Non-zero mean intensity', 'bad_qc_dir')
+
+        # pass a qc_metric_dir without the combined files
+        os.mkdir(os.path.join(temp_dir, 'empty_qc_dir'))
+        with pytest.raises(FileNotFoundError):
+            qc_comp.visualize_qc_metrics(
+                'Non-zero mean intensity',
+                os.path.join(temp_dir, 'empty_qc_dir')
+            )
+
+        # now test the visualization process for each metric
+        for metric in metrics:
+            # test without saving
+            qc_comp.visualize_qc_metrics(metric, temp_dir)
+            assert not os.path.exists(os.path.join(temp_dir, '%s_barplot_stats.png' % metric))
+
+            # test with saving
+            qc_comp.visualize_qc_metrics(metric, temp_dir, save_dir=temp_dir)
+            assert os.path.exists(os.path.join(temp_dir, '%s_barplot_stats.png' % metric))
