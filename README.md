@@ -17,10 +17,12 @@ This repo is currently in beta testing. None of the code has been published yet,
   - [Setting up the virtual environment](#setting-up-the-virtual-environment)
   - [Using the repo](#using-the-repo)
   - [Updating the repo](#updating-the-repo)
+- [Panel format](#panel-format)
+- [Median Pulse Height](#median-pulse-height)
 - [Questions?](#questions)
 
 ## Overview
-The repo has four main parts, with associated code and jupyter notebooks for each
+The repo has four main parts, with associated code and jupyter notebooks for each.
 
 ### 1. Using toffy for the first time
 The first time you use toffy on one of the commercial instruments, you'll need to perform some basic tasks to ensure everything is working properly. The [set up](./templates/1_set_up_toffy.ipynb) jupyter notebook will guide you through this process
@@ -34,7 +36,10 @@ The [second notebook](./templates/2_create_tma_mibi_run.ipynb) is for TMAs. This
 There are a number of different computational tasks to complete once a MIBI run has finished to ensure everything went smoothly. 
 
 - 3a: real time monitoring. The [MIBI monitoring](./templates/3a_monitor_MIBI_run.ipynb) notebook will monitor an ongoing MIBI run, and begin processing the image data as soon as it is generated. This notebook is being continually be updated as we move more of our processing pipeline to happen in real time as the data is generated.
-- 3b: post-run monitoring. For each step in the monitoring notebook, we have a dedicated notebook that can perform the same tasks once a run is complete. This includes [the image extraction notebook](./templates/extract_bin_file.ipynb) and the [qc metrics notebook](./templates/3b_generate_qc_metrics.ipynb). 
+- 3b - 3d: post-run monitoring. For each step in the monitoring notebook, we have a dedicated notebook that can perform the same tasks once a run is complete. 
+  - 3b: [the image extraction notebook](./templates/3b_extract_images_from_bin.ipynb) will extract images from bin files that have not already been processed
+  - 3c: [qc metrics notebook](./templates/3c_generate_qc_metrics.ipynb) computes and visualizes the QC metrics for the images
+  - 3d: [median pulse heights notebook](./templates/3d_compute_median_pulse_height.ipynb) generates plots showing median pulse heights for each FOV, along with estimated run time
 
 ### 4. Processing MIBI data
 Once your run has finished, you can begin to process the data to make it ready for analysis. To remove background signal contamination, as well as compensate for channel crosstalk, you can use the [compensation](./templates/4a_compensate_image_data.ipynb) notebook. This will guide you through the Rosetta algorithm, which uses a flow-cytometry style compensation approach to remove spurious signal. 
@@ -46,7 +51,7 @@ Following compensation, you will want to normalize your images to ensure consist
 After the image processing and cleanup from *toffy* is complete, the final step is to format your data to faciliate easy downstream analysis. The [reorganization](./templates/5_rename_and_reorganize.ipynb) notebook will walk you through the process of renaming FOVs, combining partial runs, and consolidating your images.
 
 ## Installation
-In order to get toffy working, you'll need to first install the repo. 
+In order to get toffy working, you'll need to first install some dependencies and the repository itself.
 
 ### Requirements for specific operating systems
 The process of setting up is largely the same for different operating systems. However, there are a few key differences. 
@@ -57,6 +62,15 @@ The process of setting up is largely the same for different operating systems. H
 Go to  https://visualstudio.microsoft.com/visual-cpp-build-tools/ and click 'Download Build Tools'.
 Open the installer and make sure you are installing the package labeled *C++ build tools*, then follow the prompts.
     - **(If installing on CAC, you will need the admin password and must contact support@ionpath.com)**
+    - **Git - CAC:** We highly recommend installing git system-wide on the CAC, by downloading the installation utility [here](https://git-scm.com/downloads).
+       1. Under Standalone Installer, click the 64-bit Git for Windows Setup link to download the proper installer.
+       2. Run the Git setup `.exe` file. It should be version 2.37.1 or higher.
+       3. Click `Yes` to allow Git to make the necessary changes.
+       4. Click `Next` to accept the GNU License. 
+       5. Click `Next` to save Git in it's default location. ![alt text](templates/img/git_install/step_01.png "Select Destination Location")
+       6. Next, the installer will give you a list of options for each menu. Leave everything to it's default. **We recommend to not change anything, unless you are confident on what you are doing.**
+       7. The last menu, will ask if you would like to use any experimental options. Click `Install`, and leave the experimental options unchecked. This will now install Git. ![alt text](templates/img/git_install/step_02.png).
+       8.  Open the Windows Terminal, and within the Powershell Tab type `Git` and hit enter. If you see the following output, you're good to go! ![alt text](templates/img/git_install/step_03.png)
 
 - You will need the latest version of Anaconda (**Miniconda** preferred). 
 Download here: https://docs.conda.io/en/latest/miniconda.html and select the appropriate download for your system.
@@ -127,6 +141,11 @@ conda remove --name toffy_env --all
 conda env create -f environment.yml
 ```
 
+## Panel format
+Many of the scripts in `toffy` require a panel file. This file identifies which targets have been put on which masses. For an example of what the format should be, you can look at the [example panel file](https://github.com/angelolab/toffy/blob/main/files/example_panel_file.csv). Some panels will not have targets on every mass; in this case, it's important that you just leave the placeholder row in the panel, and not delete it, in order to ensure that all the notebooks work as expected. Similarly, if you have multiple targets on the same mass, don't add a unique row for each, just give them a consolidated name. 
+
+## Median Pulse Height
+The median pulse height (MPH) provides a way to assess the sensitivity of the detector, independent of the specific sample being acquired. It uses characteristics of the output from the detector itself to determine what fraction of maximum sensitivity the instrument is currently running at. We use this fraction of the maximum sensitivity to determine 1) when the detector needs to be swept again and 2) how much to normalize our images by after the fact the correct for this change in sensitivity. The minimum MPH required to still have acceptable signal will depend in part on the markers in your panel, the settings of the instrument, and other factors. However, we often find that the miniumum is somewhere between 5,000 and 6,000 MPH. 
 
 ## Questions?
 

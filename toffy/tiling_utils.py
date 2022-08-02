@@ -221,24 +221,22 @@ def save_coreg_params(coreg_params):
     coreg_params['date'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
     # write to a new coreg_params.json file if it doesn't already exist
-    if not os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json')):
+    path = os.path.join('..', 'toffy', 'coreg_params.json')
+    if not os.path.exists(path):
         coreg_data = {
             'coreg_params': [
                 coreg_params
             ]
         }
+        json_utils.write_json_file(json_path=path, json_object=coreg_data)
 
-        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'w') as cp:
-            json.dump(coreg_data, cp)
     # append to the existing coreg_params key if coreg_params.json already exists
     else:
-        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'r') as cp:
-            coreg_data = json.load(cp)
+        coreg_data = json_utils.read_json_file(os.path.join('..', 'toffy', 'coreg_params.json'))
 
         coreg_data['coreg_params'].append(coreg_params)
 
-        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'w') as cp:
-            json.dump(coreg_data, cp)
+        json_utils.write_json_file(json_path=path, json_object=coreg_data)
 
 
 def generate_region_info(region_params):
@@ -358,8 +356,8 @@ def set_tiled_region_params(region_corners_path):
         )
 
     # read in the region corners data
-    with open(region_corners_path, 'r', encoding='utf-8') as flf:
-        tiled_region_corners = json.load(flf)
+    tiled_region_corners = json_utils.read_json_file(region_corners_path, encoding='utf-8')
+
     tiled_region_corners = json_utils.rename_missing_fovs(tiled_region_corners)
 
     # define the parameter dict to return
@@ -527,8 +525,7 @@ def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str] = Non
                                     % moly_path)
 
         # read in the moly point data
-        with open(moly_path, 'r', encoding='utf-8') as mpf:
-            moly_point = json.load(mpf)
+        moly_point = json_utils.read_json_file(moly_path, encoding='utf-8')
 
     # define the fov_regions dict
     fov_regions = {}
@@ -679,8 +676,8 @@ def generate_tma_fov_list(tma_corners_path, num_fov_row, num_fov_col):
         raise ValueError("Number of TMA-grid columns must be at least 3")
 
     # read in tma_corners_path
-    with open(tma_corners_path, 'r', encoding='utf-8') as flf:
-        tma_corners = json.load(flf)
+    tma_corners = json_utils.read_json_file(tma_corners_path, encoding='utf-8')
+
     tma_corners = json_utils.rename_missing_fovs(tma_corners)
 
     # a TMA can only be defined by four FOVs, one for each corner
@@ -1074,8 +1071,8 @@ def save_json(json_data, save_ann, json_path):
     """
 
     # save the mapping
-    with open(json_path, 'w', encoding='utf-8') as mp:
-        json.dump(json_data, mp)
+    json_utils.write_json_file(json_path=json_path, json_object=json_data,
+                               encoding="utf-8")
 
     # remove the save annotation if it already exists
     # clears up some space if the user decides to save several times
@@ -1644,8 +1641,8 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
 
     # load the co-registration parameters in
     # NOTE: the last set of params in the coreg_params list is the most up-to-date
-    with open(os.path.join('..', 'toffy', 'coreg_params.json')) as cp:
-        stage_optical_coreg_params = json.load(cp)['coreg_params'][-1]
+    path = os.path.join('..', 'toffy', 'coreg_params.json')
+    stage_optical_coreg_params = json_utils.read_json_file(path)['coreg_params'][-1]
 
     # define the initial mapping and a distance lookup table between manual and auto FOVs
     manual_to_auto_map, manual_auto_dist = assign_closest_fovs(manual_fovs, auto_fovs)
@@ -1909,8 +1906,7 @@ def remap_and_reorder_fovs(manual_fov_regions, manual_to_auto_map,
         raise FileNotFoundError("Moly point %s does not exist" % moly_path)
 
     # load the Moly point in
-    with open(moly_path, 'r', encoding='utf-8') as mp:
-        moly_point = json.load(mp)
+    moly_point = json_utils.read_json_file(moly_path, encoding='utf-8')
 
     # error check: moly_interval cannot be less than or equal to 0 if moly_insert is True
     if moly_insert and (not isinstance(moly_interval, int) or moly_interval < 1):

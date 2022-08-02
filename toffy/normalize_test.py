@@ -14,6 +14,8 @@ from pytest_cases import parametrize_with_cases
 from ark.utils import test_utils, load_utils, io_utils
 from toffy import normalize
 import toffy.normalize_test_cases as test_cases
+from toffy.json_utils import read_json_file, write_json_file
+
 
 parametrize = pytest.mark.parametrize
 
@@ -281,8 +283,7 @@ def test_fit_mass_mph_curve(tmpdir, min_obs):
     # make sure json with weights was created
     weights_path = os.path.join(tmpdir, mass_name + '_norm_func.json')
 
-    with open(weights_path, 'r') as wp:
-        mass_json = json.load(wp)
+    mass_json = read_json_file(weights_path)
 
     # load weights into prediction function
     weights = mass_json['weights']
@@ -314,8 +315,7 @@ def test_create_fitted_mass_mph_vals(tmpdir):
         mass_json = {'name': obj_func, 'weights': weights}
         mass_path = os.path.join(tmpdir, masses[mass_idx] + '_norm_func.json')
 
-        with open(mass_path, 'w') as mp:
-            json.dump(mass_json, mp)
+        write_json_file(json_path=mass_path, json_object=mass_json)
 
     # create combined mph_df
     pulse_height_list = np.random.rand(len(masses) * len(fovs))
@@ -370,7 +370,7 @@ def test_normalize_fov(tmpdir):
     # create image data
     fovs, chans = test_utils.gen_fov_chan_names(num_fovs=1, num_chans=3)
     _, data_xr = test_utils.create_paired_xarray_fovs(
-        tmpdir, fovs, chans, img_shape=(10, 10))
+        tmpdir, fovs, chans, img_shape=(10, 10), dtype='float32')
 
     # create inputs
     norm_vals = np.random.rand(len(chans))
@@ -385,6 +385,9 @@ def test_normalize_fov(tmpdir):
     # check that normalized images were modified by correct amount
     norm_imgs = load_utils.load_imgs_from_tree(norm_dir, channels=chans)
     assert np.allclose(data_xr.values, norm_imgs.values * norm_vals)
+
+    # check correct data type
+    assert norm_imgs.dtype == data_xr.dtype
 
     # check that log file has correct values
     log_file = pd.read_csv(os.path.join(norm_dir, 'fov0', 'normalization_coefs.csv'))
@@ -423,8 +426,7 @@ def test_normalize_image_data(tmpdir, metrics):
     func_json = {'name': name, 'weights': weights.tolist()}
     func_path = os.path.join(tmpdir, 'norm_func.json')
 
-    with open(func_path, 'w') as fp:
-        json.dump(func_json, fp)
+    write_json_file(json_path=func_path, json_object=func_json)
 
     # get panel
     panel = test_cases.panel
@@ -453,3 +455,32 @@ def test_normalize_image_data(tmpdir, metrics):
         normalize.normalize_image_data(img_dir=img_dir, norm_dir=norm_dir,
                                        pulse_height_dir=pulse_height_dir, panel_info=panel,
                                        norm_func_path=func_path)
+
+
+def test_check_detector_voltage():
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+
+        for i in list(range(1, 4)):
+            fov_data = {"hvDac": [{"name": "Detector", "currentSetPoint": 1000}]}
+            json_path = os.path.join(tmp_dir, 'fov-' + str(i) + '.json')
+            test_utils._make_blank_file(tmp_dir, 'fov-' + str(i) + '.bin')
+            write_json_file(json_path, fov_data)
+
+        # constant voltage should run smoothly
+            normalize.check_detector_voltage(tmp_dir)
+
+        for i in list(range(4, 11)):
+            if i < 7:
+                fov_data = {"hvDac": [{"name": "Detector", "currentSetPoint": 2000}]}
+            else:
+                fov_data = {"hvDac": [{"name": "Detector", "currentSetPoint": 3000}]}
+            json_path = os.path.join(tmp_dir, 'fov-' + str(i) + '.json')
+            test_utils._make_blank_file(tmp_dir, 'fov-' + str(i) + '.bin')
+            write_json_file(json_path, fov_data)
+
+        # change in voltage should raise an error
+        with pytest.raises(ValueError,
+                           match="Between fov-3 and fov-4 the voltage changed from 1000 to 2000.\n"
+                                 "Between fov-6 and fov-7 the voltage changed from 2000 to 3000."):
+            normalize.check_detector_voltage(tmp_dir)

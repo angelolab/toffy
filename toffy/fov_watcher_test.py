@@ -14,6 +14,7 @@ from mibi_bin_tools import io_utils
 from toffy.test_utils import WatcherCases, RunStructureTestContext, RunStructureCases
 from toffy.fov_watcher import start_watcher
 from toffy.watcher_callbacks import build_callbacks
+from toffy.json_utils import write_json_file
 
 TISSUE_DATA_PATH = os.path.join(Path(__file__).parent, 'data', 'tissue')
 RUN_DIR_NAME = 'run_XXX'
@@ -52,7 +53,7 @@ def test_run_structure(run_json, expected_files):
     with RunStructureTestContext(run_json, files=expected_files) as (tmpdir, run_structure):
         for file in expected_files:
             run_structure.check_run_condition(os.path.join(tmpdir, file))
-        assert(all(run_structure.check_fov_progress().values()))
+        assert all(run_structure.check_fov_progress().values())
 
         with pytest.raises(FileNotFoundError):
             run_structure.check_run_condition(os.path.join(tmpdir, 'fake_file.txt'))
@@ -66,19 +67,22 @@ def test_watcher(run_cbs, fov_cbs, kwargs, validators, add_blank):
 
         tiff_out_dir = os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME)
         qc_out_dir = os.path.join(tmpdir, 'cb_1', RUN_DIR_NAME)
+        mph_out_dir = os.path.join(tmpdir, 'cb_2', RUN_DIR_NAME)
+        plot_dir = os.path.join(tmpdir, 'cb_3', RUN_DIR_NAME)
 
         # add directories to kwargs
         kwargs['tiff_out_dir'] = tiff_out_dir
         kwargs['qc_out_dir'] = qc_out_dir
+        kwargs['mph_out_dir'] = mph_out_dir
+        kwargs['plot_dir'] = plot_dir
 
         run_data = os.path.join(tmpdir, 'test_run')
         log_out = os.path.join(tmpdir, 'log_output')
         os.makedirs(run_data)
 
         fov_callback, run_callback = build_callbacks(run_cbs, fov_cbs, **kwargs)
-
-        with open(os.path.join(run_data, 'test_run.json'), 'w') as f:
-            json.dump(TISSUE_RUN_JSON_SPOOF, f)
+        write_json_file(json_path=os.path.join(run_data, 'test_run.json'),
+                        json_object=TISSUE_RUN_JSON_SPOOF)
 
         # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
         # client access computer.  `start_watcher` is made async here since these processes
@@ -97,7 +101,7 @@ def test_watcher(run_cbs, fov_cbs, kwargs, validators, add_blank):
 
         with open(os.path.join(log_out, 'test_run_log.txt')) as f:
             logtxt = f.read()
-            assert(add_blank == ("non-zero file size..." in logtxt))
+            assert add_blank == ("non-zero file size..." in logtxt)
 
         fovs = [
             bin_file.split('.')[0]
