@@ -441,15 +441,15 @@ def combine_qc_metrics(qc_metrics_dir):
         metric_df.to_csv(os.path.join(qc_metrics_dir, 'combined_%s.csv' % ms), index=False)
 
 
-def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=None, save_dir=None,
-                         ax=None):
+def visualize_qc_metrics(metric_name, qc_metric_dir, axes_size=16, wrap=6,
+                         dpi=None, save_dir=None, ax=None):
     """Visualize a barplot of a specific QC metric
 
     Args:
-        qc_metric_df (pandas.DataFrame):
-            A QC metric matrix as returned by `compute_qc_metrics`, melted
         metric_name (str):
             The name of the QC metric, used as the y-axis label
+        qc_metric_dir (str):
+            The path to the directory containing the `'combined_{qc_metric}.csv'` files
         axes_size (int):
             The font size of the axes labels
         wrap (int):
@@ -462,6 +462,34 @@ def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=No
         ax (matplotlib.axes.Axes):
             Axes to place catplots
     """
+
+    # verify the metric provided is valid
+    if metric_name not in settings.QC_COLUMNS:
+        raise ValueError("Invalid metric %s provided, must be set to 'Non-zero mean intensity', "
+                         "'Total intensity', or '99.9%% intensity value'" % metric_name)
+
+    # verify the path to the QC metric datasets exist
+    if not os.path.exists(qc_metric_dir):
+        raise FileNotFoundError('qc_metric_dir %s does not exist' % qc_metric_dir)
+
+    # get the file name of the combined QC metric .csv file to use
+    qc_metric_index = settings.QC_COLUMNS.index(metric_name)
+    qc_metric_suffix = settings.QC_SUFFIXES[qc_metric_index]
+    qc_metric_path = os.path.join(qc_metric_dir, 'combined_%s.csv' % qc_metric_suffix)
+
+    # ensure the user set the right qc_metric_dir
+    if not os.path.exists(qc_metric_path):
+        raise FileNotFoundError('Could not locate %s, ensure qc_metric_dir is correct' %
+                                qc_metric_path)
+
+    # read in the QC metric data
+    qc_metric_df = pd.read_csv(qc_metric_path)
+
+    # filter out naturally-occurring elements as well as Noodle
+    qc_metric_df = qc_metric_df[~qc_metric_df['channel'].isin(settings.QC_CHANNEL_IGNORE)]
+
+    # filter out anything prefixed with 'chan_'
+    qc_metric_df = qc_metric_df[~qc_metric_df['channel'].str.startswith('chan_')]
 
     # catplot allows for easy facets on a barplot
     g = sns.catplot(
