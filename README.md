@@ -146,7 +146,7 @@ Data from each run on the MIBI will be stored in the default base directory `D:\
 The [set up](./templates/1_set_up_toffy.ipynb) jupyter notebook creates the following folders that will be used throughout toffy.
 <br> <br>
 Four new folders are created on the D drive:
-- `Extracted_Images`: stores the raw images extracted from the bin files in either the [MIBI monitoring notebook](./templates/3a_monitor_mibi_run.ipynb) or the [extraction notebook](./templates/3b_extract_images_from_bin.ipynb).
+- `Extracted_Images`: stores the raw images extracted from the bin files in either the [MIBI monitoring notebook](./templates/3a_monitor_MIBI_run.ipynb) or the [extraction notebook](./templates/3b_extract_images_from_bin.ipynb).
 - `Rosetta_Compensated_Images`: contains the images after being processed with the Rosetta algorithm in the [compensate image data notebook](./templates/4a_compensate_image_data.ipynb)
 - `Normalized_Images`: contains the images after accounting for intensity normalization in the [normalization notebook](./templates/4b_normalize_image_data.ipynb)
 - `Cohorts`: final location of your completely processed image data after renaming the folders and files in the [renaming and reorganizing notebook](./templates/5_rename_and_reorganize.ipynb)
@@ -158,7 +158,7 @@ Within `C:\\Users\\Customer.ION\\Documents` are directories that store necessary
 - `automlabeled_tma_jsons`: stores all files used to set up a tma run in the [tma notebook](./templates/2_create_tma_mibi_run.ipynb)
 - `panel_files`: directory containing the run panel file, needed for notebooks 3a, 3b, 4a, and 4b.
 - `run_metrics`: contains the data files produced by the [QC](./templates/3c_generate_qc_metrics.ipynb) and [MPH notebooks](./templates/3d_compute_median_pulse_height.ipynb)
-- `watcher_logs`: contains the log file of FOVs which have been processed in the [monitoring notebook](./templates/3a_monitor_mibi_run.ipynb)
+- `watcher_logs`: contains the log file of FOVs which have been processed in the [monitoring notebook](./templates/3a_monitor_MIBI_run.ipynb)
 - `normalization_curve`: directory which stores the normalization curve file for the machine that was produced by the [set up notebook](./templates/1_set_up_toffy.ipynb) and necessary for [notebook 4b](./templates/4b_normalize_image_data.ipynb)
 
 ![alt text](templates/img/C_dirs.gif)
