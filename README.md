@@ -142,7 +142,7 @@ conda env create -f environment.yml
 ```
 
 ## Directory structure
-Data from each run on the MIBI will be stored in the default base directory `D:\\Data`, within a subdirectory labeled with the run name.
+Data from each run on the MIBI will be stored in the default base directory `D:\\Data`, in a subdirectory labeled with the run name.
 The [set up](./templates/1_set_up_toffy.ipynb) jupyter notebook creates the following folders that will be used throughout toffy.
 <br> <br>
 Four new folders are created on the D drive:
