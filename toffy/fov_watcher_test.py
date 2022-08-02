@@ -53,7 +53,7 @@ def test_run_structure(run_json, expected_files):
     with RunStructureTestContext(run_json, files=expected_files) as (tmpdir, run_structure):
         for file in expected_files:
             run_structure.check_run_condition(os.path.join(tmpdir, file))
-        assert(all(run_structure.check_fov_progress().values()))
+        assert all(run_structure.check_fov_progress().values())
 
         with pytest.raises(FileNotFoundError):
             run_structure.check_run_condition(os.path.join(tmpdir, 'fake_file.txt'))
@@ -101,7 +101,7 @@ def test_watcher(run_cbs, fov_cbs, kwargs, validators, add_blank):
 
         with open(os.path.join(log_out, 'test_run_log.txt')) as f:
             logtxt = f.read()
-            assert(add_blank == ("non-zero file size..." in logtxt))
+            assert add_blank == ("non-zero file size..." in logtxt)
 
         fovs = [
             bin_file.split('.')[0]
