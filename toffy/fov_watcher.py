@@ -1,4 +1,5 @@
 import os
+import warnings
 from pathlib import Path
 import time
 import json
@@ -62,16 +63,21 @@ class RunStructure:
                 whether or not both json and bin files exist, as well as the name of the point
         """
 
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"{path} doesn't exist but was recently created. "
-                                    "This should be unreachable...")
-
         filename = Path(path).parts[-1]
 
+        # filename is not corrct format of fov.bin or fov.json
         if len(filename.split('.')) != 2:
+            raise warnings.warn(f'The file {filename} is not a valid FOV file and will be skipped'
+                                f'from processing.', UserWarning)
             return False, ''
 
         fov_name, extension = filename.split('.')
+
+        # path no longer valid
+        if not os.path.exists(path):
+            raise warnings.warn(f"{path} doesn't exist but was recently created. "
+                                "This should be unreachable...", UserWarning)
+            return False, ''
 
         # avoids repeated processing in case of duplicated events
         if fov_name in self.processed_fovs:
