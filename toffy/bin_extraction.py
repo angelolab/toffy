@@ -23,7 +23,7 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensitie
     extracted_fovs = io_utils.list_folders(extraction_dir, substrs='fov')
 
     # filter out empty json file fovs
-    empty_fovs = check_for_empty_files(bin_file_dir, return_json_names=True, warn=True)
+    empty_fovs = check_for_empty_files(bin_file_dir)
     if empty_fovs:
         fovs = list(set(fovs).difference(empty_fovs))
 
@@ -36,8 +36,6 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensitie
         print("Moly FOVs which will not be extracted: ", ", ".join(moly_fovs))
     if empty_fovs:
         print("FOVs with empty json files which will not be extracted: ", ", ".join(empty_fovs))
-    if not extracted_fovs and not moly_fovs and not empty_fovs:
-        print(f"Found {len(fovs)} FOVs to extract.")
 
     # extract missing fovs to extraction_dir
     non_moly_fovs = list(set(fovs).difference(moly_fovs))
@@ -45,6 +43,7 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel, extract_intensitie
     missing_fovs = ns.natsorted(missing_fovs)
 
     if missing_fovs:
+        print(f"Found {len(missing_fovs)} FOVs to extract.")
         bin_files.extract_bin_files(bin_file_dir, extraction_dir, include_fovs=missing_fovs,
                                     panel=panel, intensities=extract_intensities, replace=replace)
     else:

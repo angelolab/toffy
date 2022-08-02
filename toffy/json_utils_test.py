@@ -174,18 +174,14 @@ def test_check_for_empty_files():
         _make_blank_file(temp_dir, 'non_empty_file.bin')
 
         # test that no empty files detected returns empty list
-        no_empty_files = json_utils.check_for_empty_files(temp_dir, return_json_names=True,
-                                                          warn=False)
+        no_empty_files = json_utils.check_for_empty_files(temp_dir)
         assert no_empty_files == []
 
         _make_blank_file(temp_dir, 'empty_file.json')
         _make_blank_file(temp_dir, 'empty_file.bin')
 
-        # test successful empty file detection
-        empty_files = json_utils.check_for_empty_files(temp_dir, return_json_names=True,
-                                                       warn=False)
-        assert empty_files == ['empty_file']
-
-        # test successful warning message
+        # test successful empty file detection:
         with pytest.warns(UserWarning, match='The following FOVs have empty json files'):
-            json_utils.check_for_empty_files(temp_dir, warn=True)
+            empty_files = json_utils.check_for_empty_files(temp_dir)
+
+        assert empty_files == ['empty_file']

@@ -30,7 +30,8 @@ def test_extract_missing_fovs(mocked_print):
                                             panel, extract_intensities=False)
 
         assert mocked_print.mock_calls == \
-               [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1')]
+               [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1'),
+                call('Found 1 FOVs to extract.')]
     mocked_print.reset_mock()
 
     # test that it does not re-extract fovs and no moly extraction
@@ -60,10 +61,12 @@ def test_extract_missing_fovs(mocked_print):
             os.makedirs(os.path.join(extraction_dir, 'fov-1-scan-1'))
             bin_extraction.extract_missing_fovs(combined_bin_file_dir, extraction_dir,
                                                 panel, extract_intensities=False)
+
             assert mocked_print.mock_calls == \
                    [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1'),
                     call('Moly FOVs which will not be extracted: ', 'moly_fov'),
-                    call('FOVs with empty json files which will not be extracted: ', 'empty')]
+                    call('FOVs with empty json files which will not be extracted: ', 'empty'),
+                    call('Found 1 FOVs to extract.')]
 
             # when given empty fov files will raise a warning
             with pytest.warns(UserWarning, match="The following FOVs have empty json files"):

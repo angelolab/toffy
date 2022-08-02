@@ -157,12 +157,10 @@ def split_run_file(run_dir, run_file_name, file_split: list):
         write_json_file(save_path, json_i, encoding='utf-8')
 
 
-def check_for_empty_files(bin_file_dir, return_json_names=False, warn=True):
+def check_for_empty_files(bin_file_dir):
     """ Check for any empty json files and warn the user
     Args:
         bin_file_dir (str): directory containing the bin and json files
-        return_json_names (bool): whether to return a list of fovs with empty json files
-        warn (bool): whether to print a warning to the user
 
     Return:
         (list) of fov files with empty json, if none returns empty list
@@ -180,10 +178,9 @@ def check_for_empty_files(bin_file_dir, return_json_names=False, warn=True):
             empty_json_files.append(fov)
 
     # print a warning to the user when there are empty files
-    if warn and empty_json_files:
+    if empty_json_files:
         warnings.warn(f'The following FOVs have empty json files and will not be processed:'
                       f'\n {empty_json_files}', UserWarning)
 
     # return the list of fov names
-    if return_json_names:
-        return empty_json_files
+    return empty_json_files
