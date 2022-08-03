@@ -67,16 +67,16 @@ class RunStructure:
 
         # filename is not corrct format of fov.bin or fov.json
         if len(filename.split('.')) != 2:
-            raise warnings.warn(f'The file {filename} is not a valid FOV file and will be skipped'
-                                f'from processing.', UserWarning)
+            warnings.warn(f'The file {filename} is not a valid FOV file and will be skipped'
+                          f'from processing.', UserWarning)
             return False, ''
 
         fov_name, extension = filename.split('.')
 
         # path no longer valid
         if not os.path.exists(path):
-            raise warnings.warn(f"{path} doesn't exist but was recently created. "
-                                "This should be unreachable...", UserWarning)
+            warnings.warn(f"{path} doesn't exist but was recently created. "
+                          "This should be unreachable...", UserWarning)
             return False, ''
 
         # avoids repeated processing in case of duplicated events
