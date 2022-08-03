@@ -20,7 +20,7 @@ from toffy.test_utils import (
 @parametrize_with_cases('data_path',  cases=ExtractionQCCallCases)
 def test_build_fov_callback(callbacks, kwargs, data_path):
 
-    intensities = kwargs.get('intensities', False)
+    intensities = kwargs.get('intensities', ['Au', 'chan_39'])
     replace = kwargs.get('replace', True)
 
     with tempfile.TemporaryDirectory() as tmp_dir:

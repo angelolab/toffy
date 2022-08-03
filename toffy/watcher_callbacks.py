@@ -107,7 +107,7 @@ class FovCallbacks:
     __panel: pd.DataFrame = field(default=None, init=False)
     __fov_data: xr.DataArray = field(default=None, init=False)
 
-    def _generate_fov_data(self, panel: pd.DataFrame, intensities=False, replace=True,
+    def _generate_fov_data(self, panel: pd.DataFrame, intensities=['Au', 'chan_39'], replace=True,
                            time_res=0.0005, **kwargs):
         """Extracts data from bin files using the given panel
 
@@ -150,6 +150,7 @@ class FovCallbacks:
                 Accepted kwargs are
 
              - intensities
+             - replace
              - time_res
         """
         if not os.path.exists(tiff_out_dir):
@@ -158,7 +159,7 @@ class FovCallbacks:
         if self.__fov_data is None:
             self._generate_fov_data(panel, **kwargs)
 
-        intensities = kwargs.get('intensities', False)
+        intensities = kwargs.get('intensities', ['Au', 'chan_39'])
         if any_true(intensities) and type(intensities) is not list:
             intensities = list(self.__fov_data.channel.values)
 
