@@ -87,7 +87,8 @@ def test_extract_missing_fovs(mocked_print):
         fovs_extracted = io_utils.list_folders(extraction_dir)
 
         # test no extra print statements
-        assert mocked_print.mock_calls == [call('Found 2 FOVs to extract.')]
+        assert mocked_print.mock_calls == [call('Found 2 FOVs to extract.'),
+                                           call('Extraction completed!')]
 
         # check both fovs were extracted
         assert fovs.sort() == fovs_extracted.sort()
