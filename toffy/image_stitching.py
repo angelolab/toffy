@@ -1,5 +1,4 @@
 import os
-import shutil
 import math
 import natsort as ns
 import skimage.io as io
@@ -39,11 +38,9 @@ def stitch_images(tiff_out_dir, run_dir, channels=None):
     # remove old images
     stitched_dir = os.path.join(tiff_out_dir, 'stitched_images')
     if os.path.exists(stitched_dir):
-        shutil.rmtree(stitched_dir)
+        raise ValueError(f"fThe stitch_images subdirectory already exists in {tiff_out_dir}")
 
     folders = io_utils.list_folders(tiff_out_dir)
-    if 'intensities' in folders:
-        folders.remove('intensities')
     folders = ns.natsorted(folders)
 
     # retrieve all extracted channel names, or verify the list provided
@@ -57,15 +54,15 @@ def stitch_images(tiff_out_dir, run_dir, channels=None):
     # load in and stitch the image data
     num_cols = math.isqrt(len(folders))
     max_img_size = get_max_img_size(run_dir)
-    image_data = load_utils.load_imgs_from_tree(tiff_out_dir, fovs=folders, channels=channels,
-                                                max_image_size=max_img_size, dtype='uint32')
-    stitched = data_utils.stitch_images(image_data, num_cols)
 
     # recreate directory
     os.makedirs(stitched_dir)
 
     # save the stitched images to the stitched_image subdir
-    for chan in stitched.channels.values:
+    for chan in channels:
+        image_data = load_utils.load_imgs_from_tree(tiff_out_dir, fovs=folders, channels=[chan],
+                                                    max_image_size=max_img_size, dtype='uint32')
+        stitched = data_utils.stitch_images(image_data, num_cols)
         current_img = stitched.loc['stitched_image', :, :, chan].values
-        io.imsave(os.path.join(stitched_dir, chan + '_stitched.tiff'), current_img.astype('uint8'),
-                  check_contrast=False)
+        io.imsave(os.path.join(stitched_dir, chan + '_stitched.tiff'),
+                  current_img.astype('uint32'), check_contrast=False)

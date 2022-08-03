@@ -1,7 +1,7 @@
 import os
 import tempfile
 import pytest
-import json
+import shutil
 
 from toffy import image_stitching, json_utils
 from ark.utils import io_utils, test_utils
@@ -34,7 +34,7 @@ def test_stitch_images(mocker):
         channel_list = ['Au', 'CD3', 'CD4', 'CD8', 'CD11c']
         stitched_tifs = ['Au_stitched.tiff', 'CD3_stitched.tiff', 'CD4_stitched.tiff',
                          'CD8_stitched.tiff', 'CD11c_stitched.tiff']
-        fov_list = ['fov-1-scan-1', 'fov-2-scan-1', 'fov-3-scan-1', 'intensities']
+        fov_list = ['fov-1-scan-1', 'fov-2-scan-1', 'fov-3-scan-1']
         test_utils._write_tifs(tmpdir, fov_list, channel_list, (10, 10), '', False, int)
 
         # bad channel should raise an error
@@ -46,6 +46,12 @@ def test_stitch_images(mocker):
         image_stitching.stitch_images(tmpdir, tmpdir)
         assert sorted(io_utils.list_files(os.path.join(tmpdir, 'stitched_images'))) == \
                sorted(stitched_tifs)
+
+        # test previous stitching raises an error
+        with pytest.raises(ValueError, match="The stitch_images subdirectory already exists"):
+            image_stitching.stitch_images(tmpdir, tmpdir)
+
+        shutil.rmtree(os.path.join(tmpdir, 'stitched_images'))
 
         # test stitching for specific channels
         image_stitching.stitch_images(tmpdir, tmpdir, ['Au', 'CD3'])
