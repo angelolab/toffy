@@ -47,7 +47,6 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel,
         print(f"Found {len(missing_fovs)} FOVs to extract.")
         bin_files.extract_bin_files(bin_file_dir, extraction_dir, include_fovs=missing_fovs,
                                     panel=panel, intensities=extract_intensities, replace=replace)
+        print("Extraction completed!")
     else:
         warnings.warn(f"No viable bin files were found in {bin_file_dir}", UserWarning)
-
-    print("Extraction completed!")
