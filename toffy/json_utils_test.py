@@ -4,6 +4,7 @@ import os
 import tempfile
 import pytest
 from toffy import json_utils, test_utils
+from ark.utils.test_utils import _make_blank_file
 
 
 def test_rename_missing_fovs():
@@ -78,6 +79,11 @@ def test_list_moly_fovs(tmpdir):
     pred_moly_fovs = json_utils.list_moly_fovs(tmpdir)
 
     assert np.array_equal(pred_moly_fovs.sort(), moly_fovs.sort())
+
+    # check fov_list functionality
+    pred_moly_fovs_subset = json_utils.list_moly_fovs(tmpdir, ['fov-1-scan-1', 'fov-1-scan-2'])
+
+    assert np.array_equal(pred_moly_fovs_subset.sort(), ['fov-1-scan-1'].sort())
 
 
 def test_read_json_file():
@@ -158,3 +164,24 @@ def test_split_run_file():
         assert new_data['test_part1']['fovs'] == ['fov1', 'fov2']
         assert new_data['test_part2']['fovs'] == ['fov3', 'fov4', 'fov5', 'fov6']
         assert new_data['test_part3']['fovs'] == ['fov7', 'fov8']
+
+
+def test_check_for_empty_files():
+    test_data = [1, 2, 3, 4, 5]
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        json_utils.write_json_file(os.path.join(temp_dir, 'non_empty_file.json'), test_data)
+        _make_blank_file(temp_dir, 'non_empty_file.bin')
+
+        # test that no empty files detected returns empty list
+        no_empty_files = json_utils.check_for_empty_files(temp_dir)
+        assert no_empty_files == []
+
+        _make_blank_file(temp_dir, 'empty_file.json')
+        _make_blank_file(temp_dir, 'empty_file.bin')
+
+        # test successful empty file detection:
+        with pytest.warns(UserWarning, match='The following FOVs have empty json files'):
+            empty_files = json_utils.check_for_empty_files(temp_dir)
+
+        assert empty_files == ['empty_file']
