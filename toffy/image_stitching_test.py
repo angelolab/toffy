@@ -63,4 +63,3 @@ def test_stitch_images(mocker):
         image_stitching.stitch_images(tmpdir, tmpdir, ['Au', 'CD3'], img_sub_folder='sub_dir')
         assert sorted(io_utils.list_files(os.path.join(tmpdir, 'stitched_images'))) == \
                sorted(['Au_stitched.tiff', 'CD3_stitched.tiff'])
-
