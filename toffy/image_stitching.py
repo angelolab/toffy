@@ -41,16 +41,21 @@ def stitch_images(tiff_out_dir, run_dir, channels=None, img_sub_folder=None):
     if os.path.exists(stitched_dir):
         raise ValueError(f"fThe stitch_images subdirectory already exists in {tiff_out_dir}")
 
-    folders = io_utils.list_folders(tiff_out_dir)
+    folders = io_utils.list_folders(tiff_out_dir, substrs='fov-')
     folders = ns.natsorted(folders)
+
+    if img_sub_folder is None:
+        # no img_sub_folder, change to empty string to read directly from base folder
+        img_sub_folder = ""
 
     # retrieve all extracted channel names, or verify the list provided
     if channels is None:
         channels = remove_file_extensions(io_utils.list_files(
-            dir_name=os.path.join(tiff_out_dir, folders[0]), substrs='.tiff'))
+            dir_name=os.path.join(tiff_out_dir, folders[0], img_sub_folder), substrs='.tiff'))
     else:
         misc_utils.verify_in_list(channel_inputs=channels, valid_channels=remove_file_extensions(
-            io_utils.list_files(dir_name=os.path.join(tiff_out_dir, folders[0]), substrs='.tiff')))
+            io_utils.list_files(dir_name=os.path.join(tiff_out_dir, folders[0], img_sub_folder),
+                                substrs='.tiff')))
 
     # load in and stitch the image data
     num_cols = math.isqrt(len(folders))
