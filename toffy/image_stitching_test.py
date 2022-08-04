@@ -36,6 +36,7 @@ def test_stitch_images(mocker):
                          'CD8_stitched.tiff', 'CD11c_stitched.tiff']
         fov_list = ['fov-1-scan-1', 'fov-2-scan-1', 'fov-3-scan-1']
         test_utils._write_tifs(tmpdir, fov_list, channel_list, (10, 10), '', False, int)
+        test_utils._write_tifs(tmpdir, fov_list, channel_list, (10, 10), 'sub_dir', False, int)
 
         # bad channel should raise an error
         with pytest.raises(ValueError, match='Not all values given in list channel inputs were '
@@ -50,10 +51,16 @@ def test_stitch_images(mocker):
         # test previous stitching raises an error
         with pytest.raises(ValueError, match="The stitch_images subdirectory already exists"):
             image_stitching.stitch_images(tmpdir, tmpdir)
-
         shutil.rmtree(os.path.join(tmpdir, 'stitched_images'))
 
         # test stitching for specific channels
         image_stitching.stitch_images(tmpdir, tmpdir, ['Au', 'CD3'])
         assert sorted(io_utils.list_files(os.path.join(tmpdir, 'stitched_images'))) == \
                sorted(['Au_stitched.tiff', 'CD3_stitched.tiff'])
+        shutil.rmtree(os.path.join(tmpdir, 'stitched_images'))
+
+        # test stitching for images in subdir
+        image_stitching.stitch_images(tmpdir, tmpdir, ['Au', 'CD3'], img_sub_folder='sub_dir')
+        assert sorted(io_utils.list_files(os.path.join(tmpdir, 'stitched_images'))) == \
+               sorted(['Au_stitched.tiff', 'CD3_stitched.tiff'])
+

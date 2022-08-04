@@ -113,13 +113,17 @@ def test_watcher(run_cbs, fov_cbs, kwargs, validators, add_blank):
         if add_blank:
             fovs = fovs[1:]
 
-        for i, validator in enumerate(validators):
-            if i <= 1:
-                validator(os.path.join(tmpdir, f'cb_{i}', RUN_DIR_NAME), fovs)
-            elif i == 2:
-                validator(os.path.join(tmpdir, f'cb_{i}', RUN_DIR_NAME),
-                          os.path.join(tmpdir, f'cb_{i}_plots', RUN_DIR_NAME), fovs)
-            elif i == 3:
-                validator(os.path.join(tmpdir, f'cb_{0}', RUN_DIR_NAME, 'stitched_images'))
+        # extract tiffs check
+        validators[0](os.path.join(tmpdir, f'cb_{0}', RUN_DIR_NAME), fovs)
+
+        # qc check
+        validators[1](os.path.join(tmpdir, f'cb_{1}', RUN_DIR_NAME), fovs)
+
+        # mph check
+        validators[2](os.path.join(tmpdir, f'cb_{2}', RUN_DIR_NAME),
+                      os.path.join(tmpdir, f'cb_{2}_plots', RUN_DIR_NAME), fovs)
+
+        # stitch images check
+        validators[3](os.path.join(tmpdir, f'cb_{0}', RUN_DIR_NAME, 'stitched_images'))
 
     pass

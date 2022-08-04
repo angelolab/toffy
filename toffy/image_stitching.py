@@ -28,12 +28,13 @@ def get_max_img_size(run_dir):
     return max_img_size
 
 
-def stitch_images(tiff_out_dir, run_dir, channels=None):
+def stitch_images(tiff_out_dir, run_dir, channels=None, img_sub_folder=None):
     """Creates a new directory containing stitched channel images for the run
         Args:
             tiff_out_dir (str): path to the extracted images for the specific run
             run_dir (str): path to the run directory containing the run json files
-            channels (list): list of channels to produce stitched images for, None will do all """
+            channels (list): list of channels to produce stitched images for, None will do all
+            img_sub_folder (str): optional name of image sub-folder within each fov"""
 
     # remove old images
     stitched_dir = os.path.join(tiff_out_dir, 'stitched_images')
@@ -60,7 +61,8 @@ def stitch_images(tiff_out_dir, run_dir, channels=None):
 
     # save the stitched images to the stitched_image subdir
     for chan in channels:
-        image_data = load_utils.load_imgs_from_tree(tiff_out_dir, fovs=folders, channels=[chan],
+        image_data = load_utils.load_imgs_from_tree(tiff_out_dir, img_sub_folder=img_sub_folder,
+                                                    fovs=folders, channels=[chan],
                                                     max_image_size=max_img_size, dtype='uint32')
         stitched = data_utils.stitch_images(image_data, num_cols)
         current_img = stitched.loc['stitched_image', :, :, chan].values
