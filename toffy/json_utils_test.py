@@ -1,8 +1,10 @@
 import json
 import numpy as np
 import os
-
+import tempfile
+import pytest
 from toffy import json_utils, test_utils
+from ark.utils.test_utils import _make_blank_file
 
 
 def test_rename_missing_fovs():
@@ -77,3 +79,109 @@ def test_list_moly_fovs(tmpdir):
     pred_moly_fovs = json_utils.list_moly_fovs(tmpdir)
 
     assert np.array_equal(pred_moly_fovs.sort(), moly_fovs.sort())
+
+    # check fov_list functionality
+    pred_moly_fovs_subset = json_utils.list_moly_fovs(tmpdir, ['fov-1-scan-1', 'fov-1-scan-2'])
+
+    assert np.array_equal(pred_moly_fovs_subset.sort(), ['fov-1-scan-1'].sort())
+
+
+def test_read_json_file():
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+
+        # create fake jsons
+        moly_json = {'name': 'bob',
+                     'standardTarget': 'Molybdenum Foil'}
+        json_path = tmp_dir+"/test.json"
+
+        # write test json
+        with open(json_path, 'w') as jp:
+            json.dump(moly_json, jp)
+
+        # Test bad path
+        bad_path = "/neasdf1246ljea/asdfje12ua3421ndsf/asdf.json"
+        with pytest.raises(ValueError, match=r'A bad path*'):
+            json_utils.read_json_file(bad_path)
+
+        # Read json with read_json_file function assuming file path is good
+        newfile_test = json_utils.read_json_file(json_path)
+
+        # Make sure using the read_json_file leads to the same object as moly_json
+        assert newfile_test == moly_json
+
+
+def test_write_json_file():
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+
+        # create fake jsons
+        moly_json = {'name': 'bob',
+                     'standardTarget': 'Molybdenum Foil'}
+        json_path = tmp_dir+"/test.json"
+
+        # To be 100% you would want to create some massive random string instead of hardcode
+        bad_path = "/mf8575b20d/bgjeidu45483hdck/asdf.json"
+
+        # test bad path
+        with pytest.raises(ValueError, match=r"A bad path*"):
+            json_utils.write_json_file(json_path=bad_path, json_object=moly_json)
+
+        # Write file after file path is validated
+        json_utils.write_json_file(json_path=json_path, json_object=moly_json)
+
+        # Read file with standard method
+        with open(json_path, 'r') as jp:
+            newfile_test = json.load(jp)
+
+        # Make sure the file written with write_json_file is the same as starting point
+        assert newfile_test == moly_json
+
+
+def test_split_run_file():
+
+    with tempfile.TemporaryDirectory() as tmp_dir:
+        run_file_name = 'test.json'
+        run_file = {'fovs': ['fov1', 'fov2', 'fov3', 'fov4', 'fov5', 'fov6', 'fov7', 'fov8']}
+        json_utils.write_json_file(os.path.join(tmp_dir, run_file_name), run_file, 'utf-8')
+
+        # list not summing to fov amount will raise an error
+        bad_split = [5, 5]
+        with pytest.raises(ValueError, match=r'does not match the number of FOVs'):
+            json_utils.split_run_file(tmp_dir, run_file_name, bad_split)
+
+        # test successful json split
+        good_split = [2, 4, 2]
+        json_utils.split_run_file(tmp_dir, run_file_name, good_split)
+
+        # check the new files exist
+        new_data = {}
+        for i in list(range(1, len(good_split)+1)):
+            new_json = os.path.join(tmp_dir, 'test_part' + str(i) + '.json')
+            new_data['test_part{0}'.format(i)] = json_utils.read_json_file(new_json, 'utf-8')
+
+        # check for correct fov splitting
+        assert new_data['test_part1']['fovs'] == ['fov1', 'fov2']
+        assert new_data['test_part2']['fovs'] == ['fov3', 'fov4', 'fov5', 'fov6']
+        assert new_data['test_part3']['fovs'] == ['fov7', 'fov8']
+
+
+def test_check_for_empty_files():
+    test_data = [1, 2, 3, 4, 5]
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        json_utils.write_json_file(os.path.join(temp_dir, 'non_empty_file.json'), test_data)
+        _make_blank_file(temp_dir, 'non_empty_file.bin')
+
+        # test that no empty files detected returns empty list
+        no_empty_files = json_utils.check_for_empty_files(temp_dir)
+        assert no_empty_files == []
+
+        _make_blank_file(temp_dir, 'empty_file.json')
+        _make_blank_file(temp_dir, 'empty_file.bin')
+
+        # test successful empty file detection:
+        with pytest.warns(UserWarning, match='The following FOVs have empty json files'):
+            empty_files = json_utils.check_for_empty_files(temp_dir)
+
+        assert empty_files == ['empty_file']

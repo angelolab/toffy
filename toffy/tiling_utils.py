@@ -10,6 +10,7 @@ from operator import itemgetter
 import os
 import pandas as pd
 import re
+from typing import Optional
 from skimage.draw import ellipse
 from sklearn.linear_model import LinearRegression
 from sklearn.utils import shuffle
@@ -218,24 +219,22 @@ def save_coreg_params(coreg_params):
     coreg_params['date'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
     # write to a new coreg_params.json file if it doesn't already exist
-    if not os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json')):
+    path = os.path.join('..', 'toffy', 'coreg_params.json')
+    if not os.path.exists(path):
         coreg_data = {
             'coreg_params': [
                 coreg_params
             ]
         }
+        json_utils.write_json_file(json_path=path, json_object=coreg_data)
 
-        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'w') as cp:
-            json.dump(coreg_data, cp)
     # append to the existing coreg_params key if coreg_params.json already exists
     else:
-        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'r') as cp:
-            coreg_data = json.load(cp)
+        coreg_data = json_utils.read_json_file(os.path.join('..', 'toffy', 'coreg_params.json'))
 
         coreg_data['coreg_params'].append(coreg_params)
 
-        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'w') as cp:
-            json.dump(coreg_data, cp)
+        json_utils.write_json_file(json_path=path, json_object=coreg_data)
 
 
 def generate_region_info(region_params):
@@ -355,8 +354,8 @@ def set_tiled_region_params(region_corners_path):
         )
 
     # read in the region corners data
-    with open(region_corners_path, 'r', encoding='utf-8') as flf:
-        tiled_region_corners = json.load(flf)
+    tiled_region_corners = json_utils.read_json_file(region_corners_path, encoding='utf-8')
+
     tiled_region_corners = json_utils.rename_missing_fovs(tiled_region_corners)
 
     # define the parameter dict to return
@@ -379,7 +378,8 @@ def set_tiled_region_params(region_corners_path):
 
     # whether to insert moly points between regions
     moly_region_insert = read_tiling_param(
-        "Insert a moly point between each tiled region? Y/N: ",
+        "Insert a moly point between each tiled region? \
+            If yes, you must provide a path to the example moly_FOV json file. Y/N: ",
         "Error: moly point region parameter must be either Y or N",
         lambda mri: mri in ['Y', 'N', 'y', 'n'],
         dtype=str
@@ -391,7 +391,8 @@ def set_tiled_region_params(region_corners_path):
 
     # whether to insert moly points between fovs
     moly_interval = read_tiling_param(
-        "Enter the FOV interval size to insert Moly points. If yes, enter the number of FOVs "
+        "Enter the FOV interval size to insert Moly points. If yes, you must provide \
+            a path to the example moly_FOV json file and enter the number of FOVs "
         "between each Moly point. If no, enter 0: ",
         "Error: moly interval must be 0 or a positive integer",
         lambda mi: mi >= 0,
@@ -482,7 +483,7 @@ def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_righ
     return pairs
 
 
-def generate_tiled_region_fov_list(tiling_params, moly_path):
+def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str] = None):
     """Generate the list of FOVs on the image from the `tiling_params` set for tiled regions
 
     Moly point insertion: happens once every number of FOVs you specified in
@@ -502,9 +503,10 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
     Args:
         tiling_params (dict):
             The tiling parameters created by `set_tiled_region_params`
-        moly_path (str):
+        moly_path (Optional[str]):
             The path to the Moly point to insert between FOV intervals and/or regions.
             If these insertion parameters are not specified in `tiling_params`, this won't be used.
+            Defaults to None.
 
     Returns:
         dict:
@@ -512,12 +514,16 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
     """
 
     # file path validation
-    if not os.path.exists(moly_path):
-        raise FileNotFoundError("Moly point file %s does not exist" % moly_path)
+    if (tiling_params.get("moly_region", "N") == "Y") or \
+       (tiling_params.get("moly_interval", 0) > 0):
+        if not os.path.exists(moly_path):
+            raise FileNotFoundError("The provided Moly FOV file %s does not exist. If you want\
+                                    to include Moly FOVs you must provide a valid path. Otherwise\
+                                    , select 'No' for the options relating to Moly FOVs"
+                                    % moly_path)
 
-    # read in the moly point data
-    with open(moly_path, 'r', encoding='utf-8') as mpf:
-        moly_point = json.load(mpf)
+        # read in the moly point data
+        moly_point = json_utils.read_json_file(moly_path, encoding='utf-8')
 
     # define the fov_regions dict
     fov_regions = {}
@@ -589,7 +595,8 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
                 fov_regions['fovs'].append(moly_point)
 
         # append Moly point to seperate regions if not last and if specified
-        if tiling_params['moly_region'] == 'Y' and \
+        if 'moly_region' in tiling_params and \
+            tiling_params['moly_region'] == 'Y' and \
            region_index != len(tiling_params['region_params']) - 1:
             fov_regions['fovs'].append(moly_point)
 
@@ -657,16 +664,16 @@ def generate_tma_fov_list(tma_corners_path, num_fov_row, num_fov_col):
             "TMA corners file %s does not exist" % tma_corners_path
         )
 
-    # user needs to define at least 3 FOVs along the x- and y-axes
-    if num_fov_row < 3:
-        raise ValueError("Number of TMA-grid rows must be at least 3")
+    # user needs to define at least 2 FOVs along the row- and col-axes
+    if num_fov_row < 2:
+        raise ValueError("Number of TMA-grid rows must be at least 2")
 
-    if num_fov_col < 3:
-        raise ValueError("Number of TMA-grid columns must be at least 3")
+    if num_fov_col < 2:
+        raise ValueError("Number of TMA-grid columns must be at least 2")
 
     # read in tma_corners_path
-    with open(tma_corners_path, 'r', encoding='utf-8') as flf:
-        tma_corners = json.load(flf)
+    tma_corners = json_utils.read_json_file(tma_corners_path, encoding='utf-8')
+
     tma_corners = json_utils.rename_missing_fovs(tma_corners)
 
     # a TMA can only be defined by four FOVs, one for each corner
@@ -1060,8 +1067,9 @@ def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
     """
 
     # save the mapping
-    with open(mapping_path, 'w', encoding='utf-8') as mp:
-        json.dump(manual_to_auto_map, mp)
+
+    json_utils.write_json_file(json_path=mapping_path, json_object=manual_to_auto_map,
+                               encoding="utf-8")
 
     # remove the save annotation if it already exists
     # clears up some space if the user decides to save several times
@@ -1330,8 +1338,8 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
 
     # load the co-registration parameters in
     # NOTE: the last set of params in the coreg_params list is the most up-to-date
-    with open(os.path.join('..', 'toffy', 'coreg_params.json')) as cp:
-        stage_optical_coreg_params = json.load(cp)['coreg_params'][-1]
+    path = os.path.join('..', 'toffy', 'coreg_params.json')
+    stage_optical_coreg_params = json_utils.read_json_file(path)['coreg_params'][-1]
 
     # define the initial mapping and a distance lookup table between manual and auto FOVs
     manual_to_auto_map, manual_auto_dist = assign_closest_fovs(manual_fovs, auto_fovs)
@@ -1595,8 +1603,7 @@ def remap_and_reorder_fovs(manual_fov_regions, manual_to_auto_map,
         raise FileNotFoundError("Moly point %s does not exist" % moly_path)
 
     # load the Moly point in
-    with open(moly_path, 'r', encoding='utf-8') as mp:
-        moly_point = json.load(mp)
+    moly_point = json_utils.read_json_file(moly_path, encoding='utf-8')
 
     # error check: moly_interval cannot be less than or equal to 0 if moly_insert is True
     if moly_insert and (not isinstance(moly_interval, int) or moly_interval < 1):

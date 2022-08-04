@@ -1,8 +1,10 @@
 import copy
 import json
 import os
+import warnings
 
 from ark.utils import io_utils
+from mibi_bin_tools.io_utils import remove_file_extensions
 
 
 def rename_missing_fovs(fov_data):
@@ -58,16 +60,22 @@ def rename_duplicate_fovs(tma_fovs):
     return tma_fovs
 
 
-def list_moly_fovs(bin_file_dir):
-    """Lists all of the FOVs in a directory which are moly FOVs
+def list_moly_fovs(bin_file_dir, fov_list=None):
+    """Lists all of the FOVs in a directory or provided list which are moly FOVs
 
     Args:
         bin_file_dir (str): path to bin files
+        fov_list (list): list of fov names to check, default None will check all fovs in dir
 
     Returns:
         list: list of FOVs which are moly FOVs"""
 
-    json_files = io_utils.list_files(bin_file_dir, '.json')
+    # check provided fovs
+    if fov_list:
+        json_files = [fov + '.json' for fov in fov_list]
+    # check all fovs in bin_file_dir
+    else:
+        json_files = io_utils.list_files(bin_file_dir, '.json')
     moly_fovs = []
 
     for file in json_files:
@@ -80,3 +88,99 @@ def list_moly_fovs(bin_file_dir):
             moly_fovs.append(moly_name)
 
     return moly_fovs
+
+
+def read_json_file(json_path, encoding=None):
+    """Reads json file and returns json file object while verifying dirs exist
+    Args:
+        json_path (str): path to json file
+    Returns:
+        json file object"""
+
+    # call to validate paths will raise errors if anything wrong, and do nothing if
+    # file path valid
+    io_utils.validate_paths(json_path, data_prefix=False)
+
+    with open(json_path, mode='r', encoding=encoding) as jp:
+        json_file = json.load(jp)
+
+    return json_file
+
+
+def write_json_file(json_path, json_object, encoding=None):
+    """Writes json file object to json file. Raises error if directory doesnt exist.
+    Args:
+        json_path: full path to write json file
+    Returns:
+        nothing"""
+
+    # get the path minus the proposed file name.
+    dir_path = os.path.dirname(os.path.abspath(json_path))
+
+    # Raises error if path doesnt exist
+    io_utils.validate_paths(dir_path, data_prefix=False)
+
+    with open(json_path, mode='w', encoding=encoding) as jp:
+        json.dump(json_object, jp)
+
+
+def split_run_file(run_dir, run_file_name, file_split: list):
+    """Splits a run json file into smaller fov amount files as defined by the user
+
+    Args:
+        run_dir (str): path to directory containing the run file
+        run_file_name (str): name of the run file to split
+        file_split (list): list of ints defining how to break up the fovs into new jsons
+
+    Returns:
+        saves the new json files to the base_dir """
+
+    json_path = os.path.join(run_dir, run_file_name)
+    full_json = read_json_file(json_path, encoding='utf-8')
+
+    # check list is valid FOV split
+    if not sum(file_split) == len(full_json['fovs']):
+        raise ValueError(
+            f"Sum of the provided list does not match the number of FOVs in the run file.\n"
+            f"list sum: {sum(file_split)}, total FOVs in the JSON: {len(full_json['fovs'])}")
+
+    # split the run json into smaller files and save to run_dir
+    start = 0
+    for i in range(0, len(file_split)):
+        json_i = copy.deepcopy(full_json)
+        stop = start+file_split[i]
+        json_i['fovs'] = json_i['fovs'][start:stop]
+        start = start+file_split[i]
+
+        save_path = os.path.join(run_dir, run_file_name.split('.json')[0] + '_part'
+                                 + str(i+1) + '.json')
+        write_json_file(save_path, json_i, encoding='utf-8')
+
+
+def check_for_empty_files(bin_file_dir):
+    """ Check for any empty json files and warn the user
+    Args:
+        bin_file_dir (str): directory containing the bin and json files
+
+    Return:
+        (list) of fov files with empty json, if none returns empty list
+        raises a warning
+    """
+
+    # retrieve all fovs in bin_file_dir
+    fov_names = remove_file_extensions(io_utils.list_files(bin_file_dir, substrs='.bin'))
+    empty_json_files = []
+
+    # check each json file for size 0
+    for fov in fov_names:
+        fov_path = os.path.join(bin_file_dir, fov + '.json')
+        if os.path.getsize(fov_path) == 0:
+            empty_json_files.append(fov)
+
+    # print a warning to the user when there are empty files
+    if empty_json_files:
+        warnings.warn(f'The following FOVs have empty json files and will not be processed:'
+                      f'\n {empty_json_files}', UserWarning)
+
+    # return the list of fov names
+    return empty_json_files

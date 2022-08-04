@@ -15,7 +15,9 @@ from toffy import settings
 
 import ark.utils.io_utils as io_utils
 import ark.utils.misc_utils as misc_utils
-import mibi_bin_tools.bin_files as bin_files
+import ark.utils.load_utils as load_utils
+from mibi_bin_tools import bin_files
+
 
 # needed to prevent UserWarning: low contrast image barf when saving images
 import warnings
@@ -273,7 +275,7 @@ def sort_bin_file_fovs(fovs, suffix_ignore=None):
     )
 
 
-def compute_qc_metrics(bin_file_path, fov_name, panel_path, manual_panel=None,
+def compute_qc_metrics(bin_file_path, extracted_imgs_path, fov_name,
                        gaussian_blur=False, blur_factor=1, save_csv=True):
     """Compute the QC metric matrices for the image data provided
 
@@ -281,12 +283,10 @@ def compute_qc_metrics(bin_file_path, fov_name, panel_path, manual_panel=None,
         bin_file_path (str):
             the directory to the MIBI bin files for extraction,
             also where the fov-level QC metric files will be written
+        extracted_imgs_path (str):
+            the directory when extracted images are stored
         fov_name (str):
             the name of the FOV to extract from `bin_file_path`, needs to correspond with JSON name
-        panel_path (str):
-            the path to the file defining the panel info for bin file extraction
-        manual_panel (tuple | pd.DataFrame):
-            manual input of panel. This is used if panel_path is set to None
         gaussian_blur (bool):
             whether or not to add Gaussian blurring
         blur_factor (int):
@@ -305,23 +305,13 @@ def compute_qc_metrics(bin_file_path, fov_name, panel_path, manual_panel=None,
     if not os.path.exists(bin_file_path):
         raise FileNotFoundError("bin_file_path %s does not exist" % bin_file_path)
 
-    if panel_path is not None and not os.path.exists(panel_path):
-        raise FileNotFoundError("panel_path %s does not exist" % panel_path)
+    if not os.path.exists(extracted_imgs_path):
+        raise FileNotFoundError("extracted_imgs_path %s does not exist" % extracted_imgs_path)
 
-    if panel_path is None and manual_panel is None:
-        raise ValueError("If panel_path is None, a panel must be provided via manual_panel...")
-
-    if not os.path.exists(os.path.join(bin_file_path, fov_name + '.json')):
-        raise FileNotFoundError("fov file %s.json not found in bin_file_path" % fov_name)
-
-    # run the bin file extraction, we'll extract all FOVs
+    # retrieve the image data from extracted tiff files
     # the image coords should be: ['fov', 'type', 'x', 'y', 'channel']
-    image_data = bin_files.extract_bin_files(
-        data_dir=bin_file_path,
-        out_dir=None,
-        include_fovs=[fov_name],
-        panel=pd.read_csv(panel_path) if panel_path else manual_panel
-    )
+    image_data = load_utils.load_imgs_from_tree(extracted_imgs_path, fovs=[fov_name])
+    image_data = format_img_data(image_data)
 
     metric_csvs = compute_qc_metrics_direct(image_data, fov_name, gaussian_blur, blur_factor)
     if save_csv:
@@ -441,15 +431,15 @@ def combine_qc_metrics(qc_metrics_dir):
         metric_df.to_csv(os.path.join(qc_metrics_dir, 'combined_%s.csv' % ms), index=False)
 
 
-def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=None, save_dir=None,
-                         ax=None):
+def visualize_qc_metrics(metric_name, qc_metric_dir, axes_size=16, wrap=6,
+                         dpi=None, save_dir=None, ax=None):
     """Visualize a barplot of a specific QC metric
 
     Args:
-        qc_metric_df (pandas.DataFrame):
-            A QC metric matrix as returned by `compute_qc_metrics`, melted
         metric_name (str):
             The name of the QC metric, used as the y-axis label
+        qc_metric_dir (str):
+            The path to the directory containing the `'combined_{qc_metric}.csv'` files
         axes_size (int):
             The font size of the axes labels
         wrap (int):
@@ -462,6 +452,34 @@ def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=No
         ax (matplotlib.axes.Axes):
             Axes to place catplots
     """
+
+    # verify the metric provided is valid
+    if metric_name not in settings.QC_COLUMNS:
+        raise ValueError("Invalid metric %s provided, must be set to 'Non-zero mean intensity', "
+                         "'Total intensity', or '99.9%% intensity value'" % metric_name)
+
+    # verify the path to the QC metric datasets exist
+    if not os.path.exists(qc_metric_dir):
+        raise FileNotFoundError('qc_metric_dir %s does not exist' % qc_metric_dir)
+
+    # get the file name of the combined QC metric .csv file to use
+    qc_metric_index = settings.QC_COLUMNS.index(metric_name)
+    qc_metric_suffix = settings.QC_SUFFIXES[qc_metric_index]
+    qc_metric_path = os.path.join(qc_metric_dir, 'combined_%s.csv' % qc_metric_suffix)
+
+    # ensure the user set the right qc_metric_dir
+    if not os.path.exists(qc_metric_path):
+        raise FileNotFoundError('Could not locate %s, ensure qc_metric_dir is correct' %
+                                qc_metric_path)
+
+    # read in the QC metric data
+    qc_metric_df = pd.read_csv(qc_metric_path)
+
+    # filter out naturally-occurring elements as well as Noodle
+    qc_metric_df = qc_metric_df[~qc_metric_df['channel'].isin(settings.QC_CHANNEL_IGNORE)]
+
+    # filter out anything prefixed with 'chan_'
+    qc_metric_df = qc_metric_df[~qc_metric_df['channel'].str.startswith('chan_')]
 
     # catplot allows for easy facets on a barplot
     g = sns.catplot(
@@ -520,3 +538,22 @@ def visualize_qc_metrics(qc_metric_df, metric_name, axes_size=16, wrap=6, dpi=No
                 dpi=dpi,
                 bbox_inches=extent.expanded(1.1, 1.2)
             )
+
+
+def format_img_data(img_data):
+    """ Formats the image array from load_imgs_from_tree to be same structure as the array returned
+    by extract_bin_files. Works for one FOV data at a time.
+    Args:
+        img_data (str): current image data array as produced by load function
+    Returns:
+         xarray.DataArray: image data array with shape [fov, type, x, y, channel]
+    """
+
+    # add type dimension
+    img_data = img_data.assign_coords(type='pulse')
+    img_data = img_data.expand_dims('type', 1)
+
+    # edit dimension names
+    img_data = img_data.rename({'fovs': 'fov', 'rows': 'x', 'cols': 'y', 'channels': 'channel'})
+
+    return img_data
