@@ -664,12 +664,12 @@ def generate_tma_fov_list(tma_corners_path, num_fov_row, num_fov_col):
             "TMA corners file %s does not exist" % tma_corners_path
         )
 
-    # user needs to define at least 3 FOVs along the x- and y-axes
-    if num_fov_row < 3:
-        raise ValueError("Number of TMA-grid rows must be at least 3")
+    # user needs to define at least 2 FOVs along the row- and col-axes
+    if num_fov_row < 2:
+        raise ValueError("Number of TMA-grid rows must be at least 2")
 
-    if num_fov_col < 3:
-        raise ValueError("Number of TMA-grid columns must be at least 3")
+    if num_fov_col < 2:
+        raise ValueError("Number of TMA-grid columns must be at least 2")
 
     # read in tma_corners_path
     tma_corners = json_utils.read_json_file(tma_corners_path, encoding='utf-8')
