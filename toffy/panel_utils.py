@@ -6,31 +6,39 @@ from ark.utils import io_utils
 
 
 def convert_panel(panel_path):
-    panel_name = io_utils.remove_file_extensions([os.path.basename(panel_path)])
+    panel_name = os.path.basename(panel_path).split('.')[0]
     panel_dir = os.path.dirname(panel_path)
+    example_panel = pd.read_csv(os.path.join('..', 'files', 'example_panel_file.csv'))
 
     with open(panel_path) as r:
         headers = [next(r) for i in list(range(11))]
         cols = headers[10].split(',')
-        panel = pd.read_csv(r, sep=',', names=cols, index_col=False)
+        panel = pd.read_csv(r, sep=',', names=cols)
 
     # retrieve original mass and target values
     panel.columns = [panel.columns.str.replace('"', '')]
-    toffy_panel = panel[['Mass', 'Target']]
+    panel.columns = panel.columns.get_level_values(0)
+    toffy_panel = panel[['Mass', 'Target']].copy()
 
     # edit panel
-    for mass in toffy_panel['Mass']:
-        print(1)
+    mass_start =[]
+    mass_stop = []
 
-    toffy_panel.to_csv(os.path.join(panel_dir, panel_name + '-toffy.csv'))
+    for i, row in toffy_panel.iterrows():
+        mass = row['Mass']
 
+        mass_start.append(mass-0.3)
+        mass_stop.append(mass)
 
-path = os.path.join('..', 'files', 'Panel106.csv')
-convert_panel(path)
+    toffy_panel['Start'] = mass_start
+    toffy_panel['Stop'] = mass_stop
+
+    toffy_panel = pd.concat([toffy_panel, example_panel], ignore_index=True)
+    toffy_panel.to_csv(os.path.join(panel_dir, panel_name + '-toffy.csv'), index=False)
 
 
 def load_panel(panel_path):
-    panel_name = io_utils.remove_file_extensions(os.path.basename(panel_path))
+    panel_name = os.path.basename(panel_path).split('.')[0]
     panel_dir = os.path.dirname(panel_path)
 
     # if panel path points to toffy panel, read in
