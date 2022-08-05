@@ -36,7 +36,7 @@ def stitch_images(tiff_out_dir, run_dir, channels=None, img_sub_folder=None):
             channels (list): list of channels to produce stitched images for, None will do all
             img_sub_folder (str): optional name of image sub-folder within each fov"""
 
-    # remove old images
+    # check for previous stitching
     stitched_dir = os.path.join(tiff_out_dir, 'stitched_images')
     if os.path.exists(stitched_dir):
         raise ValueError(f"fThe stitch_images subdirectory already exists in {tiff_out_dir}")
@@ -44,8 +44,8 @@ def stitch_images(tiff_out_dir, run_dir, channels=None, img_sub_folder=None):
     folders = io_utils.list_folders(tiff_out_dir, substrs='fov-')
     folders = ns.natsorted(folders)
 
+    # no img_sub_folder, change to empty string to read directly from base folder
     if img_sub_folder is None:
-        # no img_sub_folder, change to empty string to read directly from base folder
         img_sub_folder = ""
 
     # retrieve all extracted channel names, or verify the list provided
@@ -57,11 +57,11 @@ def stitch_images(tiff_out_dir, run_dir, channels=None, img_sub_folder=None):
             io_utils.list_files(dir_name=os.path.join(tiff_out_dir, folders[0], img_sub_folder),
                                 substrs='.tiff')))
 
-    # load in and stitch the image data
+    # get load and stitching args
     num_cols = math.isqrt(len(folders))
     max_img_size = get_max_img_size(run_dir)
 
-    # recreate directory
+    # make stitched subdir
     os.makedirs(stitched_dir)
 
     # save the stitched images to the stitched_image subdir
