@@ -19,6 +19,7 @@ This repo is currently in beta testing. None of the code has been published yet,
   - [Updating the repo](#updating-the-repo)
 - [Directory structure](#directory-structure)
 - [Panel format](#panel-format)
+- [Median Pulse Height](#median-pulse-height)
 - [Questions?](#questions)
 
 ## Overview
@@ -36,10 +37,11 @@ The [second notebook](./templates/2_create_tma_mibi_run.ipynb) is for TMAs. This
 There are a number of different computational tasks to complete once a MIBI run has finished to ensure everything went smoothly. 
 
 - 3a: real time monitoring. The [MIBI monitoring](./templates/3a_monitor_MIBI_run.ipynb) notebook will monitor an ongoing MIBI run, and begin processing the image data as soon as it is generated. This notebook is being continually be updated as we move more of our processing pipeline to happen in real time as the data is generated.
-- 3b - 3d: post-run monitoring. For each step in the monitoring notebook, we have a dedicated notebook that can perform the same tasks once a run is complete. 
-  - 3b: [the image extraction notebook](./templates/3b_extract_images_from_bin.ipynb) will extract images from bin files that have not already been processed
+- 3b - 3e: post-run monitoring. For each step in the monitoring notebook, we have a dedicated notebook that can perform the same tasks once a run is complete. 
+  - 3b: [image extraction notebook](./templates/3b_extract_images_from_bin.ipynb) will extract images from bin files that have not already been processed
   - 3c: [qc metrics notebook](./templates/3c_generate_qc_metrics.ipynb) computes and visualizes the QC metrics for the images
   - 3d: [median pulse heights notebook](./templates/3d_compute_median_pulse_height.ipynb) generates plots showing median pulse heights for each FOV, along with estimated run time
+  - 3e: [stitch images notebook](./templates/3e_stitch_images.ipynb) creates a single stitched image for each channel in your panel across all of the FOVs in your run
 
 ### 4. Processing MIBI data
 Once your run has finished, you can begin to process the data to make it ready for analysis. To remove background signal contamination, as well as compensate for channel crosstalk, you can use the [compensation](./templates/4a_compensate_image_data.ipynb) notebook. This will guide you through the Rosetta algorithm, which uses a flow-cytometry style compensation approach to remove spurious signal. 
@@ -165,6 +167,9 @@ Within `C:\\Users\\Customer.ION\\Documents` are directories that store necessary
 
 ## Panel format
 Many of the scripts in `toffy` require a panel file. This file identifies which targets have been put on which masses. For an example of what the format should be, you can look at the [example panel file](https://github.com/angelolab/toffy/blob/main/files/example_panel_file.csv). Some panels will not have targets on every mass; in this case, it's important that you just leave the placeholder row in the panel, and not delete it, in order to ensure that all the notebooks work as expected. Similarly, if you have multiple targets on the same mass, don't add a unique row for each, just give them a consolidated name. 
+
+## Median Pulse Height
+The median pulse height (MPH) provides a way to assess the sensitivity of the detector, independent of the specific sample being acquired. It uses characteristics of the output from the detector itself to determine what fraction of maximum sensitivity the instrument is currently running at. We use this fraction of the maximum sensitivity to determine 1) when the detector needs to be swept again and 2) how much to normalize our images by after the fact the correct for this change in sensitivity. The minimum MPH required to still have acceptable signal will depend in part on the markers in your panel, the settings of the instrument, and other factors. However, we often find that the miniumum is somewhere between 5,000 and 6,000 MPH. 
 
 ## Questions?
 

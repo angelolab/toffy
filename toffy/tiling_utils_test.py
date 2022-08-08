@@ -500,7 +500,7 @@ def test_validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
 
 @parametrize('extra_coords,extra_names', [param([(1, 2)], ["TheSecondFOV"], marks=value_err),
                                           param([], [])])
-@parametrize('num_row,num_col', [param(2, 3, marks=value_err), param(3, 2, marks=value_err),
+@parametrize('num_row,num_col', [param(1, 3, marks=value_err), param(3, 1, marks=value_err),
                                  param(3, 4)])
 @parametrize('tma_corners_file', [param('bad_path.json', marks=file_missing_err),
                                   param('sample_tma_corners.json')])
