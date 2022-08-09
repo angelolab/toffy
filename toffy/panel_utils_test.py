@@ -10,19 +10,20 @@ from ark.utils import test_utils
 def test_convert_panel():
     with tempfile.TemporaryDirectory() as temp_dir:
         test_panel = pd.DataFrame({
-            'ID (Lot)': [1352, 1350, 1351],
-            'Target': ['Calprotectin', 'Chymase', 'Mast Cell Tryptase'],
-            'Clone': ['MAC387', 'EPR13136', 'EPR9522'],
-            'Mass': [69, 71, 89],
-            'Element': ['Ga', 'Ga', 'Y'],
-            'Manufacture': ['7/20/20', '7/20/20', '5/5/21'],
-            'Stock': [200, 200, 200],
-            'Titer': [0.125, 0.125, 0.25],
-            'Volume': [0, 0, 0],
-            'Staining Batch': [1, 1, 1]
+            'ID (Lot)': [1352, 1350, 1351, 0],
+            'Target': ['Calprotectin', 'Chymase', 'Mast Cell Tryptase', 'Au'],
+            'Clone': ['MAC387', 'EPR13136', 'EPR9522', ''],
+            'Mass': [69, 71, 89, 197],
+            'Element': ['Ga', 'Ga', 'Y', ''],
+            'Manufacture': ['7/20/20', '7/20/20', '5/5/21', ''],
+            'Stock': [200, 200, 200, 0],
+            'Titer': [0.125, 0.125, 0.25, 0],
+            'Volume': [0, 0, 0, 0],
+            'Staining Batch': [1, 1, 1, 0]
         })
         test_panel.to_csv(os.path.join(temp_dir, 'test_panel.csv'), index=False)
 
+        # add metadata
         with open(os.path.join(temp_dir,'test_panel.csv'), newline='') as f:
             r = csv.reader(f)
             data = [line for line in r]
@@ -39,11 +40,16 @@ def test_convert_panel():
         panel_utils.convert_panel(os.path.join(temp_dir, 'test_panel.csv'))
         assert os.path.exists(os.path.join(temp_dir, 'test_panel-toffy.csv'))
 
-        # check correct columns and additional necessary target values
         converted_panel = pd.read_csv(os.path.join(temp_dir, 'test_panel-toffy.csv'))
         necessary_panel = pd.read_csv(os.path.join('..', 'files', 'example_panel_file.csv'))
 
+        # check panel structure
         assert list(converted_panel.columns) == ['Mass', 'Target', 'Start', 'Stop']
+
+        # check Au valid is not duplicated when in both the original and necessary panel
+        assert len(list(converted_panel)) == len(set(converted_panel))
+
+        # check for all targets
         assert all(target in list(converted_panel['Target'])
                    for target in (list(necessary_panel['Target'])))
 
@@ -83,6 +89,3 @@ def test_laod_panel(mocker):
         test_utils._make_blank_file(temp_dir, 'test_panel.csv')
         panel = panel_utils.load_panel(os.path.join(temp_dir, 'test_panel.csv'))
         assert panel.equals(toffy_panel)
-
-
-
