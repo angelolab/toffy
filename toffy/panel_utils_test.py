@@ -3,6 +3,8 @@ import csv
 import tempfile
 import pandas as pd
 
+from pathlib import Path
+
 from toffy import panel_utils
 from ark.utils import test_utils
 
@@ -41,7 +43,8 @@ def test_convert_panel():
         assert os.path.exists(os.path.join(temp_dir, 'test_panel-toffy.csv'))
 
         converted_panel = pd.read_csv(os.path.join(temp_dir, 'test_panel-toffy.csv'))
-        necessary_panel = pd.read_csv(os.path.join('..', 'files', 'example_panel_file.csv'))
+        necessary_panel = pd.read_csv(os.path.join(Path(__file__).parent.parent, 'files',
+                                             'example_panel_file.csv'))
 
         # check toffy panel structure
         assert list(converted_panel.columns) == ['Mass', 'Target', 'Start', 'Stop']
