@@ -10,16 +10,16 @@ from ark.utils import test_utils
 def test_convert_panel():
     with tempfile.TemporaryDirectory() as temp_dir:
         test_panel = pd.DataFrame({
-            'ID (Lot)': [1352, 1350, 1351, 0],
-            'Target': ['Calprotectin', 'Chymase', 'Mast Cell Tryptase', 'Au'],
-            'Clone': ['MAC387', 'EPR13136', 'EPR9522', ''],
-            'Mass': [69, 71, 89, 197],
-            'Element': ['Ga', 'Ga', 'Y', ''],
-            'Manufacture': ['7/20/20', '7/20/20', '5/5/21', ''],
-            'Stock': [200, 200, 200, 0],
-            'Titer': [0.125, 0.125, 0.25, 0],
+            'ID (Lot)': [1352, 1352, 1350, 1351],
+            'Target': ['Calprotectin', 'Duplicate', 'Chymase', 'Mast Cell Tryptase'],
+            'Clone': ['MAC387', 'MAC387', 'EPR13136', 'EPR9522'],
+            'Mass': [69, 69, 71, 89],
+            'Element': ['Ga', 'Ga', 'Ga', 'Y'],
+            'Manufacture': ['7/20/20', '7/20/20', '7/20/20', '5/5/21'],
+            'Stock': [200, 200, 200, 200],
+            'Titer': [0.125, 0.125, 0.125, 0.25],
             'Volume': [0, 0, 0, 0],
-            'Staining Batch': [1, 1, 1, 0]
+            'Staining Batch': [1, 1, 1, 1]
         })
         test_panel.to_csv(os.path.join(temp_dir, 'test_panel.csv'), index=False)
 
@@ -43,15 +43,21 @@ def test_convert_panel():
         converted_panel = pd.read_csv(os.path.join(temp_dir, 'test_panel-toffy.csv'))
         necessary_panel = pd.read_csv(os.path.join('..', 'files', 'example_panel_file.csv'))
 
-        # check panel structure
+        # check toffy panel structure
         assert list(converted_panel.columns) == ['Mass', 'Target', 'Start', 'Stop']
 
-        # check Au valid is not duplicated when in both the original and necessary panel
-        assert len(list(converted_panel)) == len(set(converted_panel))
+        # check chan_71 is not duplicated
+        assert ['chan_71', 'Duplicate'] not in list(converted_panel['Target'])
 
-        # check for all targets
-        assert all(target in list(converted_panel['Target'])
-                   for target in (list(necessary_panel['Target'])))
+        # check concatenated target names for same mass
+        assert 'Calprotectin_Duplicate' in list(converted_panel['Target'])
+
+        # check for unique mass values
+        assert len(list(converted_panel['Mass'])) == len(set(converted_panel['Mass']))
+
+        # check for all necessary masses
+        assert all(mass in list(converted_panel['Mass'])
+                   for mass in (list(necessary_panel['Mass'])))
 
 
 def mock_panel_conversion(panel_path):
@@ -65,7 +71,7 @@ def mock_panel_conversion(panel_path):
     return toffy_panel
 
 
-def test_laod_panel(mocker):
+def test_load_panel(mocker):
     mocker.patch('toffy.panel_utils.convert_panel', mock_panel_conversion)
     toffy_panel = pd.DataFrame({
         'Target': ['Calprotectin', 'Chymase', 'Mast Cell Tryptase'],
@@ -80,8 +86,10 @@ def test_laod_panel(mocker):
         assert panel.equals(toffy_panel)
 
     with tempfile.TemporaryDirectory() as temp_dir:
-        # check that previously converted panel is loaded
+        # toffy panel
         toffy_panel.to_csv(os.path.join(temp_dir, 'test_panel-toffy.csv'), index=False)
+
+        # check that previously converted panel is loaded
         panel = panel_utils.load_panel(os.path.join(temp_dir, 'test_panel-toffy.csv'))
         assert panel.equals(toffy_panel)
 
