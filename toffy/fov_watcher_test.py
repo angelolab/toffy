@@ -42,8 +42,8 @@ def _slow_copy_sample_tissue_data(dest: str, delta: int = 10, one_blank: bool = 
 
 TISSUE_RUN_JSON_SPOOF = {
     'fovs': [
-        {'runOrder': 1, 'scanCount': 1},
-        {'runOrder': 2, 'scanCount': 1},
+        {'runOrder': 1, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}},
+        {'runOrder': 2, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}},
     ],
 }
 
@@ -75,7 +75,8 @@ def test_watcher(run_cbs, fov_cbs, kwargs, validators, add_blank):
         tiff_out_dir = os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME)
         qc_out_dir = os.path.join(tmpdir, 'cb_1', RUN_DIR_NAME)
         mph_out_dir = os.path.join(tmpdir, 'cb_2', RUN_DIR_NAME)
-        plot_dir = os.path.join(tmpdir, 'cb_3', RUN_DIR_NAME)
+        plot_dir = os.path.join(tmpdir, 'cb_2_plots', RUN_DIR_NAME)
+        stitched_dir = os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME, 'stitched_images')
 
         # add directories to kwargs
         kwargs['tiff_out_dir'] = tiff_out_dir
@@ -119,7 +120,17 @@ def test_watcher(run_cbs, fov_cbs, kwargs, validators, add_blank):
         if add_blank:
             fovs = fovs[1:]
 
-        for i, validator in enumerate(validators):
-            validator(os.path.join(tmpdir, f'cb_{i}', RUN_DIR_NAME), fovs)
+        # extract tiffs check
+        validators[0](os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME), fovs)
+
+        # qc check
+        validators[1](os.path.join(tmpdir, 'cb_1', RUN_DIR_NAME), fovs)
+
+        # mph check
+        validators[2](os.path.join(tmpdir, 'cb_2', RUN_DIR_NAME),
+                      os.path.join(tmpdir, 'cb_2_plots', RUN_DIR_NAME), fovs)
+
+        # stitch images check
+        validators[3](os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME, 'stitched_images'))
 
     pass
