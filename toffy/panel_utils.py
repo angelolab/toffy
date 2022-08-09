@@ -46,7 +46,7 @@ def convert_panel(panel_path):
     toffy_panel = panel[['Mass', 'Target']].copy()
 
     # edit panel to add Start and Stop values
-    mass_start =[]
+    mass_start = []
     mass_stop = []
 
     for i, row in toffy_panel.iterrows():

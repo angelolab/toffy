@@ -24,10 +24,10 @@ def test_convert_panel():
         test_panel.to_csv(os.path.join(temp_dir, 'test_panel.csv'), index=False)
 
         # add metadata
-        with open(os.path.join(temp_dir,'test_panel.csv'), newline='') as f:
+        with open(os.path.join(temp_dir, 'test_panel.csv'), newline='') as f:
             r = csv.reader(f)
             data = [line for line in r]
-        with open(os.path.join('test_panel.csv'), 'w', newline='') as f:
+        with open(os.path.join(temp_dir, 'test_panel.csv'), 'w', newline='') as f:
             w = csv.writer(f)
             metadata = '"Panel ID",106\r\n"Panel Name","DCIS_followup"' \
                        '\r\n"Manufacture Date","2021-08-25"\r\n"Description",""\r\n"Batch",1' \
