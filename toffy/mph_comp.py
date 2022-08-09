@@ -149,7 +149,7 @@ def visualize_mph(mph_df, out_dir, regression: bool = False):
 
     # path validation checks
     if out_dir is not None:
-        io_utils.validate_paths(out_dir)
+        io_utils.validate_paths(out_dir, data_prefix=False)
 
     # visualize the median pulse heights
     plt.style.use('dark_background')

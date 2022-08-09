@@ -31,7 +31,8 @@ def test_extract_missing_fovs(mocked_print):
 
         assert mocked_print.mock_calls == \
                [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1'),
-                call('Found 1 FOVs to extract.')]
+                call('Found 1 FOVs to extract.'),
+                call('Extraction completed!')]
     mocked_print.reset_mock()
 
     # test that it does not re-extract fovs and no moly extraction
@@ -66,7 +67,8 @@ def test_extract_missing_fovs(mocked_print):
                    [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1'),
                     call('Moly FOVs which will not be extracted: ', 'moly_fov'),
                     call('FOVs with empty json files which will not be extracted: ', 'empty'),
-                    call('Found 1 FOVs to extract.')]
+                    call('Found 1 FOVs to extract.'),
+                    call('Extraction completed!')]
 
             # when given empty fov files will raise a warning
             with pytest.warns(UserWarning, match="The following FOVs have empty json files"):
@@ -85,7 +87,8 @@ def test_extract_missing_fovs(mocked_print):
         fovs_extracted = io_utils.list_folders(extraction_dir)
 
         # test no extra print statements
-        assert mocked_print.mock_calls == [call('Found 2 FOVs to extract.')]
+        assert mocked_print.mock_calls == [call('Found 2 FOVs to extract.'),
+                                           call('Extraction completed!')]
 
         # check both fovs were extracted
         assert fovs.sort() == fovs_extracted.sort()
