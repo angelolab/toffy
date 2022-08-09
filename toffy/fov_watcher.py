@@ -67,8 +67,10 @@ class RunStructure:
 
         # filename is not corrct format of fov.bin or fov.json
         if len(filename.split('.')) != 2:
-            warnings.warn(f'The file {filename} is not a valid FOV file and will be skipped'
+            warnings.warn(f'The file {filename} is not a valid FOV file and will be skipped '
                           f'from processing.', UserWarning)
+            print(f'The file {filename} is not a valid FOV file and will be skipped '
+                  f'from processing.')
             return False, ''
 
         fov_name, extension = filename.split('.')
