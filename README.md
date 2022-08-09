@@ -51,6 +51,10 @@ Following compensation, you will want to normalize your images to ensure consist
 ### 5. Formatting MIBI runs for analysis
 After the image processing and cleanup from *toffy* is complete, the final step is to format your data to faciliate easy downstream analysis. The [reorganization](./templates/5_rename_and_reorganize.ipynb) notebook will walk you through the process of renaming FOVs, combining partial runs, and consolidating your images.
 
+## Pipeline Flowchart
+
+![flow-chart](templates/img/toffy_processing.png)
+
 ## Installation
 In order to get toffy working, you'll need to first install some dependencies and the repository itself.
 
@@ -143,7 +147,10 @@ conda env create -f environment.yml
 ```
 
 ## Panel format
-Many of the scripts in `toffy` require a panel file. This file identifies which targets have been put on which masses. For an example of what the format should be, you can look at the [example panel file](https://github.com/angelolab/toffy/blob/main/files/example_panel_file.csv). Some panels will not have targets on every mass; in this case, it's important that you just leave the placeholder row in the panel, and not delete it, in order to ensure that all the notebooks work as expected. Similarly, if you have multiple targets on the same mass, don't add a unique row for each, just give them a consolidated name. 
+Many of the scripts in `toffy` require a panel file, identifying which targets have been put on which masses.  
+You can download your panel [here](https://angelolab.ionpath.com/tracker/panel); select the correct panel and click `Download csv`.
+You should then copy the file to the `C:\\Users\\Customer.ION\\Documents\panel_files` directory, and rename the file to be descriptive of your run.
+The toffy notebooks will automatically convert the ionpath panel to a correct toffy structure, and add any new targets required for downstream analysis (additional targets can be found in the [example panel file](https://github.com/angelolab/toffy/blob/main/files/example_panel_file.csv)).
 
 ## Median Pulse Height
 The median pulse height (MPH) provides a way to assess the sensitivity of the detector, independent of the specific sample being acquired. It uses characteristics of the output from the detector itself to determine what fraction of maximum sensitivity the instrument is currently running at. We use this fraction of the maximum sensitivity to determine 1) when the detector needs to be swept again and 2) how much to normalize our images by after the fact the correct for this change in sensitivity. The minimum MPH required to still have acceptable signal will depend in part on the markers in your panel, the settings of the instrument, and other factors. However, we often find that the miniumum is somewhere between 5,000 and 6,000 MPH. 
