@@ -1,8 +1,10 @@
 import copy
 import json
 import os
+import warnings
 
 from ark.utils import io_utils
+from mibi_bin_tools.io_utils import remove_file_extensions
 
 
 def rename_missing_fovs(fov_data):
@@ -58,16 +60,22 @@ def rename_duplicate_fovs(tma_fovs):
     return tma_fovs
 
 
-def list_moly_fovs(bin_file_dir):
-    """Lists all of the FOVs in a directory which are moly FOVs
+def list_moly_fovs(bin_file_dir, fov_list=None):
+    """Lists all of the FOVs in a directory or provided list which are moly FOVs
 
     Args:
         bin_file_dir (str): path to bin files
+        fov_list (list): list of fov names to check, default None will check all fovs in dir
 
     Returns:
         list: list of FOVs which are moly FOVs"""
 
-    json_files = io_utils.list_files(bin_file_dir, '.json')
+    # check provided fovs
+    if fov_list:
+        json_files = [fov + '.json' for fov in fov_list]
+    # check all fovs in bin_file_dir
+    else:
+        json_files = io_utils.list_files(bin_file_dir, '.json')
     moly_fovs = []
 
     for file in json_files:
@@ -147,3 +155,32 @@ def split_run_file(run_dir, run_file_name, file_split: list):
         save_path = os.path.join(run_dir, run_file_name.split('.json')[0] + '_part'
                                  + str(i+1) + '.json')
         write_json_file(save_path, json_i, encoding='utf-8')
+
+
+def check_for_empty_files(bin_file_dir):
+    """ Check for any empty json files and warn the user
+    Args:
+        bin_file_dir (str): directory containing the bin and json files
+
+    Return:
+        (list) of fov files with empty json, if none returns empty list
+        raises a warning
+    """
+
+    # retrieve all fovs in bin_file_dir
+    fov_names = remove_file_extensions(io_utils.list_files(bin_file_dir, substrs='.bin'))
+    empty_json_files = []
+
+    # check each json file for size 0
+    for fov in fov_names:
+        fov_path = os.path.join(bin_file_dir, fov + '.json')
+        if os.path.getsize(fov_path) == 0:
+            empty_json_files.append(fov)
+
+    # print a warning to the user when there are empty files
+    if empty_json_files:
+        warnings.warn(f'The following FOVs have empty json files and will not be processed:'
+                      f'\n {empty_json_files}', UserWarning)
+
+    # return the list of fov names
+    return empty_json_files

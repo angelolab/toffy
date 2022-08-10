@@ -370,7 +370,7 @@ def test_normalize_fov(tmpdir):
     # create image data
     fovs, chans = test_utils.gen_fov_chan_names(num_fovs=1, num_chans=3)
     _, data_xr = test_utils.create_paired_xarray_fovs(
-        tmpdir, fovs, chans, img_shape=(10, 10))
+        tmpdir, fovs, chans, img_shape=(10, 10), dtype='float32')
 
     # create inputs
     norm_vals = np.random.rand(len(chans))
@@ -385,6 +385,9 @@ def test_normalize_fov(tmpdir):
     # check that normalized images were modified by correct amount
     norm_imgs = load_utils.load_imgs_from_tree(norm_dir, channels=chans)
     assert np.allclose(data_xr.values, norm_imgs.values * norm_vals)
+
+    # check correct data type
+    assert norm_imgs.dtype == data_xr.dtype
 
     # check that log file has correct values
     log_file = pd.read_csv(os.path.join(norm_dir, 'fov0', 'normalization_coefs.csv'))

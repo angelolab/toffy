@@ -207,34 +207,35 @@ def generate_coreg_params(fiducial_info):
     return coreg_params
 
 
-def save_coreg_params(coreg_params):
+def save_coreg_params(coreg_params, coreg_path=settings.COREG_SAVE_PATH):
     """Save the co-registration parameters to `coreg_params.json` in `toffy`
 
     Args:
         coreg_params (dict):
             Contains the multiplier and offsets for co-registration along the x- and y-axis
+        coreg_path (str):
+            The path to save the co-registration parameters to
     """
 
     # generate the time this set of co-registration parameters were generated
     coreg_params['date'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
     # write to a new coreg_params.json file if it doesn't already exist
-    path = os.path.join('..', 'toffy', 'coreg_params.json')
-    if not os.path.exists(path):
+    if not os.path.exists(coreg_path):
         coreg_data = {
             'coreg_params': [
                 coreg_params
             ]
         }
-        json_utils.write_json_file(json_path=path, json_object=coreg_data)
+        json_utils.write_json_file(json_path=coreg_path, json_object=coreg_data)
 
     # append to the existing coreg_params key if coreg_params.json already exists
     else:
-        coreg_data = json_utils.read_json_file(os.path.join('..', 'toffy', 'coreg_params.json'))
+        coreg_data = json_utils.read_json_file(coreg_path)
 
         coreg_data['coreg_params'].append(coreg_params)
 
-        json_utils.write_json_file(json_path=path, json_object=coreg_data)
+        json_utils.write_json_file(json_path=coreg_path, json_object=coreg_data)
 
 
 def generate_region_info(region_params):
@@ -664,12 +665,12 @@ def generate_tma_fov_list(tma_corners_path, num_fov_row, num_fov_col):
             "TMA corners file %s does not exist" % tma_corners_path
         )
 
-    # user needs to define at least 3 FOVs along the x- and y-axes
-    if num_fov_row < 3:
-        raise ValueError("Number of TMA-grid rows must be at least 3")
+    # user needs to define at least 2 FOVs along the row- and col-axes
+    if num_fov_row < 2:
+        raise ValueError("Number of TMA-grid rows must be at least 2")
 
-    if num_fov_col < 3:
-        raise ValueError("Number of TMA-grid columns must be at least 3")
+    if num_fov_col < 2:
+        raise ValueError("Number of TMA-grid columns must be at least 2")
 
     # read in tma_corners_path
     tma_corners = json_utils.read_json_file(tma_corners_path, encoding='utf-8')
@@ -1281,7 +1282,7 @@ def generate_validation_annot(manual_to_auto_map, manual_auto_dist, check_dist=2
 
 # TODO: potential type hinting candidate?
 def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
-                          draw_radius=7, figsize=(7, 7),
+                          coreg_path=settings.COREG_SAVE_PATH, draw_radius=7, figsize=(7, 7),
                           check_dist=2000, check_duplicates=True, check_mismatches=True):
     """Creates the remapping interactive interface for manual to auto FOVs
 
@@ -1294,6 +1295,8 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
             the image to overlay
         mapping_path (str):
             the path to the file to save the mapping to
+        coreg_path (str):
+            the path to the co-registration params
         draw_radius (int):
             the radius (in optical pixels) to draw each circle on the slide
         figsize (tuple):
@@ -1330,7 +1333,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
         raise ValueError("check_mismatches needs to be set to True or False")
 
     # if there isn't a coreg_path defined, the user needs to run update_coregistration_params first
-    if not os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json')):
+    if not os.path.exists(coreg_path):
         raise FileNotFoundError(
             "You haven't co-registered your slide yet. Please run "
             "update_coregistraion_params.ipynb first."
@@ -1338,8 +1341,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
 
     # load the co-registration parameters in
     # NOTE: the last set of params in the coreg_params list is the most up-to-date
-    path = os.path.join('..', 'toffy', 'coreg_params.json')
-    stage_optical_coreg_params = json_utils.read_json_file(path)['coreg_params'][-1]
+    stage_optical_coreg_params = json_utils.read_json_file(coreg_path)['coreg_params'][-1]
 
     # define the initial mapping and a distance lookup table between manual and auto FOVs
     manual_to_auto_map, manual_auto_dist = assign_closest_fovs(manual_fovs, auto_fovs)
