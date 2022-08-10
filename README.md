@@ -169,7 +169,9 @@ Within `C:\\Users\\Customer.ION\\Documents` are directories that store necessary
 
 ![alt text](templates/img/C_dirs.gif)
 <br><br>
-You can see below how to pin a folder to quick access. We suggest pinning the following folders: `tiled_image_jsons`, `autolabeled_jsons`, `run_metrics`.
+You can see below how to pin a folder to Quick Access, which can then be easily located in the section of the same name on the left side of File Explorer. 
+
+We suggest pinning the following folders: `tiled_image_jsons`, `autolabeled_jsons`, `run_metrics`.
 
 ![alt text](templates/img/quick_access.gif)
 
