@@ -52,6 +52,10 @@ Following compensation, you will want to normalize your images to ensure consist
 ### 5. Formatting MIBI runs for analysis
 After the image processing and cleanup from *toffy* is complete, the final step is to format your data to faciliate easy downstream analysis. The [reorganization](./templates/5_rename_and_reorganize.ipynb) notebook will walk you through the process of renaming FOVs, combining partial runs, and consolidating your images.
 
+## Pipeline Flowchart
+
+![flow-chart](templates/img/toffy_processing.png)
+
 ## Installation
 In order to get toffy working, you'll need to first install some dependencies and the repository itself.
 
