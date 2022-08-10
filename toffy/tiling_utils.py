@@ -1283,6 +1283,9 @@ def generate_validation_annot(manual_to_auto_map, manual_auto_dist, check_dist=2
 
 
 class FOVRectangle:
+    # ensure the rectangles don't try to operate on each other
+    lock = None
+
     def __init__(self, coords, width, height, color, id_val, ax):
         rect = Rectangle(coords, width, height, color=color, fill=False, linewidth=1)
         ax.add_patch(rect)
@@ -1301,24 +1304,40 @@ class FOVRectangle:
 
     def on_press(self, event):
         """Check whether mouse is over us; if so, store some data."""
-        if event.inaxes != self.rect.axes:
+
+        # ensure we only operate on the correct rectangle in unlocked state
+        if event.inaxes != self.rect.axes or FOVRectangle.lock is not None:
             return
         contains, attrd = self.rect.contains(event)
         if not contains:
             return
 
+        # store information about the mouse press
         self.press = self.rect.xy, (event.xdata, event.ydata), self.id_val
-        self.rect.figure.canvas.draw()
+
+        # lock other rectangles out
+        FOVRectangle.lock = self
+        # self.rect.figure.canvas.draw()
 
     def on_release(self, event):
-        """Clear button press information."""
+        """Set the new border and clear button press information."""
+
+        # ensure we don't try to release a rectangle in locked state
+        if FOVRectangle.lock is not self:
+            return
+
+        # toggle the border width between 1 and 5 on click
         if self.id_val == self.press[2]:
             if self.rect.get_linewidth() == 1:
                 self.rect.set_linewidth(5)
             else:
                 self.rect.set_linewidth(1)
 
+        # clear the press and lock info
         self.press = None
+        FOVRectangle.lock = None
+
+        # re-draw the rectangle
         self.rect.figure.canvas.draw()
 
     def disconnect(self):
