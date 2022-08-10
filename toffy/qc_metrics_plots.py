@@ -27,7 +27,8 @@ def call_violin_swarm_plot(plotting_df, fig_label, figsize=(20, 3), fig_dir=None
     plt.close()
 
 
-def make_batch_effect_plot(data_dir, normal_tissues, exclude_channels=None, img_sub_folder=None, qc_metric="99.9th_percentile", fig_dir=None):
+def make_batch_effect_plot(data_dir, normal_tissues, exclude_channels=None,
+                           img_sub_folder=None, qc_metric="99.9th_percentile", fig_dir=None):
     """Makes violin plots based on tissue type. Calls call_violin_swarm_plot.
 
     Args:
@@ -66,4 +67,3 @@ def make_batch_effect_plot(data_dir, normal_tissues, exclude_channels=None, img_
                                                           columns=plotting_df.columns))
 
         call_violin_swarm_plot(plotting_df, fig_label=normal_tissues[i], fig_dir=fig_dir)
-
