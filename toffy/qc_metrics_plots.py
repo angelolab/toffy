@@ -10,11 +10,9 @@ import pandas as pd
 def call_violin_swarm_plot(plotting_df, fig_label, figsize=(20, 3), fig_dir=None):
     """Makes violin plot with swarm dots. Used with make_batch_effect_plot()
 
-    Args: pandas df with "sample", "channel", "tma", "99.9th_percentile"
-          figsize. this is wide and short
-          fig dir to save files to. if none it will still present in a jupyter notebook
-    Output: show plots or save them to file
-
+    Args: plotting_df (pandas dataframe): "sample", "channel", "tma", "99.9th_percentile"
+          figsize (tuple): (length x width) of figsize
+          fig_dir (str): Dir to save plots.
     """
     plt.figure(figsize=figsize)
     ax = sns.violinplot(x="channel", y="99.9th_percentile", data=plotting_df,
@@ -29,19 +27,15 @@ def call_violin_swarm_plot(plotting_df, fig_label, figsize=(20, 3), fig_dir=None
     plt.close()
 
 
-def make_batch_effect_plot(data_dir,
-                           normal_tissues,
-                           exclude_channels=None,
-                           img_sub_folder=None,
-                           qc_metric="99.9th_percentile",
-                           fig_dir=None):
-    """Makes violin plots based on tissue type. Points colored by TMA of origin.
+def make_batch_effect_plot(data_dir, normal_tissues, exclude_channels=None, img_sub_folder=None, qc_metric="99.9th_percentile", fig_dir=None):
+    """Makes violin plots based on tissue type. Calls call_violin_swarm_plot.
+
     Args:
-    normal_tissues is a list of the tissue type substring to match
-    exclude channels is a list of channels to not plot
-    sub folder in case theres additional sub folder structure
-    qc metric is 99.9th percentile but could be changed to anything in the future
-    fig dir to save plots in. not required if you want to just show them in a notebook
+        normal_tissues (str): is a list of the tissue type substring to match
+        exclude_channels (str): is a list of channels to not plot
+        img_sub_folder (str): in case theres additional sub folder structure
+        qc_metric (str): Type of qc_metric. Currently only 99.9th percentile.
+
     """
     for i in range(len(normal_tissues)):
         samples = io_utils.list_folders(dir_name=data_dir, substrs=normal_tissues[i])
@@ -51,7 +45,7 @@ def make_batch_effect_plot(data_dir,
         channels = list(data.channels.values)
         if exclude_channels:
             channels = [x for x in channels if x not in exclude_channels]
-        
+
         # i could add a separate function to produce the plotting_df that is testable
         plotting_df = pd.DataFrame(columns=["sample", "channel", "tma", "99.9th_percentile"])
 
@@ -72,4 +66,4 @@ def make_batch_effect_plot(data_dir,
                                                           columns=plotting_df.columns))
 
         call_violin_swarm_plot(plotting_df, fig_label=normal_tissues[i], fig_dir=fig_dir)
-        
+
