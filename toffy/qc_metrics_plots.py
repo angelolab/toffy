@@ -51,7 +51,8 @@ def make_batch_effect_plot(data_dir,
         channels = list(data.channels.values)
         if exclude_channels:
             channels = [x for x in channels if x not in exclude_channels]
-
+        
+        # i could add a separate function to produce the plotting_df that is testable
         plotting_df = pd.DataFrame(columns=["sample", "channel", "tma", "99.9th_percentile"])
 
         for j in range(len(channels)):
@@ -71,3 +72,4 @@ def make_batch_effect_plot(data_dir,
                                                           columns=plotting_df.columns))
 
         call_violin_swarm_plot(plotting_df, fig_label=normal_tissues[i], fig_dir=fig_dir)
+        
