@@ -89,7 +89,8 @@ class RunStructure:
                     # consider timed out fovs complete
                     if wait_time >= self.timeout:
                         del self.fov_progress[fov_name]
-                        raise TimeoutError(f'timed out waiting for {path}...')
+                        warnings.warn(f'timed out waiting for {path}...', Warning)
+                        return False, ''
 
                     time.sleep(check_interval)
                     wait_time += check_interval
@@ -101,6 +102,7 @@ class RunStructure:
 
         elif extension == 'bin':
             warnings.warn(f'Found unexpected bin file, {path}...', Warning)
+            return False, ''
 
         return False, fov_name
 
