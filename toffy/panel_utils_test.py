@@ -2,6 +2,7 @@ import os
 import csv
 import tempfile
 import pandas as pd
+import pytest
 
 from toffy import panel_utils
 from ark.utils import test_utils
@@ -86,8 +87,8 @@ def test_convert_panel():
 
 def mock_panel_conversion(panel_path):
     toffy_panel = pd.DataFrame({
-        'Target': ['Calprotectin', 'Chymase', 'Mast Cell Tryptase'],
         'Mass': [69, 71, 89],
+        'Target': ['Calprotectin', 'Chymase', 'Mast Cell Tryptase'],
         'Start': [68.7, 70.7, 88.7],
         'Stop': [69, 71, 89]
     })
@@ -98,8 +99,8 @@ def mock_panel_conversion(panel_path):
 def test_load_panel(mocker):
     mocker.patch('toffy.panel_utils.convert_panel', mock_panel_conversion)
     toffy_panel = pd.DataFrame({
-        'Target': ['Calprotectin', 'Chymase', 'Mast Cell Tryptase'],
         'Mass': [69, 71, 89],
+        'Target': ['Calprotectin', 'Chymase', 'Mast Cell Tryptase'],
         'Start': [68.7, 70.7, 88.7],
         'Stop': [69, 71, 89]
     })
@@ -121,3 +122,9 @@ def test_load_panel(mocker):
         test_utils._make_blank_file(temp_dir, 'test_panel.csv')
         panel = panel_utils.load_panel(os.path.join(temp_dir, 'test_panel.csv'))
         assert panel.equals(toffy_panel)
+
+        # incorrect formatting with -toffy name should raise an error
+        bad_panel = panel.drop(columns=['Mass'])
+        bad_panel.to_csv(os.path.join(temp_dir, 'bad_panel-toffy.csv'))
+        with pytest.raises(ValueError, match='not correctly formatted'):
+            panel_utils.load_panel(os.path.join(temp_dir, 'bad_panel-toffy.csv'))
