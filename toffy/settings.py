@@ -6,6 +6,7 @@ REGION_PARAM_FIELDS = ['region_name', 'region_start_row', 'region_start_col',
 MIBITRACKER_BACKEND = 'https://backend-dot-mibitracker-angelolab.appspot.com'
 
 # co-registration
+COREG_SAVE_PATH = 'C:\\Users\\Customer.ION\\Documents\\toffy\\toffy\\coreg_params.json'
 FIDUCIAL_POSITIONS = ['top left', 'top right', 'middle left', 'middle right',
                       'bottom left', 'bottom right']
 MICRON_TO_STAGE_X_MULTIPLIER = 0.001001
