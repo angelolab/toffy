@@ -147,10 +147,11 @@ conda env create -f environment.yml
 ```
 
 ## Panel format
-Many of the scripts in `toffy` require a panel file, identifying which targets have been put on which masses.  
-You can download your panel [here](https://angelolab.ionpath.com/tracker/panel); select the correct panel and click `Download csv`.
+Many of the scripts in toffy require a panel file, identifying which targets have been put on which masses. You can download your panel online from the Ionpath MibiTracker under the resources tab. In the panels section, open your panel and click `Download csv`.
+
+![panel download](templates/img/panel_download.png) 
 You should then copy the file to the `C:\\Users\\Customer.ION\\Documents\panel_files` directory, and rename the file to be descriptive of your run.
-The toffy notebooks will automatically convert the ionpath panel to a correct toffy structure, and add any new targets required for downstream analysis (additional targets can be found in the [example panel file](https://github.com/angelolab/toffy/blob/main/files/example_panel_file.csv)).
+The toffy notebooks will automatically convert the ionpath panel to a correct toffy structure, and add any new targets required for downstream analysis (necessary targets can be found in the [example panel file](https://github.com/angelolab/toffy/blob/main/files/example_panel_file.csv)).
 
 ## Median Pulse Height
 The median pulse height (MPH) provides a way to assess the sensitivity of the detector, independent of the specific sample being acquired. It uses characteristics of the output from the detector itself to determine what fraction of maximum sensitivity the instrument is currently running at. We use this fraction of the maximum sensitivity to determine 1) when the detector needs to be swept again and 2) how much to normalize our images by after the fact the correct for this change in sensitivity. The minimum MPH required to still have acceptable signal will depend in part on the markers in your panel, the settings of the instrument, and other factors. However, we often find that the miniumum is somewhere between 5,000 and 6,000 MPH. 
