@@ -167,7 +167,7 @@ Within `C:\\Users\\Customer.ION\\Documents` are directories that store necessary
 - `watcher_logs`: contains the log file of FOVs which have been processed in the [monitoring notebook](./templates/3a_monitor_MIBI_run.ipynb)
 - `normalization_curve`: directory which stores the normalization curve file for the machine that was produced by the [set up notebook](./templates/1_set_up_toffy.ipynb) and necessary for [notebook 4b](./templates/4b_normalize_image_data.ipynb)
 
-![alt text](templates/img/C_dirs.gif)
+![alt text](templates/img/C_dirs.png)
 <br><br>
 You can see below how to pin a folder to Quick Access, which can then be easily located in the section of the same name on the left side of File Explorer. 
 
