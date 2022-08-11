@@ -1413,7 +1413,7 @@ def generate_fov_rectangle(fov_info, region_colors, stage_optical_coreg_params, 
     return dr
 
 
-def delete_tiled_region_fovs(rectangles, tiled_region_fovs):
+def delete_tiled_region_fovs(rectangles, tiled_region_fovs, ax):
     """Delete all the FOVs from tiled_region_fovs with lindwidth 5 (indicating its been selected)
 
     Helper function to `delete_fovs` in `tiled_region_interactive_remap`
@@ -1424,6 +1424,8 @@ def delete_tiled_region_fovs(rectangles, tiled_region_fovs):
             Maps each FOV to its corresponding rectangle instance
         tiled_region_fovs (dict):
             The list of FOVs to overlay for each tiled region
+        ax (matplotlib.axes._subplots.AxesSubplot):
+            The axes the rectangles are drawn on
     """
 
     # define a list of FOVs to delete
@@ -1439,6 +1441,9 @@ def delete_tiled_region_fovs(rectangles, tiled_region_fovs):
     for fov in fovs_delete:
         rectangles[fov].rect.remove()
         del rectangles[fov]
+
+    # refresh the figure
+    ax.figure.canvas.draw()
 
 
 # TODO: potential type hinting candidate?
@@ -1503,7 +1508,7 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
                 the button handler for `w_delete`, passed as a standard for `on_click` callback
         """
 
-        delete_tiled_region_fovs(rectangles, tiled_region_fovs)
+        delete_tiled_region_fovs(rectangles, tiled_region_fovs, ax)
 
     def save_mapping(b):
         """Saves the mapping defined in `tiled_region_fovs`
