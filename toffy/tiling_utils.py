@@ -1413,7 +1413,7 @@ def generate_fov_rectangle(fov_info, region_colors, stage_optical_coreg_params, 
     return dr
 
 
-def delete_tiled_region_fovs(rectangles, tiled_region_fovs, ax):
+def delete_tiled_region_fovs(rectangles, tiled_region_fovs):
     """Delete all the FOVs from tiled_region_fovs with lindwidth 5 (indicating its been selected)
 
     Helper function to `delete_fovs` in `tiled_region_interactive_remap`
@@ -1424,8 +1424,6 @@ def delete_tiled_region_fovs(rectangles, tiled_region_fovs, ax):
             Maps each FOV to its corresponding rectangle instance
         tiled_region_fovs (dict):
             The list of FOVs to overlay for each tiled region
-        ax (matplotlib.axes._subplots.AxesSubplot):
-            The axes the rectangles are drawn on
     """
 
     # define a list of FOVs to delete
@@ -1441,9 +1439,6 @@ def delete_tiled_region_fovs(rectangles, tiled_region_fovs, ax):
     for fov in fovs_delete:
         rectangles[fov].rect.remove()
         del rectangles[fov]
-
-    # refresh the figure
-    ax.figure.canvas.draw()
 
 
 # TODO: potential type hinting candidate?
@@ -1508,7 +1503,9 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
                 the button handler for `w_delete`, passed as a standard for `on_click` callback
         """
 
-        delete_tiled_region_fovs(rectangles, tiled_region_fovs, ax)
+        with out:
+            delete_tiled_region_fovs(rectangles, tiled_region_fovs)
+            ax.figure.canvas.draw()
 
     def save_mapping(b):
         """Saves the mapping defined in `tiled_region_fovs`
@@ -1521,9 +1518,8 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
         # needs to be in the output widget context to display status
         with out:
             # call the helper function to save tiled_region_fovs and notify user
-            save_json(
-                tiled_region_fovs, save_ann, tiled_region_path
-            )
+            save_json(tiled_region_fovs, save_ann, tiled_region_path)
+            ax.figure.canvas.draw()
 
     # define the delete button
     w_delete = widgets.Button(
@@ -1878,9 +1874,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
         # need to be in the output widget context to display status
         with out:
             # call the helper function to save manual_to_auto_map and notify user
-            save_json(
-                manual_to_auto_map, save_ann, mapping_path
-            )
+            save_json(manual_to_auto_map, save_ann, mapping_path)
 
     # ensure a change to w_man redraws the image due to a new manual fov selected
     w_man.observe(update_mapping)
