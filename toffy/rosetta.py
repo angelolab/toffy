@@ -2,6 +2,7 @@ import copy
 import os
 import json
 import shutil
+import random
 
 import numpy as np
 import pandas as pd
@@ -491,3 +492,28 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, masses=None):
                 mult_matrix.iloc[j, :] = comp_matrix.iloc[j, :] * i
         base_name = os.path.basename(default_matrix).split('.csv')[0]
         mult_matrix.to_csv(os.path.join(save_dir, base_name + '_mult_%s.csv' % (str(i))))
+
+
+def copy_rosetta_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs_dir,
+                       matrix_path, fov_number=10):
+
+    # make rosetting testing and extracted images dirs
+    cohort_rosetta_dir = os.path.join(rosetta_testing_dir, cohort_name)
+    os.makedirs(os.path.join(cohort_rosetta_dir, 'extracted_images'))
+
+    # determine how many fovs from each run to use
+    fovs_per_run = [fov_number // len(run_names) for run in run_names]
+    for i in range(0, fov_number % len(run_names)):
+        fovs_per_run[i] = fovs_per_run[i] + 1
+
+    # randomly choose fovs from a run and copy them to the img subdir in rosetta testing dir
+    for i, run in enumerate(run_names):
+        fovs_in_run = list_folders(os.path.join(extracted_imgs_dir, run), substrs='fov')
+        rosetta_fovs = random.sample(fovs_in_run, k=fovs_per_run[i])
+        for fov in rosetta_fovs:
+            fov_path = os.path.join(os.path.join(extracted_imgs_dir, run, fov))
+            new_path = os.path.join(os.path.join(cohort_rosetta_dir, 'extracted_images',
+                                                 fov + '_' + run))
+            shutil.copytree(fov_path, new_path)
+
+    #
