@@ -173,7 +173,10 @@ def test_save_coreg_params():
             'STAGE_TO_OPTICAL_Y_OFFSET': -0.7,
             'date': '22/03/2022 00:00:00'
         }
-        tiling_utils.save_coreg_params(sample_coreg_params_first)
+        tiling_utils.save_coreg_params(
+            sample_coreg_params_first,
+            os.path.join('..', 'toffy', 'coreg_params.json')
+        )
 
         # assert we actually created coreg_params.json in toffy
         assert os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json'))
@@ -193,7 +196,10 @@ def test_save_coreg_params():
             'STAGE_TO_OPTICAL_Y_OFFSET': -1.4,
             'date': '23/03/2022 00:00:00'
         }
-        tiling_utils.save_coreg_params(sample_coreg_params_second)
+        tiling_utils.save_coreg_params(
+            sample_coreg_params_second,
+            os.path.join('..', 'toffy', 'coreg_params.json')
+        )
 
         # load the second co-registration save data in
         # NOTE: since the previous step only appended, coreg_params.json will not disappear
@@ -1351,7 +1357,8 @@ def test_tma_interactive_remap():
 
         # this should now run
         tiling_utils.tma_interactive_remap(
-            sample_manual_fovs, sample_auto_fovs, sample_slide_img, mapping_path
+            sample_manual_fovs, sample_auto_fovs, sample_slide_img, mapping_path,
+            coreg_path=os.path.join('..', 'toffy', 'coreg_params.json')
         )
 
 
