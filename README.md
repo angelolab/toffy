@@ -157,8 +157,10 @@ Four new folders are created on the D drive:
 - `Normalized_Images`: contains the images after accounting for intensity normalization in the [normalization notebook](./templates/4b_normalize_image_data.ipynb)
 - `Cohorts`: final location of your completely processed image data after renaming the folders and files in the [renaming and reorganizing notebook](./templates/5_rename_and_reorganize.ipynb)
 
-![alt text](templates/img/D_dirs.png)
-<br><br>
+<figcaption align = "center"><b>Directories in D drive</b></figcaption>
+
+![D directories](templates/img/D_dirs.png)
+
 Within `C:\\Users\\Customer.ION\\Documents` are directories that store necessary files used to set up and monitor a MIBI run.
 - `tiled_image_jsons`: stores all files used to set up a tiled run in the [tiling notebook](./templates/2_create_tiled_mibi_run.ipynb)
 - `autolabeled_tma_jsons`: stores all files used to set up a tma run in the [tma notebook](./templates/2_create_tma_mibi_run.ipynb)
@@ -167,13 +169,16 @@ Within `C:\\Users\\Customer.ION\\Documents` are directories that store necessary
 - `watcher_logs`: contains the log file of FOVs which have been processed in the [monitoring notebook](./templates/3a_monitor_MIBI_run.ipynb)
 - `normalization_curve`: directory which stores the normalization curve file for the machine that was produced by the [set up notebook](./templates/1_set_up_toffy.ipynb) and necessary for [notebook 4b](./templates/4b_normalize_image_data.ipynb)
 
-![alt text](templates/img/C_dirs.png)
+<figcaption align = "center"><b>Directories in C drive</b></figcaption>
+
+![C directories](templates/img/C_dirs.png)
+
 <br><br>
 You can see below how to pin a folder to Quick Access, which can then be easily located in the section of the same name on the left side of File Explorer. 
 
 We suggest pinning the following folders: `tiled_image_jsons`, `autolabeled_jsons`, `run_metrics`.
 
-![alt text](templates/img/quick_access.gif)
+![Quick Access](templates/img/quick_access.gif)
 
 
 ## Panel format
