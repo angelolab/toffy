@@ -2,7 +2,6 @@ import os
 import warnings
 from pathlib import Path
 import time
-import json
 from datetime import datetime
 from typing import Callable, Tuple
 from watchdog.events import FileCreatedEvent, FileSystemEventHandler
@@ -68,9 +67,7 @@ class RunStructure:
         # filename is not corrct format of fov.bin or fov.json
         if len(filename.split('.')) != 2:
             warnings.warn(f'The file {filename} is not a valid FOV file and will be skipped '
-                          f'from processing.', UserWarning)
-            print(f'The file {filename} is not a valid FOV file and will be skipped '
-                  f'from processing.')
+                          f'from processing.', Warning)
             return False, ''
 
         fov_name, extension = filename.split('.')
@@ -78,7 +75,7 @@ class RunStructure:
         # path no longer valid
         if not os.path.exists(path):
             warnings.warn(f"{path} doesn't exist but was recently created. "
-                          "This should be unreachable...", UserWarning)
+                          "This should be unreachable...", Warning)
             return False, ''
 
         # avoids repeated processing in case of duplicated events
@@ -103,7 +100,7 @@ class RunStructure:
                 return True, fov_name
 
         elif extension == 'bin':
-            raise KeyError(f'Found unexpected bin file, {path}...')
+            warnings.warn(f'Found unexpected bin file, {path}...', Warning)
 
         return False, fov_name
 

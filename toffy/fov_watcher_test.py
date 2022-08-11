@@ -56,12 +56,12 @@ def test_run_structure(run_json, expected_files):
         assert all(run_structure.check_fov_progress().values())
 
         # check for hidden files
-        with pytest.warns(UserWarning, match="is not a valid FOV file and will be skipped"):
+        with pytest.warns(Warning, match="is not a valid FOV file and will be skipped"):
             exist, name = run_structure.check_run_condition(os.path.join(tmpdir, '.fake_file.txt'))
         assert not exist and name == ''
 
         # check for fake files
-        with pytest.warns(UserWarning, match="This should be unreachable..."):
+        with pytest.warns(Warning, match="This should be unreachable..."):
             exist, name = run_structure.check_run_condition(os.path.join(tmpdir, 'fake_file.txt'))
         assert not exist and name == ''
 
