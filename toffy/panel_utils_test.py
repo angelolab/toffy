@@ -3,10 +3,23 @@ import csv
 import tempfile
 import pandas as pd
 
-from pathlib import Path
-
 from toffy import panel_utils
 from ark.utils import test_utils
+
+
+def test_drop_duplicate_masses():
+    duplicate_panel = pd.DataFrame({
+        'Mass': [1, 2, 3, 3, 1],
+        'Target': ['target1', 'target2', 'target3', 'target4', 'target5']
+    })
+
+    unique_panel = panel_utils.drop_duplicate_masses(duplicate_panel)
+
+    # check for no duplicate masses
+    assert len(list(unique_panel['Mass'])) == len(set(unique_panel['Mass']))
+
+    # check for correct edited target names
+    assert list(unique_panel['Target']) == ['target1_target5', 'target2', 'target3_target4']
 
 
 def test_convert_panel():
@@ -43,8 +56,7 @@ def test_convert_panel():
         assert os.path.exists(os.path.join(temp_dir, 'test_panel-toffy.csv'))
 
         converted_panel = pd.read_csv(os.path.join(temp_dir, 'test_panel-toffy.csv'))
-        necessary_panel = pd.read_csv(os.path.join(Path(__file__).parent.parent, 'files',
-                                                   'example_panel_file.csv'))
+        necessary_panel = panel_utils.necessary_masses
 
         # check toffy panel structure
         assert list(converted_panel.columns) == ['Mass', 'Target', 'Start', 'Stop']
