@@ -33,7 +33,6 @@ def drop_duplicate_masses(panel):
         duplicate_targets = panel.loc[panel['Mass'] == mass, 'Target']
         target_name = ''.join(name + '_' for name in duplicate_targets)[:-1]
         panel.loc[panel['Mass'] == mass, 'Target'] = target_name
-        print(target_name)
 
     # only keep one row for each mass value
     unique_panel = panel.drop_duplicates(subset=['Mass'], keep='first')
