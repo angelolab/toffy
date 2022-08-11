@@ -52,10 +52,9 @@ def test_convert_panel():
             w.writerows(data)
 
         # test successful new panel creation
-        panel_utils.convert_panel(os.path.join(temp_dir, 'test_panel.csv'))
+        converted_panel = panel_utils.convert_panel(os.path.join(temp_dir, 'test_panel.csv'))
         assert os.path.exists(os.path.join(temp_dir, 'test_panel-toffy.csv'))
 
-        converted_panel = pd.read_csv(os.path.join(temp_dir, 'test_panel-toffy.csv'))
         necessary_panel = panel_utils.necessary_masses
 
         # check toffy panel structure
@@ -73,6 +72,16 @@ def test_convert_panel():
         # check for all necessary masses
         assert all(mass in list(converted_panel['Mass'])
                    for mass in (list(necessary_panel['Mass'])))
+
+        # check that correctly formatted panel returns with adjusted name
+        converted_panel.to_csv(os.path.join(temp_dir, 'converted_panel.csv'))
+        result_panel = panel_utils.convert_panel(os.path.join(temp_dir, 'converted_panel.csv'))
+
+        # check that file was renamed
+        assert os.path.exists(os.path.join(temp_dir, 'converted_panel-toffy.csv'))
+
+        assert list(result_panel.columns) == ['Mass', 'Target', 'Start', 'Stop']
+
 
 
 def mock_panel_conversion(panel_path):

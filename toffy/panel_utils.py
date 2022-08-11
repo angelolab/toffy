@@ -57,6 +57,7 @@ def convert_panel(panel_path):
     panel_dir = os.path.dirname(panel_path)
 
     # read in metadata contained in the first few lines
+    col_index = 0
     with open(panel_path) as r:
         lines = r.readlines()
         for index, line in enumerate(lines):
@@ -67,11 +68,18 @@ def convert_panel(panel_path):
         r.close()
 
     # load in the panel info to df
-    with open(panel_path) as r:
+    with open(panel_path, encoding='utf-8-sig') as r:
         headers = [next(r) for i in list(range(col_index+1))]
         cols = headers[col_index].split(',')
         panel = pd.read_csv(r, sep=',', names=cols, index_col=False)
         r.close()
+
+    # check for already correctly formatted panel, save file with '-toffy' and return as is
+    if list(panel.columns) == ['Mass', 'Target', 'Stop', 'Stop']:
+        panel.to_csv(os.path.join(panel_dir, panel_name + '-toffy.csv'), index=False)
+        print(f'{panel_name}.csv has the correct toffy format. Adding -toffy to file name and '
+              f'loading in panel data.')
+        return panel
 
     # retrieve column names, and original mass / target values
     panel.columns = [panel.columns.str.replace('"', '')]
@@ -93,6 +101,8 @@ def convert_panel(panel_path):
     toffy_panel = toffy_panel.sort_values(by=['Mass'])
 
     toffy_panel.to_csv(os.path.join(panel_dir, panel_name + '-toffy.csv'), index=False)
+    print(f'{panel_name}.csv does not have the correct toffy format. '
+          f'Creating {panel_name}-toffy.csv and loading in panel data.')
 
     return toffy_panel
 
@@ -112,12 +122,19 @@ def load_panel(panel_path):
     # if panel path points to toffy panel, load it
     if '-toffy' in panel_name:
         toffy_panel = pd.read_csv(panel_path, index_col=False)
+        if list(toffy_panel.columns) != ['Mass', 'Target', 'Stop', 'Stop']:
+            raise(ValueError, f'{panel_name}.csv is not correctly formatted. Please remove '
+                              f'\'-toffy\' from the file name.')
+        else:
+            print(f'{panel_name}.csv is in the correct toffy format. Loading in panel data.')
     else:
-        # check if toffy panel exists in panel_dir
+        # check if toffy panel exists in panel_dir and load it
         files = io_utils.list_files(panel_dir, substrs=panel_name)
         if panel_name + '-toffy.csv' in files:
             converted_panel_path = os.path.join(panel_dir, panel_name + '-toffy.csv')
             toffy_panel = pd.read_csv(converted_panel_path, index_col=False)
+            print(f'Detected {panel_name}-toffy.csv in {panel_dir}. '
+                  f'Loading in toffy formatted panel data.')
         # if no toffy panel, create one
         else:
             toffy_panel = convert_panel(panel_path)
