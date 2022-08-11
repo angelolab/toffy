@@ -1553,9 +1553,8 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
         # need to be in the output widget context to display status
         with out:
             # call the helper function to save manual_to_auto_map and notify user
-            write_manual_to_auto_map(
-                manual_to_auto_map, save_ann, mapping_path
-            )
+            write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path)
+            ax.figure.canvas.draw()
 
     # ensure a change to w_man redraws the image due to a new manual fov selected
     w_man.observe(update_mapping)
