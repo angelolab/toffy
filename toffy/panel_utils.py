@@ -74,9 +74,8 @@ def convert_panel(panel_path):
         panel = pd.read_csv(r, sep=',', names=cols, index_col=False)
         r.close()
 
-    # check for already correctly formatted panel, save file with '-toffy' and return as is
+    # check for already correctly formatted panel, return as is
     if list(panel.columns) == ['Mass', 'Target', 'Stop', 'Stop']:
-        panel.to_csv(os.path.join(panel_dir, panel_name + '-toffy.csv'), index=False)
         print(f'{panel_name}.csv has the correct toffy format. Loading in panel data.')
         return panel
 

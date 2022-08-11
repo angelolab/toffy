@@ -74,23 +74,18 @@ def test_convert_panel():
         assert all(mass in list(converted_panel['Mass'])
                    for mass in (list(necessary_panel['Mass'])))
 
-        # check that correctly formatted panel returns with adjusted name
+        # check that correctly formatted panel loads without issue
         converted_panel.to_csv(os.path.join(temp_dir, 'converted_panel.csv'))
         result_panel = panel_utils.convert_panel(os.path.join(temp_dir, 'converted_panel.csv'))
-
-        # check that file was renamed
-        assert os.path.exists(os.path.join(temp_dir, 'converted_panel-toffy.csv'))
-
         assert list(result_panel.columns) == ['Mass', 'Target', 'Start', 'Stop']
-
 
 
 def mock_panel_conversion(panel_path):
     toffy_panel = pd.DataFrame({
-        'Mass': [69, 71, 89],
-        'Target': ['Calprotectin', 'Chymase', 'Mast Cell Tryptase'],
-        'Start': [68.7, 70.7, 88.7],
-        'Stop': [69, 71, 89]
+        'Mass': [69],
+        'Target': ['Calprotectin'],
+        'Start': [68.7],
+        'Stop': [69]
     })
 
     return toffy_panel
@@ -105,10 +100,17 @@ def test_load_panel(mocker):
         'Stop': [69, 71, 89]
     })
 
+    converted_panel = pd.DataFrame({
+        'Mass': [69],
+        'Target': ['Calprotectin'],
+        'Start': [68.7],
+        'Stop': [69]
+    })
+
     with tempfile.TemporaryDirectory() as temp_dir:
-        # check that if no existing toffy panel, create one from original
+        # check that if no existing toffy panel, convert_panel() creates one from original
         panel = panel_utils.load_panel(os.path.join(temp_dir, 'test_panel.csv'))
-        assert panel.equals(toffy_panel)
+        assert panel.equals(converted_panel)
 
     with tempfile.TemporaryDirectory() as temp_dir:
         # toffy panel
