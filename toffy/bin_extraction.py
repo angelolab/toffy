@@ -49,4 +49,4 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel,
                                     panel=panel, intensities=extract_intensities, replace=replace)
         print("Extraction completed!")
     else:
-        warnings.warn(f"No viable bin files were found in {bin_file_dir}", UserWarning)
+        warnings.warn(f"No viable bin files were found in {bin_file_dir}", Warning)

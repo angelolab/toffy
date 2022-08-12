@@ -38,7 +38,7 @@ def test_extract_missing_fovs(mocked_print):
     # test that it does not re-extract fovs and no moly extraction
     with tempfile.TemporaryDirectory() as combined_bin_file_dir:
         # combine two regular fov and one moly fov files into single directory
-        for file_name in io_utils.list_files(moly_bin_file_dir):
+        for file_name in io_utils.list_files(moly_bin_file_dir, substrs='fov'):
             shutil.copy(os.path.join(moly_bin_file_dir, file_name),
                         os.path.join(combined_bin_file_dir, file_name))
             if '.json' in file_name:
@@ -71,7 +71,7 @@ def test_extract_missing_fovs(mocked_print):
                     call('Extraction completed!')]
 
             # when given empty fov files will raise a warning
-            with pytest.warns(UserWarning, match="The following FOVs have empty json files"):
+            with pytest.warns(Warning, match="The following FOVs have empty json files"):
                 bin_extraction.extract_missing_fovs(combined_bin_file_dir, extraction_dir,
                                                     panel, extract_intensities=False)
 
@@ -94,11 +94,11 @@ def test_extract_missing_fovs(mocked_print):
         assert fovs.sort() == fovs_extracted.sort()
 
         # all fovs extracted already will raise a warning
-        with pytest.warns(UserWarning, match="No viable bin files were found"):
+        with pytest.warns(Warning, match="No viable bin files were found"):
             bin_extraction.extract_missing_fovs(bin_file_dir, extraction_dir,
                                                 panel, extract_intensities=False)
 
         # when given only moly fovs will raise a warning
-        with pytest.warns(UserWarning, match="No viable bin files were found"):
+        with pytest.warns(Warning, match="No viable bin files were found"):
             bin_extraction.extract_missing_fovs(moly_bin_file_dir, extraction_dir,
                                                 panel, extract_intensities=False)
