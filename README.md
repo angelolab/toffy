@@ -17,6 +17,7 @@ This repo is currently in beta testing. None of the code has been published yet,
   - [Setting up the virtual environment](#setting-up-the-virtual-environment)
   - [Using the repo](#using-the-repo)
   - [Updating the repo](#updating-the-repo)
+- [Directory structure](#directory-structure)
 - [Panel format](#panel-format)
 - [Median Pulse Height](#median-pulse-height)
 - [Questions?](#questions)
@@ -25,7 +26,7 @@ This repo is currently in beta testing. None of the code has been published yet,
 The repo has four main parts, with associated code and jupyter notebooks for each.
 
 ### 1. Using toffy for the first time
-The first time you use toffy on one of the commercial instruments, you'll need to perform some basic tasks to ensure everything is working properly. The [set up](./templates/1_set_up_toffy.ipynb) jupyter notebook will guide you through this process
+The first time you use toffy on one of the commercial instruments, you'll need to perform some basic tasks to ensure everything is working properly. The [set up](./templates/1_set_up_toffy.ipynb) jupyter notebook will guide you through this process and the resulting directory structure is explained below ([directory structure](#directory-structure)).
 
 ### 2. Setting up a MIBI run 
 For large MIBI runs, it is often convenient to automatically generate the JSON file containing the individual FOVs. There are two notebooks for this task, one for large tiled regions, the second for TMAs. If you will be tiling multiple adjacent FOVs together into a single image, the [tiling](./templates/2_create_tiled_mibi_run.ipynb) notebook can automate this process. You provide the location of the top corner of the tiled region, along with the number of fovs along the rows and columns, and it will automatically create the appropriate JSON file. 
@@ -145,6 +146,40 @@ After performing the above command, you will sometimes need to update your envir
 conda remove --name toffy_env --all
 conda env create -f environment.yml
 ```
+
+## Directory structure
+Data from each run on the MIBI will be stored in the default base directory `D:\\Data`, in a subdirectory labeled with the run name.
+The [set up](./templates/1_set_up_toffy.ipynb) jupyter notebook creates the following folders that will be used throughout toffy.
+<br> <br>
+Four new folders are created on the D drive:
+- `Extracted_Images`: stores the raw images extracted from the bin files in either the [MIBI monitoring notebook](./templates/3a_monitor_MIBI_run.ipynb) or the [extraction notebook](./templates/3b_extract_images_from_bin.ipynb).
+- `Rosetta_Compensated_Images`: contains the images after being processed with the Rosetta algorithm in the [compensate image data notebook](./templates/4a_compensate_image_data.ipynb)
+- `Normalized_Images`: contains the images after accounting for intensity normalization in the [normalization notebook](./templates/4b_normalize_image_data.ipynb)
+- `Cohorts`: final location of your completely processed image data after renaming the folders and files in the [renaming and reorganizing notebook](./templates/5_rename_and_reorganize.ipynb)
+
+<figcaption align = "center"><b>Directories in D drive</b></figcaption>
+
+![D directories](templates/img/D_dirs.png)
+
+Within `C:\\Users\\Customer.ION\\Documents` are directories that store necessary files used to set up and monitor a MIBI run.
+- `tiled_image_jsons`: stores all files used to set up a tiled run in the [tiling notebook](./templates/2_create_tiled_mibi_run.ipynb)
+- `autolabeled_tma_jsons`: stores all files used to set up a tma run in the [tma notebook](./templates/2_create_tma_mibi_run.ipynb)
+- `panel_files`: directory containing the run panel file, needed for notebooks 3a, 3b, 4a, and 4b.
+- `run_metrics`: contains the data files produced by the [QC](./templates/3c_generate_qc_metrics.ipynb) and [MPH notebooks](./templates/3d_compute_median_pulse_height.ipynb)
+- `watcher_logs`: contains the log file of FOVs which have been processed in the [monitoring notebook](./templates/3a_monitor_MIBI_run.ipynb)
+- `normalization_curve`: directory which stores the normalization curve file for the machine that was produced by the [set up notebook](./templates/1_set_up_toffy.ipynb) and necessary for [notebook 4b](./templates/4b_normalize_image_data.ipynb)
+
+<figcaption align = "center"><b>Directories in C drive</b></figcaption>
+
+![C directories](templates/img/C_dirs.png)
+
+<br><br>
+You can see below how to pin a folder to Quick Access, which can then be easily located in the section of the same name on the left side of File Explorer. 
+
+We suggest pinning the following folders: `tiled_image_jsons`, `autolabeled_jsons`, `run_metrics`.
+
+![Quick Access](templates/img/quick_access.gif)
+
 
 ## Panel format
 Many of the scripts in `toffy` require a panel file. This file identifies which targets have been put on which masses. For an example of what the format should be, you can look at the [example panel file](https://github.com/angelolab/toffy/blob/main/files/example_panel_file.csv). Some panels will not have targets on every mass; in this case, it's important that you just leave the placeholder row in the panel, and not delete it, in order to ensure that all the notebooks work as expected. Similarly, if you have multiple targets on the same mass, don't add a unique row for each, just give them a consolidated name. 
