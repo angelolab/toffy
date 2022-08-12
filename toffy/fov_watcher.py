@@ -89,7 +89,7 @@ class RunStructure:
                     # consider timed out fovs complete
                     if wait_time >= self.timeout:
                         del self.fov_progress[fov_name]
-                        warnings.warn(f'timed out waiting for {path}...', Warning)
+                        raise TimeoutError(f'timed out waiting for {path}...')
 
                     time.sleep(check_interval)
                     wait_time += check_interval
