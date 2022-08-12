@@ -74,7 +74,8 @@ def convert_panel(panel_path):
         r.close()
 
     # check for already correctly formatted panel, return as is
-    if list(panel.columns) == ['Mass', 'Target', 'Stop', 'Stop']:
+    if list(panel.columns) == ['Mass', 'Target', 'Start', 'Stop'] or list(panel.columns) ==\
+            ['Mass', 'Target', 'Start', 'Stop\n']:
         print(f'{panel_name}.csv has the correct toffy format. Loading in panel data.')
         return panel
 
