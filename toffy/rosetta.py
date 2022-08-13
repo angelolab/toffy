@@ -6,6 +6,7 @@ import random
 
 import numpy as np
 import pandas as pd
+import natsort as ns
 
 import skimage.io as io
 from scipy.ndimage import gaussian_filter
@@ -507,11 +508,17 @@ def copy_rosetta_files(cohort_name, run_names, rosetta_testing_dir, extracted_im
         fov_number: number of fovs to use for testing, default 10
 
     """
+    # path validation
+    validate_paths([rosetta_testing_dir, extracted_imgs_dir], data_prefix=False)
 
-    # make rosetting testing dir for cohort and extracted images subdir
+    # validate provided run names
+    for run in run_names:
+        if not os.path.exists(os.path.join(extracted_imgs_dir, run)):
+            raise ValueError(f'{run} is not a valid run name found in D:\\\\Extracted_images')
+
+    # make rosetta testing dir and extracted images subdir
     cohort_rosetta_dir = os.path.join(rosetta_testing_dir, cohort_name + '-' + test_name)
-    if not test_name:
-        cohort_rosetta_dir = cohort_rosetta_dir[:-1]
+    cohort_rosetta_dir = cohort_rosetta_dir[:-1] if not test_name else cohort_rosetta_dir
     os.makedirs(os.path.join(cohort_rosetta_dir, 'extracted_images'))
 
     # determine how many fovs to include from each run to use
@@ -520,9 +527,13 @@ def copy_rosetta_files(cohort_name, run_names, rosetta_testing_dir, extracted_im
         fovs_per_run[i] = fovs_per_run[i] + 1
 
     # randomly choose fovs from a run and copy them to the img subdir in rosetta testing dir
-    for i, run in enumerate(run_names):
-        fovs_in_run = list_folders(os.path.join(extracted_imgs_dir, run), substrs='fov')
+    for i, run in enumerate(ns.natsorted(run_names)):
+        run_path = os.path.join(extracted_imgs_dir, run)
+
+        fovs_in_run = list_folders(run_path, substrs='fov')
+        fovs_in_run = ns.natsorted(fovs_in_run)
         rosetta_fovs = random.sample(fovs_in_run, k=fovs_per_run[i])
+
         for fov in rosetta_fovs:
             fov_path = os.path.join(os.path.join(extracted_imgs_dir, run, fov))
             # append the run name to each fov
