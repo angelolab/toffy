@@ -16,13 +16,18 @@ value_err = [xfail(raises=ValueError, strict=True)]
 def generate_fiducial_read_vals(user_input_type='none'):
     user_inputs = [1.5 * (i + 1) if i % 2 == 0 else 2 * i for i in np.arange(24)]
 
-    if user_input_type == 'same_types':
+    if user_input_type == 'low_inputs':
         bad_inputs_to_insert = [-p for p in user_inputs if not isinstance(p, str)]
         for i in np.arange(0, len(user_inputs), 2):
             user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
 
     if user_input_type == 'diff_types':
         bad_inputs_to_insert = [str(p) + '_bad' for p in user_inputs]
+        for i in np.arange(0, len(user_inputs), 2):
+            user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
+
+    if user_input_type == 'large_inputs':
+        bad_inputs_to_insert = [p * 10000 for p in user_inputs if not isinstance(p, str)]
         for i in np.arange(0, len(user_inputs), 2):
             user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
 
@@ -33,11 +38,14 @@ class FiducialInfoReadCases:
     def case_no_reentry(self):
         return generate_fiducial_read_vals()
 
-    def case_reentry_same_type(self):
-        return generate_fiducial_read_vals(user_input_type='same_types')
+    def case_reentry_low_inputs(self):
+        return generate_fiducial_read_vals(user_input_type='low_inputs')
 
     def case_reentry_different_type(self):
         return generate_fiducial_read_vals(user_input_type='diff_types')
+
+    def case_reentry_large_inputs(self):
+        return generate_fiducial_read_vals(user_input_type='large_inputs')
 
 
 # define the list of region start coords and names
@@ -180,6 +188,14 @@ class TiledRegionReadCases:
 
         return fcl, fnl, fs, ui + ['Y'], bpv, fps
 
+    @xfail(raises=ValueError, strict=True)
+    def case_bad_coords_no_moly_param(self):
+        fcl, fnl, fs, ui, bpv, fps = generate_tiled_region_cases(
+            [(50, 16000), (100, 300)], _TILED_REGION_ROI_NAMES, deepcopy(_TILED_REGION_ROI_SIZES)
+        )
+
+        return fcl, fnl, fs, ui, bpv, fps
+
 
 class TiledRegionMolySettingCases:
     @xfail(raises=FileNotFoundError, strict=True)
@@ -210,6 +226,42 @@ class TiledRegionMolySettingCases:
 
 # TMA rhombus coordinate validation
 class ValidateRhombusCoordsCases:
+    @xfail(raises=ValueError, strict=True)
+    def case_top_left_oob(self):
+        top_left = XYCoord(100, 4000000)
+        top_right = XYCoord(150, 300)
+        bottom_left = XYCoord(150, 300)
+        bottom_right = XYCoord(200, 200)
+
+        return top_left, top_right, bottom_left, bottom_right
+
+    @xfail(raises=ValueError, strict=True)
+    def case_top_right_oob(self):
+        top_left = XYCoord(100, 400)
+        top_right = XYCoord(150000, 300)
+        bottom_left = XYCoord(150, 300)
+        bottom_right = XYCoord(200, 200)
+
+        return top_left, top_right, bottom_left, bottom_right
+
+    @xfail(raises=ValueError, strict=True)
+    def case_bottom_left_oob(self):
+        top_left = XYCoord(100, 400)
+        top_right = XYCoord(150, 300)
+        bottom_left = XYCoord(150, 100000)
+        bottom_right = XYCoord(200, 200)
+
+        return top_left, top_right, bottom_left, bottom_right
+
+    @xfail(raises=ValueError, strict=True)
+    def case_bottom_right_oob(self):
+        top_left = XYCoord(100, 400)
+        top_right = XYCoord(150, 300)
+        bottom_left = XYCoord(150, 300)
+        bottom_right = XYCoord(2000000, 200)
+
+        return top_left, top_right, bottom_left, bottom_right
+
     @xfail(raises=ValueError, strict=True)
     def case_top_left_failure(self):
         top_left = XYCoord(100, 200)

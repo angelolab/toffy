@@ -64,14 +64,15 @@ def verify_x_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = 'op
         coord_val (int):
             The x-coordinate value to validate
         coord_type (Optional[str]):
-            Indicates if the coordinate is optical (pixels) or stage (microns)
+            Indicates if the coordinate is optical pixels, stage coordinates,
+            or stage microns
 
     Returns:
         bool:
             Whether the x-coordinate is in bounds or not
     """
 
-    if coord_type not in ['optical', 'stage']:
+    if coord_type not in ['optical', 'stage', 'micron']:
         raise ValueError("Invalid coord_type specified: must be 'optical' or 'stage'")
 
     if coord_type == 'optical':
@@ -81,6 +82,14 @@ def verify_x_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = 'op
     elif coord_type == 'stage':
         if coord_val < settings.STAGE_LEFT_BOUNDARY or \
            coord_val > settings.STAGE_RIGHT_BOUNDARY:
+            return False
+    elif coord_type == 'micron':
+        coord_val_conv = \
+            coord_val * settings.MICRON_TO_STAGE_X_MULTIPLIER - \
+            settings.MICRON_TO_STAGE_X_OFFSET
+
+        if coord_val_conv < settings.STAGE_LEFT_BOUNDARY or \
+           coord_val_conv > settings.STAGE_RIGHT_BOUNDARY:
             return False
 
     return True
@@ -93,24 +102,33 @@ def verify_y_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = 'op
         coord_val (int):
             The x-coordinate value to validate
         coord_type (Optional[str]):
-            Indicates if the coordinate is optical (pixels) or stage (microns)
+            Indicates if the coordinate is optical pixels, stage coordinates,
+            or stage microns
 
     Returns:
         bool:
             Whether the y-coordinate is in bounds or not
     """
 
-    if coord_type not in ['optical', 'stage']:
+    if coord_type not in ['optical', 'stage', 'micron']:
         raise ValueError("Invalid coord_type specified: must be 'optical' or 'stage'")
 
     # NOTE: stage coordinates increase from bottom to top, vice versa for optical coordinates
     if coord_type == 'optical':
         if coord_val < settings.OPTICAL_TOP_BOUNDARY or \
-           coord_val > setings.OPTICAL_BOTTOM_BOUNDARY:
+           coord_val > settings.OPTICAL_BOTTOM_BOUNDARY:
             return False
     elif coord_type == 'stage':
         if coord_val > settings.STAGE_TOP_BOUNDARY or \
            coord_val < settings.STAGE_BOTTOM_BOUNDARY:
+            return False
+    elif coord_type == 'micron':
+        coord_val_conv = \
+            coord_val * settings.MICRON_TO_STAGE_Y_MULTIPLIER - \
+            settings.MICRON_TO_STAGE_Y_OFFSET
+
+        if coord_val_conv > settings.STAGE_TOP_BOUNDARY or \
+           coord_val_conv < settings.STAGE_BOTTOM_BOUNDARY:
             return False
 
     return True
@@ -124,7 +142,8 @@ def verify_coordinate_on_slide(coord_val: Iterable[Tuple[float, float]],
         coord_val (Iterable[Tuple[float, float]]):
             The coordinate to validate
         coord_type (Optional[str]):
-            Indicates if the coordinate is optical (pixels) or stage (microns)
+            Indicates if the coordinate is optical pixels, stage coordinates,
+            or stage microns
     """
 
     return verify_x_coordinate_on_slide(coord_val[0], coord_type) and \
@@ -216,7 +235,7 @@ def read_fiducial_info():
         optical_y = read_tiling_param(
             "Enter the optical y-coordinate of the %s fiducial: " % pos,
             ("Error: optical y-coordinate must be a numeric value in slide range: ",
-             "[%.2f, %.2f]" % (settings.STAGE_TOP_BOUNDARY, settings.STAGE_BOTTOM_BOUNDARY)),
+             "[%.2f, %.2f]" % (settings.OPTICAL_TOP_BOUNDARY, settings.OPTICAL_BOTTOM_BOUNDARY)),
             lambda fc: verify_y_coordinate_on_slide(fc, 'optical'),
             dtype=float
         )
@@ -245,24 +264,18 @@ def verify_coreg_param_tolerance(coreg_params: dict, tol: Optional[float] = 0.2)
     """
 
     # run for each parameter
-    params_list = ['STAGE_TO_OPTICAL_X_MULTIPLER',
+    params_list = ['STAGE_TO_OPTICAL_X_MULTIPLIER',
                    'STAGE_TO_OPTICAL_X_OFFSET',
                    'STAGE_TO_OPTICAL_Y_MULTIPLIER',
                    'STAGE_TO_OPTICAL_Y_OFFSET']
 
     for param in params_list:
-        # verify parameter exists in coreg_params
-        if param not in coreg_params:
-            raise ValueError(
-                'Co-registraion parameter %s not provided in coreg_params' % param
-            )
-
         # retrieve the baseline val
         baseline_val = settings.COREG_PARAM_BASELINE[param]
 
         # get the left and right boundaries
-        left_extreme = baseline_val - (baseline_val * tol)
-        right_extreme = baseline_val + (baseline_val * tol)
+        left_extreme = baseline_val - abs(baseline_val * tol)
+        right_extreme = baseline_val + abs(baseline_val * tol)
 
         if coreg_params[param] < left_extreme or coreg_params[param] > right_extreme:
             raise ValueError(
@@ -408,7 +421,7 @@ def read_tiled_region_inputs(region_corners, region_params):
 
         # verify if the coordinate is in range
         coordinates_in_range = verify_coordinate_on_slide(
-           (fov['centerPointMicrons']['x'], fov['centerPointMicrons']['y']), 'optical'
+           (fov['centerPointMicrons']['x'], fov['centerPointMicrons']['y']), 'micron'
         )
 
         if not coordinates_in_range:
@@ -713,7 +726,7 @@ def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str] = Non
             cur_col = start_col + col_i * region_info['col_fov_size']
 
             # verify that the coordinate generated is in range
-            if not verify_coordinate_on_slide((cur_col, cur_row), 'optical'):
+            if not verify_coordinate_on_slide((cur_col, cur_row), 'micron'):
                 raise ValueError(
                     ('Coordinate (%.2f, %.2f) for FOV %s and ROI %s out of range, '
                      'please check the dimensions specified') %
@@ -760,6 +773,19 @@ def validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
     """
     # TODO: should we programmatically validate all pairwise comparisons?
 
+    # verify positions relative to the slide
+    if not verify_coordinate_on_slide((top_left.x, top_left.y), 'micron'):
+        raise ValueError('Top-left coordinate provided is out of bounds')
+
+    if not verify_coordinate_on_slide((top_right.x, top_right.y), 'micron'):
+        raise ValueError('Top-right coordinate provided is out of bounds')
+
+    if not verify_coordinate_on_slide((bottom_left.x, bottom_left.y), 'micron'):
+        raise ValueError('Bottom-left coordinate provided is out of bounds')
+
+    if not verify_coordinate_on_slide((bottom_right.x, bottom_right.y), 'micron'):
+        raise ValueError('Bottom-right coordinate provided is out of bounds')
+
     # verify positions relative to each other corners
     if top_left.x > top_right.x:
         raise ValueError("Invalid corner file: The upper left corner is "
@@ -776,19 +802,6 @@ def validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
     if top_right.y < bottom_right.y:
         raise ValueError("Invalid corner file: The upper right corner is "
                          "below the bottom right corner")
-
-    # verify positions relative to the slide
-    if not verify_coordinate_on_slide((top_left.x, top_left.y), 'optical'):
-        raise ValueError('Top-left coordinate provided is out of bounds')
-
-    if not verify_coordinate_on_slide((top_right.x, top_right.y), 'optical'):
-        raise ValueError('Top-right coordinate provided is out of bounds')
-
-    if not verify_coordinate_on_slide((bottom_left.x, bottom_left.y), 'optical'):
-        raise ValueError('Bottom-left coordinate provided is out of bounds')
-
-    if not verify_coordinate_on_slide((bottom_right.x, bottom_right.y), 'optical'):
-        raise ValueError('Bottom-right coordinate provided is out of bounds')
 
 
 @dataclass
@@ -860,7 +873,9 @@ def generate_tma_fov_list(tma_corners_path, num_fov_row, num_fov_col):
 
     # map each name to its corresponding coordinate value
     for index, (xi, yi) in enumerate(x_y_pairs):
-        if not verify_coordinate_on_slide((xi, yi), 'optical'):
+        # NOTE: because the FOVs are generated within the four corners, and these are validated
+        # beforehand, this should never throw an error
+        if not verify_coordinate_on_slide((xi, yi), 'micron'):
             raise ValueError(
                 ('Coordinate (%.2f, %.2f) for FOV %s out of range, '
                  'please double check the TMA dimensions') %

@@ -3,6 +3,7 @@ from inspect import cleandoc
 import ipywidgets as widgets
 import json
 import matplotlib.pyplot as plt
+import mock
 import numpy as np
 import os
 import pandas as pd
@@ -106,6 +107,14 @@ def test_read_tiling_param(monkeypatch):
 
 
 @parametrize_with_cases('user_inputs', cases=test_cases.FiducialInfoReadCases)
+@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', 0)
+@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 75)
+@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 75)
+@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', 0)
+@mock.patch('toffy.settings.OPTICAL_LEFT_BOUNDARY', 0)
+@mock.patch('toffy.settings.OPTICAL_RIGHT_BOUNDARY', 750)
+@mock.patch('toffy.settings.OPTICAL_TOP_BOUNDARY', 0)
+@mock.patch('toffy.settings.OPTICAL_BOTTOM_BOUNDARY', 750)
 def test_read_fiducial_info(monkeypatch, user_inputs):
     # generate the user inputs
     user_inputs = iter(user_inputs)
@@ -131,6 +140,12 @@ def test_read_fiducial_info(monkeypatch, user_inputs):
     assert fiducial_pixel_y == [6 + 8 * i for i in np.arange(6)]
 
 
+@mock.patch('toffy.settings.COREG_PARAM_BASELINE', {
+    'STAGE_TO_OPTICAL_X_MULTIPLIER': 2,
+    'STAGE_TO_OPTICAL_X_OFFSET': -0.5,
+    'STAGE_TO_OPTICAL_Y_MULTIPLIER': 3,
+    'STAGE_TO_OPTICAL_Y_OFFSET': -0.66
+})
 def test_generate_coreg_params():
     # define a sample fiducial info dict
     sample_fiducial_info = {
@@ -212,7 +227,12 @@ def test_save_coreg_params():
 
 @parametrize_with_cases(
     'fov_coords, fov_names, fov_sizes, user_inputs, base_param_values, full_param_set',
-    cases=test_cases.TiledRegionReadCases, glob='*_no_moly_param')
+    cases=test_cases.TiledRegionReadCases, glob='*_no_moly_param'
+)
+@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', -1)
+@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 1)
+@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 1)
+@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', -1)
 def test_read_tiled_region_inputs(monkeypatch, fov_coords, fov_names, fov_sizes, user_inputs,
                                   base_param_values, full_param_set):
     # define a sample fovs list to define the top-left corners of each tiled region
@@ -278,6 +298,10 @@ def test_generate_region_info():
     cases=test_cases.TiledRegionReadCases, glob='*_with_moly_param'
 )
 @parametrize('moly_interval_val', [0, 1])
+@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', -1)
+@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 1)
+@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 1)
+@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', -1)
 def test_set_tiled_region_params(monkeypatch, region_corners_file, fov_coords, fov_names,
                                  fov_sizes, user_inputs, base_param_values,
                                  full_param_set, moly_interval_val):
@@ -355,13 +379,18 @@ def test_generate_x_y_fov_pairs_rhombus(coords, actual_pairs):
 
 
 @parametrize_with_cases(
-    'moly_path, moly_roi_setting, moly_interval_setting, moly_interval_value, '
-    'moly_insert_indices, roi_1_end_pos', cases=test_cases.TiledRegionMolySettingCases
+    'moly_path,moly_roi_setting,moly_interval_setting,moly_interval_value,'
+    'moly_insert_indices,roi_1_end_pos', cases=test_cases.TiledRegionMolySettingCases
 )
 @parametrize('randomize_setting', [['N', 'N'], ['N', 'Y'], ['Y', 'Y']])
-def test_generate_tiled_region_fov_list(moly_path, moly_roi_setting,
-                                        moly_interval_setting, moly_interval_value,
-                                        moly_insert_indices, roi_1_end_pos, randomize_setting):
+@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', -1)
+@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 1)
+@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 1)
+@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', -1)
+def test_generate_tiled_region_fov_list_base(moly_path, moly_roi_setting,
+                                             moly_interval_setting, moly_interval_value,
+                                             moly_insert_indices, roi_1_end_pos,
+                                             randomize_setting):
     # define a set of fovs defining the upper-left corners of each region
     sample_roi_fovs_list = test_utils.generate_sample_fovs_list(
         fov_coords=[(0, 0), (100, 100)], fov_names=['TheFirstROI', 'TheSecondROI'],
@@ -498,8 +527,71 @@ def test_generate_tiled_region_fov_list(moly_path, moly_roi_setting,
             assert fov_names[roi_1_end_pos:] != actual_fov_names[roi_1_end_pos:]
 
 
+@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', -1)
+@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 1)
+@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 1)
+@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', -1)
+def test_generate_tiled_region_fov_list_oob():
+    # define a set of fovs defining the upper-left corners of each region
+    sample_roi_fovs_list = test_utils.generate_sample_fovs_list(
+        fov_coords=[(0, 0), (100, 100)], fov_names=['TheFirstROI', 'TheSecondROI'],
+        fov_sizes=[5, 10]
+    )
+
+    sample_tiling_params = {
+        'fovFormatVersion': '1.5',
+        'fovs': sample_roi_fovs_list['fovs'],
+        # 'region_params': sample_region_params
+    }
+    sample_tiling_params['moly_region'] = False
+
+    # TEST 1: off the right side
+    sample_region_inputs = {
+        'region_name': ['TheFirstROI', 'TheSecondROI'],
+        'region_start_row': [100, 150],
+        'region_start_col': [0, 50],
+        'fov_num_row': [2, 10],
+        'fov_num_col': [4, 2],
+        'row_fov_size': [5, 10000],
+        'col_fov_size': [5, 10],
+        'region_rand': ['N', 'N']
+    }
+
+    sample_region_params = tiling_utils.generate_region_info(sample_region_inputs)
+    sample_tiling_params['region_params'] = sample_region_params
+
+    with pytest.raises(ValueError):
+        fov_list = tiling_utils.generate_tiled_region_fov_list(
+            sample_tiling_params
+        )
+
+    # TEST 2: down the bottom
+    sample_region_inputs = {
+        'region_name': ['TheFirstROI', 'TheSecondROI'],
+        'region_start_row': [100, 150],
+        'region_start_col': [0, 50],
+        'fov_num_row': [2, 4],
+        'fov_num_col': [10, 2],
+        'row_fov_size': [5, 10],
+        'col_fov_size': [50000, 10],
+        'region_rand': ['N', 'N']
+    }
+
+    sample_region_params = tiling_utils.generate_region_info(sample_region_inputs)
+    sample_tiling_params['region_params'] = sample_region_params
+
+    with pytest.raises(ValueError):
+        fov_list = tiling_utils.generate_tiled_region_fov_list(
+            sample_tiling_params
+        )
+
+
 @parametrize_with_cases('top_left, top_right, bottom_left, bottom_right',
                         cases=test_cases.ValidateRhombusCoordsCases)
+@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', -1)
+@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 1)
+@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 1)
+@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', -1)
 def test_validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
     tiling_utils.validate_tma_corners(top_left, top_right, bottom_left, bottom_right)
 
@@ -511,6 +603,10 @@ def test_validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
 @parametrize('tma_corners_file', [param('bad_path.json', marks=file_missing_err),
                                   param('sample_tma_corners.json')])
 @parametrize_with_cases('coords, actual_pairs', cases=test_cases.RhombusCoordInputCases)
+@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', -2)
+@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 2)
+@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 2)
+@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', -2)
 def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_row, num_col,
                                coords, actual_pairs):
     # extract the coordinates
