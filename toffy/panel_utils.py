@@ -16,7 +16,7 @@ necessary_masses = pd.DataFrame({
                'chan_175', 'chan_176', 'Au']})
 
 
-def drop_duplicate_masses(panel):
+def merge_duplicate_masses(panel):
     """ Check a panel df for duplicate mass values and return a unique mass panel with the
         target names combined
     Args:
@@ -74,8 +74,7 @@ def convert_panel(panel_path):
         r.close()
 
     # check for already correctly formatted panel, return as is
-    if list(panel.columns) == ['Mass', 'Target', 'Start', 'Stop'] or list(panel.columns) ==\
-            ['Mass', 'Target', 'Start', 'Stop\n']:
+    if list(panel.columns) == ['Mass', 'Target', 'Start', 'Stop\n']:
         print(f'{panel_name}.csv has the correct toffy format. Loading in panel data.')
         return panel
 
@@ -85,7 +84,7 @@ def convert_panel(panel_path):
     toffy_panel = panel[['Mass', 'Target']].copy()
 
     # include only the unique provided masses with concatenated target names
-    toffy_panel = drop_duplicate_masses(toffy_panel)
+    toffy_panel = merge_duplicate_masses(toffy_panel)
 
     # add necessary panel masses to the toffy panel, removing any duplicates
     toffy_panel = pd.concat([toffy_panel, necessary_masses], ignore_index=True)

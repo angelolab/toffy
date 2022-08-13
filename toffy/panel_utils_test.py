@@ -8,13 +8,13 @@ from toffy import panel_utils
 from ark.utils import test_utils
 
 
-def test_drop_duplicate_masses():
+def test_merge_duplicate_masses():
     duplicate_panel = pd.DataFrame({
         'Mass': [1, 2, 3, 3, 1],
         'Target': ['target1', 'target2', 'target3', 'target4', 'target5']
     })
 
-    unique_panel = panel_utils.drop_duplicate_masses(duplicate_panel)
+    unique_panel = panel_utils.merge_duplicate_masses(duplicate_panel)
 
     # check for no duplicate masses
     assert len(list(unique_panel['Mass'])) == len(set(unique_panel['Mass']))
