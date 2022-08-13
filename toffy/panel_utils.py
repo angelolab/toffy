@@ -73,14 +73,19 @@ def convert_panel(panel_path):
         panel = pd.read_csv(r, sep=',', names=cols, index_col=False)
         r.close()
 
+    panel.columns = [panel.columns.str.replace('"', '')]
+    panel.columns = panel.columns.get_level_values(0)
+
     # check for already correctly formatted panel, return as is
     if list(panel.columns) == ['Mass', 'Target', 'Start', 'Stop\n']:
         print(f'{panel_name}.csv has the correct toffy format. Loading in panel data.')
         return panel
+    # if not ionpath panel, raise error
+    elif list(panel.columns) != ['ID (Lot)', 'Target', 'Clone', 'Mass', 'Element', 'Manufacture',
+                                 'Stock', 'Titer', 'Volume (μL)', 'Staining Batch\n']:
+        raise ValueError(f'{panel_name}.csv is not an Ionpath or toffy structured panel.')
 
-    # retrieve column names, and original mass / target values
-    panel.columns = [panel.columns.str.replace('"', '')]
-    panel.columns = panel.columns.get_level_values(0)
+    # retrieve original mass / target values
     toffy_panel = panel[['Mass', 'Target']].copy()
 
     # include only the unique provided masses with concatenated target names
