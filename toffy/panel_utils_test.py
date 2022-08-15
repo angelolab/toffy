@@ -20,7 +20,8 @@ def test_merge_duplicate_masses():
     assert len(list(unique_panel['Mass'])) == len(set(unique_panel['Mass']))
 
     # check for correct edited target names
-    assert list(unique_panel['Target']) == ['target1_target5_target6', 'target2', 'target3_target4']
+    assert list(unique_panel['Target']) == ['target1_target5_target6', 'target2',
+                                            'target3_target4']
 
 
 def test_convert_panel():
