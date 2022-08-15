@@ -10,8 +10,8 @@ from ark.utils import test_utils
 
 def test_merge_duplicate_masses():
     duplicate_panel = pd.DataFrame({
-        'Mass': [1, 2, 3, 3, 1],
-        'Target': ['target1', 'target2', 'target3', 'target4', 'target5']
+        'Mass': [1, 2, 3, 3, 1, 1],
+        'Target': ['target1', 'target2', 'target3', 'target4', 'target5', 'target6']
     })
 
     unique_panel = panel_utils.merge_duplicate_masses(duplicate_panel)
@@ -20,23 +20,22 @@ def test_merge_duplicate_masses():
     assert len(list(unique_panel['Mass'])) == len(set(unique_panel['Mass']))
 
     # check for correct edited target names
-    assert list(unique_panel['Target']) == ['target1_target5', 'target2', 'target3_target4']
+    assert list(unique_panel['Target']) == ['target1_target5_target6', 'target2', 'target3_target4']
 
 
 def test_convert_panel():
     with tempfile.TemporaryDirectory() as temp_dir:
         test_panel = pd.DataFrame({
-            "ID (Lot)": [1352, 1352, 1350, 1351, 1350, 1350],
-            "Target": ['Calprotectin', 'Duplicate', 'Chymase', 'Mast Cell Tryptase', 'Duplicate2',
-                       'Duplicate3'],
-            "Clone": ['MAC387', 'MAC387', 'EPR13136', 'EPR9522', 'EPR13136', 'EPR13136'],
-            "Mass": [69, 69, 71, 89, 71, 71],
-            "Element": ['Ga', 'Ga', 'Ga', 'Y', 'Ga', 'Ga'],
-            "Manufacture": ['7/20/20', '7/20/20', '7/20/20', '5/5/21', '7/20/20', '7/20/20'],
-            "Stock": [200, 200, 200, 200, 200, 200],
-            "Titer": [0.125, 0.125, 0.125, 0.25, 0.25, 0.25],
-            "Volume (μL)": [0, 0, 0, 0, 0, 0],
-            "Staining Batch": [1, 1, 1, 1, 1, 1]
+            "ID (Lot)": [1352, 1352, 1350, 1351],
+            "Target": ['Calprotectin', 'Duplicate', 'Chymase', 'Mast Cell Tryptase'],
+            "Clone": ['MAC387', 'MAC387', 'EPR13136', 'EPR9522'],
+            "Mass": [69, 69, 71, 89],
+            "Element": ['Ga', 'Ga', 'Ga', 'Y'],
+            "Manufacture": ['7/20/20', '7/20/20', '7/20/20', '5/5/21'],
+            "Stock": [200, 200, 200, 200],
+            "Titer": [0.125, 0.125, 0.125, 0.25],
+            "Volume (μL)": [0, 0, 0, 0],
+            "Staining Batch": [1, 1, 1, 1]
         })
         test_panel.to_csv(os.path.join(temp_dir, 'test_panel.csv'), index=False)
 
@@ -67,7 +66,6 @@ def test_convert_panel():
 
         # check concatenated target names for same mass
         assert 'Calprotectin_Duplicate' in list(converted_panel['Target'])
-        assert 'Chymase_Duplicate2_Duplicate3' in list(converted_panel['Target'])
 
         # check for unique mass values
         assert len(list(converted_panel['Mass'])) == len(set(converted_panel['Mass']))
