@@ -495,8 +495,8 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, masses=None):
         mult_matrix.to_csv(os.path.join(save_dir, base_name + '_mult_%s.csv' % (str(i))))
 
 
-def copy_rosetta_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs_dir,
-                       test_name='', fov_number=10):
+def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs_dir,
+                     test_name='', fov_number=10):
     """ Creates a new directory for rosetta testing and copies over a random subset of
         previously extracted images
     Args:
