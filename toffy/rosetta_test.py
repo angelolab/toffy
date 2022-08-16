@@ -450,23 +450,23 @@ def test_copy_image_files():
             # bad run name should raise an error
             with pytest.raises(ValueError, match='not a valid run name'):
                 rosetta.copy_image_files('cohort_name', ['bad_name'], temp_dir2, temp_dir,
-                                           test_name='test1', fov_number=10)
+                                         fov_number=10)
 
             # bad paths should raise an error
             with pytest.raises(ValueError, match='could not be found'):
                 rosetta.copy_image_files('cohort_name', run_names, 'bad_path', temp_dir,
-                                           test_name='test1', fov_number=10)
+                                         fov_number=10)
 
             with pytest.raises(ValueError, match='could not be found'):
                 rosetta.copy_image_files('cohort_name', run_names, temp_dir2, 'bad_path',
-                                           test_name='test1', fov_number=10)
+                                         fov_number=10)
 
             # test successful folder copy
             rosetta.copy_image_files('cohort_name', run_names, temp_dir2, temp_dir,
-                                       test_name='test1', fov_number=10)
+                                     fov_number=10)
 
             # check that correct total and per run fovs are copied
-            extracted_fov_dir = os.path.join(temp_dir2, 'cohort_name-test1', 'extracted_images')
+            extracted_fov_dir = os.path.join(temp_dir2, 'cohort_name', 'extracted_images')
             assert len(list_folders(extracted_fov_dir)) == 10
             assert len(list(list_folders(extracted_fov_dir, 'run_1'))) == 4
             assert len(list(list_folders(extracted_fov_dir, 'run_2'))) == 3

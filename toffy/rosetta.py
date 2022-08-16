@@ -496,7 +496,7 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, masses=None):
 
 
 def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs_dir,
-                     test_name='', fov_number=10):
+                     fov_number=10):
     """ Creates a new directory for rosetta testing and copies over a random subset of
         previously extracted images
     Args:
@@ -504,7 +504,6 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
         run_names (list): gives names of run folders to retrieve extracted images from
         rosetta_testing_dir: directory where to create cohort rosetta testing folder
         extracted_imgs_dir: directory containing images from each run
-        test_name: string to append to cohort name for folder, in case of multiple tests
         fov_number: number of fovs to use for testing, default 10
 
     """
@@ -517,8 +516,7 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
             raise ValueError(f'{run} is not a valid run name found in D:\\\\Extracted_images')
 
     # make rosetta testing dir and extracted images subdir
-    cohort_rosetta_dir = os.path.join(rosetta_testing_dir, cohort_name + '-' + test_name)
-    cohort_rosetta_dir = cohort_rosetta_dir[:-1] if not test_name else cohort_rosetta_dir
+    cohort_rosetta_dir = os.path.join(rosetta_testing_dir, cohort_name)
     os.makedirs(os.path.join(cohort_rosetta_dir, 'extracted_images'))
 
     # determine how many fovs to include from each run to use
