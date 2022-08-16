@@ -65,7 +65,7 @@ def generate_fiducial_read_vals(user_input_type='none'):
     user_inputs = [1.5 * (i + 1) if i % 2 == 0 else 2 * i for i in np.arange(24)]
 
     if user_input_type == 'low_inputs':
-        bad_inputs_to_insert = [-p for p in user_inputs if not isinstance(p, str)]
+        bad_inputs_to_insert = [-p * 10000 for p in user_inputs if not isinstance(p, str)]
         for i in np.arange(0, len(user_inputs), 2):
             user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
 
@@ -106,16 +106,16 @@ _VERIFY_COREG_CASES = [
 
 _VERIFY_INDIV_COORD_CASES = [
     param(('blah', -1, None), marks=value_err),
-    (-1, 'stage', False), (50, 'stage', True),
-    (43, 'micron', False), (40, 'micron', True),
-    (-1, 'optical', False), (749, 'optical', True)
+    (-2, 'stage', False), (76, 'stage', True),
+    (50, 'micron', False), (40, 'micron', True),
+    (-101, 'optical', False), (-100, 'optical', True)
 ]
 
 _VERIFY_ALL_COORD_CASES = [
     param(((100, 100), 'blah', None), marks=value_err),
-    ((-1, 50), 'stage', False), ((50, 50), 'stage', True),
-    ((40, 43), 'micron', False), ((40, 40), 'micron', True),
-    ((-1, -1), 'optical', False), ((749, 749), 'optical', True)
+    ((-2, 76), 'stage', False), ((-1, 76), 'stage', True),
+    ((40, 50), 'micron', False), ((40, 40), 'micron', True),
+    ((-101, 851), 'optical', False), ((-100, 850), 'optical', True)
 ]
 
 
