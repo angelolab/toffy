@@ -112,6 +112,7 @@ _VERIFY_INDIV_COORD_CASES = [
 ]
 
 _VERIFY_ALL_COORD_CASES = [
+    param(((100, 100), 'blah', None), marks=value_err),
     ((-1, 50), 'stage', False), ((50, 50), 'stage', True),
     ((40, 43), 'micron', False), ((40, 40), 'micron', True),
     ((-1, -1), 'optical', False), ((749, 749), 'optical', True)

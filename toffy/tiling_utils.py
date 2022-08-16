@@ -95,7 +95,7 @@ def verify_x_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = 'op
     return True
 
 
-def verify_y_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = 'optical'):
+def verify_y_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = 'optical') -> bool:
     """Verify that the y-coordinate lies in the accepted slide boundary
 
     Args:
@@ -135,7 +135,7 @@ def verify_y_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = 'op
 
 
 def verify_coordinate_on_slide(coord_val: Iterable[Tuple[float, float]],
-                               coord_type: Optional[str] = 'optical'):
+                               coord_type: Optional[str] = 'optical') -> bool:
     """Verify that the coordinate lies in the accepted slide boundary
 
     Args:
@@ -144,6 +144,10 @@ def verify_coordinate_on_slide(coord_val: Iterable[Tuple[float, float]],
         coord_type (Optional[str]):
             Indicates if the coordinate is optical pixels, stage coordinates,
             or stage microns
+
+    Returns:
+        bool:
+            Whether the coordinate is in bounds or not
     """
 
     if coord_type not in ['optical', 'stage', 'micron']:
