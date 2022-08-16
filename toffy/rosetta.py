@@ -513,7 +513,7 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
     # validate provided run names
     for run in run_names:
         if not os.path.exists(os.path.join(extracted_imgs_dir, run)):
-            raise ValueError(f'{run} is not a valid run name found in D:\\\\Extracted_images')
+            raise ValueError(f'{run} is not a valid run name found in {extracted_imgs_dir}')
 
     # make rosetta testing dir and extracted images subdir
     cohort_rosetta_dir = os.path.join(rosetta_testing_dir, cohort_name)
