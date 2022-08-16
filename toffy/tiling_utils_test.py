@@ -71,12 +71,7 @@ def test_assign_metadata_vals():
 
 
 # TODO: make a class structure to organize the massive mocks
-@mock.patch('toffy.settings.OPTICAL_LEFT_BOUNDARY', 0)
-@mock.patch('toffy.settings.OPTICAL_RIGHT_BOUNDARY', 750)
-@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', 0)
-@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 75)
-@mock.patch('toffy.settings.MICRON_TO_STAGE_X_MULTIPLIER', 2)
-@mock.patch('toffy.settings.MICRON_TO_STAGE_X_OFFSET', 10)
+@test_cases.mock_coreg_params
 @parametrize('x_coord_settings', test_cases._VERIFY_INDIV_COORD_CASES)
 def test_verify_x_coordinate_on_slide(x_coord_settings):
     print(x_coord_settings)
@@ -84,30 +79,14 @@ def test_verify_x_coordinate_on_slide(x_coord_settings):
     assert status == x_coord_settings[2]
 
 
-@mock.patch('toffy.settings.OPTICAL_TOP_BOUNDARY', 0)
-@mock.patch('toffy.settings.OPTICAL_BOTTOM_BOUNDARY', 750)
-@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 75)
-@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', 0)
-@mock.patch('toffy.settings.MICRON_TO_STAGE_Y_MULTIPLIER', 2)
-@mock.patch('toffy.settings.MICRON_TO_STAGE_Y_OFFSET', 10)
+@test_cases.mock_coreg_params
 @parametrize('y_coord_settings', test_cases._VERIFY_INDIV_COORD_CASES)
 def test_verify_y_coordinate_on_slide(y_coord_settings):
     status = tiling_utils.verify_y_coordinate_on_slide(y_coord_settings[0], y_coord_settings[1])
     assert status == y_coord_settings[2]
 
 
-@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', 0)
-@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 75)
-@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 75)
-@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', 0)
-@mock.patch('toffy.settings.OPTICAL_LEFT_BOUNDARY', 0)
-@mock.patch('toffy.settings.OPTICAL_RIGHT_BOUNDARY', 750)
-@mock.patch('toffy.settings.OPTICAL_TOP_BOUNDARY', 0)
-@mock.patch('toffy.settings.OPTICAL_BOTTOM_BOUNDARY', 750)
-@mock.patch('toffy.settings.MICRON_TO_STAGE_X_MULTIPLIER', 2)
-@mock.patch('toffy.settings.MICRON_TO_STAGE_X_OFFSET', 10)
-@mock.patch('toffy.settings.MICRON_TO_STAGE_Y_MULTIPLIER', 2)
-@mock.patch('toffy.settings.MICRON_TO_STAGE_Y_OFFSET', 10)
+@test_cases.mock_coreg_params
 @parametrize('coord_settings', test_cases._VERIFY_ALL_COORD_CASES)
 def test_verify_coordinate_on_slide(coord_settings):
     status = tiling_utils.verify_coordinate_on_slide(coord_settings[0], coord_settings[1])
@@ -150,14 +129,7 @@ def test_read_tiling_param(monkeypatch):
     assert sample_tiling_param == 'Y'
 
 
-@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', 0)
-@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 75)
-@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 75)
-@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', 0)
-@mock.patch('toffy.settings.OPTICAL_LEFT_BOUNDARY', 0)
-@mock.patch('toffy.settings.OPTICAL_RIGHT_BOUNDARY', 750)
-@mock.patch('toffy.settings.OPTICAL_TOP_BOUNDARY', 0)
-@mock.patch('toffy.settings.OPTICAL_BOTTOM_BOUNDARY', 750)
+@test_cases.mock_coreg_params
 @parametrize_with_cases('user_inputs', cases=test_cases.FiducialInfoReadCases)
 def test_read_fiducial_info(monkeypatch, user_inputs):
     # generate the user inputs
@@ -184,12 +156,7 @@ def test_read_fiducial_info(monkeypatch, user_inputs):
     assert fiducial_pixel_y == [6 + 8 * i for i in np.arange(6)]
 
 
-@mock.patch('toffy.settings.COREG_PARAM_BASELINE', {
-    'STAGE_TO_OPTICAL_X_MULTIPLIER': 2,
-    'STAGE_TO_OPTICAL_X_OFFSET': -0.5,
-    'STAGE_TO_OPTICAL_Y_MULTIPLIER': 3,
-    'STAGE_TO_OPTICAL_Y_OFFSET': -0.66
-})
+@test_cases.mock_coreg_dict
 @parametrize('coreg_param_bad_vals', test_cases._VERIFY_COREG_CASES)
 def test_verify_coreg_param_tolerance(coreg_param_bad_vals):
     base_coreg_params = {
@@ -206,12 +173,7 @@ def test_verify_coreg_param_tolerance(coreg_param_bad_vals):
         tiling_utils.verify_coreg_param_tolerance(base_coreg_params)
 
 
-@mock.patch('toffy.settings.COREG_PARAM_BASELINE', {
-    'STAGE_TO_OPTICAL_X_MULTIPLIER': 2,
-    'STAGE_TO_OPTICAL_X_OFFSET': -0.5,
-    'STAGE_TO_OPTICAL_Y_MULTIPLIER': 3,
-    'STAGE_TO_OPTICAL_Y_OFFSET': -0.66
-})
+@test_cases.mock_coreg_dict
 def test_generate_coreg_params():
     # define a sample fiducial info dict
     sample_fiducial_info = {
@@ -291,14 +253,11 @@ def test_save_coreg_params():
         assert coreg_data['coreg_params'][1] == sample_coreg_params_second
 
 
+@test_cases.mock_tiling_bounds
 @parametrize_with_cases(
     'fov_coords, fov_names, fov_sizes, user_inputs, base_param_values, full_param_set',
     cases=test_cases.TiledRegionReadCases, glob='*_no_moly_param'
 )
-@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', -1)
-@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 1)
-@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 1)
-@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', -1)
 def test_read_tiled_region_inputs(monkeypatch, fov_coords, fov_names, fov_sizes, user_inputs,
                                   base_param_values, full_param_set):
     # define a sample fovs list to define the top-left corners of each tiled region
@@ -356,7 +315,7 @@ def test_generate_region_info():
     assert sample_region_info[1]['region_rand'] == 'Y'
 
 
-# NOTE: you can use this to assert failures without needing a separate test class
+@test_cases.mock_tiling_bounds
 @parametrize('region_corners_file', [param('bad_region_corners.json', marks=file_missing_err),
                                      param('tiled_region_corners.json')])
 @parametrize_with_cases(
@@ -364,10 +323,6 @@ def test_generate_region_info():
     cases=test_cases.TiledRegionReadCases, glob='*_with_moly_param'
 )
 @parametrize('moly_interval_val', [0, 1])
-@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', -1)
-@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 1)
-@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 1)
-@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', -1)
 def test_set_tiled_region_params(monkeypatch, region_corners_file, fov_coords, fov_names,
                                  fov_sizes, user_inputs, base_param_values,
                                  full_param_set, moly_interval_val):
@@ -444,15 +399,12 @@ def test_generate_x_y_fov_pairs_rhombus(coords, actual_pairs):
     assert pairs == actual_pairs
 
 
+@test_cases.mock_tiling_bounds
 @parametrize_with_cases(
     'moly_path,moly_roi_setting,moly_interval_setting,moly_interval_value,'
     'moly_insert_indices,roi_1_end_pos', cases=test_cases.TiledRegionMolySettingCases
 )
 @parametrize('randomize_setting', [['N', 'N'], ['N', 'Y'], ['Y', 'Y']])
-@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', -1)
-@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 1)
-@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 1)
-@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', -1)
 def test_generate_tiled_region_fov_list_base(moly_path, moly_roi_setting,
                                              moly_interval_setting, moly_interval_value,
                                              moly_insert_indices, roi_1_end_pos,
@@ -593,10 +545,7 @@ def test_generate_tiled_region_fov_list_base(moly_path, moly_roi_setting,
             assert fov_names[roi_1_end_pos:] != actual_fov_names[roi_1_end_pos:]
 
 
-@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', -1)
-@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 1)
-@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 1)
-@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', -1)
+@test_cases.mock_tiling_bounds
 def test_generate_tiled_region_fov_list_oob():
     # define a set of fovs defining the upper-left corners of each region
     sample_roi_fovs_list = test_utils.generate_sample_fovs_list(
@@ -652,12 +601,9 @@ def test_generate_tiled_region_fov_list_oob():
         )
 
 
+@test_cases.mock_tiling_bounds
 @parametrize_with_cases('top_left, top_right, bottom_left, bottom_right',
                         cases=test_cases.ValidateRhombusCoordsCases)
-@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', -1)
-@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 1)
-@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 1)
-@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', -1)
 def test_validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
     tiling_utils.validate_tma_corners(top_left, top_right, bottom_left, bottom_right)
 

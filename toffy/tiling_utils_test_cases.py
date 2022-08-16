@@ -1,4 +1,6 @@
 from copy import deepcopy
+import functools
+import mock
 import numpy as np
 import pandas as pd
 import pytest
@@ -11,6 +13,52 @@ xfail = pytest.mark.xfail
 
 # shortcuts to make the marks arg in pytest.params easier
 value_err = [xfail(raises=ValueError, strict=True)]
+
+
+def mock_coreg_params(f):
+    @mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', 0)
+    @mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 75)
+    @mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 75)
+    @mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', 0)
+    @mock.patch('toffy.settings.OPTICAL_LEFT_BOUNDARY', 0)
+    @mock.patch('toffy.settings.OPTICAL_RIGHT_BOUNDARY', 750)
+    @mock.patch('toffy.settings.OPTICAL_TOP_BOUNDARY', 0)
+    @mock.patch('toffy.settings.OPTICAL_BOTTOM_BOUNDARY', 750)
+    @mock.patch('toffy.settings.MICRON_TO_STAGE_X_MULTIPLIER', 2)
+    @mock.patch('toffy.settings.MICRON_TO_STAGE_X_OFFSET', 10)
+    @mock.patch('toffy.settings.MICRON_TO_STAGE_Y_MULTIPLIER', 2)
+    @mock.patch('toffy.settings.MICRON_TO_STAGE_Y_OFFSET', 10)
+    @functools.wraps(f)
+    def functor(*args, **kwargs):
+        return f(*args, **kwargs)
+
+    return functor
+
+
+def mock_coreg_dict(f):
+    @mock.patch('toffy.settings.COREG_PARAM_BASELINE', {
+        'STAGE_TO_OPTICAL_X_MULTIPLIER': 2,
+        'STAGE_TO_OPTICAL_X_OFFSET': -0.5,
+        'STAGE_TO_OPTICAL_Y_MULTIPLIER': 3,
+        'STAGE_TO_OPTICAL_Y_OFFSET': -0.66
+    })
+    @functools.wraps(f)
+    def functor(*args, **kwargs):
+        return f(*args, **kwargs)
+
+    return functor
+
+
+def mock_tiling_bounds(f):
+    @mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', -1)
+    @mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 1)
+    @mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 1)
+    @mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', -1)
+    @functools.wraps(f)
+    def functor(*args, **kwargs):
+        return f(*args, **kwargs)
+
+    return functor
 
 
 def generate_fiducial_read_vals(user_input_type='none'):
