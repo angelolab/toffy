@@ -21,7 +21,7 @@ from mibi_bin_tools import bin_files
 
 # needed to prevent UserWarning: low contrast image barf when saving images
 import warnings
-warnings.filterwarnings('ignore')
+warnings.filterwarnings('ignore', category=UserWarning)
 
 
 def create_mibitracker_request_helper(email, password):

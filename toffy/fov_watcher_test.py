@@ -55,8 +55,15 @@ def test_run_structure(run_json, expected_files):
             run_structure.check_run_condition(os.path.join(tmpdir, file))
         assert all(run_structure.check_fov_progress().values())
 
-        with pytest.raises(FileNotFoundError):
-            run_structure.check_run_condition(os.path.join(tmpdir, 'fake_file.txt'))
+        # check for hidden files
+        with pytest.warns(Warning, match="is not a valid FOV file and will be skipped"):
+            exist, name = run_structure.check_run_condition(os.path.join(tmpdir, '.fake_file.txt'))
+        assert not exist and name == ''
+
+        # check for fake files
+        with pytest.warns(Warning, match="This should be unreachable..."):
+            exist, name = run_structure.check_run_condition(os.path.join(tmpdir, 'fake_file.txt'))
+        assert not exist and name == ''
 
 
 # TODO: add tests for per_run when per_run callbacks are created
