@@ -70,7 +70,6 @@ def test_assign_metadata_vals():
     assert new_output_dict[7] is None
 
 
-# TODO: make a class structure to organize the massive mocks
 @test_cases.mock_coreg_params
 @parametrize('x_coord_settings', test_cases._VERIFY_INDIV_COORD_CASES)
 def test_verify_x_coordinate_on_slide(x_coord_settings):
