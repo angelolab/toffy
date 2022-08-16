@@ -182,7 +182,12 @@ We suggest pinning the following folders: `tiled_image_jsons`, `autolabeled_json
 
 
 ## Panel format
-Many of the scripts in `toffy` require a panel file. This file identifies which targets have been put on which masses. For an example of what the format should be, you can look at the [example panel file](https://github.com/angelolab/toffy/blob/main/files/example_panel_file.csv). Some panels will not have targets on every mass; in this case, it's important that you just leave the placeholder row in the panel, and not delete it, in order to ensure that all the notebooks work as expected. Similarly, if you have multiple targets on the same mass, don't add a unique row for each, just give them a consolidated name. 
+Many of the scripts in toffy require a panel file, identifying which targets have been put on which masses. You can download your panel online from the Ionpath MibiTracker under the resources tab. In the panels section, open your panel and click `Download csv`.
+
+![panel download](templates/img/panel_download.png) 
+
+You should then copy the file to the `C:\\Users\\Customer.ION\\Documents\panel_files` directory, and rename the file to be descriptive of your run.
+The toffy notebooks expect the panel files to be formatted slightly differently than the Ionpath default. The first time your panel is read in to one of the notebooks, it will be automatically modified by our scripts to contain the necessary information for toffy processing. This includes adding additional channels which are used for compensation, a full list of which can be found in the [example panel file](https://github.com/angelolab/toffy/blob/main/files/example_panel_file.csv).
 
 ## Median Pulse Height
 The median pulse height (MPH) provides a way to assess the sensitivity of the detector, independent of the specific sample being acquired. It uses characteristics of the output from the detector itself to determine what fraction of maximum sensitivity the instrument is currently running at. We use this fraction of the maximum sensitivity to determine 1) when the detector needs to be swept again and 2) how much to normalize our images by after the fact the correct for this change in sensitivity. The minimum MPH required to still have acceptable signal will depend in part on the markers in your panel, the settings of the instrument, and other factors. However, we often find that the miniumum is somewhere between 5,000 and 6,000 MPH. 
