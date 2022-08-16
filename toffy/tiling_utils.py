@@ -73,7 +73,7 @@ def verify_x_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = 'op
     """
 
     if coord_type not in ['optical', 'stage', 'micron']:
-        raise ValueError("Invalid coord_type specified: must be 'optical' or 'stage'")
+        raise ValueError("Invalid x coord_type specified: must be 'optical', 'stage', or 'micron'")
 
     if coord_type == 'optical':
         if coord_val < settings.OPTICAL_LEFT_BOUNDARY or \
@@ -111,7 +111,7 @@ def verify_y_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = 'op
     """
 
     if coord_type not in ['optical', 'stage', 'micron']:
-        raise ValueError("Invalid coord_type specified: must be 'optical' or 'stage'")
+        raise ValueError("Invalid y coord_type specified: must be 'optical', 'stage', or 'micron'")
 
     # NOTE: stage coordinates increase from bottom to top, vice versa for optical coordinates
     if coord_type == 'optical':
@@ -145,6 +145,9 @@ def verify_coordinate_on_slide(coord_val: Iterable[Tuple[float, float]],
             Indicates if the coordinate is optical pixels, stage coordinates,
             or stage microns
     """
+
+    if coord_type not in ['optical', 'stage', 'micron']:
+        raise ValueError("Invalid coord_type specified: must be 'optical', 'stage', or 'micron'")
 
     return verify_x_coordinate_on_slide(coord_val[0], coord_type) and \
         verify_y_coordinate_on_slide(coord_val[1], coord_type)
@@ -210,32 +213,32 @@ def read_fiducial_info():
     for pos in settings.FIDUCIAL_POSITIONS:
         stage_x = read_tiling_param(
             "Enter the stage x-coordinate of the %s fiducial: " % pos,
-            ("Error: stage x-coordinate must be a numeric value in slide range: ",
-             "[%.2f, %.2f]" % (settings.STAGE_LEFT_BOUNDARY, settings.STAGE_RIGHT_BOUNDARY)),
+            "Error: stage x-coordinate must be a numeric value in slide range: "
+            "[%.2f, %.2f]" % (settings.STAGE_LEFT_BOUNDARY, settings.STAGE_RIGHT_BOUNDARY),
             lambda fc: verify_x_coordinate_on_slide(fc, 'stage'),
             dtype=float
         )
 
         stage_y = read_tiling_param(
             "Enter the stage y-coordinate of the %s fiducial: " % pos,
-            ("Error: stage y-coordinate must be a numeric value in slide range: ",
-             "[%.2f, %.2f]" % (settings.STAGE_BOTTOM_BOUNDARY, settings.STAGE_TOP_BOUNDARY)),
+            "Error: stage y-coordinate must be a numeric value in slide range: "
+            "[%.2f, %.2f]" % (settings.STAGE_BOTTOM_BOUNDARY, settings.STAGE_TOP_BOUNDARY),
             lambda fc: verify_y_coordinate_on_slide(fc, 'stage'),
             dtype=float
         )
 
         optical_x = read_tiling_param(
             "Enter the optical x-coordinate of the %s fiducial: " % pos,
-            ("Error: optical x-coordinate must be a numeric value in slide range: ",
-             "[%.2f, %.2f]" % (settings.OPTICAL_LEFT_BOUNDARY, settings.OPTICAL_RIGHT_BOUNDARY)),
+            "Error: optical x-coordinate must be a numeric value in slide range: "
+            "[%.2f, %.2f]" % (settings.OPTICAL_LEFT_BOUNDARY, settings.OPTICAL_RIGHT_BOUNDARY),
             lambda fc: verify_x_coordinate_on_slide(fc, 'optical'),
             dtype=float
         )
 
         optical_y = read_tiling_param(
             "Enter the optical y-coordinate of the %s fiducial: " % pos,
-            ("Error: optical y-coordinate must be a numeric value in slide range: ",
-             "[%.2f, %.2f]" % (settings.OPTICAL_TOP_BOUNDARY, settings.OPTICAL_BOTTOM_BOUNDARY)),
+            "Error: optical y-coordinate must be a numeric value in slide range: "
+            "[%.2f, %.2f]" % (settings.OPTICAL_TOP_BOUNDARY, settings.OPTICAL_BOTTOM_BOUNDARY),
             lambda fc: verify_y_coordinate_on_slide(fc, 'optical'),
             dtype=float
         )

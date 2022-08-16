@@ -70,6 +70,50 @@ def test_assign_metadata_vals():
     assert new_output_dict[7] is None
 
 
+# TODO: make a class structure to organize the massive mocks
+@mock.patch('toffy.settings.OPTICAL_LEFT_BOUNDARY', 0)
+@mock.patch('toffy.settings.OPTICAL_RIGHT_BOUNDARY', 750)
+@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', 0)
+@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 75)
+@mock.patch('toffy.settings.MICRON_TO_STAGE_X_MULTIPLIER', 2)
+@mock.patch('toffy.settings.MICRON_TO_STAGE_X_OFFSET', 10)
+@parametrize('x_coord_settings', test_cases._VERIFY_INDIV_COORD_CASES)
+def test_verify_x_coordinate_on_slide(x_coord_settings):
+    print(x_coord_settings)
+    status = tiling_utils.verify_x_coordinate_on_slide(x_coord_settings[0], x_coord_settings[1])
+    assert status == x_coord_settings[2]
+
+
+@mock.patch('toffy.settings.OPTICAL_TOP_BOUNDARY', 0)
+@mock.patch('toffy.settings.OPTICAL_BOTTOM_BOUNDARY', 750)
+@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 75)
+@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', 0)
+@mock.patch('toffy.settings.MICRON_TO_STAGE_Y_MULTIPLIER', 2)
+@mock.patch('toffy.settings.MICRON_TO_STAGE_Y_OFFSET', 10)
+@parametrize('y_coord_settings', test_cases._VERIFY_INDIV_COORD_CASES)
+def test_verify_y_coordinate_on_slide(y_coord_settings):
+    status = tiling_utils.verify_y_coordinate_on_slide(y_coord_settings[0], y_coord_settings[1])
+    assert status == y_coord_settings[2]
+
+
+@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', 0)
+@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 75)
+@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 75)
+@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', 0)
+@mock.patch('toffy.settings.OPTICAL_LEFT_BOUNDARY', 0)
+@mock.patch('toffy.settings.OPTICAL_RIGHT_BOUNDARY', 750)
+@mock.patch('toffy.settings.OPTICAL_TOP_BOUNDARY', 0)
+@mock.patch('toffy.settings.OPTICAL_BOTTOM_BOUNDARY', 750)
+@mock.patch('toffy.settings.MICRON_TO_STAGE_X_MULTIPLIER', 2)
+@mock.patch('toffy.settings.MICRON_TO_STAGE_X_OFFSET', 10)
+@mock.patch('toffy.settings.MICRON_TO_STAGE_Y_MULTIPLIER', 2)
+@mock.patch('toffy.settings.MICRON_TO_STAGE_Y_OFFSET', 10)
+@parametrize('coord_settings', test_cases._VERIFY_ALL_COORD_CASES)
+def test_verify_coordinate_on_slide(coord_settings):
+    status = tiling_utils.verify_coordinate_on_slide(coord_settings[0], coord_settings[1])
+    assert status == coord_settings[2]
+
+
 def test_read_tiling_param(monkeypatch):
     # test an invalid non-int response, an invalid int response, then a valid response
     user_inputs_int = iter(['N', 0, 1])
@@ -106,7 +150,6 @@ def test_read_tiling_param(monkeypatch):
     assert sample_tiling_param == 'Y'
 
 
-@parametrize_with_cases('user_inputs', cases=test_cases.FiducialInfoReadCases)
 @mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', 0)
 @mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 75)
 @mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 75)
@@ -115,6 +158,7 @@ def test_read_tiling_param(monkeypatch):
 @mock.patch('toffy.settings.OPTICAL_RIGHT_BOUNDARY', 750)
 @mock.patch('toffy.settings.OPTICAL_TOP_BOUNDARY', 0)
 @mock.patch('toffy.settings.OPTICAL_BOTTOM_BOUNDARY', 750)
+@parametrize_with_cases('user_inputs', cases=test_cases.FiducialInfoReadCases)
 def test_read_fiducial_info(monkeypatch, user_inputs):
     # generate the user inputs
     user_inputs = iter(user_inputs)
@@ -138,6 +182,28 @@ def test_read_fiducial_info(monkeypatch, user_inputs):
 
     fiducial_pixel_y = [fiducial_info['optical'][pos]['y'] for pos in settings.FIDUCIAL_POSITIONS]
     assert fiducial_pixel_y == [6 + 8 * i for i in np.arange(6)]
+
+
+@mock.patch('toffy.settings.COREG_PARAM_BASELINE', {
+    'STAGE_TO_OPTICAL_X_MULTIPLIER': 2,
+    'STAGE_TO_OPTICAL_X_OFFSET': -0.5,
+    'STAGE_TO_OPTICAL_Y_MULTIPLIER': 3,
+    'STAGE_TO_OPTICAL_Y_OFFSET': -0.66
+})
+@parametrize('coreg_param_bad_vals', test_cases._VERIFY_COREG_CASES)
+def test_verify_coreg_param_tolerance(coreg_param_bad_vals):
+    base_coreg_params = {
+        'STAGE_TO_OPTICAL_X_MULTIPLIER': 2,
+        'STAGE_TO_OPTICAL_X_OFFSET': -0.5,
+        'STAGE_TO_OPTICAL_Y_MULTIPLIER': 3,
+        'STAGE_TO_OPTICAL_Y_OFFSET': -0.66
+    }
+
+    coreg_param, bad_val = coreg_param_bad_vals
+    base_coreg_params[coreg_param] = bad_val
+
+    with pytest.raises(ValueError):
+        tiling_utils.verify_coreg_param_tolerance(base_coreg_params)
 
 
 @mock.patch('toffy.settings.COREG_PARAM_BASELINE', {

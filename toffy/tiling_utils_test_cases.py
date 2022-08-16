@@ -48,6 +48,28 @@ class FiducialInfoReadCases:
         return generate_fiducial_read_vals(user_input_type='large_inputs')
 
 
+_VERIFY_COREG_CASES = [
+    ('STAGE_TO_OPTICAL_X_MULTIPLIER', 1), ('STAGE_TO_OPTICAL_X_MULTIPLIER', 4),
+    ('STAGE_TO_OPTICAL_X_OFFSET', -1), ('STAGE_TO_OPTICAL_X_OFFSET', -0.25),
+    ('STAGE_TO_OPTICAL_Y_MULTIPLIER', 1.5), ('STAGE_TO_OPTICAL_Y_MULTIPLIER', 6),
+    ('STAGE_TO_OPTICAL_Y_OFFSET', -1.32), ('STAGE_TO_OPTICAL_Y_OFFSET', -0.33)
+]
+
+
+_VERIFY_INDIV_COORD_CASES = [
+    param(('blah', -1, None), marks=value_err),
+    (-1, 'stage', False), (50, 'stage', True),
+    (43, 'micron', False), (40, 'micron', True),
+    (-1, 'optical', False), (749, 'optical', True)
+]
+
+_VERIFY_ALL_COORD_CASES = [
+    ((-1, 50), 'stage', False), ((50, 50), 'stage', True),
+    ((40, 43), 'micron', False), ((40, 40), 'micron', True),
+    ((-1, -1), 'optical', False), ((749, 749), 'optical', True)
+]
+
+
 # define the list of region start coords and names
 _TILED_REGION_ROI_COORDS = [(50, 150), (100, 300)]
 _TILED_REGION_ROI_NAMES = ["TheFirstROI", "TheSecondROI"]
