@@ -73,7 +73,6 @@ def test_assign_metadata_vals():
 @test_cases.mock_coreg_params
 @parametrize('x_coord_settings', test_cases._VERIFY_INDIV_COORD_CASES)
 def test_verify_x_coordinate_on_slide(x_coord_settings):
-    print(x_coord_settings)
     status = tiling_utils.verify_x_coordinate_on_slide(x_coord_settings[0], x_coord_settings[1])
     assert status == x_coord_settings[2]
 
