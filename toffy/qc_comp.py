@@ -293,7 +293,7 @@ def compute_qc_metrics(bin_file_path, extracted_imgs_path, fov_name,
             the sigma (standard deviation) to use for Gaussian blurring
             set to 0 to use raw inputs without Gaussian blurring
             ignored if `gaussian_blur` set to `False`
-        save_csv (bool):
+        save_csv (str):
             path to save csvs of the qc metrics to
 
     Returns:
