@@ -1,4 +1,6 @@
 from copy import deepcopy
+import functools
+import mock
 import numpy as np
 import pandas as pd
 import pytest
@@ -13,16 +15,67 @@ xfail = pytest.mark.xfail
 value_err = [xfail(raises=ValueError, strict=True)]
 
 
+def mock_coreg_params(f):
+    @mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', 0)
+    @mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 75)
+    @mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 75)
+    @mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', 0)
+    @mock.patch('toffy.settings.OPTICAL_LEFT_BOUNDARY', 0)
+    @mock.patch('toffy.settings.OPTICAL_RIGHT_BOUNDARY', 750)
+    @mock.patch('toffy.settings.OPTICAL_TOP_BOUNDARY', 0)
+    @mock.patch('toffy.settings.OPTICAL_BOTTOM_BOUNDARY', 750)
+    @mock.patch('toffy.settings.MICRON_TO_STAGE_X_MULTIPLIER', 2)
+    @mock.patch('toffy.settings.MICRON_TO_STAGE_X_OFFSET', 10)
+    @mock.patch('toffy.settings.MICRON_TO_STAGE_Y_MULTIPLIER', 2)
+    @mock.patch('toffy.settings.MICRON_TO_STAGE_Y_OFFSET', 10)
+    @functools.wraps(f)
+    def functor(*args, **kwargs):
+        return f(*args, **kwargs)
+
+    return functor
+
+
+def mock_coreg_dict(f):
+    @mock.patch('toffy.settings.COREG_PARAM_BASELINE', {
+        'STAGE_TO_OPTICAL_X_MULTIPLIER': 2,
+        'STAGE_TO_OPTICAL_X_OFFSET': -0.5,
+        'STAGE_TO_OPTICAL_Y_MULTIPLIER': 3,
+        'STAGE_TO_OPTICAL_Y_OFFSET': -0.66
+    })
+    @functools.wraps(f)
+    def functor(*args, **kwargs):
+        return f(*args, **kwargs)
+
+    return functor
+
+
+def mock_tiling_bounds(f):
+    @mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', -1)
+    @mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 1)
+    @mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 1)
+    @mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', -1)
+    @functools.wraps(f)
+    def functor(*args, **kwargs):
+        return f(*args, **kwargs)
+
+    return functor
+
+
 def generate_fiducial_read_vals(user_input_type='none'):
     user_inputs = [1.5 * (i + 1) if i % 2 == 0 else 2 * i for i in np.arange(24)]
 
-    if user_input_type == 'same_types':
-        bad_inputs_to_insert = [-p for p in user_inputs if not isinstance(p, str)]
+    if user_input_type == 'low_inputs':
+        bad_inputs_to_insert = [-p * 10000 for p in user_inputs if not isinstance(p, str)]
         for i in np.arange(0, len(user_inputs), 2):
             user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
 
     if user_input_type == 'diff_types':
         bad_inputs_to_insert = [str(p) + '_bad' for p in user_inputs]
+        for i in np.arange(0, len(user_inputs), 2):
+            user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
+
+    if user_input_type == 'large_inputs':
+        bad_inputs_to_insert = [p * 10000 for p in user_inputs if not isinstance(p, str)]
         for i in np.arange(0, len(user_inputs), 2):
             user_inputs.insert(int(i), bad_inputs_to_insert[int(i / 2)])
 
@@ -33,11 +86,37 @@ class FiducialInfoReadCases:
     def case_no_reentry(self):
         return generate_fiducial_read_vals()
 
-    def case_reentry_same_type(self):
-        return generate_fiducial_read_vals(user_input_type='same_types')
+    def case_reentry_low_inputs(self):
+        return generate_fiducial_read_vals(user_input_type='low_inputs')
 
     def case_reentry_different_type(self):
         return generate_fiducial_read_vals(user_input_type='diff_types')
+
+    def case_reentry_large_inputs(self):
+        return generate_fiducial_read_vals(user_input_type='large_inputs')
+
+
+_VERIFY_COREG_CASES = [
+    ('STAGE_TO_OPTICAL_X_MULTIPLIER', 1), ('STAGE_TO_OPTICAL_X_MULTIPLIER', 4),
+    ('STAGE_TO_OPTICAL_X_OFFSET', -1), ('STAGE_TO_OPTICAL_X_OFFSET', -0.25),
+    ('STAGE_TO_OPTICAL_Y_MULTIPLIER', 1.5), ('STAGE_TO_OPTICAL_Y_MULTIPLIER', 6),
+    ('STAGE_TO_OPTICAL_Y_OFFSET', -1.32), ('STAGE_TO_OPTICAL_Y_OFFSET', -0.33)
+]
+
+
+_VERIFY_INDIV_COORD_CASES = [
+    param(('blah', -1, None), marks=value_err),
+    (-2, 'stage', False), (76, 'stage', True),
+    (50, 'micron', False), (40, 'micron', True),
+    (-101, 'optical', False), (-100, 'optical', True)
+]
+
+_VERIFY_ALL_COORD_CASES = [
+    param(((100, 100), 'blah', None), marks=value_err),
+    ((-2, 76), 'stage', False), ((-1, 76), 'stage', True),
+    ((40, 50), 'micron', False), ((40, 40), 'micron', True),
+    ((-101, 851), 'optical', False), ((-100, 850), 'optical', True)
+]
 
 
 # define the list of region start coords and names
@@ -180,6 +259,14 @@ class TiledRegionReadCases:
 
         return fcl, fnl, fs, ui + ['Y'], bpv, fps
 
+    @xfail(raises=ValueError, strict=True)
+    def case_bad_coords_no_moly_param(self):
+        fcl, fnl, fs, ui, bpv, fps = generate_tiled_region_cases(
+            [(50, 16000), (100, 300)], _TILED_REGION_ROI_NAMES, deepcopy(_TILED_REGION_ROI_SIZES)
+        )
+
+        return fcl, fnl, fs, ui, bpv, fps
+
 
 class TiledRegionMolySettingCases:
     @xfail(raises=FileNotFoundError, strict=True)
@@ -210,6 +297,42 @@ class TiledRegionMolySettingCases:
 
 # TMA rhombus coordinate validation
 class ValidateRhombusCoordsCases:
+    @xfail(raises=ValueError, strict=True)
+    def case_top_left_oob(self):
+        top_left = XYCoord(100, 4000000)
+        top_right = XYCoord(150, 300)
+        bottom_left = XYCoord(150, 300)
+        bottom_right = XYCoord(200, 200)
+
+        return top_left, top_right, bottom_left, bottom_right
+
+    @xfail(raises=ValueError, strict=True)
+    def case_top_right_oob(self):
+        top_left = XYCoord(100, 400)
+        top_right = XYCoord(150000, 300)
+        bottom_left = XYCoord(150, 300)
+        bottom_right = XYCoord(200, 200)
+
+        return top_left, top_right, bottom_left, bottom_right
+
+    @xfail(raises=ValueError, strict=True)
+    def case_bottom_left_oob(self):
+        top_left = XYCoord(100, 400)
+        top_right = XYCoord(150, 300)
+        bottom_left = XYCoord(150, 100000)
+        bottom_right = XYCoord(200, 200)
+
+        return top_left, top_right, bottom_left, bottom_right
+
+    @xfail(raises=ValueError, strict=True)
+    def case_bottom_right_oob(self):
+        top_left = XYCoord(100, 400)
+        top_right = XYCoord(150, 300)
+        bottom_left = XYCoord(150, 300)
+        bottom_right = XYCoord(2000000, 200)
+
+        return top_left, top_right, bottom_left, bottom_right
+
     @xfail(raises=ValueError, strict=True)
     def case_top_left_failure(self):
         top_left = XYCoord(100, 200)
