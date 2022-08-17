@@ -167,6 +167,7 @@ Within `C:\\Users\\Customer.ION\\Documents` are directories that store necessary
 - `panel_files`: directory containing the run panel file, needed for notebooks 3a, 3b, 4a, and 4b.
 - `run_metrics`: contains the data files produced by the [QC](./templates/3c_generate_qc_metrics.ipynb) and [MPH notebooks](./templates/3d_compute_median_pulse_height.ipynb)
 - `watcher_logs`: contains the log file of FOVs which have been processed in the [monitoring notebook](./templates/3a_monitor_MIBI_run.ipynb)
+- `rosetta_testing`: directory which stores the necessary files for and output of rosetta testing completed in the [compensation notebook](./templates/4a_compensate_image_data.ipynb)
 - `normalization_curve`: directory which stores the normalization curve file for the machine that was produced by the [set up notebook](./templates/1_set_up_toffy.ipynb) and necessary for [notebook 4b](./templates/4b_normalize_image_data.ipynb)
 
 <figcaption align = "center"><b>Directories in C drive</b></figcaption>
