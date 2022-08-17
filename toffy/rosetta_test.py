@@ -449,28 +449,23 @@ def test_copy_image_files():
         with tempfile.TemporaryDirectory() as temp_dir2:
             # bad run name should raise an error
             with pytest.raises(ValueError, match='not a valid run name'):
-                rosetta.copy_image_files('cohort_name', ['bad_name'], temp_dir2, temp_dir,
-                                         fov_number=10)
+                rosetta.copy_image_files('cohort_name', ['bad_name'], temp_dir2, temp_dir)
 
             # bad paths should raise an error
             with pytest.raises(ValueError, match='could not be found'):
-                rosetta.copy_image_files('cohort_name', run_names, 'bad_path', temp_dir,
-                                         fov_number=10)
+                rosetta.copy_image_files('cohort_name', run_names, 'bad_path', temp_dir)
 
             with pytest.raises(ValueError, match='could not be found'):
-                rosetta.copy_image_files('cohort_name', run_names, temp_dir2, 'bad_path',
-                                         fov_number=10)
+                rosetta.copy_image_files('cohort_name', run_names, temp_dir2, 'bad_path')
 
             # test successful folder copy
-            rosetta.copy_image_files('cohort_name', run_names, temp_dir2, temp_dir,
-                                     fov_number=10)
+            rosetta.copy_image_files('cohort_name', run_names, temp_dir2, temp_dir, fovs_per_run=5)
 
             # check that correct total and per run fovs are copied
             extracted_fov_dir = os.path.join(temp_dir2, 'cohort_name', 'extracted_images')
-            assert len(list_folders(extracted_fov_dir)) == 10
-            assert len(list(list_folders(extracted_fov_dir, 'run_1'))) == 4
-            assert len(list(list_folders(extracted_fov_dir, 'run_2'))) == 3
-            assert len(list(list_folders(extracted_fov_dir, 'run_3'))) == 3
+            assert len(list_folders(extracted_fov_dir)) == 15
+            for i in range(1, 4):
+                assert len(list(list_folders(extracted_fov_dir, f'run_{i}'))) == 5
             assert len(list(list_folders(extracted_fov_dir, 'stitched_images'))) == 0
 
             # check that files in fov folders are copied
