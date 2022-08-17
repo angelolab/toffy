@@ -78,7 +78,7 @@ def test_convert_panel():
         # check that correctly formatted panel loads without issue
         converted_panel.to_csv(os.path.join(temp_dir, 'converted_panel.csv'), index=False)
         result_panel = panel_utils.convert_panel(os.path.join(temp_dir, 'converted_panel.csv'))
-        assert list(result_panel.columns) == ['Mass', 'Target', 'Start', 'Stop\n']
+        assert list(result_panel.columns) == ['Mass', 'Target', 'Start', 'Stop']
 
         # file which is not ionpath or toffy should raise error
         bad_panel = pd.DataFrame({
