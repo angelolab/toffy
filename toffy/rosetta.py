@@ -519,7 +519,7 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
     cohort_rosetta_dir = os.path.join(rosetta_testing_dir, cohort_name)
     os.makedirs(os.path.join(cohort_rosetta_dir, 'extracted_images'))
 
-    # determine how many fovs to include from each run to use
+    # determine how many fovs to include from each run
     fovs_per_run = [fov_number // len(run_names) for run in run_names]
     for i in range(0, fov_number % len(run_names)):
         fovs_per_run[i] = fovs_per_run[i] + 1
