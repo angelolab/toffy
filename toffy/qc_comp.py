@@ -276,7 +276,7 @@ def sort_bin_file_fovs(fovs, suffix_ignore=None):
 
 
 def compute_qc_metrics(bin_file_path, extracted_imgs_path, fov_name,
-                       gaussian_blur=False, blur_factor=1, save_csv=True):
+                       gaussian_blur=False, blur_factor=1, save_csv=None):
     """Compute the QC metric matrices for the image data provided
 
     Args:
@@ -294,7 +294,7 @@ def compute_qc_metrics(bin_file_path, extracted_imgs_path, fov_name,
             set to 0 to use raw inputs without Gaussian blurring
             ignored if `gaussian_blur` set to `False`
         save_csv (bool):
-            whether to save csvs of the qc metrics in bin_file_path
+            path to save csvs of the qc metrics to
 
     Returns:
         None | Dict[str, pd.DataFrame]:
@@ -316,7 +316,7 @@ def compute_qc_metrics(bin_file_path, extracted_imgs_path, fov_name,
     metric_csvs = compute_qc_metrics_direct(image_data, fov_name, gaussian_blur, blur_factor)
     if save_csv:
         for metric_name, data in metric_csvs.items():
-            data.to_csv(os.path.join(bin_file_path, metric_name), index=False)
+            data.to_csv(os.path.join(save_csv, metric_name), index=False)
 
 
 def compute_qc_metrics_direct(image_data, fov_name, gaussian_blur=False, blur_factor=1):
