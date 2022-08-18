@@ -1,11 +1,12 @@
 import os
+import warnings
 from pathlib import Path
 import time
-import json
 from datetime import datetime
 from typing import Callable, Tuple
 from watchdog.events import FileCreatedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
+from toffy.json_utils import read_json_file
 
 
 class RunStructure:
@@ -30,8 +31,7 @@ class RunStructure:
 
         # find run .json and get parameters
         run_name = Path(run_folder).parts[-1]
-        with open(os.path.join(run_folder, f'{run_name}.json'), 'r') as f:
-            run_metadata = json.load(f)
+        run_metadata = read_json_file(os.path.join(run_folder, f'{run_name}.json'))
 
         # parse run_metadata and populate expected structure
         for fov in run_metadata.get('fovs', ()):
@@ -69,16 +69,21 @@ class RunStructure:
                 whether or not both json and bin files exist, as well as the name of the point
         """
 
-        if not os.path.exists(path):
-            raise FileNotFoundError(f"{path} doesn't exist but was recently created. "
-                                    "This should be unreachable...")
-
         filename = Path(path).parts[-1]
 
+        # filename is not corrct format of fov.bin or fov.json
         if len(filename.split('.')) != 2:
+            warnings.warn(f'The file {filename} is not a valid FOV file and will be skipped '
+                          f'from processing.', Warning)
             return False, ''
 
         fov_name, extension = filename.split('.')
+
+        # path no longer valid
+        if not os.path.exists(path):
+            warnings.warn(f"{path} doesn't exist but was recently created. "
+                          "This should be unreachable...", Warning)
+            return False, ''
 
         # avoids repeated processing in case of duplicated events
         if fov_name in self.processed_fovs:
@@ -105,7 +110,8 @@ class RunStructure:
                 return True, fov_name
 
         elif extension == 'bin':
-            raise KeyError(f'Found unexpected bin file, {path}...')
+            warnings.warn(f'Found unexpected bin file, {path}...', Warning)
+            return False, ''
 
         return False, fov_name
 
@@ -241,7 +247,7 @@ class FOV_EventHandler(FileSystemEventHandler):
                 f'Running {self.run_func.__name__} on whole run\n'
             )
 
-            self.run_func()
+            self.run_func(self.run_folder)
 
 
 def start_watcher(run_folder: str, log_folder: str, fov_callback: Callable[[str, str], None],

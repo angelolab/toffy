@@ -3,6 +3,7 @@ from inspect import cleandoc
 import ipywidgets as widgets
 import json
 import matplotlib.pyplot as plt
+import mock
 import numpy as np
 import os
 import pandas as pd
@@ -19,6 +20,7 @@ from toffy import tiling_utils
 from toffy import tiling_utils_test_cases as test_cases
 
 from ark.utils import misc_utils
+from toffy.json_utils import read_json_file, write_json_file
 
 param = pytest.param
 parametrize = pytest.mark.parametrize
@@ -68,6 +70,27 @@ def test_assign_metadata_vals():
     assert new_output_dict[7] is None
 
 
+@test_cases.mock_coreg_params
+@parametrize('x_coord_settings', test_cases._VERIFY_INDIV_COORD_CASES)
+def test_verify_x_coordinate_on_slide(x_coord_settings):
+    status = tiling_utils.verify_x_coordinate_on_slide(x_coord_settings[0], x_coord_settings[1])
+    assert status == x_coord_settings[2]
+
+
+@test_cases.mock_coreg_params
+@parametrize('y_coord_settings', test_cases._VERIFY_INDIV_COORD_CASES)
+def test_verify_y_coordinate_on_slide(y_coord_settings):
+    status = tiling_utils.verify_y_coordinate_on_slide(y_coord_settings[0], y_coord_settings[1])
+    assert status == y_coord_settings[2]
+
+
+@test_cases.mock_coreg_params
+@parametrize('coord_settings', test_cases._VERIFY_ALL_COORD_CASES)
+def test_verify_coordinate_on_slide(coord_settings):
+    status = tiling_utils.verify_coordinate_on_slide(coord_settings[0], coord_settings[1])
+    assert status == coord_settings[2]
+
+
 def test_read_tiling_param(monkeypatch):
     # test an invalid non-int response, an invalid int response, then a valid response
     user_inputs_int = iter(['N', 0, 1])
@@ -104,6 +127,7 @@ def test_read_tiling_param(monkeypatch):
     assert sample_tiling_param == 'Y'
 
 
+@test_cases.mock_coreg_params
 @parametrize_with_cases('user_inputs', cases=test_cases.FiducialInfoReadCases)
 def test_read_fiducial_info(monkeypatch, user_inputs):
     # generate the user inputs
@@ -130,6 +154,24 @@ def test_read_fiducial_info(monkeypatch, user_inputs):
     assert fiducial_pixel_y == [6 + 8 * i for i in np.arange(6)]
 
 
+@test_cases.mock_coreg_dict
+@parametrize('coreg_param_bad_vals', test_cases._VERIFY_COREG_CASES)
+def test_verify_coreg_param_tolerance(coreg_param_bad_vals):
+    base_coreg_params = {
+        'STAGE_TO_OPTICAL_X_MULTIPLIER': 2,
+        'STAGE_TO_OPTICAL_X_OFFSET': -0.5,
+        'STAGE_TO_OPTICAL_Y_MULTIPLIER': 3,
+        'STAGE_TO_OPTICAL_Y_OFFSET': -0.66
+    }
+
+    coreg_param, bad_val = coreg_param_bad_vals
+    base_coreg_params[coreg_param] = bad_val
+
+    with pytest.raises(ValueError):
+        tiling_utils.verify_coreg_param_tolerance(base_coreg_params)
+
+
+@test_cases.mock_coreg_dict
 def test_generate_coreg_params():
     # define a sample fiducial info dict
     sample_fiducial_info = {
@@ -171,14 +213,16 @@ def test_save_coreg_params():
             'STAGE_TO_OPTICAL_Y_OFFSET': -0.7,
             'date': '22/03/2022 00:00:00'
         }
-        tiling_utils.save_coreg_params(sample_coreg_params_first)
+        tiling_utils.save_coreg_params(
+            sample_coreg_params_first,
+            os.path.join('..', 'toffy', 'coreg_params.json')
+        )
 
         # assert we actually created coreg_params.json in toffy
         assert os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json'))
 
         # load the first co-registration save data in
-        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'r') as cp:
-            coreg_data = json.load(cp)
+        coreg_data = read_json_file(os.path.join('..', 'toffy', 'coreg_params.json'))
 
         # assert 1 element in the coreg_params key and it contains the right coreg vals
         assert len(coreg_data['coreg_params']) == 1
@@ -192,12 +236,14 @@ def test_save_coreg_params():
             'STAGE_TO_OPTICAL_Y_OFFSET': -1.4,
             'date': '23/03/2022 00:00:00'
         }
-        tiling_utils.save_coreg_params(sample_coreg_params_second)
+        tiling_utils.save_coreg_params(
+            sample_coreg_params_second,
+            os.path.join('..', 'toffy', 'coreg_params.json')
+        )
 
         # load the second co-registration save data in
         # NOTE: since the previous step only appended, coreg_params.json will not disappear
-        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'r') as cp:
-            coreg_data = json.load(cp)
+        coreg_data = read_json_file(os.path.join('..', 'toffy', 'coreg_params.json'))
 
         # assert 2 elements in the coreg_params key and they contain the right coreg vals
         assert len(coreg_data['coreg_params']) == 2
@@ -205,9 +251,11 @@ def test_save_coreg_params():
         assert coreg_data['coreg_params'][1] == sample_coreg_params_second
 
 
+@test_cases.mock_tiling_bounds
 @parametrize_with_cases(
     'fov_coords, fov_names, fov_sizes, user_inputs, base_param_values, full_param_set',
-    cases=test_cases.TiledRegionReadCases, glob='*_no_moly_param')
+    cases=test_cases.TiledRegionReadCases, glob='*_no_moly_param'
+)
 def test_read_tiled_region_inputs(monkeypatch, fov_coords, fov_names, fov_sizes, user_inputs,
                                   base_param_values, full_param_set):
     # define a sample fovs list to define the top-left corners of each tiled region
@@ -265,7 +313,7 @@ def test_generate_region_info():
     assert sample_region_info[1]['region_rand'] == 'Y'
 
 
-# NOTE: you can use this to assert failures without needing a separate test class
+@test_cases.mock_tiling_bounds
 @parametrize('region_corners_file', [param('bad_region_corners.json', marks=file_missing_err),
                                      param('tiled_region_corners.json')])
 @parametrize_with_cases(
@@ -290,8 +338,7 @@ def test_set_tiled_region_params(monkeypatch, region_corners_file, fov_coords, f
     with tempfile.TemporaryDirectory() as temp_dir:
         # write fov list
         sample_fov_list_path = os.path.join(temp_dir, 'tiled_region_corners.json')
-        with open(sample_fov_list_path, 'w') as fl:
-            json.dump(sample_fovs_list, fl)
+        write_json_file(json_path=sample_fov_list_path, json_object=sample_fovs_list)
 
         # run tiling parameter setting process with predefined user inputs
         sample_tiling_params = tiling_utils.set_tiled_region_params(
@@ -350,14 +397,16 @@ def test_generate_x_y_fov_pairs_rhombus(coords, actual_pairs):
     assert pairs == actual_pairs
 
 
+@test_cases.mock_tiling_bounds
 @parametrize_with_cases(
-    'moly_path, moly_roi_setting, moly_interval_setting, moly_interval_value, '
-    'moly_insert_indices, roi_1_end_pos', cases=test_cases.TiledRegionMolySettingCases
+    'moly_path,moly_roi_setting,moly_interval_setting,moly_interval_value,'
+    'moly_insert_indices,roi_1_end_pos', cases=test_cases.TiledRegionMolySettingCases
 )
 @parametrize('randomize_setting', [['N', 'N'], ['N', 'Y'], ['Y', 'Y']])
-def test_generate_tiled_region_fov_list(moly_path, moly_roi_setting,
-                                        moly_interval_setting, moly_interval_value,
-                                        moly_insert_indices, roi_1_end_pos, randomize_setting):
+def test_generate_tiled_region_fov_list_base(moly_path, moly_roi_setting,
+                                             moly_interval_setting, moly_interval_value,
+                                             moly_insert_indices, roi_1_end_pos,
+                                             randomize_setting):
     # define a set of fovs defining the upper-left corners of each region
     sample_roi_fovs_list = test_utils.generate_sample_fovs_list(
         fov_coords=[(0, 0), (100, 100)], fov_names=['TheFirstROI', 'TheSecondROI'],
@@ -389,8 +438,7 @@ def test_generate_tiled_region_fov_list(moly_path, moly_roi_setting,
         )
         sample_moly_path = os.path.join(td, 'sample_moly_point.json')
 
-        with open(sample_moly_path, 'w') as smp:
-            json.dump(sample_moly_point, smp)
+        write_json_file(json_path=sample_moly_path, json_object=sample_moly_point)
 
         sample_tiling_params['moly_region'] = moly_roi_setting
 
@@ -495,6 +543,63 @@ def test_generate_tiled_region_fov_list(moly_path, moly_roi_setting,
             assert fov_names[roi_1_end_pos:] != actual_fov_names[roi_1_end_pos:]
 
 
+@test_cases.mock_tiling_bounds
+def test_generate_tiled_region_fov_list_oob():
+    # define a set of fovs defining the upper-left corners of each region
+    sample_roi_fovs_list = test_utils.generate_sample_fovs_list(
+        fov_coords=[(0, 0), (100, 100)], fov_names=['TheFirstROI', 'TheSecondROI'],
+        fov_sizes=[5, 10]
+    )
+
+    sample_tiling_params = {
+        'fovFormatVersion': '1.5',
+        'fovs': sample_roi_fovs_list['fovs'],
+        # 'region_params': sample_region_params
+    }
+    sample_tiling_params['moly_region'] = False
+
+    # TEST 1: off the right side
+    sample_region_inputs = {
+        'region_name': ['TheFirstROI', 'TheSecondROI'],
+        'region_start_row': [100, 150],
+        'region_start_col': [0, 50],
+        'fov_num_row': [2, 10],
+        'fov_num_col': [4, 2],
+        'row_fov_size': [5, 10000],
+        'col_fov_size': [5, 10],
+        'region_rand': ['N', 'N']
+    }
+
+    sample_region_params = tiling_utils.generate_region_info(sample_region_inputs)
+    sample_tiling_params['region_params'] = sample_region_params
+
+    with pytest.raises(ValueError):
+        fov_list = tiling_utils.generate_tiled_region_fov_list(
+            sample_tiling_params
+        )
+
+    # TEST 2: down the bottom
+    sample_region_inputs = {
+        'region_name': ['TheFirstROI', 'TheSecondROI'],
+        'region_start_row': [100, 150],
+        'region_start_col': [0, 50],
+        'fov_num_row': [2, 4],
+        'fov_num_col': [10, 2],
+        'row_fov_size': [5, 10],
+        'col_fov_size': [50000, 10],
+        'region_rand': ['N', 'N']
+    }
+
+    sample_region_params = tiling_utils.generate_region_info(sample_region_inputs)
+    sample_tiling_params['region_params'] = sample_region_params
+
+    with pytest.raises(ValueError):
+        fov_list = tiling_utils.generate_tiled_region_fov_list(
+            sample_tiling_params
+        )
+
+
+@test_cases.mock_tiling_bounds
 @parametrize_with_cases('top_left, top_right, bottom_left, bottom_right',
                         cases=test_cases.ValidateRhombusCoordsCases)
 def test_validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
@@ -503,11 +608,15 @@ def test_validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
 
 @parametrize('extra_coords,extra_names', [param([(1, 2)], ["TheSecondFOV"], marks=value_err),
                                           param([], [])])
-@parametrize('num_row,num_col', [param(2, 3, marks=value_err), param(3, 2, marks=value_err),
+@parametrize('num_row,num_col', [param(1, 3, marks=value_err), param(3, 1, marks=value_err),
                                  param(3, 4)])
 @parametrize('tma_corners_file', [param('bad_path.json', marks=file_missing_err),
                                   param('sample_tma_corners.json')])
 @parametrize_with_cases('coords, actual_pairs', cases=test_cases.RhombusCoordInputCases)
+@mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', -2)
+@mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 2)
+@mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 2)
+@mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', -2)
 def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_row, num_col,
                                coords, actual_pairs):
     # extract the coordinates
@@ -529,8 +638,8 @@ def test_generate_tma_fov_list(tma_corners_file, extra_coords, extra_names, num_
     with tempfile.TemporaryDirectory() as td:
         # save sample FOVs list
         sample_tma_corners_path = os.path.join(td, 'sample_tma_corners.json')
-        with open(sample_tma_corners_path, 'w') as sfl:
-            json.dump(sample_fovs_list, sfl)
+
+        write_json_file(json_path=sample_tma_corners_path, json_object=sample_fovs_list)
 
         # NOTE: we leave the coordinate validation tests for test_validate_tma_corners
 
@@ -1031,12 +1140,13 @@ def test_tma_interactive_remap():
             ]
         }
 
-        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'w') as cp:
-            json.dump(sample_coreg_params, cp)
+        write_json_file(json_path=os.path.join('..', 'toffy', 'coreg_params.json'),
+                        json_object=sample_coreg_params)
 
         # this should now run
         tiling_utils.tma_interactive_remap(
-            sample_manual_fovs, sample_auto_fovs, sample_slide_img, mapping_path
+            sample_manual_fovs, sample_auto_fovs, sample_slide_img, mapping_path,
+            coreg_path=os.path.join('..', 'toffy', 'coreg_params.json')
         )
 
 
@@ -1054,8 +1164,7 @@ def test_remap_and_reorder_fovs(moly_path, randomize_setting, moly_insert, moly_
     with tempfile.TemporaryDirectory() as td:
         moly_point_path = os.path.join(td, 'sample_moly_point.json')
 
-        with open(moly_point_path, 'w') as smp:
-            json.dump(sample_moly_point, smp)
+        write_json_file(json_path=moly_point_path, json_object=sample_moly_point)
 
         # define the coordinates and fov names manual by the user
         manual_coords = [(0, 25), (50, 25), (50, 50), (75, 50), (100, 25), (100, 75)]

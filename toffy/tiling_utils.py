@@ -10,6 +10,7 @@ from operator import itemgetter
 import os
 import pandas as pd
 import re
+from typing import Iterable, Optional, Tuple
 from skimage.draw import ellipse
 from sklearn.linear_model import LinearRegression
 from sklearn.utils import shuffle
@@ -54,6 +55,106 @@ def assign_metadata_vals(input_dict, output_dict, keys_ignore):
             output_dict[mk] = input_dict[mk]
 
     return output_dict
+
+
+def verify_x_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = 'optical') -> bool:
+    """Verify that the x-coordinate lies in the accepted slide boundary
+
+    Args:
+        coord_val (int):
+            The x-coordinate value to validate
+        coord_type (Optional[str]):
+            Indicates if the coordinate is optical pixels, stage coordinates,
+            or stage microns
+
+    Returns:
+        bool:
+            Whether the x-coordinate is in bounds or not
+    """
+
+    if coord_type not in ['optical', 'stage', 'micron']:
+        raise ValueError("Invalid x coord_type specified: must be 'optical', 'stage', or 'micron'")
+
+    if coord_type == 'optical':
+        if coord_val < settings.OPTICAL_LEFT_BOUNDARY - settings.OPTICAL_BOUNDARY_TOL or \
+           coord_val > settings.OPTICAL_RIGHT_BOUNDARY + settings.OPTICAL_BOUNDARY_TOL:
+            return False
+    elif coord_type == 'stage':
+        if coord_val < settings.STAGE_LEFT_BOUNDARY - settings.STAGE_BOUNDARY_TOL or \
+           coord_val > settings.STAGE_RIGHT_BOUNDARY + settings.STAGE_BOUNDARY_TOL:
+            return False
+    elif coord_type == 'micron':
+        coord_val_conv = \
+            coord_val * settings.MICRON_TO_STAGE_X_MULTIPLIER - \
+            settings.MICRON_TO_STAGE_X_OFFSET
+
+        if coord_val_conv < settings.STAGE_LEFT_BOUNDARY - settings.STAGE_BOUNDARY_TOL or \
+           coord_val_conv > settings.STAGE_RIGHT_BOUNDARY + settings.STAGE_BOUNDARY_TOL:
+            return False
+
+    return True
+
+
+def verify_y_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = 'optical') -> bool:
+    """Verify that the y-coordinate lies in the accepted slide boundary
+
+    Args:
+        coord_val (int):
+            The x-coordinate value to validate
+        coord_type (Optional[str]):
+            Indicates if the coordinate is optical pixels, stage coordinates,
+            or stage microns
+
+    Returns:
+        bool:
+            Whether the y-coordinate is in bounds or not
+    """
+
+    if coord_type not in ['optical', 'stage', 'micron']:
+        raise ValueError("Invalid y coord_type specified: must be 'optical', 'stage', or 'micron'")
+
+    # NOTE: stage coordinates increase from bottom to top, vice versa for optical coordinates
+    if coord_type == 'optical':
+        if coord_val < settings.OPTICAL_TOP_BOUNDARY - settings.OPTICAL_BOUNDARY_TOL or \
+           coord_val > settings.OPTICAL_BOTTOM_BOUNDARY + settings.OPTICAL_BOUNDARY_TOL:
+            return False
+    elif coord_type == 'stage':
+        if coord_val > settings.STAGE_TOP_BOUNDARY + settings.STAGE_BOUNDARY_TOL or \
+           coord_val < settings.STAGE_BOTTOM_BOUNDARY - settings.STAGE_BOUNDARY_TOL:
+            return False
+    elif coord_type == 'micron':
+        coord_val_conv = \
+            coord_val * settings.MICRON_TO_STAGE_Y_MULTIPLIER - \
+            settings.MICRON_TO_STAGE_Y_OFFSET
+
+        if coord_val_conv > settings.STAGE_TOP_BOUNDARY + settings.STAGE_BOUNDARY_TOL or \
+           coord_val_conv < settings.STAGE_BOTTOM_BOUNDARY - settings.STAGE_BOUNDARY_TOL:
+            return False
+
+    return True
+
+
+def verify_coordinate_on_slide(coord_val: Iterable[Tuple[float, float]],
+                               coord_type: Optional[str] = 'optical') -> bool:
+    """Verify that the coordinate lies in the accepted slide boundary
+
+    Args:
+        coord_val (Iterable[Tuple[float, float]]):
+            The coordinate to validate
+        coord_type (Optional[str]):
+            Indicates if the coordinate is optical pixels, stage coordinates,
+            or stage microns
+
+    Returns:
+        bool:
+            Whether the coordinate is in bounds or not
+    """
+
+    if coord_type not in ['optical', 'stage', 'micron']:
+        raise ValueError("Invalid coord_type specified: must be 'optical', 'stage', or 'micron'")
+
+    return verify_x_coordinate_on_slide(coord_val[0], coord_type) and \
+        verify_y_coordinate_on_slide(coord_val[1], coord_type)
 
 
 def read_tiling_param(prompt, error_msg, cond, dtype):
@@ -116,29 +217,45 @@ def read_fiducial_info():
     for pos in settings.FIDUCIAL_POSITIONS:
         stage_x = read_tiling_param(
             "Enter the stage x-coordinate of the %s fiducial: " % pos,
-            "Error: all fiducial coordinates entered must be positive numbers",
-            lambda fc: fc > 0,
+            "Error: stage x-coordinate must be a numeric value in slide range: "
+            "[%.2f, %.2f]" % (
+                settings.STAGE_LEFT_BOUNDARY - settings.STAGE_BOUNDARY_TOL,
+                settings.STAGE_RIGHT_BOUNDARY + settings.STAGE_BOUNDARY_TOL
+            ),
+            lambda fc: verify_x_coordinate_on_slide(fc, 'stage'),
             dtype=float
         )
 
         stage_y = read_tiling_param(
             "Enter the stage y-coordinate of the %s fiducial: " % pos,
-            "Error: all fiducial coordinates entered must be positive numbers",
-            lambda fc: fc > 0,
+            "Error: stage y-coordinate must be a numeric value in slide range: "
+            "[%.2f, %.2f]" % (
+                settings.STAGE_BOTTOM_BOUNDARY - settings.STAGE_BOUNDARY_TOL,
+                settings.STAGE_TOP_BOUNDARY + settings.STAGE_BOUNDARY_TOL
+            ),
+            lambda fc: verify_y_coordinate_on_slide(fc, 'stage'),
             dtype=float
         )
 
         optical_x = read_tiling_param(
             "Enter the optical x-coordinate of the %s fiducial: " % pos,
-            "Error: all fiducial coordinates entered must be positive numbers",
-            lambda fc: fc > 0,
+            "Error: optical x-coordinate must be a numeric value in slide range: "
+            "[%.2f, %.2f]" % (
+                settings.OPTICAL_LEFT_BOUNDARY - settings.OPTICAL_BOUNDARY_TOL,
+                settings.OPTICAL_RIGHT_BOUNDARY + settings.OPTICAL_BOUNDARY_TOL
+            ),
+            lambda fc: verify_x_coordinate_on_slide(fc, 'optical'),
             dtype=float
         )
 
         optical_y = read_tiling_param(
             "Enter the optical y-coordinate of the %s fiducial: " % pos,
-            "Error: all fiducial coordinates entered must be positive numbers",
-            lambda fc: fc > 0,
+            "Error: optical y-coordinate must be a numeric value in slide range: "
+            "[%.2f, %.2f]" % (
+                settings.OPTICAL_TOP_BOUNDARY - settings.OPTICAL_BOUNDARY_TOL,
+                settings.OPTICAL_BOTTOM_BOUNDARY + settings.OPTICAL_BOUNDARY_TOL
+            ),
+            lambda fc: verify_y_coordinate_on_slide(fc, 'optical'),
             dtype=float
         )
 
@@ -149,6 +266,42 @@ def read_fiducial_info():
         fiducial_info['optical'][pos] = {'x': optical_x, 'y': optical_y}
 
     return fiducial_info
+
+
+def verify_coreg_param_tolerance(coreg_params: dict, tol: Optional[float] = 0.2):
+    """Verify that the coreg params lie within acceptable range
+
+    Args:
+        coreg_params (dict):
+            Contains all of the co-registration parameters
+        tol (Optional[float]):
+            How far away from the baseline is acceptable for co-registration
+
+    Raises:
+        ValueError:
+            If one of the co-registration parameters fails the tolerance test
+    """
+
+    # run for each parameter
+    params_list = ['STAGE_TO_OPTICAL_X_MULTIPLIER',
+                   'STAGE_TO_OPTICAL_X_OFFSET',
+                   'STAGE_TO_OPTICAL_Y_MULTIPLIER',
+                   'STAGE_TO_OPTICAL_Y_OFFSET']
+
+    for param in params_list:
+        # retrieve the baseline val
+        baseline_val = settings.COREG_PARAM_BASELINE[param]
+
+        # get the left and right boundaries
+        left_extreme = baseline_val - abs(baseline_val * tol)
+        right_extreme = baseline_val + abs(baseline_val * tol)
+
+        if coreg_params[param] < left_extreme or coreg_params[param] > right_extreme:
+            raise ValueError(
+                ("coreg_param %s is out of range ([%.2f, %.2f], got %.2f): "
+                 "please re-run co-registration") %
+                (param, left_extreme, right_extreme, coreg_params[param])
+            )
 
 
 def generate_coreg_params(fiducial_info):
@@ -203,39 +356,41 @@ def generate_coreg_params(fiducial_info):
     coreg_params['STAGE_TO_OPTICAL_Y_MULTIPLIER'] = y_multiplier
     coreg_params['STAGE_TO_OPTICAL_Y_OFFSET'] = y_offset
 
+    # verify all the parameters generated lie in tolerable range
+    verify_coreg_param_tolerance(coreg_params)
+
     return coreg_params
 
 
-def save_coreg_params(coreg_params):
+def save_coreg_params(coreg_params, coreg_path=settings.COREG_SAVE_PATH):
     """Save the co-registration parameters to `coreg_params.json` in `toffy`
 
     Args:
         coreg_params (dict):
             Contains the multiplier and offsets for co-registration along the x- and y-axis
+        coreg_path (str):
+            The path to save the co-registration parameters to
     """
 
     # generate the time this set of co-registration parameters were generated
     coreg_params['date'] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
     # write to a new coreg_params.json file if it doesn't already exist
-    if not os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json')):
+    if not os.path.exists(coreg_path):
         coreg_data = {
             'coreg_params': [
                 coreg_params
             ]
         }
+        json_utils.write_json_file(json_path=coreg_path, json_object=coreg_data)
 
-        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'w') as cp:
-            json.dump(coreg_data, cp)
     # append to the existing coreg_params key if coreg_params.json already exists
     else:
-        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'r') as cp:
-            coreg_data = json.load(cp)
+        coreg_data = json_utils.read_json_file(coreg_path)
 
         coreg_data['coreg_params'].append(coreg_params)
 
-        with open(os.path.join('..', 'toffy', 'coreg_params.json'), 'w') as cp:
-            json.dump(coreg_data, cp)
+        json_utils.write_json_file(json_path=coreg_path, json_object=coreg_data)
 
 
 def generate_region_info(region_params):
@@ -282,6 +437,19 @@ def read_tiled_region_inputs(region_corners, region_params):
     for fov in region_corners['fovs']:
         # append the name of the region
         region_params['region_name'].append(fov['name'])
+
+        # verify if the coordinate is in range
+        coordinates_in_range = verify_coordinate_on_slide(
+           (fov['centerPointMicrons']['x'], fov['centerPointMicrons']['y']), 'micron'
+        )
+
+        if not coordinates_in_range:
+            raise ValueError(
+                ('Coordinate (%.2f, %.2f) defining ROI %s out of range, '
+                 'check the value specified in region_corners_path') %
+                (fov['centerPointMicrons']['x'], fov['centerPointMicrons']['y'],
+                 fov['name'])
+            )
 
         # append the starting row and column coordinates
         region_params['region_start_row'].append(fov['centerPointMicrons']['y'])
@@ -355,8 +523,8 @@ def set_tiled_region_params(region_corners_path):
         )
 
     # read in the region corners data
-    with open(region_corners_path, 'r', encoding='utf-8') as flf:
-        tiled_region_corners = json.load(flf)
+    tiled_region_corners = json_utils.read_json_file(region_corners_path, encoding='utf-8')
+
     tiled_region_corners = json_utils.rename_missing_fovs(tiled_region_corners)
 
     # define the parameter dict to return
@@ -379,7 +547,8 @@ def set_tiled_region_params(region_corners_path):
 
     # whether to insert moly points between regions
     moly_region_insert = read_tiling_param(
-        "Insert a moly point between each tiled region? Y/N: ",
+        "Insert a moly point between each tiled region? \
+            If yes, you must provide a path to the example moly_FOV json file. Y/N: ",
         "Error: moly point region parameter must be either Y or N",
         lambda mri: mri in ['Y', 'N', 'y', 'n'],
         dtype=str
@@ -391,7 +560,8 @@ def set_tiled_region_params(region_corners_path):
 
     # whether to insert moly points between fovs
     moly_interval = read_tiling_param(
-        "Enter the FOV interval size to insert Moly points. If yes, enter the number of FOVs "
+        "Enter the FOV interval size to insert Moly points. If yes, you must provide \
+            a path to the example moly_FOV json file and enter the number of FOVs "
         "between each Moly point. If no, enter 0: ",
         "Error: moly interval must be 0 or a positive integer",
         lambda mi: mi >= 0,
@@ -482,7 +652,7 @@ def generate_x_y_fov_pairs_rhombus(top_left, top_right, bottom_left, bottom_righ
     return pairs
 
 
-def generate_tiled_region_fov_list(tiling_params, moly_path):
+def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str] = None):
     """Generate the list of FOVs on the image from the `tiling_params` set for tiled regions
 
     Moly point insertion: happens once every number of FOVs you specified in
@@ -502,9 +672,10 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
     Args:
         tiling_params (dict):
             The tiling parameters created by `set_tiled_region_params`
-        moly_path (str):
+        moly_path (Optional[str]):
             The path to the Moly point to insert between FOV intervals and/or regions.
             If these insertion parameters are not specified in `tiling_params`, this won't be used.
+            Defaults to None.
 
     Returns:
         dict:
@@ -512,12 +683,16 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
     """
 
     # file path validation
-    if not os.path.exists(moly_path):
-        raise FileNotFoundError("Moly point file %s does not exist" % moly_path)
+    if (tiling_params.get("moly_region", "N") == "Y") or \
+       (tiling_params.get("moly_interval", 0) > 0):
+        if not os.path.exists(moly_path):
+            raise FileNotFoundError("The provided Moly FOV file %s does not exist. If you want\
+                                    to include Moly FOVs you must provide a valid path. Otherwise\
+                                    , select 'No' for the options relating to Moly FOVs"
+                                    % moly_path)
 
-    # read in the moly point data
-    with open(moly_path, 'r', encoding='utf-8') as mpf:
-        moly_point = json.load(mpf)
+        # read in the moly point data
+        moly_point = json_utils.read_json_file(moly_path, encoding='utf-8')
 
     # define the fov_regions dict
     fov_regions = {}
@@ -569,6 +744,14 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
             cur_row = start_row - row_i * region_info['row_fov_size']
             cur_col = start_col + col_i * region_info['col_fov_size']
 
+            # verify that the coordinate generated is in range
+            if not verify_coordinate_on_slide((cur_col, cur_row), 'micron'):
+                raise ValueError(
+                    ('Coordinate (%.2f, %.2f) for FOV %s and ROI %s out of range, '
+                     'please check the dimensions specified') %
+                    (cur_col, cur_row, fov_names[index], region_info['region_name'])
+                )
+
             # copy the fov metadata over and add cur_x, cur_y, and name
             fov = copy.deepcopy(tiling_params['fovs'][region_index])
             fov['centerPointMicrons']['x'] = cur_col
@@ -589,7 +772,8 @@ def generate_tiled_region_fov_list(tiling_params, moly_path):
                 fov_regions['fovs'].append(moly_point)
 
         # append Moly point to seperate regions if not last and if specified
-        if tiling_params['moly_region'] == 'Y' and \
+        if 'moly_region' in tiling_params and \
+            tiling_params['moly_region'] == 'Y' and \
            region_index != len(tiling_params['region_params']) - 1:
             fov_regions['fovs'].append(moly_point)
 
@@ -608,6 +792,20 @@ def validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
     """
     # TODO: should we programmatically validate all pairwise comparisons?
 
+    # verify positions relative to the slide
+    if not verify_coordinate_on_slide((top_left.x, top_left.y), 'micron'):
+        raise ValueError('Top-left coordinate provided is out of bounds')
+
+    if not verify_coordinate_on_slide((top_right.x, top_right.y), 'micron'):
+        raise ValueError('Top-right coordinate provided is out of bounds')
+
+    if not verify_coordinate_on_slide((bottom_left.x, bottom_left.y), 'micron'):
+        raise ValueError('Bottom-left coordinate provided is out of bounds')
+
+    if not verify_coordinate_on_slide((bottom_right.x, bottom_right.y), 'micron'):
+        raise ValueError('Bottom-right coordinate provided is out of bounds')
+
+    # verify positions relative to each other corners
     if top_left.x > top_right.x:
         raise ValueError("Invalid corner file: The upper left corner is "
                          "to the right of the upper right corner")
@@ -657,16 +855,16 @@ def generate_tma_fov_list(tma_corners_path, num_fov_row, num_fov_col):
             "TMA corners file %s does not exist" % tma_corners_path
         )
 
-    # user needs to define at least 3 FOVs along the x- and y-axes
-    if num_fov_row < 3:
-        raise ValueError("Number of TMA-grid rows must be at least 3")
+    # user needs to define at least 2 FOVs along the row- and col-axes
+    if num_fov_row < 2:
+        raise ValueError("Number of TMA-grid rows must be at least 2")
 
-    if num_fov_col < 3:
-        raise ValueError("Number of TMA-grid columns must be at least 3")
+    if num_fov_col < 2:
+        raise ValueError("Number of TMA-grid columns must be at least 2")
 
     # read in tma_corners_path
-    with open(tma_corners_path, 'r', encoding='utf-8') as flf:
-        tma_corners = json.load(flf)
+    tma_corners = json_utils.read_json_file(tma_corners_path, encoding='utf-8')
+
     tma_corners = json_utils.rename_missing_fovs(tma_corners)
 
     # a TMA can only be defined by four FOVs, one for each corner
@@ -694,6 +892,14 @@ def generate_tma_fov_list(tma_corners_path, num_fov_row, num_fov_col):
 
     # map each name to its corresponding coordinate value
     for index, (xi, yi) in enumerate(x_y_pairs):
+        # NOTE: because the FOVs are generated within the four corners, and these are validated
+        # beforehand, this should never throw an error
+        if not verify_coordinate_on_slide((xi, yi), 'micron'):
+            raise ValueError(
+                ('Coordinate (%.2f, %.2f) for FOV %s out of range, '
+                 'please double check the TMA dimensions') %
+                (xi, yi, fov_names[index])
+            )
         fov_regions[fov_names[index]] = (xi, yi)
 
     return fov_regions
@@ -1060,8 +1266,9 @@ def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
     """
 
     # save the mapping
-    with open(mapping_path, 'w', encoding='utf-8') as mp:
-        json.dump(manual_to_auto_map, mp)
+
+    json_utils.write_json_file(json_path=mapping_path, json_object=manual_to_auto_map,
+                               encoding="utf-8")
 
     # remove the save annotation if it already exists
     # clears up some space if the user decides to save several times
@@ -1273,7 +1480,7 @@ def generate_validation_annot(manual_to_auto_map, manual_auto_dist, check_dist=2
 
 # TODO: potential type hinting candidate?
 def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
-                          draw_radius=7, figsize=(7, 7),
+                          coreg_path=settings.COREG_SAVE_PATH, draw_radius=7, figsize=(7, 7),
                           check_dist=2000, check_duplicates=True, check_mismatches=True):
     """Creates the remapping interactive interface for manual to auto FOVs
 
@@ -1286,6 +1493,8 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
             the image to overlay
         mapping_path (str):
             the path to the file to save the mapping to
+        coreg_path (str):
+            the path to the co-registration params
         draw_radius (int):
             the radius (in optical pixels) to draw each circle on the slide
         figsize (tuple):
@@ -1322,7 +1531,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
         raise ValueError("check_mismatches needs to be set to True or False")
 
     # if there isn't a coreg_path defined, the user needs to run update_coregistration_params first
-    if not os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json')):
+    if not os.path.exists(coreg_path):
         raise FileNotFoundError(
             "You haven't co-registered your slide yet. Please run "
             "update_coregistraion_params.ipynb first."
@@ -1330,8 +1539,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
 
     # load the co-registration parameters in
     # NOTE: the last set of params in the coreg_params list is the most up-to-date
-    with open(os.path.join('..', 'toffy', 'coreg_params.json')) as cp:
-        stage_optical_coreg_params = json.load(cp)['coreg_params'][-1]
+    stage_optical_coreg_params = json_utils.read_json_file(coreg_path)['coreg_params'][-1]
 
     # define the initial mapping and a distance lookup table between manual and auto FOVs
     manual_to_auto_map, manual_auto_dist = assign_closest_fovs(manual_fovs, auto_fovs)
@@ -1595,8 +1803,7 @@ def remap_and_reorder_fovs(manual_fov_regions, manual_to_auto_map,
         raise FileNotFoundError("Moly point %s does not exist" % moly_path)
 
     # load the Moly point in
-    with open(moly_path, 'r', encoding='utf-8') as mp:
-        moly_point = json.load(mp)
+    moly_point = json_utils.read_json_file(moly_path, encoding='utf-8')
 
     # error check: moly_interval cannot be less than or equal to 0 if moly_insert is True
     if moly_insert and (not isinstance(moly_interval, int) or moly_interval < 1):

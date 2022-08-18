@@ -131,4 +131,6 @@ dmypy.json
 
 .vscode/
 
-/toffy/data/streak/*
+
+# .DS_Store
+**/.DS_Store
