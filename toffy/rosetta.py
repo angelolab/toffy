@@ -127,7 +127,7 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
                          'make sure there are no missing values')
 
     # check for valid save_formats
-    allowed_formats = ['raw', 'normalized', 'both']
+    allowed_formats = ['raw', 'rescaled', 'both']
     verify_in_list(save_format=save_format, allowed_formats=allowed_formats)
 
     if not isinstance(batch_size, int) or batch_size < 1:
@@ -179,8 +179,8 @@ def get_masses_from_channel_names(names, panel_df):
 
 
 def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info,
-                          input_masses=None, output_masses=None, save_format='normalized',
-                          raw_data_sub_folder='', batch_size=1, gaus_rad=1, norm_const=100,
+                          input_masses=None, output_masses=None, save_format='rescaled',
+                          raw_data_sub_folder='', batch_size=1, gaus_rad=1, norm_const=200,
                           ffc_channels=['chan_39'], correct_streaks=False, streak_chan='Noodle'):
     """Function to compensate MIBI data with a flow-cytometry style compensation matrix
 
@@ -196,13 +196,13 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         save_format: flag to control how the processed tifs are saved. Must be one of:
             'raw': Direct output from the compensation matrix corresponding to number of ion events
                 detected per pixel. These will not be viewable in many image processing programs
-            'normalized': all images are divided by 100 to enable visualization. This transform
+            'rescaled': all images are divided by 200 to enable visualization. This transform
                 has no effect on downstream analysis as it preserves relative expression values
-            'both': saves both 'raw' and 'normalized' images
+            'both': saves both 'raw' and 'rescaled' images
         raw_data_sub_folder (string): sub-folder for raw images
         batch_size: number of images to process at a time
         gaus_rad: radius for blurring image data. Passing 0 will result in no blurring
-        norm_const: constant used for normalization if save_format == 'normalized'
+        norm_const: constant used for rescaling if save_format == 'rescaled'
         ffc_channels (list): channels that need to be flat field corrected.
         correct_streaks (bool): whether to correct streaks in the image
         streak_chan (str): the channel to use for streak correction
@@ -236,7 +236,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
 
     # loop over each set of FOVs in the batch
     for i in range(0, len(fovs), batch_size):
-        print("Processing image {}".format(i))
+        print("Processing image {}".format(i+1))
 
         # load batch of fovs
         batch_fovs = fovs[i: i + batch_size]
@@ -274,8 +274,8 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
             os.makedirs(fov_folder)
 
             # create directories for saving tifs
-            if save_format in ['normalized', 'both']:
-                norm_folder = os.path.join(fov_folder, 'normalized')
+            if save_format in ['rescaled', 'both']:
+                norm_folder = os.path.join(fov_folder, 'rescaled')
                 os.makedirs(norm_folder)
 
             if save_format in ['raw', 'both']:
@@ -287,7 +287,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                 channel_name = batch_data.channels.values[val] + '.tiff'
 
                 # save tifs to appropriate directories
-                if save_format in ['normalized', 'both']:
+                if save_format in ['rescaled', 'both']:
                     save_path = os.path.join(norm_folder, channel_name)
                     io.imsave(save_path, comp_data[j, :, :, idx] / norm_const,
                               check_contrast=False)
@@ -297,7 +297,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                     io.imsave(save_path, comp_data[j, :, :, idx], check_contrast=False)
 
 
-def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='normalized',
+def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='rescaled',
                             channels=None):
     """Creates a tiled image comparing FOVs from all supplied runs for each channel.
 
@@ -386,10 +386,10 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
         # normalize the source row to be in the same range as the current tile
         perc_tile = np.percentile(current_tile, percent_norm)
         perc_ratio = perc_source / perc_tile
-        normalized_source = source_row / perc_ratio
+        rescaled_source = source_row / perc_ratio
 
         # combine together and save
-        combined_tile = np.concatenate([normalized_source, current_tile])
+        combined_tile = np.concatenate([rescaled_source, current_tile])
         save_name = tile_name.split('.tiff')[0] + '_source_' + source_channel + '.tiff'
         io.imsave(os.path.join(output_dir, save_name), combined_tile, check_contrast=False)
 
@@ -533,3 +533,43 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
             new_path = os.path.join(os.path.join(cohort_rosetta_dir, 'extracted_images',
                                                  run + '_' + fov))
             shutil.copytree(fov_path, new_path)
+
+
+def rescale_raw_imgs(img_out_dir):
+    fovs = list_folders(img_out_dir)
+    for fov in fovs:
+        fov_dir = os.path.join(img_out_dir, fov)
+        sub_dir = os.path.join(fov_dir, 'rescaled')
+        os.makedirs(sub_dir)
+        chans = list_files(fov_dir)
+        for chan in chans:
+            img = io.imread(os.path.join(fov_dir, chan))
+            img = (img / 200).astype('float32')
+            io.imsave(os.path.join(sub_dir, chan), img, check_contrast=False)
+
+
+def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, folder_path, panel,
+                               current_channel_name='Noodle', output_channel_names=None):
+    # everything from here and below will run automatically
+    current_channel_mass = get_masses_from_channel_names([current_channel_name], panel)
+
+    if output_channel_names is not None:
+        output_masses = get_masses_from_channel_names(output_channel_names, panel)
+    else:
+        output_masses = None
+
+    # generate rosseta matrices for each multiplier
+    create_rosetta_matrices(default_matrix=rosetta_mat_path, multipliers=multipliers,
+                            masses=current_channel_mass, save_dir=folder_path)
+
+    # loop over each multiplier and compensate the data
+    rosetta_dirs = [img_out_dir]
+    for multiplier in multipliers:
+        rosetta_mat_path = os.path.join(folder_path, 'commercial_rosetta_matrix_mult_{}.csv'.format(multiplier))
+        rosetta_out_dir = os.path.join(folder_path, 'compensated_data_{}'.format(multiplier))
+        rosetta_dirs.append(rosetta_out_dir)
+        os.makedirs(rosetta_out_dir)
+        compensate_image_data(raw_data_dir=img_out_dir, comp_data_dir=rosetta_out_dir,
+                              comp_mat_path=rosetta_mat_path, raw_data_sub_folder='rescaled',
+                              panel_info=panel, batch_size=1, norm_const=1,
+                              output_masses=output_masses)

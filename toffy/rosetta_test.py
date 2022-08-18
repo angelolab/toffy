@@ -187,7 +187,7 @@ def test_get_masses_from_channel_names():
 @parametrize('output_masses', [None, [25, 50, 101], [25, 50]])
 @parametrize('input_masses', [None, [25, 50, 101], [25, 50]])
 @parametrize('gaus_rad', [0, 1, 2])
-@parametrize('save_format', ['raw', 'normalized', 'both'])
+@parametrize('save_format', ['raw', 'rescaled', 'both'])
 @parametrize_with_cases('panel_info', cases=test_cases.CompensateImageDataPanel)
 @parametrize_with_cases('comp_mat', cases=test_cases.CompensateImageDataMat)
 def test_compensate_image_data(output_masses, input_masses, gaus_rad, save_format, panel_info,
@@ -220,7 +220,7 @@ def test_compensate_image_data(output_masses, input_masses, gaus_rad, save_forma
         assert set(fovs) == set(output_folders)
 
         # determine output directory structure
-        format_folders = ['raw', 'normalized']
+        format_folders = ['raw', 'rescaled']
         if save_format in format_folders:
             format_folders = [save_format]
 
@@ -262,7 +262,7 @@ def test_create_tiled_comparison(dir_num):
 
             fovs, chans = test_utils.gen_fov_chan_names(num_fovs=num_fovs, num_chans=num_chans)
             filelocs, data_xr = test_utils.create_paired_xarray_fovs(
-                full_path, fovs, chans, img_shape=(10, 10), fills=True, sub_dir='normalized')
+                full_path, fovs, chans, img_shape=(10, 10), fills=True, sub_dir='rescaled')
 
         # pass full paths to function
         paths = [os.path.join(top_level_dir, img_dir) for img_dir in dir_names]
@@ -279,7 +279,7 @@ def test_create_tiled_comparison(dir_num):
         # check that directories with different images are okay if overlapping channels specified
         for i in range(num_fovs):
             os.remove(os.path.join(top_level_dir, dir_names[1], 'fov{}'.format(i),
-                                   'normalized/chan0.tiff'))
+                                   'rescaled/chan0.tiff'))
 
         # no error raised if subset directory is specified
         rosetta.create_tiled_comparison(paths, output_dir, channels=['chan1', 'chan2'])
