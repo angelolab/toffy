@@ -503,32 +503,37 @@ def create_rosetta_comp_structure(raw_data_dir, comp_data_dir, comp_mat_path, pa
                           raw_data_sub_folder='', batch_size=1, gaus_rad=1, norm_const=200,
                           ffc_channels=['chan_39'], correct_streaks=False, streak_chan='Noodle'):
 
-    fovs = ['fov-1-scan1', 'fov-2-scan-1']
+    fovs = ['fov-1-scan-1', 'fov-2-scan-1']
     channels = ['chan_39', 'Noodle', 'Au']
-    for i, j in zip(range(0, len(fovs)), range(0, len(channels))):
-        os.makedirs(os.path.join(comp_data_dir, fovs[i], save_format, channels[j]))
+    if output_masses:
+        channels = ['Au']
+
+    for i in range(0, len(fovs)):
+        os.makedirs(os.path.join(comp_data_dir, fovs[i], save_format))
+        for j in range(0, len(channels)):
+            test_utils._make_blank_file(os.path.join(comp_data_dir, fovs[i], save_format),
+                                        channels[j] + '.tiff')
 
 
 def test_generate_rosetta_test_imgs(mocker):
     mocker.patch('toffy.rosetta.compensate_image_data', create_rosetta_comp_structure)
 
-    with tempfile.TemporaryDirectory() as temp_dir:
-        with tempfile.TemporaryDirectory() as temp_img_dir:
+    with tempfile.TemporaryDirectory() as temp_img_dir:
+        fovs = ['fov-1-scan-1', 'fov-2-scan-1']
+        channels = ['chan_39', 'Noodle', 'Au']
+        test_utils._write_tifs(base_dir=temp_img_dir, fov_names=fovs, img_names=channels,
+                               shape=(32, 32), sub_dir='', fills=False, dtype='uint32')
 
-            fovs = ['fov-1-scan1', 'fov-2-scan-1']
-            channels = ['chan_39', 'Noodle', 'Au']
-            test_utils._write_tifs(base_dir=temp_img_dir, fov_names=fovs, img_names=channels,
-                                   shape=(32, 32), sub_dir='', fills=False, dtype='uint32')
+        rosetta_mat_path = os.path.join('..', 'files', 'commercial_rosetta_matrix_v1.csv')
+        panel = pd.DataFrame({
+            'Mass': [39, 117, 197],
+            'Target': channels,
+            'Start': [38.7, 116.7, 196.7],
+            'Stop': [39, 117, 197]
+        })
+        mults = [0.5, 1]
 
-            rosetta_mat_path = os.path.join('..', 'files', 'commercial_rosetta_matrix_v1.csv')
-            panel = pd.DataFrame({
-                'Mass': [39, 117, 197],
-                'Target': channels,
-                'Start': [38.7, 116.7, 196.7],
-                'Stop': [39, 117, 197]
-            })
-            mults = [0.5, 1]
-
+        with tempfile.TemporaryDirectory() as temp_dir:
             # bad paths should raise error
             with pytest.raises(ValueError):
                 rosetta.generate_rosetta_test_imgs('bad_path', temp_img_dir, mults,
@@ -538,11 +543,25 @@ def test_generate_rosetta_test_imgs(mocker):
                 rosetta.generate_rosetta_test_imgs(rosetta_mat_path, temp_img_dir, mults,
                                                    'bad_path', panel)
 
-            # test success
+            # test success for all channels
             rosetta.generate_rosetta_test_imgs(rosetta_mat_path, temp_img_dir,  mults,
                                                temp_dir, panel)
 
             for i, j, k in zip(mults, range(0, len(fovs)), range(0, len(channels))):
-                assert os.path.exists(os.path.join(temp_dir, f'compensated_data_{i}'))
+                assert os.path.exists(os.path.join(temp_dir, f'compensated_data_{i}', fovs[j],
+                                                   'rescaled', channels[k] + '.tiff'))
+                assert os.path.exists(os.path.join(temp_dir,
+                                                   f'commercial_rosetta_matrix_v1_mult_{i}.csv'))
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # test success for subset of  channels
+            one_channel = ['Au']
+
+            rosetta.generate_rosetta_test_imgs(rosetta_mat_path, temp_img_dir, mults,
+                                               temp_dir, panel, output_channel_names=one_channel)
+
+            for i, j in zip(mults, range(0, len(fovs))):
+                assert os.path.exists(os.path.join(temp_dir, f'compensated_data_{i}', fovs[j],
+                                                   'rescaled', 'Au.tiff'))
                 assert os.path.exists(os.path.join(temp_dir,
                                                    f'commercial_rosetta_matrix_v1_mult_{i}.csv'))
