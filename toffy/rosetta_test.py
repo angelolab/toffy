@@ -471,3 +471,80 @@ def test_copy_image_files():
             # check that files in fov folders are copied
             for folder in list_folders(extracted_fov_dir):
                 assert os.path.exists(os.path.join(extracted_fov_dir, folder, 'test_image.tif'))
+
+
+def test_rescale_raw_imgs():
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        fovs = ['fov-1-scan1', 'fov-2-scan-1']
+        channels = ['Au', 'CD3']
+        test_utils._write_tifs(base_dir=temp_dir, fov_names=fovs, img_names=channels,
+                               shape=(32, 32), sub_dir='', fills=False, dtype='uint32')
+        img_data = load_imgs_from_tree(temp_dir)
+
+        # bad extracted img path should raise an error
+        with pytest.raises(ValueError):
+            rosetta.rescale_raw_imgs('bad_path')
+
+        # test successful image saving
+        rosetta.rescale_raw_imgs(temp_dir)
+        for i in range(0, 2):
+            img_path = os.path.join(temp_dir, fovs[i], 'rescaled',
+                                               channels[i] + '.tiff')
+            assert os.path.exists(img_path)
+
+        # test successful rescale of data
+        rescaled_img_data = load_imgs_from_tree(temp_dir, 'rescaled')
+        assert rescaled_img_data.all() == (img_data / 200).all()
+
+        assert rescaled_img_data.dtype == 'float32'
+
+
+def create_rosetta_comp_structure(raw_data_dir, comp_data_dir, comp_mat_path, panel_info,
+                          input_masses=None, output_masses=None, save_format='rescaled',
+                          raw_data_sub_folder='', batch_size=1, gaus_rad=1, norm_const=200,
+                          ffc_channels=['chan_39'], correct_streaks=False, streak_chan='Noodle'):
+
+    fovs = ['fov-1-scan1', 'fov-2-scan-1']
+    channels = ['chan_39', 'Noodle', 'Au']
+    for i, j in zip(range(0, len(fovs)), range(0, len(channels))):
+        os.makedirs(os.path.join(comp_data_dir, fovs[i], save_format, channels[j]))
+
+
+def test_generate_rosetta_test_imgs(mocker):
+    mocker.patch('toffy.rosetta.compensate_image_data', create_rosetta_comp_structure)
+
+    with tempfile.TemporaryDirectory() as temp_dir:
+        with tempfile.TemporaryDirectory() as temp_img_dir:
+
+            fovs = ['fov-1-scan1', 'fov-2-scan-1']
+            channels = ['chan_39', 'Noodle', 'Au']
+            test_utils._write_tifs(base_dir=temp_img_dir, fov_names=fovs, img_names=channels,
+                                   shape=(32, 32), sub_dir='', fills=False, dtype='uint32')
+
+            rosetta_mat_path = os.path.join('..', 'files', 'commercial_rosetta_matrix_v1.csv')
+            panel = pd.DataFrame({
+                'Mass': [39, 117, 197],
+                'Target': channels,
+                'Start': [38.7, 116.7, 196.7],
+                'Stop': [39, 117, 197]
+            })
+            mults = [0.5, 1]
+
+            # bad paths should raise error
+            with pytest.raises(ValueError):
+                rosetta.generate_rosetta_test_imgs('bad_path', temp_img_dir, mults,
+                                                   temp_dir, panel)
+                rosetta.generate_rosetta_test_imgs(rosetta_mat_path, 'bad_path', mults,
+                                                   temp_dir, panel)
+                rosetta.generate_rosetta_test_imgs(rosetta_mat_path, temp_img_dir, mults,
+                                                   'bad_path', panel)
+
+            # test success
+            rosetta.generate_rosetta_test_imgs(rosetta_mat_path, temp_img_dir,  mults,
+                                               temp_dir, panel)
+
+            for i, j, k in zip(mults, range(0, len(fovs)), range(0, len(channels))):
+                assert os.path.exists(os.path.join(temp_dir, f'compensated_data_{i}'))
+                assert os.path.exists(os.path.join(temp_dir,
+                                                   f'commercial_rosetta_matrix_v1_mult_{i}.csv'))

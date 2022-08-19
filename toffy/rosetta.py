@@ -275,8 +275,8 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
 
             # create directories for saving tifs
             if save_format in ['rescaled', 'both']:
-                norm_folder = os.path.join(fov_folder, 'rescaled')
-                os.makedirs(norm_folder)
+                rescale_folder = os.path.join(fov_folder, 'rescaled')
+                os.makedirs(rescale_folder)
 
             if save_format in ['raw', 'both']:
                 raw_folder = os.path.join(fov_folder, 'raw')
@@ -288,7 +288,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
 
                 # save tifs to appropriate directories
                 if save_format in ['rescaled', 'both']:
-                    save_path = os.path.join(norm_folder, channel_name)
+                    save_path = os.path.join(rescale_folder, channel_name)
                     io.imsave(save_path, comp_data[j, :, :, idx] / norm_const,
                               check_contrast=False)
 
@@ -535,7 +535,17 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
             shutil.copytree(fov_path, new_path)
 
 
-def rescale_raw_imgs(img_out_dir):
+def rescale_raw_imgs(img_out_dir, scale=200):
+    """ Rescale image data to be between 0 and 1
+    Args:
+        img_out_dir (str): the directory containing extracted images
+        scale (int): how much to rescale the image data by
+
+    Returns:
+        saves the rescaled images in a subdir
+    """
+    validate_paths(img_out_dir, data_prefix=False)
+
     fovs = list_folders(img_out_dir)
     for fov in fovs:
         fov_dir = os.path.join(img_out_dir, fov)
@@ -544,12 +554,27 @@ def rescale_raw_imgs(img_out_dir):
         chans = list_files(fov_dir)
         for chan in chans:
             img = io.imread(os.path.join(fov_dir, chan))
-            img = (img / 200).astype('float32')
+            img = (img / scale).astype('float32')
             io.imsave(os.path.join(sub_dir, chan), img, check_contrast=False)
 
 
 def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, folder_path, panel,
                                current_channel_name='Noodle', output_channel_names=None):
+    """ Compensate example FOV images based on given multipliers
+    Args:
+        rosetta_mat_path (str): path to rosetta compensation matrix
+        img_out_dir (str): directory where extracted images are stored
+        multipliers (list):
+        folder_path (str): base dir for testing, image subdirs will be stored here
+        panel (pd.DataFrame): the panel containing the masses and channel names
+        current_channel_name (str): channel being adjusted, default Noodle
+        output_channel_names (list): subset of the channels to compensate for, default None is all
+
+    Returns:
+        Create subdirs containing rosetta compensated images for each multiplier and stitched imgs
+    """
+    validate_paths([rosetta_mat_path, img_out_dir, folder_path])
+
     # everything from here and below will run automatically
     current_channel_mass = get_masses_from_channel_names([current_channel_name], panel)
 
@@ -561,11 +586,12 @@ def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, fold
     # generate rosseta matrices for each multiplier
     create_rosetta_matrices(default_matrix=rosetta_mat_path, multipliers=multipliers,
                             masses=current_channel_mass, save_dir=folder_path)
+    matrix_name = os.path.basename(rosetta_mat_path)
 
     # loop over each multiplier and compensate the data
     rosetta_dirs = [img_out_dir]
     for multiplier in multipliers:
-        rosetta_mat_path = os.path.join(folder_path, 'commercial_rosetta_matrix_mult_{}.csv'.format(multiplier))
+        rosetta_mat_path = os.path.join(folder_path, f'{matrix_name}_mult_{multiplier}.csv')
         rosetta_out_dir = os.path.join(folder_path, 'compensated_data_{}'.format(multiplier))
         rosetta_dirs.append(rosetta_out_dir)
         os.makedirs(rosetta_out_dir)
