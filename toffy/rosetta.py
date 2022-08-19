@@ -549,9 +549,11 @@ def rescale_raw_imgs(img_out_dir, scale=200):
     fovs = list_folders(img_out_dir)
     for fov in fovs:
         fov_dir = os.path.join(img_out_dir, fov)
+        # create subdirectory for the new images
         sub_dir = os.path.join(fov_dir, 'rescaled')
         os.makedirs(sub_dir)
         chans = list_files(fov_dir)
+        # rescale each channel image
         for chan in chans:
             img = io.imread(os.path.join(fov_dir, chan))
             img = (img / scale).astype('float32')
@@ -575,7 +577,7 @@ def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, fold
     """
     validate_paths([rosetta_mat_path, img_out_dir, folder_path])
 
-    # everything from here and below will run automatically
+    # get mass information
     current_channel_mass = get_masses_from_channel_names([current_channel_name], panel)
 
     if output_channel_names is not None:
@@ -583,7 +585,7 @@ def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, fold
     else:
         output_masses = None
 
-    # generate rosseta matrices for each multiplier
+    # generate rosetta matrices for each multiplier
     create_rosetta_matrices(default_matrix=rosetta_mat_path, multipliers=multipliers,
                             masses=current_channel_mass, save_dir=folder_path)
     matrix_name = os.path.basename(rosetta_mat_path)
