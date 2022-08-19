@@ -529,7 +529,7 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
 
         for fov in rosetta_fovs:
             fov_path = os.path.join(os.path.join(extracted_imgs_dir, run, fov))
-            # append the run name to each fov
+            # prepend the run name to each fov
             new_path = os.path.join(os.path.join(cohort_rosetta_dir, 'extracted_images',
                                                  run + '_' + fov))
             shutil.copytree(fov_path, new_path)
@@ -566,7 +566,7 @@ def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, fold
     Args:
         rosetta_mat_path (str): path to rosetta compensation matrix
         img_out_dir (str): directory where extracted images are stored
-        multipliers (list):
+        multipliers (list): list of coeffient multipliers to create different matrices for
         folder_path (str): base dir for testing, image subdirs will be stored here
         panel (pd.DataFrame): the panel containing the masses and channel names
         current_channel_name (str): channel being adjusted, default Noodle

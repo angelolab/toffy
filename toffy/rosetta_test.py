@@ -454,8 +454,6 @@ def test_copy_image_files():
             # bad paths should raise an error
             with pytest.raises(ValueError, match='could not be found'):
                 rosetta.copy_image_files('cohort_name', run_names, 'bad_path', temp_dir)
-
-            with pytest.raises(ValueError, match='could not be found'):
                 rosetta.copy_image_files('cohort_name', run_names, temp_dir2, 'bad_path')
 
             # test successful folder copy
