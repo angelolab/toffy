@@ -12,6 +12,7 @@ parametrize = pytest.mark.parametrize
 xfail = pytest.mark.xfail
 
 # shortcuts to make the marks arg in pytest.params easier
+file_missing_err = [xfail(raises=FileNotFoundError, strict=True)]
 value_err = [xfail(raises=ValueError, strict=True)]
 
 
@@ -675,10 +676,12 @@ def generate_sample_annot(check_dist, check_duplicates, check_mismatches):
 
 # testing Moly point insertion for remapping, this one's long so don't put directly in decorator
 _REMAP_MOLY_INTERVAL_CASES = [
-    param(True, 2.5, marks=value_err),
-    param(True, 0, marks=value_err),
-    param(False, 4),
-    param(True, 4),
-    param(False, 2),
-    param(True, 2)
+    param('bad_moly_point.json', True, 4, marks=file_missing_err),
+    param('sample_moly_point.json', True, 2.5, marks=value_err),
+    param('sample_moly_point.json', True, 0, marks=value_err),
+    param('sample_moly_point.json', False, 4),  # standard cases
+    param('sample_moly_point.json', True, 4),
+    param('sample_moly_point.json', False, 2),
+    param('sample_moly_point.json', True, 2),
+    param('bad_moly_point.json', False, 4)
 ]
