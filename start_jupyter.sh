@@ -26,4 +26,4 @@ if [ $update -ne 0 ]
     bash update_notebooks.sh
 fi
 
-jupyter lab --notebook-dir JUPYTER_DIR
+jupyter lab --notebook-dir $JUPYTER_DIR
