@@ -62,6 +62,22 @@ def mock_tiling_bounds(f):
     return functor
 
 
+def mock_viz_params(f):
+    @mock.patch('toffy.settings.STAGE_LEFT_BOUNDARY', -200)
+    @mock.patch('toffy.settings.STAGE_RIGHT_BOUNDARY', 200)
+    @mock.patch('toffy.settings.STAGE_TOP_BOUNDARY', 200)
+    @mock.patch('toffy.settings.STAGE_BOTTOM_BOUNDARY', -200)
+    @mock.patch('toffy.settings.OPTICAL_LEFT_BOUNDARY', -1000)
+    @mock.patch('toffy.settings.OPTICAL_RIGHT_BOUNDARY', 1000)
+    @mock.patch('toffy.settings.OPTICAL_TOP_BOUNDARY', -1000)
+    @mock.patch('toffy.settings.OPTICAL_BOTTOM_BOUNDARY', 1000)
+    @functools.wraps(f)
+    def functor(*args, **kwargs):
+        return f(*args, **kwargs)
+
+    return functor
+
+
 def generate_fiducial_read_vals(user_input_type='none'):
     user_inputs = [1.5 * (i + 1) if i % 2 == 0 else 2 * i for i in np.arange(24)]
 

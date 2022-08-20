@@ -1200,6 +1200,7 @@ def test_delete_tiled_region_fovs(randomize, moly):
 
 # NOTE: this only tests if the rectangles are drawn correctly
 # unfortunately, there isn't a way to programmatically test the click of a button on Python's side
+@test_cases.mock_viz_params
 @parametrize('num_regions', [1, 2, 3])
 @parametrize('randomize', [False, True])
 @parametrize('moly', [False, True])
