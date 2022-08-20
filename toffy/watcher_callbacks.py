@@ -57,7 +57,7 @@ class RunCallbacks:
 
         _, axes = plt.subplots(3, 1)
         for i, (metric_name, ms) in enumerate(zip(QC_COLUMNS, QC_SUFFIXES)):
-            qc_df = pd.read_csv(os.path.join(qc_out_dir, 'combined_%s.csv' % ms))
+            _ = pd.read_csv(os.path.join(qc_out_dir, 'combined_%s.csv' % ms))
             visualize_qc_metrics(metric_name, qc_out_dir, ax=axes[i], **viz_kwargs)
 
     def plot_mph_metrics(self, mph_out_dir, plot_dir, **kwargs):

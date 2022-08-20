@@ -1,11 +1,13 @@
 import os
 import tempfile
+from unittest.mock import patch
 from pytest_cases import parametrize_with_cases
 
 from mibi_bin_tools import io_utils
 
 from toffy import watcher_callbacks
 from toffy.test_utils import (
+    mock_visualize_qc_metrics,
     ExtractionQCGenerationCases,
     ExtractionQCCallCases,
     PlotQCMetricsCases,
@@ -52,9 +54,10 @@ def test_build_fov_callback(callbacks, kwargs, data_path):
             check_mph_dir_structure(qc_dir, plot_dir, point_names)
 
 
+@patch('toffy.watcher_callbacks.visualize_qc_metrics', side_effect=mock_visualize_qc_metrics)
 @parametrize_with_cases('callbacks, kwargs', cases=PlotQCMetricsCases)
 @parametrize_with_cases('data_path', cases=ExtractionQCCallCases)
-def test_build_callbacks(callbacks, kwargs, data_path):
+def test_build_callbacks(viz_mock, callbacks, kwargs, data_path):
     with tempfile.TemporaryDirectory() as tmp_dir:
 
         extracted_dir = os.path.join(tmp_dir, 'extracted')
