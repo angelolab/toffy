@@ -265,7 +265,7 @@ def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
 
         # first time: create new files, also asserts qc_path is created
         qc_comp.compute_qc_metrics(
-            bin_file_path, extracted_imgs_path, fovs[0], gaussian_blur
+            bin_file_path, extracted_imgs_path, fovs[0], gaussian_blur, save_csv=bin_file_path
         )
 
         for ms, mc in zip(settings.QC_SUFFIXES, settings.QC_COLUMNS):
