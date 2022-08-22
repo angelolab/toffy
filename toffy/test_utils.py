@@ -166,8 +166,8 @@ class PlotQCMetricsCases:
         return ['invalid_callback'], {}
 
 
-def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channels: List[str],
-                                   bad_points: List[str] = [], intensities: bool = False,
+def check_extraction_dir_structure(ext_dir: str, point_names: List[str], bad_points: List[str],
+                                   channels: List[str], intensities: bool = False,
                                    replace: bool = True):
     """Checks extraction directory for minimum expected structure
 
@@ -200,7 +200,7 @@ def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channel
             assert os.path.exists(os.path.join(ext_dir, point, 'intensities'))
 
 
-def check_qc_dir_structure(out_dir: str, point_names: List[str], bad_points: List[str] = [],
+def check_qc_dir_structure(out_dir: str, point_names: List[str], bad_points: List[str],
                            qc_plots: bool = False):
     """Checks QC directory for minimum expected structure
 
@@ -227,7 +227,7 @@ def check_qc_dir_structure(out_dir: str, point_names: List[str], bad_points: Lis
 
 
 def check_mph_dir_structure(mph_out_dir: str, plot_dir: str, point_names: List[str],
-                            bad_points: List[str] = [], combined: bool = False):
+                            bad_points: List[str], combined: bool = False):
     """Checks MPH directory for minimum expected structure
 
     Args:

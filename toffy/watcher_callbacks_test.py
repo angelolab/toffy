@@ -49,9 +49,9 @@ def test_build_fov_callback(callbacks, kwargs, data_path):
             check_extraction_dir_structure(extracted_dir, point_names, [], ['SMA'],
                                            intensities, replace)
         if 'generate_qc' in callbacks:
-            check_qc_dir_structure(qc_dir, point_names)
+            check_qc_dir_structure(qc_dir, point_names, [])
         if 'generate_mph' in callbacks:
-            check_mph_dir_structure(qc_dir, plot_dir, point_names)
+            check_mph_dir_structure(qc_dir, plot_dir, point_names, [])
 
 
 @patch('toffy.watcher_callbacks.visualize_qc_metrics', side_effect=mock_visualize_qc_metrics)
