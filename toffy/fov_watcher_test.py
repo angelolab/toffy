@@ -22,7 +22,7 @@ from toffy.fov_watcher import start_watcher
 from toffy.watcher_callbacks import build_callbacks
 from toffy.json_utils import write_json_file
 
-TISSUE_DATA_PATH = os.path.join(Path(__file__).parent, 'data', 'tissue')
+COMBINED_DATA_PATH = os.path.join(Path(__file__).parent, 'data', 'combined')
 RUN_DIR_NAME = 'run_XXX'
 
 SLOW_COPY_INTERVAL_S = 1
@@ -38,14 +38,14 @@ def _slow_copy_sample_tissue_data(dest: str, delta: int = 10, one_blank: bool = 
             Time (in seconds) between each file copy
     """
 
-    for tissue_file in sorted(os.listdir(TISSUE_DATA_PATH)):
+    for tissue_file in sorted(os.listdir(COMBINED_DATA_PATH)):
         time.sleep(delta)
         if one_blank and '.bin' in tissue_file:
             # create blank (0 size) file
             open(os.path.join(dest, tissue_file), 'w').close()
             one_blank = False
         else:
-            shutil.copy(os.path.join(TISSUE_DATA_PATH, tissue_file), dest)
+            shutil.copy(os.path.join(COMBINED_DATA_PATH, tissue_file), dest)
 
 
 TISSUE_RUN_JSON_SPOOF = {
@@ -126,7 +126,7 @@ def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, fov_cbs, kwargs, validators
 
         fovs = [
             bin_file.split('.')[0]
-            for bin_file in sorted(io_utils.list_files(TISSUE_DATA_PATH, substrs=['.bin']))
+            for bin_file in sorted(io_utils.list_files(COMBINED_DATA_PATH, substrs=['.bin']))
         ]
 
         # callbacks are not performed on moly points
