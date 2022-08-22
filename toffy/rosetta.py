@@ -12,7 +12,7 @@ import skimage.io as io
 from scipy.ndimage import gaussian_filter
 
 from ark.utils.load_utils import load_imgs_from_tree, load_imgs_from_dir
-from ark.utils.io_utils import list_folders, validate_paths, list_files
+from ark.utils.io_utils import list_folders, validate_paths, list_files, remove_file_extensions
 from ark.utils.misc_utils import verify_same_elements, verify_in_list
 
 from toffy.streak_detection import streak_correction
@@ -588,7 +588,7 @@ def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, fold
     # generate rosetta matrices for each multiplier
     create_rosetta_matrices(default_matrix=rosetta_mat_path, multipliers=multipliers,
                             masses=current_channel_mass, save_dir=folder_path)
-    matrix_name = os.path.basename(rosetta_mat_path)
+    matrix_name = remove_file_extensions([os.path.basename(rosetta_mat_path)])[0]
 
     # loop over each multiplier and compensate the data
     rosetta_dirs = [img_out_dir]
