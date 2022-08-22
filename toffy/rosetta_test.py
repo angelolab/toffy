@@ -488,7 +488,7 @@ def test_rescale_raw_imgs():
         rosetta.rescale_raw_imgs(temp_dir)
         for i in range(0, 2):
             img_path = os.path.join(temp_dir, fovs[i], 'rescaled',
-                                               channels[i] + '.tiff')
+                                    channels[i] + '.tiff')
             assert os.path.exists(img_path)
 
         # test successful rescale of data
@@ -499,9 +499,10 @@ def test_rescale_raw_imgs():
 
 
 def create_rosetta_comp_structure(raw_data_dir, comp_data_dir, comp_mat_path, panel_info,
-                          input_masses=None, output_masses=None, save_format='rescaled',
-                          raw_data_sub_folder='', batch_size=1, gaus_rad=1, norm_const=200,
-                          ffc_channels=['chan_39'], correct_streaks=False, streak_chan='Noodle'):
+                                  input_masses=None, output_masses=None, save_format='rescaled',
+                                  raw_data_sub_folder='', batch_size=1, gaus_rad=1, norm_const=200,
+                                  ffc_channels=['chan_39'], correct_streaks=False,
+                                  streak_chan='Noodle'):
 
     fovs = ['fov-1-scan-1', 'fov-2-scan-1']
     channels = ['chan_39', 'Noodle', 'Au']

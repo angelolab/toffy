@@ -575,7 +575,7 @@ def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, fold
     Returns:
         Create subdirs containing rosetta compensated images for each multiplier and stitched imgs
     """
-    validate_paths([rosetta_mat_path, img_out_dir, folder_path])
+    validate_paths([rosetta_mat_path, img_out_dir, folder_path], data_prefix=False)
 
     # get mass information
     current_channel_mass = get_masses_from_channel_names([current_channel_name], panel)
