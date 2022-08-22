@@ -129,19 +129,24 @@ def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, fov_cbs, kwargs, validators
             for bin_file in sorted(io_utils.list_files(TISSUE_DATA_PATH, substrs=['.bin']))
         ]
 
+        # callbacks are not performed on moly points
+        bad_fovs = [fovs[-1]]
+        fovs = fovs[:-1]
+
         # callbacks are not performed for skipped fovs
         if add_blank:
+            bad_fovs.append(fovs[0])
             fovs = fovs[1:]
 
         # extract tiffs check
-        validators[0](os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME), fovs)
+        validators[0](os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME), fovs, bad_fovs)
 
         # qc check
-        validators[1](os.path.join(tmpdir, 'cb_1', RUN_DIR_NAME), fovs)
+        validators[1](os.path.join(tmpdir, 'cb_1', RUN_DIR_NAME), fovs, bad_fovs)
 
         # mph check
         validators[2](os.path.join(tmpdir, 'cb_2', RUN_DIR_NAME),
-                      os.path.join(tmpdir, 'cb_2_plots', RUN_DIR_NAME), fovs)
+                      os.path.join(tmpdir, 'cb_2_plots', RUN_DIR_NAME), fovs, bad_fovs)
 
         # stitch images check
         validators[3](os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME, 'stitched_images'))

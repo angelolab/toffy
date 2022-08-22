@@ -167,7 +167,8 @@ class PlotQCMetricsCases:
 
 
 def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channels: List[str],
-                                   intensities: bool = False, replace: bool = True):
+                                   bad_points: List[str] = [], intensities: bool = False,
+                                   replace: bool = True):
     """Checks extraction directory for minimum expected structure
 
     Args:
@@ -175,6 +176,8 @@ def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channel
             Folder containing extraction output
         point_names (list):
             List of expected point names
+        bad_points (list):
+            list of points which should not have structure created
         channels (list):
             List of expected channel names
         intensities (bool):
@@ -186,7 +189,10 @@ def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channel
         AssertionError:
             Assertion error on missing expected tiff
     """
-    for point in point_names:
+
+    for point, bad in zip(point_names, bad_points):
+        assert not os.path.exists(os.path.join(ext_dir, bad))
+
         for channel in channels:
             assert os.path.exists(os.path.join(ext_dir, point, f'{channel}.tiff'))
 
@@ -194,7 +200,8 @@ def check_extraction_dir_structure(ext_dir: str, point_names: List[str], channel
             assert os.path.exists(os.path.join(ext_dir, point, 'intensities'))
 
 
-def check_qc_dir_structure(out_dir: str, point_names: List[str], qc_plots: bool = False):
+def check_qc_dir_structure(out_dir: str, point_names: List[str], bad_points: List[str] = [],
+                           qc_plots: bool = False):
     """Checks QC directory for minimum expected structure
 
     Args:
@@ -202,6 +209,8 @@ def check_qc_dir_structure(out_dir: str, point_names: List[str], qc_plots: bool 
             Folder containing QC output
         point_names (list):
             List of expected point names
+        bad_points (list):
+            list of points which should not have structure created
         qc_plots (bool):
             Whether to expect plot files
 
@@ -209,15 +218,16 @@ def check_qc_dir_structure(out_dir: str, point_names: List[str], qc_plots: bool 
         AssertionError:
             Assertion error on missing csv
     """
-    for point in point_names:
+    for point, bad in zip(point_names, bad_points):
         for mn, ms in zip(QC_COLUMNS, QC_SUFFIXES):
             assert os.path.exists(os.path.join(out_dir, f'{point}_{ms}.csv'))
+            assert not os.path.exists(os.path.join(out_dir, f'{bad}_{ms}.csv'))
             if qc_plots:
                 assert os.path.exists(os.path.join(out_dir, '%s_barplot_stats.png' % mn))
 
 
 def check_mph_dir_structure(mph_out_dir: str, plot_dir: str, point_names: List[str],
-                            combined: bool = False):
+                            bad_points: List[str] = [], combined: bool = False):
     """Checks MPH directory for minimum expected structure
 
     Args:
@@ -227,6 +237,8 @@ def check_mph_dir_structure(mph_out_dir: str, plot_dir: str, point_names: List[s
             Folder containing MPH plot output
         point_names (list):
             List of expected point names
+        bad_points (list):
+            list of points which should not have structure created
         combined (bool):
             whether to check for combined mph data csv and plot image
 
@@ -234,8 +246,9 @@ def check_mph_dir_structure(mph_out_dir: str, plot_dir: str, point_names: List[s
         AssertionError:
             Assertion error on missing csv
     """
-    for point in point_names:
+    for point, bad in zip(point_names, bad_points):
         assert os.path.exists(os.path.join(mph_out_dir, f'{point}-mph_pulse.csv'))
+        assert not os.path.exists(os.path.join(mph_out_dir, f'{bad}-mph_pulse.csv'))
 
     if combined:
         assert os.path.exists(os.path.join(mph_out_dir, 'mph_pulse_combined.csv'))
@@ -310,9 +323,6 @@ def create_sample_run(name_list, run_order_list, scan_count_list, create_json=Fa
 class ExtractionQCCallCases:
     def case_tissue(self):
         return os.path.join(Path(__file__).parent, 'data', 'tissue')
-
-    def case_moly(self):
-        return os.path.join(Path(__file__).parent, 'data', 'moly')
 
 
 def _make_small_file(folder: str, name: str):

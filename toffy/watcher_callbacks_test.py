@@ -46,7 +46,7 @@ def test_build_fov_callback(callbacks, kwargs, data_path):
 
         # just check SMA
         if 'extract_tiffs' in callbacks:
-            check_extraction_dir_structure(extracted_dir, point_names, ['SMA'],
+            check_extraction_dir_structure(extracted_dir, point_names, [], ['SMA'],
                                            intensities, replace)
         if 'generate_qc' in callbacks:
             check_qc_dir_structure(qc_dir, point_names)
@@ -81,7 +81,7 @@ def test_build_callbacks(viz_mock, callbacks, kwargs, data_path):
             fcb(data_path, name)
         rcb(data_path)
 
-        check_extraction_dir_structure(extracted_dir, point_names, ['SMA'])
-        check_qc_dir_structure(qc_dir, point_names, 'save_dir' in kwargs)
-        check_mph_dir_structure(qc_dir, plot_dir, point_names, combined=True)
+        check_extraction_dir_structure(extracted_dir, point_names, [], ['SMA'])
+        check_qc_dir_structure(qc_dir, point_names, [], 'save_dir' in kwargs)
+        check_mph_dir_structure(qc_dir, plot_dir, point_names, [], combined=True)
         check_stitched_dir_structure(stitched_dir, ['SMA'])
