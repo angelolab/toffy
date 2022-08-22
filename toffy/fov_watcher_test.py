@@ -48,10 +48,11 @@ def _slow_copy_sample_tissue_data(dest: str, delta: int = 10, one_blank: bool = 
             shutil.copy(os.path.join(COMBINED_DATA_PATH, tissue_file), dest)
 
 
-TISSUE_RUN_JSON_SPOOF = {
+COMBINED_RUN_JSON_SPOOF = {
     'fovs': [
         {'runOrder': 1, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}},
         {'runOrder': 2, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}},
+        {'runOrder': 3, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}}
     ],
 }
 
@@ -99,7 +100,7 @@ def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, fov_cbs, kwargs, validators
 
         fov_callback, run_callback = build_callbacks(run_cbs, fov_cbs, **kwargs)
         write_json_file(json_path=os.path.join(run_data, 'test_run.json'),
-                        json_object=TISSUE_RUN_JSON_SPOOF)
+                        json_object=COMBINED_RUN_JSON_SPOOF)
 
         # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
         # client access computer.  `start_watcher` is made async here since these processes
