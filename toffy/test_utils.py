@@ -271,6 +271,8 @@ def check_stitched_dir_structure(stitched_dir: str, channels: List[str]):
     for channel in channels:
         assert os.path.exists(os.path.join(stitched_dir, f'{channel}_stitched.tiff'))
 
+    os.remove(stitched_dir)
+
 
 def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False, bad=False):
     """Creates sample run metadata with option to create a temporary json file
