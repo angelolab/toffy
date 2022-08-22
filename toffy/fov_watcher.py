@@ -231,7 +231,12 @@ class FOV_EventHandler(FileSystemEventHandler):
 
         If run is complete, all calbacks in `per_run` will be run over the whole run.
         """
-        if all(self.run_structure.check_fov_progress().values()):
+        all_fovs = self.run_structure.check_fov_progress().keys()
+        moly_fovs = self.run_structure.moly_points
+        necessary_fovs = list(set(all_fovs).difference(moly_fovs))
+        complete = [self.run_structure.check_fov_progress()[fov] for fov in necessary_fovs]
+
+        if all(complete):
             logf = open(self.log_path, 'a')
 
             logf.write(
