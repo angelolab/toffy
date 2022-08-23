@@ -5,6 +5,7 @@ import numpy as np
 import tempfile
 
 import skimage.io as io
+from pathlib import Path
 
 from toffy import rosetta
 
@@ -525,7 +526,8 @@ def test_generate_rosetta_test_imgs(mocker):
         test_utils._write_tifs(base_dir=temp_img_dir, fov_names=fovs, img_names=channels,
                                shape=(32, 32), sub_dir='', fills=False, dtype='uint32')
 
-        rosetta_mat_path = os.path.join('..', 'files', 'commercial_rosetta_matrix_v1.csv')
+        rosetta_mat_path = os.path.join(Path(__file__).parent.parent, 'files',
+                                        'commercial_rosetta_matrix_v1.csv')
         panel = pd.DataFrame({
             'Mass': [39, 117, 197],
             'Target': channels,
