@@ -81,7 +81,7 @@ def test_run_structure(run_json, expected_files):
 @pytest.mark.parametrize('add_blank', [False, True])
 @parametrize_with_cases('run_cbs, fov_cbs, kwargs, validators', cases=WatcherCases)
 def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, fov_cbs, kwargs, validators, add_blank):
-    with tempfile.TemporaryDirectory() as tmpdir:
+    with tempfile.TemporaryDirectory(ingore_cleanup_errors=True) as tmpdir:
 
         tiff_out_dir = os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME)
         qc_out_dir = os.path.join(tmpdir, 'cb_1', RUN_DIR_NAME)
