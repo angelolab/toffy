@@ -50,7 +50,7 @@ def _slow_copy_sample_tissue_data(dest: str, delta: int = 10, one_blank: bool = 
 
 COMBINED_RUN_JSON_SPOOF = {
     'fovs': [
-        {'runOrder': 1, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}},
+        {'runOrder': 1, 'scanCount': 2, 'frameSizePixels': {'width': 32, 'height': 32}},
         {'runOrder': 2, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}},
         {'runOrder': 3, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32},
          'standardTarget': "Molybdenum Foil"}
@@ -131,11 +131,11 @@ def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, fov_cbs, kwargs, validators
             for bin_file in sorted(io_utils.list_files(COMBINED_DATA_PATH, substrs=['.bin']))
         ]
 
-        # callbacks are not performed on moly points
+        # callbacks are not performed on moly points, remove fov-3-scan-1
         bad_fovs = [fovs[-1]]
         fovs = fovs[:-1]
 
-        # callbacks are not performed for skipped fovs
+        # callbacks are not performed for skipped fovs, remove blank fov
         if add_blank:
             bad_fovs.append(fovs[0])
             fovs = fovs[1:]

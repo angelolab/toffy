@@ -42,6 +42,7 @@ class RunStructure:
 
             fov_names = [f'fov-{run_order}-scan-{s + 1}' for s in range(scan)]
 
+            # identify moly points
             if fov.get('standardTarget', "") == "Molybdenum Foil":
                 for fov_name in fov_names:
                     self.moly_points.append(fov_name)
@@ -87,6 +88,7 @@ class RunStructure:
         if fov_name in self.processed_fovs:
             return False, fov_name
 
+        # does not process moly points
         if fov_name in self.moly_points:
             return False, fov_name
 
