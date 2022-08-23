@@ -1640,9 +1640,8 @@ def delete_tiled_region_fovs(rectangles, tiled_region_fovs):
         del rectangles[fov]
 
 
-# TODO: potential type hinting candidate?
 def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, tiled_region_path,
-                                   figsize=(7, 7)):
+                                   coreg_path=settings.COREG_SAVE_PATH, figsize=(7, 7)):
     """Creates the tiled region interactive interface for manual to auto FOVs
 
     Args:
@@ -1654,6 +1653,8 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
             The image to overlay
         tiled_region_path (str):
             The path to the file to save the tiled regions to
+        coreg_path (str):
+            the path to the co-registration params
         figsize (tuple):
             The size of the interactive figure to display
     """
@@ -1666,16 +1667,15 @@ def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, 
         )
 
     # if there isn't a coreg_path defined, the user needs to run update_coregistration_params first
-    if not os.path.exists(os.path.join('..', 'toffy', 'coreg_params.json')):
+    if not os.path.exists(coreg_path):
         raise FileNotFoundError(
             "You haven't co-registered your slide yet. Please run "
             "1_set_up_toffy.ipynb first."
         )
 
-    # load the co-registraition parameters in
+    # load the co-registration parameters in
     # NOTE: the last set of params in the coreg_params list is the most up-to-date
-    with open(os.path.join('..', 'toffy', 'coreg_params.json')) as cp:
-        stage_optical_coreg_params = json.load(cp)['coreg_params'][-1]
+    stage_optical_coreg_params = json_utils.read_json_file(coreg_path)['coreg_params'][-1]
 
     # map each region to a unique color
     # TODO: default to tab20 discrete cmap, make customizable?
