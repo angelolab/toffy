@@ -5,6 +5,7 @@ import pytest
 import shutil
 from pathlib import Path
 from unittest.mock import patch, call
+import natsort as ns
 
 from toffy import bin_extraction
 from ark.utils import test_utils
@@ -65,8 +66,8 @@ def test_extract_missing_fovs(mocked_print):
                                                     panel, extract_intensities=False)
 
             # test that neither moly nor empty fov were extracted
-            assert io_utils.list_folders(extraction_dir) == ['fov-2-scan-1', 'fov-1-scan-2',
-                                                             'fov-1-scan-1']
+            assert ns.natsorted(io_utils.list_folders(extraction_dir)) \
+                   == ns.natsorted(['fov-2-scan-1', 'fov-1-scan-2', 'fov-1-scan-1'])
 
     # test successful extraction of fovs
     with tempfile.TemporaryDirectory() as extraction_dir:
