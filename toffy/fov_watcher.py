@@ -128,8 +128,8 @@ class RunStructure:
         Returns:
             dict
         """
-        all_fovs = self.run_structure.fov_progress.keys()
-        moly_fovs = self.run_structure.moly_points
+        all_fovs = self.fov_progress.keys()
+        moly_fovs = self.moly_points
         necessary_fovs = list(set(all_fovs).difference(moly_fovs))
 
         return {k: all(self.fov_progress[k].values()) for k in necessary_fovs}
