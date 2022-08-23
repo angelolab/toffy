@@ -62,3 +62,7 @@ else
   mkdir "$PWD/scripts"
   cp "$PWD"/templates/*\.ipynb "$PWD/scripts/."
 fi
+
+# recursively copy the images from templates to scripts (Jupyter isn't good with relative paths...)
+cp -r "$PWD"/templates/img "$PWD/scripts/."
+
