@@ -128,7 +128,11 @@ class RunStructure:
         Returns:
             dict
         """
-        return {k: all(self.fov_progress[k].values()) for k in self.fov_progress}
+        all_fovs = self.run_structure.fov_progress.keys()
+        moly_fovs = self.run_structure.moly_points
+        necessary_fovs = list(set(all_fovs).difference(moly_fovs))
+
+        return {k: all(self.fov_progress[k].values()) for k in necessary_fovs}
 
 
 class FOV_EventHandler(FileSystemEventHandler):
@@ -231,12 +235,7 @@ class FOV_EventHandler(FileSystemEventHandler):
 
         If run is complete, all calbacks in `per_run` will be run over the whole run.
         """
-        all_fovs = self.run_structure.check_fov_progress().keys()
-        moly_fovs = self.run_structure.moly_points
-        necessary_fovs = list(set(all_fovs).difference(moly_fovs))
-        complete = [self.run_structure.check_fov_progress()[fov] for fov in necessary_fovs]
-
-        if all(complete):
+        if all(self.run_structure.check_fov_progress().values()):
             logf = open(self.log_path, 'a')
 
             logf.write(
