@@ -109,7 +109,7 @@ def mock_visualize_mph(mph_df, out_dir, regression: bool = False):
 
 class ExtractionQCGenerationCases:
     def case_all_callbacks(self):
-        panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv')
+        panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel.csv')
         return FOV_CALLBACKS, {'panel': pd.read_csv(panel_path)}
 
     def case_extract_only(self):
@@ -148,7 +148,7 @@ class ExtractionQCGenerationCases:
 
 class PlotQCMetricsCases:
     def case_default(self):
-        panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv')
+        panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel.csv')
         return RUN_CALLBACKS, {'panel': pd.read_csv(panel_path)}
 
     def save_figure(self):
@@ -321,8 +321,8 @@ def create_sample_run(name_list, run_order_list, scan_count_list, create_json=Fa
 # calling cases for the built extraction/qc callback
 # this should be limited to folders to call; no generation parameters allowed  >:(
 class ExtractionQCCallCases:
-    def case_tissue(self):
-        return os.path.join(Path(__file__).parent, 'data', 'tissue')
+    def case_combined(self):
+        return os.path.join(Path(__file__).parent, 'data', 'combined')
 
 
 def _make_small_file(folder: str, name: str):
@@ -406,7 +406,7 @@ class WatcherCases:
     @parametrize(intensity=(False, True))
     @parametrize(replace=(False, True))
     def case_default(self, intensity, replace):
-        panel = pd.read_csv(os.path.join(Path(__file__).parent, 'data', 'sample_panel_tissue.csv'))
+        panel = pd.read_csv(os.path.join(Path(__file__).parent, 'data', 'sample_panel.csv'))
         validators = [
             functools.partial(
                 check_extraction_dir_structure,

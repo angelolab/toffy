@@ -13,8 +13,7 @@ from mibi_bin_tools import io_utils, bin_files
 
 @patch('builtins.print')
 def test_extract_missing_fovs(mocked_print):
-    bin_file_dir = os.path.join(Path(__file__).parent, "data", "tissue")
-    moly_bin_file_dir = os.path.join(Path(__file__).parent, "data", "moly")
+    bin_file_dir = os.path.join(Path(__file__).parent, "data", "combined")
 
     panel = pd.DataFrame([{
         'Mass': 98,
@@ -31,23 +30,13 @@ def test_extract_missing_fovs(mocked_print):
 
         assert mocked_print.mock_calls == \
                [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1'),
+                call('Moly FOVs which will not be extracted: ', 'fov-3-scan-1'),
                 call('Found 1 FOVs to extract.'),
                 call('Extraction completed!')]
     mocked_print.reset_mock()
 
     # test that it does not re-extract fovs and no moly extraction
     with tempfile.TemporaryDirectory() as combined_bin_file_dir:
-        # combine two regular fov and one moly fov files into single directory
-        for file_name in io_utils.list_files(moly_bin_file_dir, substrs='fov'):
-            shutil.copy(os.path.join(moly_bin_file_dir, file_name),
-                        os.path.join(combined_bin_file_dir, file_name))
-            if '.json' in file_name:
-                ext = '.json'
-            elif '.bin' in file_name:
-                ext = '.bin'
-            old_name = os.path.join(combined_bin_file_dir, file_name)
-            new_name = os.path.join(combined_bin_file_dir, 'moly_fov' + ext)
-            os.rename(old_name, new_name)
 
         for file_name in io_utils.list_files(bin_file_dir):
             shutil.copy(os.path.join(bin_file_dir, file_name),
@@ -65,7 +54,7 @@ def test_extract_missing_fovs(mocked_print):
 
             assert mocked_print.mock_calls == \
                    [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1'),
-                    call('Moly FOVs which will not be extracted: ', 'moly_fov'),
+                    call('Moly FOVs which will not be extracted: ', 'fov-3-scan-1'),
                     call('FOVs with empty json files which will not be extracted: ', 'empty'),
                     call('Found 1 FOVs to extract.'),
                     call('Extraction completed!')]
@@ -87,18 +76,14 @@ def test_extract_missing_fovs(mocked_print):
         fovs_extracted = io_utils.list_folders(extraction_dir)
 
         # test no extra print statements
-        assert mocked_print.mock_calls == [call('Found 2 FOVs to extract.'),
-                                           call('Extraction completed!')]
+        assert mocked_print.mock_calls == \
+               [call('Moly FOVs which will not be extracted: ', 'fov-3-scan-1'),
+                call('Found 2 FOVs to extract.'), call('Extraction completed!')]
 
         # check both fovs were extracted
         assert fovs.sort() == fovs_extracted.sort()
 
-        # all fovs extracted already will raise a warning
+        # all fovs extracted except moly already will raise a warning
         with pytest.warns(Warning, match="No viable bin files were found"):
             bin_extraction.extract_missing_fovs(bin_file_dir, extraction_dir,
-                                                panel, extract_intensities=False)
-
-        # when given only moly fovs will raise a warning
-        with pytest.warns(Warning, match="No viable bin files were found"):
-            bin_extraction.extract_missing_fovs(moly_bin_file_dir, extraction_dir,
                                                 panel, extract_intensities=False)
