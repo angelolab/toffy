@@ -1151,9 +1151,7 @@ def test_tma_interactive_remap():
 
 
 @parametrize('randomize_setting', [False, True])
-@parametrize('moly_insert, moly_interval', test_cases._REMAP_MOLY_INTERVAL_CASES)
-@parametrize('moly_path', [param('bad_moly_point.json', marks=file_missing_err),
-                           param('sample_moly_point.json')])
+@parametrize('moly_path,moly_insert,moly_interval', test_cases._REMAP_MOLY_INTERVAL_CASES)
 def test_remap_and_reorder_fovs(moly_path, randomize_setting, moly_insert, moly_interval):
     # define the sample Moly point
     sample_moly_point = test_utils.generate_sample_fov_tiling_entry(

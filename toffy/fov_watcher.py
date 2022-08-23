@@ -45,14 +45,12 @@ class RunStructure:
                 'bin': False,
             }
 
-    def check_run_condition(self, path: str, check_interval: int = 10) -> Tuple[bool, str]:
+    def check_run_condition(self, path: str) -> Tuple[bool, str]:
         """Checks if all requisite files exist and are complete
 
         Args:
             path (str):
                 path to expected file
-            check_interval (int):
-                number of seconds to wait before re-checking filesize
 
         Raises:
             TimeoutError
@@ -91,8 +89,8 @@ class RunStructure:
                         del self.fov_progress[fov_name]
                         raise TimeoutError(f'timed out waiting for {path}...')
 
-                    time.sleep(check_interval)
-                    wait_time += check_interval
+                    time.sleep(self.timeout / 10)
+                    wait_time += self.timeout / 10
 
                 self.fov_progress[fov_name][extension] = True
 

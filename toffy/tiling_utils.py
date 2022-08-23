@@ -1769,7 +1769,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
 
 
 def remap_and_reorder_fovs(manual_fov_regions, manual_to_auto_map,
-                           moly_path, randomize=False,
+                           moly_path=None, randomize=False,
                            moly_insert=False, moly_interval=5):
     """Runs 3 separate tasks on `manual_fov_regions`:
 
@@ -1783,7 +1783,7 @@ def remap_and_reorder_fovs(manual_fov_regions, manual_to_auto_map,
         manual_to_auto_map (dict):
             Defines the mapping of manual to auto FOV names
         moly_path (str):
-            The path to the Moly point to insert
+            The path to the Moly point to insert. Defauls to `None`.
         randomize (bool):
             Whether to randomize the FOVs
         moly_insert (bool):
@@ -1797,16 +1797,18 @@ def remap_and_reorder_fovs(manual_fov_regions, manual_to_auto_map,
             `manual_fov_regions` with new FOV names, randomized, and with Moly points
     """
 
-    # file path validation
-    if not os.path.exists(moly_path):
-        raise FileNotFoundError("Moly point %s does not exist" % moly_path)
+    # only load moly_path and verify moly_interval if moly_insert set
+    if moly_insert:
+        # file path validation
+        if not os.path.exists(moly_path):
+            raise FileNotFoundError("Moly point %s does not exist" % moly_path)
 
-    # load the Moly point in
-    moly_point = json_utils.read_json_file(moly_path, encoding='utf-8')
+        # load the Moly point in
+        moly_point = json_utils.read_json_file(moly_path, encoding='utf-8')
 
-    # error check: moly_interval cannot be less than or equal to 0 if moly_insert is True
-    if moly_insert and (not isinstance(moly_interval, int) or moly_interval < 1):
-        raise ValueError("moly_interval must be a positive integer")
+        # error check: moly_interval must be a positive integer
+        if not isinstance(moly_interval, int) or moly_interval < 1:
+            raise ValueError("moly_interval must be a positive integer")
 
     # define a new fov regions dict for remapped names
     remapped_fov_regions = {}

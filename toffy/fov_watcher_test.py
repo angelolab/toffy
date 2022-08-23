@@ -2,22 +2,30 @@ import os
 import shutil
 import time
 import tempfile
-import json
 from pathlib import Path
 from multiprocessing.pool import ThreadPool as Pool
 
 import pytest
 from pytest_cases import parametrize_with_cases
+from unittest.mock import patch
 
 from mibi_bin_tools import io_utils
 
-from toffy.test_utils import WatcherCases, RunStructureTestContext, RunStructureCases
+from toffy.test_utils import (
+    WatcherCases,
+    RunStructureTestContext,
+    RunStructureCases,
+    mock_visualize_mph,
+    mock_visualize_qc_metrics,
+)
 from toffy.fov_watcher import start_watcher
 from toffy.watcher_callbacks import build_callbacks
 from toffy.json_utils import write_json_file
 
 TISSUE_DATA_PATH = os.path.join(Path(__file__).parent, 'data', 'tissue')
 RUN_DIR_NAME = 'run_XXX'
+
+SLOW_COPY_INTERVAL_S = 1
 
 
 def _slow_copy_sample_tissue_data(dest: str, delta: int = 10, one_blank: bool = False):
@@ -66,10 +74,11 @@ def test_run_structure(run_json, expected_files):
         assert not exist and name == ''
 
 
-# TODO: add tests for per_run when per_run callbacks are created
+@patch('toffy.watcher_callbacks.visualize_qc_metrics', side_effect=mock_visualize_qc_metrics)
+@patch('toffy.watcher_callbacks.visualize_mph', side_effect=mock_visualize_mph)
 @pytest.mark.parametrize('add_blank', [False, True])
 @parametrize_with_cases('run_cbs, fov_cbs, kwargs, validators', cases=WatcherCases)
-def test_watcher(run_cbs, fov_cbs, kwargs, validators, add_blank):
+def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, fov_cbs, kwargs, validators, add_blank):
     with tempfile.TemporaryDirectory() as tmpdir:
 
         tiff_out_dir = os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME)
@@ -95,14 +104,18 @@ def test_watcher(run_cbs, fov_cbs, kwargs, validators, add_blank):
         # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
         # client access computer.  `start_watcher` is made async here since these processes
         # wouldn't block each other in normal use
-        with Pool(processes=4) as pool:
-            pool.apply_async(_slow_copy_sample_tissue_data, (run_data, 6, add_blank))
 
-            # watcher completion is checked every 2 seconds
-            # zero-size files are halted for 6 seconds or until they have non zero-size
+        with Pool(processes=4) as pool:
+            pool.apply_async(
+                _slow_copy_sample_tissue_data,
+                (run_data, SLOW_COPY_INTERVAL_S, add_blank)
+            )
+
+            # watcher completion is checked every second
+            # zero-size files are halted for 1 second or until they have non zero-size
             res_scan = pool.apply_async(
                 start_watcher,
-                (run_data, log_out, fov_callback, run_callback, 2, 6)
+                (run_data, log_out, fov_callback, run_callback, 1, SLOW_COPY_INTERVAL_S)
             )
 
             res_scan.get()
