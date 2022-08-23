@@ -31,7 +31,7 @@ def test_extract_missing_fovs(mocked_print):
         assert mocked_print.mock_calls == \
                [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1'),
                 call('Moly FOVs which will not be extracted: ', 'fov-3-scan-1'),
-                call('Found 1 FOVs to extract.'),
+                call('Found 2 FOVs to extract.'),
                 call('Extraction completed!')]
     mocked_print.reset_mock()
 
@@ -56,7 +56,7 @@ def test_extract_missing_fovs(mocked_print):
                    [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1'),
                     call('Moly FOVs which will not be extracted: ', 'fov-3-scan-1'),
                     call('FOVs with empty json files which will not be extracted: ', 'empty'),
-                    call('Found 1 FOVs to extract.'),
+                    call('Found 2 FOVs to extract.'),
                     call('Extraction completed!')]
 
             # when given empty fov files will raise a warning
@@ -65,7 +65,8 @@ def test_extract_missing_fovs(mocked_print):
                                                     panel, extract_intensities=False)
 
             # test that neither moly nor empty fov were extracted
-            assert io_utils.list_folders(extraction_dir) == ['fov-2-scan-1', 'fov-1-scan-1']
+            assert io_utils.list_folders(extraction_dir) == ['fov-2-scan-1', 'fov-1-scan-2',
+                                                             'fov-1-scan-1']
 
     # test successful extraction of fovs
     with tempfile.TemporaryDirectory() as extraction_dir:
@@ -78,7 +79,7 @@ def test_extract_missing_fovs(mocked_print):
         # test no extra print statements
         assert mocked_print.mock_calls == \
                [call('Moly FOVs which will not be extracted: ', 'fov-3-scan-1'),
-                call('Found 2 FOVs to extract.'), call('Extraction completed!')]
+                call('Found 3 FOVs to extract.'), call('Extraction completed!')]
 
         # check both fovs were extracted
         assert fovs.sort() == fovs_extracted.sort()
