@@ -220,10 +220,10 @@ def test_sort_bin_file_fovs():
 
 
 # NOTE: we don't need to test iteration over multiple FOVs because
-# test_compute_qc_metrics computes on 1 FOV at a time
+# test_compute_qc_metrics computes on 1 FOV at a time, fov-3-scan-1 is a moly point
 @parametrize("gaussian_blur", [False, True])
 @parametrize("bin_file_folder, fovs",
-             [('moly', ['fov-1-scan-1']), ('tissue', ['fov-1-scan-1'])])
+             [('combined', ['fov-3-scan-1']), ('combined', ['fov-1-scan-1'])])
 def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
     with tempfile.TemporaryDirectory() as temp_dir:
         # define a sample panel, leave panel correctness/incorrectness test for mibi_bin_tools
@@ -434,10 +434,10 @@ def test_format_img_data():
 
     with tempfile.TemporaryDirectory() as temp_dir:
         # define the full path to the bin file folder
-        bin_file_path = os.path.join(Path(__file__).parent, 'data', 'tissue')
+        bin_file_path = os.path.join(Path(__file__).parent, 'data', 'combined')
 
         # define a sample extraction directory
-        extracted_imgs_path = os.path.join(temp_dir, 'extracted_images', 'tissue')
+        extracted_imgs_path = os.path.join(temp_dir, 'extracted_images', 'combined')
         os.makedirs(extracted_imgs_path)
         bin_files.extract_bin_files(bin_file_path, extracted_imgs_path, panel=panel)
 
