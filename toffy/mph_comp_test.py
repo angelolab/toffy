@@ -23,7 +23,7 @@ def test_get_estimated_time():
     bad_path = os.path.join(Path(__file__).parent, "data", "not-a-folder")
     bad_fov = "not-a-fov"
 
-    good_path = os.path.join(Path(__file__).parent, "data", "tissue")
+    good_path = os.path.join(Path(__file__).parent, "data", "combined")
     good_fov = 'fov-1-scan-1'
 
     # bad directory path should raise an error
@@ -64,7 +64,7 @@ def test_generate_time_ticks():
 
 
 def test_compute_mph_metrics():
-    bin_file_path = os.path.join(Path(__file__).parent, "data", "tissue")
+    bin_file_path = os.path.join(Path(__file__).parent, "data", "combined")
     fov_name = 'fov-1-scan-1'
 
     with tempfile.TemporaryDirectory() as tmpdir:
