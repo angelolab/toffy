@@ -22,7 +22,7 @@ from toffy.fov_watcher import start_watcher
 from toffy.watcher_callbacks import build_callbacks
 from toffy.json_utils import write_json_file
 
-TISSUE_DATA_PATH = os.path.join(Path(__file__).parent, 'data', 'tissue')
+COMBINED_DATA_PATH = os.path.join(Path(__file__).parent, 'data', 'combined')
 RUN_DIR_NAME = 'run_XXX'
 
 SLOW_COPY_INTERVAL_S = 1
@@ -38,20 +38,22 @@ def _slow_copy_sample_tissue_data(dest: str, delta: int = 10, one_blank: bool = 
             Time (in seconds) between each file copy
     """
 
-    for tissue_file in sorted(os.listdir(TISSUE_DATA_PATH)):
+    for tissue_file in sorted(os.listdir(COMBINED_DATA_PATH)):
         time.sleep(delta)
         if one_blank and '.bin' in tissue_file:
             # create blank (0 size) file
             open(os.path.join(dest, tissue_file), 'w').close()
             one_blank = False
         else:
-            shutil.copy(os.path.join(TISSUE_DATA_PATH, tissue_file), dest)
+            shutil.copy(os.path.join(COMBINED_DATA_PATH, tissue_file), dest)
 
 
-TISSUE_RUN_JSON_SPOOF = {
+COMBINED_RUN_JSON_SPOOF = {
     'fovs': [
-        {'runOrder': 1, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}},
+        {'runOrder': 1, 'scanCount': 2, 'frameSizePixels': {'width': 32, 'height': 32}},
         {'runOrder': 2, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}},
+        {'runOrder': 3, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32},
+         'standardTarget': "Molybdenum Foil"}
     ],
 }
 
@@ -99,7 +101,7 @@ def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, fov_cbs, kwargs, validators
 
         fov_callback, run_callback = build_callbacks(run_cbs, fov_cbs, **kwargs)
         write_json_file(json_path=os.path.join(run_data, 'test_run.json'),
-                        json_object=TISSUE_RUN_JSON_SPOOF)
+                        json_object=COMBINED_RUN_JSON_SPOOF)
 
         # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
         # client access computer.  `start_watcher` is made async here since these processes
@@ -126,22 +128,27 @@ def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, fov_cbs, kwargs, validators
 
         fovs = [
             bin_file.split('.')[0]
-            for bin_file in sorted(io_utils.list_files(TISSUE_DATA_PATH, substrs=['.bin']))
+            for bin_file in sorted(io_utils.list_files(COMBINED_DATA_PATH, substrs=['.bin']))
         ]
 
-        # callbacks are not performed for skipped fovs
+        # callbacks are not performed on moly points, remove fov-3-scan-1
+        bad_fovs = [fovs[-1]]
+        fovs = fovs[:-1]
+
+        # callbacks are not performed for skipped fovs, remove blank fov
         if add_blank:
+            bad_fovs.append(fovs[0])
             fovs = fovs[1:]
 
         # extract tiffs check
-        validators[0](os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME), fovs)
+        validators[0](os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME), fovs, bad_fovs)
 
         # qc check
-        validators[1](os.path.join(tmpdir, 'cb_1', RUN_DIR_NAME), fovs)
+        validators[1](os.path.join(tmpdir, 'cb_1', RUN_DIR_NAME), fovs, bad_fovs)
 
         # mph check
         validators[2](os.path.join(tmpdir, 'cb_2', RUN_DIR_NAME),
-                      os.path.join(tmpdir, 'cb_2_plots', RUN_DIR_NAME), fovs)
+                      os.path.join(tmpdir, 'cb_2_plots', RUN_DIR_NAME), fovs, bad_fovs)
 
         # stitch images check
         validators[3](os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME, 'stitched_images'))
