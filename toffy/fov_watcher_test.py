@@ -157,5 +157,3 @@ def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, fov_cbs, kwargs, validators
 
     except OSError:
         warnings.warn('Temporary file cleanup was incomplete.')
-
-    pass
