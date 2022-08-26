@@ -125,17 +125,20 @@ First, activate the environment:
 conda activate toffy_env
 ```
 
-Once activated, notebooks can be used via this command:
+Once activated, notebooks can be used via this command for Windows:
 
-```
-jupyter lab --allow-root
-```
+```start_jupyter.sh```
+
+or this command for macOS:
+
+```./start_jupyter.sh```
 
 You can leave the jupyter notebook running once you're done. If it ever gets closed or you need to reopen it, just follow the steps above.
 
 ### Updating the repo
 
 The toffy repo is constantly being updated. In order to get those changes to your version, you'll need to tell git to update with the following command:
+
 ```
 git pull
 ```
@@ -145,6 +148,18 @@ After performing the above command, you will sometimes need to update your envir
 ```
 conda remove --name toffy_env --all
 conda env create -f environment.yml
+```
+
+To update the notebooks, run this command for Windows:
+
+```
+start_jupyter.sh -u
+```
+
+or this command for macOS:
+
+```
+./start_jupyter.sh -u
 ```
 
 ## Directory structure
