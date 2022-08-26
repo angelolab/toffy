@@ -27,6 +27,7 @@ class RunStructure:
         self.timeout = timeout
         self.fov_progress = {}
         self.processed_fovs = []
+        self.moly_points = []
 
         # find run .json and get parameters
         run_name = Path(run_folder).parts[-1]
@@ -39,11 +40,18 @@ class RunStructure:
             if run_order * scan < 0:
                 raise KeyError(f"Could not locate keys in {run_folder}.json")
 
-            fov_name = f'fov-{run_order}-scan-{scan}'
-            self.fov_progress[fov_name] = {
-                'json': False,
-                'bin': False,
-            }
+            fov_names = [f'fov-{run_order}-scan-{s + 1}' for s in range(scan)]
+
+            # identify moly points
+            if fov.get('standardTarget', "") == "Molybdenum Foil":
+                for fov_name in fov_names:
+                    self.moly_points.append(fov_name)
+
+            for fov_name in fov_names:
+                self.fov_progress[fov_name] = {
+                    'json': False,
+                    'bin': False,
+                }
 
     def check_run_condition(self, path: str) -> Tuple[bool, str]:
         """Checks if all requisite files exist and are complete
@@ -78,6 +86,10 @@ class RunStructure:
 
         # avoids repeated processing in case of duplicated events
         if fov_name in self.processed_fovs:
+            return False, fov_name
+
+        # does not process moly points
+        if fov_name in self.moly_points:
             return False, fov_name
 
         wait_time = 0
@@ -118,7 +130,11 @@ class RunStructure:
         Returns:
             dict
         """
-        return {k: all(self.fov_progress[k].values()) for k in self.fov_progress}
+        all_fovs = self.fov_progress.keys()
+        moly_fovs = self.moly_points
+        necessary_fovs = list(set(all_fovs).difference(moly_fovs))
+
+        return {k: all(self.fov_progress[k].values()) for k in necessary_fovs}
 
 
 class FOV_EventHandler(FileSystemEventHandler):
