@@ -3,7 +3,7 @@
 # check for template developer flag
 JUPYTER_DIR='scripts'
 update=0
-external=''
+
 while test $# -gt 0
 do
   case "$1" in
