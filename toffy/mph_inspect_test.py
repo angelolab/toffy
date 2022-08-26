@@ -45,7 +45,7 @@ def test_compute_intensities(mocker):
 
 def test_visualize_intensity_data(mocker):
     bad_path = os.path.join('data', 'not_bin_file_dir')
-    bin_file_dir = good_path = os.path.join(Path(__file__).parent, "data", "tissue")
+    bin_file_dir = good_path = os.path.join(Path(__file__).parent, "data", "combined")
     mass = 98
     mass_start = 97.5
     mass_stop = 98.5
