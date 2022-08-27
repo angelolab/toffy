@@ -2075,6 +2075,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
         with out:
             # call the helper function to save manual_to_auto_map and notify user
             save_json(manual_to_auto_map, save_ann, mapping_path)
+            ax.figure.canvas.draw()
 
     # ensure a change to w_man redraws the image due to a new manual fov selected
     w_man.observe(update_mapping)
