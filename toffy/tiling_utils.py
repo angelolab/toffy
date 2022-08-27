@@ -4,11 +4,13 @@ from IPython.display import display
 import ipywidgets as widgets
 from itertools import combinations, product
 import json
+from matplotlib.patches import Patch, Rectangle
 import matplotlib.pyplot as plt
 import numpy as np
 from operator import itemgetter
 import os
 import pandas as pd
+from random import randint
 import re
 from typing import Iterable, Optional, Tuple
 from skimage.draw import ellipse
@@ -547,8 +549,8 @@ def set_tiled_region_params(region_corners_path):
 
     # whether to insert moly points between regions
     moly_region_insert = read_tiling_param(
-        "Insert a moly point between each tiled region? \
-            If yes, you must provide a path to the example moly_FOV json file. Y/N: ",
+        ("Insert a moly point between each tiled region? " +
+         "If yes, you must provide a path to the example moly_FOV json file. Y/N: "),
         "Error: moly point region parameter must be either Y or N",
         lambda mri: mri in ['Y', 'N', 'y', 'n'],
         dtype=str
@@ -560,9 +562,9 @@ def set_tiled_region_params(region_corners_path):
 
     # whether to insert moly points between fovs
     moly_interval = read_tiling_param(
-        "Enter the FOV interval size to insert Moly points. If yes, you must provide \
-            a path to the example moly_FOV json file and enter the number of FOVs "
-        "between each Moly point. If no, enter 0: ",
+        ("Enter the FOV interval size to insert Moly points. If yes, you must provide " +
+         "a path to the example moly_FOV json file and enter the number of FOVs " +
+         "between each Moly point. If no, enter 0: "),
         "Error: moly interval must be 0 or a positive integer",
         lambda mi: mi >= 0,
         dtype=int
@@ -726,9 +728,9 @@ def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str] = Non
         row_col_pairs = generate_x_y_fov_pairs(row_range, col_range)
 
         # name the FOVs according to MIBI conventions
-        fov_names = ['%s_R%dC%d' % (region_info['region_name'], y + 1, x + 1)
-                     for x in range(region_info['fov_num_row'])
-                     for y in range(region_info['fov_num_col'])]
+        fov_names = ['%s_R%dC%d' % (region_info['region_name'], row + 1, col + 1)
+                     for row in range(region_info['fov_num_row'])
+                     for col in range(region_info['fov_num_col'])]
 
         # randomize pairs list if specified
         if region_info['region_rand'] == 'Y':
@@ -739,10 +741,10 @@ def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str] = Non
         # a Moly point at the end of a region this way
         total_fovs += len(row_col_pairs)
 
-        for index, (col_i, row_i) in enumerate(row_col_pairs):
-            # use the fov size to scale to the current x- and y-coordinate
-            cur_row = start_row - row_i * region_info['row_fov_size']
-            cur_col = start_col + col_i * region_info['col_fov_size']
+        for index, (row_i, col_i) in enumerate(row_col_pairs):
+            # use the fov size to scale to the current row- and col-coordinate
+            cur_row = start_row - (row_i * region_info['row_fov_size'])
+            cur_col = start_col + (col_i * region_info['col_fov_size'])
 
             # verify that the coordinate generated is in range
             if not verify_coordinate_on_slide((cur_col, cur_row), 'micron'):
@@ -776,6 +778,8 @@ def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str] = Non
             tiling_params['moly_region'] == 'Y' and \
            region_index != len(tiling_params['region_params']) - 1:
             fov_regions['fovs'].append(moly_point)
+
+        print("Finished generating FOVs for region %s" % region_info['region_name'])
 
     return fov_regions
 
@@ -1251,23 +1255,22 @@ def remap_manual_to_auto_display(change, w_man, manual_to_auto_map, manual_auto_
     return slide_img, manual_auto_warning
 
 
-def write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path):
-    """Saves the manually-defined to automatically-generated FOV map and notifies the user
+def save_json(json_data, save_ann, json_path):
+    """Saves `json__data` to `json_path` and notifies user through `save_ann`
 
-    Helper to `save_mapping` nested callback function in `interactive_remap`
+    Helper to `save_mapping` nested callback function in tiled region and tma visualizations
 
     Args:
-        manual_to_auto_map (dict):
-            defines the mapping of manual to auto FOV names
+        json_data (dict):
+            the JSON data to save
         save_ann (dict):
             contains the annotation object defining the save notification
-        mapping_path (str):
-            the path to the file to save the mapping to
+        json_path (str):
+            the path to save the JSON data to
     """
 
     # save the mapping
-
-    json_utils.write_json_file(json_path=mapping_path, json_object=manual_to_auto_map,
+    json_utils.write_json_file(json_path=json_path, json_object=json_data,
                                encoding="utf-8")
 
     # remove the save annotation if it already exists
@@ -1478,11 +1481,331 @@ def generate_validation_annot(manual_to_auto_map, manual_auto_dist, check_dist=2
     return warning_annot
 
 
+class FOVRectangle:
+    # ensure the rectangles don't try to operate on each other
+    lock = None
+
+    def __init__(self, coords, width, height, color, id_val, ax):
+        rect = Rectangle(coords, width, height, color=color, fill=False, linewidth=1)
+        ax.add_patch(rect)
+        self.rect = rect
+        self.id_val = id_val
+        self.press = None
+
+    def connect(self):
+        """Connect to all the events we need."""
+        self.cidpress = self.rect.figure.canvas.mpl_connect(
+            'button_press_event', self.on_press
+        )
+        self.cidrelease = self.rect.figure.canvas.mpl_connect(
+            'button_release_event', self.on_release
+        )
+
+    def on_press(self, event):
+        """Check whether mouse is over us; if so, store some data."""
+
+        # ensure we only operate on the correct rectangle in unlocked state
+        if event.inaxes != self.rect.axes or FOVRectangle.lock is not None:
+            return
+        contains, attrd = self.rect.contains(event)
+        if not contains:
+            return
+
+        # store information about the mouse press
+        self.press = self.rect.xy, (event.xdata, event.ydata), self.id_val
+
+        # lock other rectangles out
+        FOVRectangle.lock = self
+        # self.rect.figure.canvas.draw()
+
+    def on_release(self, event):
+        """Set the new border and clear button press information."""
+
+        # ensure we don't try to release a rectangle in locked state
+        if FOVRectangle.lock is not self:
+            return
+
+        # toggle the border width between 1 and 5 on click
+        if self.id_val == self.press[2]:
+            if self.rect.get_linewidth() == 1:
+                self.rect.set_linewidth(5)
+            else:
+                self.rect.set_linewidth(1)
+
+        # clear the press and lock info
+        self.press = None
+        FOVRectangle.lock = None
+
+        # re-draw the rectangle
+        self.rect.figure.canvas.draw()
+
+    def disconnect(self):
+        """Disconnect all callbacks."""
+        self.rect.figure.canvas.mpl_disconnect(self.cidpress)
+        self.rect.figure.canvas.mpl_disconnect(self.cidrelease)
+
+
+def generate_fov_rectangle(fov_info, region_colors, stage_optical_coreg_params, ax):
+    """Draws an interactive rectangle for the given FOV
+
+    Args:
+        fov_info (dict):
+            Defines the name, centroid, and size of the FOV in the tiled region
+        region_colors (dict):
+            Maps each FOV to its respective color
+        stage_optical_coreg_params (dict):
+            Contains the co-registration parameters to use
+        ax (matplotlib.axes.Axes):
+            The axis to draw the rectangle on
+
+    Returns:
+        FOVRectangle:
+            The interactive rectangle object associated with the FOV to draw
+    """
+
+    # extract the region name, this method accounts for '_' in the region name itself
+    fov_region = '_'.join(fov_info['name'].split('_')[:-1])
+
+    # use the region name to extract the color
+    fov_color = region_colors[fov_region]
+
+    # get the centroid coordinates
+    fov_centroid = tuple(fov_info['centerPointMicrons'].values())
+
+    # define the top-left corner, subtract fovSizeMicrons from x and add it to y
+    fov_size = fov_info['fovSizeMicrons']
+    fov_top_left_microns = (fov_centroid[0] - fov_size / 2, fov_centroid[1] + fov_size / 2)
+
+    # co-register the top-left fov corner
+    fov_top_left_pixels = convert_stage_to_optical(
+        fov_top_left_microns, stage_optical_coreg_params
+    )
+
+    # we'll also need to find the length and width of the rectangle
+    # NOTE: we do so by co-registering the bottom-left and top-right points
+    # then finding the distance from those to the top-left
+    fov_bottom_left_microns = (
+        fov_centroid[0] - fov_size / 2, fov_centroid[1] - fov_size / 2
+    )
+    fov_bottom_left_pixels = convert_stage_to_optical(
+        fov_bottom_left_microns, stage_optical_coreg_params
+    )
+
+    fov_top_right_microns = (
+        fov_centroid[0] + fov_size / 2, fov_centroid[1] + fov_size / 2
+    )
+    fov_top_right_pixels = convert_stage_to_optical(
+        fov_top_right_microns, stage_optical_coreg_params
+    )
+
+    fov_height = fov_bottom_left_pixels[0] - fov_top_left_pixels[0]
+    fov_width = fov_top_right_pixels[1] - fov_top_left_pixels[1]
+
+    # draw the rectangle defining this fov
+    # NOTE: the x-y axis for rectangles introduces yet another coordinate axis system,
+    # so we'll need to reverse the order fov_top_left_pixels is passed in
+    fov_top_left_pixels_rect = tuple(reversed(fov_top_left_pixels))
+    dr = FOVRectangle(
+        fov_top_left_pixels_rect, fov_width, fov_height, fov_color, fov_info['name'], ax
+    )
+
+    return dr
+
+
+def delete_tiled_region_fovs(rectangles, tiled_region_fovs):
+    """Delete all the FOVs from tiled_region_fovs with lindwidth 5 (indicating its been selected)
+
+    Helper function to `delete_fovs` in `tiled_region_interactive_remap`
+
+
+    Args:
+        rectangles (dict):
+            Maps each FOV to its corresponding rectangle instance
+        tiled_region_fovs (dict):
+            The list of FOVs to overlay for each tiled region
+    """
+
+    # define a list of FOVs to delete
+    # NOTE: only FOVs with a linewidth of 5, indicates user has selected it
+    fovs_delete = [fov for fov in rectangles if rectangles[fov].rect.get_linewidth() == 5]
+
+    # overwrite the list of FOVs in tiled_region_fovs to only contain FOVs not in fov_delete
+    tiled_region_fovs['fovs'] = [
+        fov for fov in tiled_region_fovs['fovs'] if fov['name'] not in fovs_delete
+    ]
+
+    # now delete the corresponding rectangle for each FOV in fovs_delete
+    for fov in fovs_delete:
+        rectangles[fov].rect.remove()
+        del rectangles[fov]
+
+
+def tiled_region_interactive_remap(tiled_region_fovs, tiling_params, slide_img, tiled_region_path,
+                                   coreg_path=settings.COREG_SAVE_PATH, figsize=(7, 7)):
+    """Creates the tiled region interactive interface for manual to auto FOVs
+
+    Args:
+        tiled_region_fovs (dict):
+            The list of FOVs to overlay for each tiled region
+        tiling_params (dict):
+            The tiling parameters generated for each tiled region
+        slide_img (numpy.ndarray):
+            The image to overlay
+        tiled_region_path (str):
+            The path to the file to save the tiled regions to
+        coreg_path (str):
+            the path to the co-registration params
+        figsize (tuple):
+            The size of the interactive figure to display
+    """
+
+    # error check: ensure mapping path exists
+    if not os.path.exists(os.path.split(tiled_region_path)[0]):
+        raise FileNotFoundError(
+            "Path %s to tiled_region_path does not exist, "
+            "please rename to a valid location" % os.path.split(tiled_region_path)[0]
+        )
+
+    # if there isn't a coreg_path defined, the user needs to run update_coregistration_params first
+    if not os.path.exists(coreg_path):
+        raise FileNotFoundError(
+            "You haven't co-registered your slide yet. Please run "
+            "1_set_up_toffy.ipynb first."
+        )
+
+    # load the co-registration parameters in
+    # NOTE: the last set of params in the coreg_params list is the most up-to-date
+    stage_optical_coreg_params = json_utils.read_json_file(coreg_path)['coreg_params'][-1]
+
+    # map each region to a unique color
+    # TODO: default to tab20 discrete cmap, make customizable?
+    cm = plt.get_cmap('tab20')
+    region_colors = {}
+    for index, region in enumerate(tiling_params['region_params']):
+        region_colors[region['region_name']] = cm(index)
+
+    # define an output context to display
+    out = widgets.Output()
+
+    # define a dict to store the rectangles
+    rectangles = {}
+
+    # define status of the save annotation, initially None, updates when user clicks w_save
+    # NOTE: ipywidget callback functions can only access dicts defined in scope
+    save_ann = {'annotation': None}
+
+    def delete_fovs(b):
+        """Deletes the FOVs from the `rectangles` dict, `tiled_region_fovs`, and the image
+
+        Args:
+            b (ipywidgets.widgets.widget_button.Button):
+                the button handler for `w_delete`, passed as a standard for `on_click` callback
+        """
+
+        with out:
+            delete_tiled_region_fovs(rectangles, tiled_region_fovs)
+            ax.figure.canvas.draw()
+
+    def save_mapping(b):
+        """Saves the mapping defined in `tiled_region_fovs`
+
+        Args:
+            b (ipywidgets.widgets.widget_button.Button):
+                the button handler for `w_save`, passed as a standard for `on_click` callback
+        """
+
+        # needs to be in the output widget context to display status
+        with out:
+            # call the helper function to save tiled_region_fovs and notify user
+            save_json(tiled_region_fovs, save_ann, tiled_region_path)
+            ax.figure.canvas.draw()
+
+    # define the delete button
+    w_delete = widgets.Button(
+        description='Delete selected FOVs',
+        layout=widgets.Layout(width='auto'),
+        style={'description_width': 'initial'}
+    )
+
+    # define the save button
+    w_save = widgets.Button(
+        description='Save mapping',
+        layout=widgets.Layout(width='auto'),
+        style={'description_width': 'initial'}
+    )
+
+    # define a box to hold w_man and w_auto
+    w_box = widgets.HBox(
+        [w_delete, w_save],
+        layout=widgets.Layout(
+            display='flex',
+            flex_flow='row',
+            align_items='stretch',
+            width='75%'
+        )
+    )
+
+    # display the box of buttons
+    display(w_box)
+
+    # ensure the selected FOVs get deleted when w_delete clicked
+    w_delete.on_click(delete_fovs)
+
+    # ensure the new mapping gets saved when w_save clicked
+    w_save.on_click(save_mapping)
+
+    # display the figure to plot on
+    fig = plt.figure(figsize=figsize)
+    ax = fig.add_subplot(111)
+
+    # add a legend to indicate which region matches which color
+    handles = [Patch(facecolor=region_colors[rc]) for rc in region_colors]
+    color_names = [rc for rc in region_colors]
+    _ = ax.legend(
+        handles,
+        color_names,
+        title='ROI',
+        bbox_transform=plt.gcf().transFigure,
+        loc='upper right'
+    )
+
+    with out:
+        # draw the image
+        img_plot = ax.imshow(slide_img)
+
+        # overwrite the default title
+        _ = plt.title('Overlay of tiled region FOVs')
+
+        # remove massive padding
+        _ = plt.tight_layout()
+
+        # define a rectangle for each region
+        for index, fov_info in enumerate(tiled_region_fovs['fovs']):
+            # skip Moly points
+            # TODO: will Moly points always be named MoQC?
+            if fov_info['name'] == 'MoQC':
+                continue
+
+            # draw the rectangle associated with the FOV
+            dr = generate_fov_rectangle(fov_info, region_colors, stage_optical_coreg_params, ax)
+
+            # connect the rectangle to the event
+            dr.connect()
+
+            # add the rectangle to the dict
+            rectangles[fov_info['name']] = dr
+
+    # display the output
+    display(out)
+
+    return rectangles
+
+
 # TODO: potential type hinting candidate?
 def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
                           coreg_path=settings.COREG_SAVE_PATH, draw_radius=7, figsize=(7, 7),
                           check_dist=2000, check_duplicates=True, check_mismatches=True):
-    """Creates the remapping interactive interface for manual to auto FOVs
+    """Creates the TMA remapping interactive interface for manual to auto FOVs
 
     Args:
         manual_fovs (dict):
@@ -1534,7 +1857,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
     if not os.path.exists(coreg_path):
         raise FileNotFoundError(
             "You haven't co-registered your slide yet. Please run "
-            "update_coregistraion_params.ipynb first."
+            "1_set_up_toffy.ipynb first."
         )
 
     # load the co-registration parameters in
@@ -1751,7 +2074,7 @@ def tma_interactive_remap(manual_fovs, auto_fovs, slide_img, mapping_path,
         # need to be in the output widget context to display status
         with out:
             # call the helper function to save manual_to_auto_map and notify user
-            write_manual_to_auto_map(manual_to_auto_map, save_ann, mapping_path)
+            save_json(manual_to_auto_map, save_ann, mapping_path)
             ax.figure.canvas.draw()
 
     # ensure a change to w_man redraws the image due to a new manual fov selected
