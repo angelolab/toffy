@@ -267,7 +267,7 @@ def test_create_tiled_comparison(dir_num):
 
         # pass full paths to function
         paths = [os.path.join(top_level_dir, img_dir) for img_dir in dir_names]
-        rosetta.create_tiled_comparison(paths, output_dir)
+        rosetta.create_tiled_comparison(paths, output_dir, max_img_size=10)
 
         # check that each tiled image was created
         for i in range(num_chans):
@@ -283,11 +283,12 @@ def test_create_tiled_comparison(dir_num):
                                    'rescaled/chan0.tiff'))
 
         # no error raised if subset directory is specified
-        rosetta.create_tiled_comparison(paths, output_dir, channels=['chan1', 'chan2'])
+        rosetta.create_tiled_comparison(paths, output_dir, channels=['chan1', 'chan2'],
+                                        max_img_size=10)
 
         # but one is raised if no subset directory is specified
         with pytest.raises(ValueError, match='1 of 1'):
-            rosetta.create_tiled_comparison(paths, output_dir)
+            rosetta.create_tiled_comparison(paths, output_dir, max_img_size=10)
 
 
 def test_add_source_channel_to_tiled_image():

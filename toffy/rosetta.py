@@ -17,6 +17,7 @@ from ark.utils.misc_utils import verify_same_elements, verify_in_list
 
 from toffy.streak_detection import streak_correction
 from toffy.json_utils import read_json_file
+from toffy.image_stitching import get_max_img_size
 
 
 def transform_compensation_json(json_path, comp_mat_path):
@@ -297,13 +298,14 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                     io.imsave(save_path, comp_data[j, :, :, idx], check_contrast=False)
 
 
-def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='rescaled',
-                            channels=None):
+def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
+                            img_sub_folder='rescaled', channels=None):
     """Creates a tiled image comparing FOVs from all supplied runs for each channel.
 
     Args:
         input_dir_list: list of directories to compare
         output_dir: directory where tifs will be saved
+        max_img_size (int): largest fov image size
         img_sub_folder: subfolder within each input directory to load images from
         channels: list of channels to compare. """
 
@@ -342,7 +344,8 @@ def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='rescaled
             # go through each of the directories, read in the images, and place in the right spot
             for idx, key in enumerate(input_dir_list):
                 dir_data = load_imgs_from_tree(key, channels=channels[j:j + 1],
-                                               img_sub_folder=img_sub_folder)
+                                               img_sub_folder=img_sub_folder,
+                                               max_image_size=max_img_size)
                 tiled_image[(img_size * idx):(img_size * (idx + 1)), start:end] = \
                     dir_data.values[i, :, :, 0]
 

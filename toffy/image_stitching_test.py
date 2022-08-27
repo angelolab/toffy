@@ -9,10 +9,17 @@ from ark.utils import io_utils, test_utils
 
 def test_get_max_img_size():
 
-    RUN_JSON_SPOOF = {
+    RUN_JSON_SPOOF_1 = {
         'fovs': [
             {'runOrder': 1, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}},
             {'runOrder': 2, 'scanCount': 1, 'frameSizePixels': {'width': 16, 'height': 16}},
+        ],
+    }
+
+    RUN_JSON_SPOOF_2 = {
+        'fovs': [
+            {'runOrder': 1, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}},
+            {'runOrder': 2, 'scanCount': 1, 'frameSizePixels': {'width': 64, 'height': 64}},
         ],
     }
 
@@ -20,11 +27,21 @@ def test_get_max_img_size():
         test_dir = os.path.join(tmp_dir, 'data', 'test_run')
         os.makedirs(test_dir)
         json_path = os.path.join(test_dir, 'test_run.json')
-        json_utils.write_json_file(json_path, RUN_JSON_SPOOF)
+        json_utils.write_json_file(json_path, RUN_JSON_SPOOF_1)
 
         # test success
-        max_img_size = image_stitching.get_max_img_size(test_dir)
+        max_img_size = image_stitching.get_max_img_size([test_dir])
         assert max_img_size == 32
+
+        with tempfile.TemporaryDirectory() as tmp_dir2:
+            test_dir2 = os.path.join(tmp_dir, 'data', 'test_run2')
+            os.makedirs(test_dir2)
+            json_path = os.path.join(test_dir2, 'test_run2.json')
+            json_utils.write_json_file(json_path, RUN_JSON_SPOOF_2)
+
+            # test success
+            max_img_size = image_stitching.get_max_img_size([test_dir, test_dir2])
+            assert max_img_size == 64
 
 
 def test_stitch_images(mocker):

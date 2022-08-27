@@ -8,24 +8,32 @@ from ark.utils import data_utils, load_utils, io_utils, misc_utils
 from mibi_bin_tools.io_utils import remove_file_extensions
 
 
-def get_max_img_size(run_dir):
-    """Retrieves the maximum FOV image size listed in the fun file
+def get_max_img_size(run_dirs):
+    """Retrieves the maximum FOV image size over listed in the run files for the provided runs
         Args:
-            run_dir (str): path to the run directory containing the run json files """
+            run_dirs (list): list of paths to the run directories containing the run json files
+        Returns:
+            value of max image size"""
 
-    run_name = os.path.basename(run_dir)
-    run_file_path = os.path.join(run_dir, run_name + '.json')
+    size = 0
 
-    # retrieve all pixel width dimensions of the fovs
-    run_data = json_utils.read_json_file(run_file_path)
-    img_sizes = []
-    for fov in run_data['fovs']:
-        img_sizes.append(fov.get('frameSizePixels')['width'])
+    for run_dir in run_dirs:
+        run_name = os.path.basename(run_dir)
+        run_file_path = os.path.join(run_dir, run_name + '.json')
 
-    # return largest
-    max_img_size = max(img_sizes)
+        # retrieve all pixel width dimensions of the fovs
+        run_data = json_utils.read_json_file(run_file_path)
+        img_sizes = []
+        for fov in run_data['fovs']:
+            img_sizes.append(fov.get('frameSizePixels')['width'])
 
-    return max_img_size
+        # largest in run
+        max_img_size = max(img_sizes)
+
+        if max_img_size > size:
+            size = max_img_size
+
+    return size
 
 
 def stitch_images(tiff_out_dir, run_dir, channels=None, img_sub_folder=None):
@@ -59,7 +67,7 @@ def stitch_images(tiff_out_dir, run_dir, channels=None, img_sub_folder=None):
 
     # get load and stitching args
     num_cols = math.isqrt(len(folders))
-    max_img_size = get_max_img_size(run_dir)
+    max_img_size = get_max_img_size([run_dir])
 
     # make stitched subdir
     os.makedirs(stitched_dir)
