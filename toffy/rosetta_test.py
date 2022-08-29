@@ -316,7 +316,8 @@ def test_add_source_channel_to_tiled_image():
         output_dir = os.path.join(top_level_dir, 'output_dir')
         os.makedirs(output_dir)
         rosetta.add_source_channel_to_tiled_image(raw_img_dir=raw_dir, tiled_img_dir=tiled_dir,
-                                                  output_dir=output_dir, source_channel='chan1')
+                                                  output_dir=output_dir, source_channel='chan1',
+                                                  max_img_size=10)
 
         # each image should now have an extra row added on top
         tiled_images = list_files(output_dir)

@@ -314,7 +314,6 @@ def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
     test_data = load_imgs_from_tree(data_dir=test_dir, fovs=[test_fov],
                                     img_sub_folder=img_sub_folder, channels=channels)
 
-    img_size = test_data.shape[1]
     channels = test_data.channels.values
     chanel_num = len(channels)
 
@@ -333,20 +332,20 @@ def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
     # loop over each channel
     for j in range(chanel_num):
         # create tiled array of dirs x fovs
-        tiled_image = np.zeros((img_size * len(input_dir_list),
-                                img_size * fov_num), dtype=test_data.dtype)
+        tiled_image = np.zeros((max_img_size * len(input_dir_list),
+                                max_img_size * fov_num), dtype=test_data.dtype)
 
         # loop over each fov, and place into columns of tiled array
         for i in range(fov_num):
-            start = i * img_size
-            end = (i + 1) * img_size
+            start = i * max_img_size
+            end = (i + 1) * max_img_size
 
             # go through each of the directories, read in the images, and place in the right spot
             for idx, key in enumerate(input_dir_list):
                 dir_data = load_imgs_from_tree(key, channels=channels[j:j + 1],
                                                img_sub_folder=img_sub_folder,
                                                max_image_size=max_img_size)
-                tiled_image[(img_size * idx):(img_size * (idx + 1)), start:end] = \
+                tiled_image[(max_img_size * idx):(max_img_size * (idx + 1)), start:end] = \
                     dir_data.values[i, :, :, 0]
 
         io.imsave(os.path.join(output_dir, channels[j] + '_comparison.tiff'),
@@ -354,7 +353,7 @@ def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
 
 
 def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, source_channel,
-                                      img_sub_folder='', percent_norm=98):
+                                      max_img_size, img_sub_folder='', percent_norm=98):
     """Adds the specified source_channel to the first row of previously generated tiled images
 
     Args:
@@ -362,12 +361,14 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
         tiled_img_dir (str): path to directory contained the tiled images
         output_dir (str): path to directory where outputs will be saved
         img_sub_folder (str): subfolder within raw_img_dir to load images from
+        max_img_size (int): largest fov image size
         source_channel (str): the channel which will be prepended to the tiled images
         percent_norm (int): percentile normalization param to enable easy visualization"""
 
     # load source images
     source_imgs = load_imgs_from_tree(raw_img_dir, channels=[source_channel],
-                                      dtype='float32', img_sub_folder=img_sub_folder)
+                                      dtype='float32', img_sub_folder=img_sub_folder,
+                                      max_image_size=max_img_size)
 
     # convert stacked images to concatenated row
     source_list = [source_imgs.values[fov, :, :, 0] for fov in range(source_imgs.shape[0])]

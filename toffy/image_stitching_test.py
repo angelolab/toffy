@@ -13,7 +13,7 @@ def test_get_max_img_size():
         'fovs': [
             {'runOrder': 1, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}},
             {'runOrder': 2, 'scanCount': 1, 'frameSizePixels': {'width': 16, 'height': 16}},
-            {'runOrder': 3, 'scanCount': 1, 'frameSizePixels': {'width': 16, 'height': 8}},
+            {'runOrder': 3, 'scanCount': 1, 'frameSizePixels': {'width': 8, 'height': 8}},
             {'runOrder': 4, 'scanCount': 1, 'frameSizePixels': {'width': 16, 'height': 16}},
         ],
     }

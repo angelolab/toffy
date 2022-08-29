@@ -32,8 +32,8 @@ def get_max_img_size(run_dir, fov_list=None):
             fov_digits = re.findall(r'\d+', fov)
             run = run_data.get('fovs')
             # get data for fov in list
-            fov_data = list(filter(lambda fov: fov['runOrder'] == 2 and fov['scanCount'] == 1,
-                                   run))
+            fov_data = list(filter(lambda fov: fov['runOrder'] == int(fov_digits[0]) and
+                                               fov['scanCount'] == int(fov_digits[1]), run))
             img_sizes.append(fov_data[0].get('frameSizePixels')['width'])
 
     # largest in run
