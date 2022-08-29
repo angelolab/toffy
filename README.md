@@ -211,6 +211,6 @@ The median pulse height (MPH) provides a way to assess the sensitivity of the de
 
 ## Questions?
 
-Feel free to open an [issue](https://github.com/angelolab/toffy/issues) on our GitHub page.
+If you have a general question or are having trouble with part of the repo, head to the [discussions](https://github.com/angelolab/toffy/discussions) tab to get help. If you've found a bug with the codebase, first make sure there's not already an [open issue](https://github.com/angelolab/toffy/issues), and if not, you can then [open an issue](https://github.com/angelolab/toffy/issues/new/choose) describing the bug.
 
 Before opening, please double check and see that someone else hasn't opened an issue for your question already.
