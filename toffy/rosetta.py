@@ -17,6 +17,7 @@ from ark.utils.misc_utils import verify_same_elements, verify_in_list
 
 from toffy.streak_detection import streak_correction
 from toffy.json_utils import read_json_file
+from toffy import image_stitching
 
 
 def transform_compensation_json(json_path, comp_mat_path):
@@ -297,13 +298,14 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                     io.imsave(save_path, comp_data[j, :, :, idx], check_contrast=False)
 
 
-def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='rescaled',
-                            channels=None):
+def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
+                            img_sub_folder='rescaled', channels=None):
     """Creates a tiled image comparing FOVs from all supplied runs for each channel.
 
     Args:
         input_dir_list: list of directories to compare
         output_dir: directory where tifs will be saved
+        max_img_size (int): largest fov image size
         img_sub_folder: subfolder within each input directory to load images from
         channels: list of channels to compare. """
 
@@ -312,7 +314,6 @@ def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='rescaled
     test_data = load_imgs_from_tree(data_dir=test_dir, fovs=[test_fov],
                                     img_sub_folder=img_sub_folder, channels=channels)
 
-    img_size = test_data.shape[1]
     channels = test_data.channels.values
     chanel_num = len(channels)
 
@@ -331,19 +332,20 @@ def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='rescaled
     # loop over each channel
     for j in range(chanel_num):
         # create tiled array of dirs x fovs
-        tiled_image = np.zeros((img_size * len(input_dir_list),
-                                img_size * fov_num), dtype=test_data.dtype)
+        tiled_image = np.zeros((max_img_size * len(input_dir_list),
+                                max_img_size * fov_num), dtype=test_data.dtype)
 
         # loop over each fov, and place into columns of tiled array
         for i in range(fov_num):
-            start = i * img_size
-            end = (i + 1) * img_size
+            start = i * max_img_size
+            end = (i + 1) * max_img_size
 
             # go through each of the directories, read in the images, and place in the right spot
             for idx, key in enumerate(input_dir_list):
                 dir_data = load_imgs_from_tree(key, channels=channels[j:j + 1],
-                                               img_sub_folder=img_sub_folder)
-                tiled_image[(img_size * idx):(img_size * (idx + 1)), start:end] = \
+                                               img_sub_folder=img_sub_folder,
+                                               max_image_size=max_img_size)
+                tiled_image[(max_img_size * idx):(max_img_size * (idx + 1)), start:end] = \
                     dir_data.values[i, :, :, 0]
 
         io.imsave(os.path.join(output_dir, channels[j] + '_comparison.tiff'),
@@ -351,7 +353,7 @@ def create_tiled_comparison(input_dir_list, output_dir, img_sub_folder='rescaled
 
 
 def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, source_channel,
-                                      img_sub_folder='', percent_norm=98):
+                                      max_img_size, img_sub_folder='', percent_norm=98):
     """Adds the specified source_channel to the first row of previously generated tiled images
 
     Args:
@@ -359,12 +361,14 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
         tiled_img_dir (str): path to directory contained the tiled images
         output_dir (str): path to directory where outputs will be saved
         img_sub_folder (str): subfolder within raw_img_dir to load images from
+        max_img_size (int): largest fov image size
         source_channel (str): the channel which will be prepended to the tiled images
         percent_norm (int): percentile normalization param to enable easy visualization"""
 
     # load source images
     source_imgs = load_imgs_from_tree(raw_img_dir, channels=[source_channel],
-                                      dtype='float32', img_sub_folder=img_sub_folder)
+                                      dtype='float32', img_sub_folder=img_sub_folder,
+                                      max_image_size=max_img_size)
 
     # convert stacked images to concatenated row
     source_list = [source_imgs.values[fov, :, :, 0] for fov in range(source_imgs.shape[0])]
@@ -495,20 +499,23 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, masses=None):
         mult_matrix.to_csv(os.path.join(save_dir, base_name + '_mult_%s.csv' % (str(i))))
 
 
-def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs_dir,
+def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs_dir, bin_file_dir,
                      fovs_per_run=5):
     """ Creates a new directory for rosetta testing and copies over a random subset of
         previously extracted images
     Args:
         cohort_name (str): name for all combined runs
         run_names (list): gives names of run folders to retrieve extracted images from
-        rosetta_testing_dir: directory where to create cohort rosetta testing folder
-        extracted_imgs_dir: directory containing images from each run
+        rosetta_testing_dir (str): directory where to create cohort rosetta testing folder
+        extracted_imgs_dir (str): directory containing images from each run,
+        bin_file_dir (str): directory containing json run file
         fovs_per_run: number of fovs from each run to use for testing, default 5
+    Returns:
+        max_img_size (int) which is the largest fov image size of the testing fovs chosen
 
     """
     # path validation
-    validate_paths([rosetta_testing_dir, extracted_imgs_dir], data_prefix=False)
+    validate_paths([rosetta_testing_dir, extracted_imgs_dir, bin_file_dir], data_prefix=False)
 
     # validate provided run names
     for run in run_names:
@@ -520,6 +527,7 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
     os.makedirs(os.path.join(cohort_rosetta_dir, 'extracted_images'))
 
     # randomly choose fovs from a run and copy them to the img subdir in rosetta testing dir
+    max_img_size = 0
     for i, run in enumerate(ns.natsorted(run_names)):
         run_path = os.path.join(extracted_imgs_dir, run)
 
@@ -527,12 +535,19 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
         fovs_in_run = ns.natsorted(fovs_in_run)
         rosetta_fovs = random.sample(fovs_in_run, k=fovs_per_run)
 
+        # check for largest image size in run
+        img_size = image_stitching.get_max_img_size(os.path.join(bin_file_dir, run), rosetta_fovs)
+        if img_size > max_img_size:
+            max_img_size = img_size
+
         for fov in rosetta_fovs:
             fov_path = os.path.join(os.path.join(extracted_imgs_dir, run, fov))
             # prepend the run name to each fov
             new_path = os.path.join(os.path.join(cohort_rosetta_dir, 'extracted_images',
                                                  run + '_' + fov))
             shutil.copytree(fov_path, new_path)
+
+    return max_img_size
 
 
 def rescale_raw_imgs(img_out_dir, scale=200):
