@@ -41,10 +41,7 @@ def get_max_img_size(run_dir, fov_list=None):
     # largest in run
     max_img_size = max(img_sizes)
 
-    if max_img_size > size:
-        size = max_img_size
-
-    return size
+    return max_img_size
 
 
 def stitch_images(tiff_out_dir, run_dir, channels=None, img_sub_folder=None):
