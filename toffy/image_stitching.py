@@ -17,8 +17,6 @@ def get_max_img_size(run_dir, fov_list=None):
         Returns:
             value of max image size"""
 
-    size = 0
-
     run_name = os.path.basename(run_dir)
     run_file_path = os.path.join(run_dir, run_name + '.json')
 
