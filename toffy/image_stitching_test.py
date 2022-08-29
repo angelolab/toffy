@@ -13,6 +13,8 @@ def test_get_max_img_size():
         'fovs': [
             {'runOrder': 1, 'scanCount': 1, 'frameSizePixels': {'width': 32, 'height': 32}},
             {'runOrder': 2, 'scanCount': 1, 'frameSizePixels': {'width': 16, 'height': 16}},
+            {'runOrder': 3, 'scanCount': 1, 'frameSizePixels': {'width': 8, 'height': 8}},
+            {'runOrder': 4, 'scanCount': 1, 'frameSizePixels': {'width': 16, 'height': 16}},
         ],
     }
 
@@ -22,9 +24,13 @@ def test_get_max_img_size():
         json_path = os.path.join(test_dir, 'test_run.json')
         json_utils.write_json_file(json_path, RUN_JSON_SPOOF)
 
-        # test success
+        # test success for all fovs
         max_img_size = image_stitching.get_max_img_size(test_dir)
         assert max_img_size == 32
+
+        # test success for fov list
+        max_img_size = image_stitching.get_max_img_size(test_dir, ['fov-2-scan-1', 'fov-3-scan-1'])
+        assert max_img_size == 16
 
 
 def test_stitch_images(mocker):
