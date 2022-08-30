@@ -9,10 +9,11 @@ from ark.utils import data_utils, load_utils, io_utils, misc_utils
 from mibi_bin_tools.io_utils import remove_file_extensions
 
 
-def get_max_img_size(run_dir, fov_list=None):
+def get_max_img_size(run_dir, tiff_out_dir, fov_list=None):
     """Retrieves the maximum FOV image size listed in the run file, or for the given FOVs
         Args:
             run_dir (str): path to the run directory containing the run json files
+            tiff_out_dir (str): path to the extracted images for the specific run
             fov_list (list): list of fovs to check max size for, default none which check all fovs
         Returns:
             value of max image size"""
@@ -20,25 +21,37 @@ def get_max_img_size(run_dir, fov_list=None):
     run_name = os.path.basename(run_dir)
     run_file_path = os.path.join(run_dir, run_name + '.json')
 
-    # retrieve all pixel width dimensions of the fovs
-    run_data = json_utils.read_json_file(run_file_path)
     img_sizes = []
 
-    if not fov_list:
-        for fov in run_data['fovs']:
-            img_sizes.append(fov.get('frameSizePixels')['width'])
+    # check for a run file
+    if os.path.exists(run_file_path):
+        # retrieve all pixel width dimensions of the fovs
+        run_data = json_utils.read_json_file(run_file_path)
+
+        if not fov_list:
+            for fov in run_data['fovs']:
+                img_sizes.append(fov.get('frameSizePixels')['width'])
+        else:
+            for fov in fov_list:
+                fov_digits = re.findall(r'\d+', fov)
+                run = run_data.get('fovs')
+                # get data for fov in list
+                fov_data = list(filter(lambda fov: fov['runOrder'] == int(fov_digits[0]) and
+                                       fov['scanCount'] == int(fov_digits[1]), run))
+                img_sizes.append(fov_data[0].get('frameSizePixels')['width'])
+
+    # use extracted images to get max size
     else:
+        if not fov_list:
+            fov_list = io_utils.list_folders(tiff_out_dir, substrs='fov-')
+        channels = io_utils.list_files(os.path.join(tiff_out_dir, fov_list[0]))
+        # check image size for each fov
         for fov in fov_list:
-            fov_digits = re.findall(r'\d+', fov)
-            run = run_data.get('fovs')
-            # get data for fov in list
-            fov_data = list(filter(lambda fov: fov['runOrder'] == int(fov_digits[0]) and
-                                   fov['scanCount'] == int(fov_digits[1]), run))
-            img_sizes.append(fov_data[0].get('frameSizePixels')['width'])
+            test_file = io.imread(os.path.join(tiff_out_dir, fov, channels[0]))
+            img_sizes.append(test_file.shape[1])
 
     # largest in run
     max_img_size = max(img_sizes)
-
     return max_img_size
 
 
@@ -73,7 +86,7 @@ def stitch_images(tiff_out_dir, run_dir, channels=None, img_sub_folder=None):
 
     # get load and stitching args
     num_cols = math.isqrt(len(folders))
-    max_img_size = get_max_img_size(run_dir)
+    max_img_size = get_max_img_size(run_dir, tiff_out_dir)
 
     # make stitched subdir
     os.makedirs(stitched_dir)
