@@ -310,7 +310,8 @@ def compute_qc_metrics(bin_file_path, extracted_imgs_path, fov_name,
 
     # retrieve the image data from extracted tiff files
     # the image coords should be: ['fov', 'type', 'x', 'y', 'channel']
-    image_data = load_utils.load_imgs_from_tree(extracted_imgs_path, fovs=[fov_name])
+    image_data = load_utils.load_imgs_from_tree(extracted_imgs_path, fovs=[fov_name],
+                                                dtype='float32')
     image_data = format_img_data(image_data)
 
     metric_csvs = compute_qc_metrics_direct(image_data, fov_name, gaussian_blur, blur_factor)
@@ -521,23 +522,8 @@ def visualize_qc_metrics(metric_name, qc_metric_dir, axes_size=16, wrap=6,
     )
 
     # save the figure if specified
-    if save_dir is not None:
-        if ax is None:
-            misc_utils.save_figure(save_dir, '%s_barplot_stats.png' % metric_name, dpi=dpi)
-        else:
-            # TODO: add ax argument to misc_utils.save_figure when moved to tmi
-            if not os.path.exists(save_dir):
-                raise FileNotFoundError("save_dir %s does not exist" % save_dir)
-
-            fig = plt.gcf()
-            extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-
-            # TODO: fine tune extent expansion
-            fig.savefig(
-                os.path.join(save_dir, '%s_barplot_stats.png' % metric_name),
-                dpi=dpi,
-                bbox_inches=extent.expanded(1.1, 1.2)
-            )
+    if save_dir:
+        misc_utils.save_figure(save_dir, '%s_barplot_stats.png' % metric_name, dpi=dpi)
 
 
 def format_img_data(img_data):
