@@ -310,7 +310,8 @@ def compute_qc_metrics(bin_file_path, extracted_imgs_path, fov_name,
 
     # retrieve the image data from extracted tiff files
     # the image coords should be: ['fov', 'type', 'x', 'y', 'channel']
-    image_data = load_utils.load_imgs_from_tree(extracted_imgs_path, fovs=[fov_name])
+    image_data = load_utils.load_imgs_from_tree(extracted_imgs_path, fovs=[fov_name],
+                                                dtype='float32')
     image_data = format_img_data(image_data)
 
     metric_csvs = compute_qc_metrics_direct(image_data, fov_name, gaussian_blur, blur_factor)
