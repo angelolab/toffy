@@ -522,23 +522,8 @@ def visualize_qc_metrics(metric_name, qc_metric_dir, axes_size=16, wrap=6,
     )
 
     # save the figure if specified
-    if save_dir is not None:
-        if ax is None:
-            misc_utils.save_figure(save_dir, '%s_barplot_stats.png' % metric_name, dpi=dpi)
-        else:
-            # TODO: add ax argument to misc_utils.save_figure when moved to tmi
-            if not os.path.exists(save_dir):
-                raise FileNotFoundError("save_dir %s does not exist" % save_dir)
-
-            fig = plt.gcf()
-            extent = ax.get_window_extent().transformed(fig.dpi_scale_trans.inverted())
-
-            # TODO: fine tune extent expansion
-            fig.savefig(
-                os.path.join(save_dir, '%s_barplot_stats.png' % metric_name),
-                dpi=dpi,
-                bbox_inches=extent.expanded(1.1, 1.2)
-            )
+    if save_dir:
+        misc_utils.save_figure(save_dir, '%s_barplot_stats.png' % metric_name, dpi=dpi)
 
 
 def format_img_data(img_data):
