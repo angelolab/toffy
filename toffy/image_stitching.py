@@ -9,11 +9,11 @@ from ark.utils import data_utils, load_utils, io_utils, misc_utils
 from mibi_bin_tools.io_utils import remove_file_extensions
 
 
-def get_max_img_size(run_dir, tiff_out_dir, fov_list=None):
+def get_max_img_size(tiff_out_dir, run_dir=None, fov_list=None):
     """Retrieves the maximum FOV image size listed in the run file, or for the given FOVs
         Args:
-            run_dir (str): path to the run directory containing the run json files
             tiff_out_dir (str): path to the extracted images for the specific run
+            run_dir (str): path to the run directory containing the run json files, default None
             fov_list (list): list of fovs to check max size for, default none which check all fovs
         Returns:
             value of max image size"""
@@ -55,11 +55,11 @@ def get_max_img_size(run_dir, tiff_out_dir, fov_list=None):
     return max_img_size
 
 
-def stitch_images(tiff_out_dir, run_dir, channels=None, img_sub_folder=None):
+def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None):
     """Creates a new directory containing stitched channel images for the run
         Args:
             tiff_out_dir (str): path to the extracted images for the specific run
-            run_dir (str): path to the run directory containing the run json files
+            run_dir (str): path to the run directory containing the run json files, default None
             channels (list): list of channels to produce stitched images for, None will do all
             img_sub_folder (str): optional name of image sub-folder within each fov"""
 
@@ -86,7 +86,7 @@ def stitch_images(tiff_out_dir, run_dir, channels=None, img_sub_folder=None):
 
     # get load and stitching args
     num_cols = math.isqrt(len(folders))
-    max_img_size = get_max_img_size(run_dir, tiff_out_dir)
+    max_img_size = get_max_img_size(tiff_out_dir, run_dir)
 
     # make stitched subdir
     os.makedirs(stitched_dir)
