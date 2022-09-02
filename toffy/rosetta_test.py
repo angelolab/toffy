@@ -267,7 +267,7 @@ def test_create_tiled_comparison(dir_num):
 
         # pass full paths to function
         paths = [os.path.join(top_level_dir, img_dir) for img_dir in dir_names]
-        rosetta.create_tiled_comparison(paths, output_dir)
+        rosetta.create_tiled_comparison(paths, output_dir, max_img_size=10)
 
         # check that each tiled image was created
         for i in range(num_chans):
@@ -283,11 +283,12 @@ def test_create_tiled_comparison(dir_num):
                                    'rescaled/chan0.tiff'))
 
         # no error raised if subset directory is specified
-        rosetta.create_tiled_comparison(paths, output_dir, channels=['chan1', 'chan2'])
+        rosetta.create_tiled_comparison(paths, output_dir, channels=['chan1', 'chan2'],
+                                        max_img_size=10)
 
         # but one is raised if no subset directory is specified
         with pytest.raises(ValueError, match='1 of 1'):
-            rosetta.create_tiled_comparison(paths, output_dir)
+            rosetta.create_tiled_comparison(paths, output_dir, max_img_size=10)
 
 
 def test_add_source_channel_to_tiled_image():
@@ -315,7 +316,8 @@ def test_add_source_channel_to_tiled_image():
         output_dir = os.path.join(top_level_dir, 'output_dir')
         os.makedirs(output_dir)
         rosetta.add_source_channel_to_tiled_image(raw_img_dir=raw_dir, tiled_img_dir=tiled_dir,
-                                                  output_dir=output_dir, source_channel='chan1')
+                                                  output_dir=output_dir, source_channel='chan1',
+                                                  max_img_size=10)
 
         # each image should now have an extra row added on top
         tiled_images = list_files(output_dir)
@@ -436,40 +438,57 @@ def test_create_rosetta_matrices():
             create_rosetta_matrices(bad_matrix_path, temp_dir, multipliers)
 
 
-def test_copy_image_files():
+def mock_img_size(run_dir, fov_list=None):
+    run = os.path.basename(run_dir)
+    sizes = {'run_1': 16, 'run_2': 32, 'run_3': 16}
+    return sizes[run]
+
+
+def test_copy_image_files(mocker):
+    mocker.patch('toffy.image_stitching.get_max_img_size', mock_img_size)
+
     run_names = ['run_1', 'run_2', 'run_3']
-    with tempfile.TemporaryDirectory() as temp_dir:
-        for i in range(0, 3):
-            run_folder = os.path.join(temp_dir, run_names[i])
-            os.makedirs(run_folder)
-            for j in range(1, 6):
-                os.makedirs(os.path.join(run_folder, f'fov-{j}'))
-                test_utils._make_blank_file(os.path.join(run_folder, f'fov-{j}'), 'test_image.tif')
-            os.makedirs(os.path.join(run_folder, 'stitched_images'))
+    with tempfile.TemporaryDirectory() as bin_dir:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            for i in range(0, 3):
+                run_folder = os.path.join(temp_dir, run_names[i])
+                bin_folder = os.path.join(bin_dir, run_names[i])
+                os.makedirs(run_folder)
+                for j in range(1, 6):
+                    os.makedirs(os.path.join(run_folder, f'fov-{j}'))
+                    test_utils._make_blank_file(os.path.join(
+                        run_folder, f'fov-{j}'), 'test_image.tif')
+                os.makedirs(os.path.join(run_folder, 'stitched_images'))
 
-        with tempfile.TemporaryDirectory() as temp_dir2:
-            # bad run name should raise an error
-            with pytest.raises(ValueError, match='not a valid run name'):
-                rosetta.copy_image_files('cohort_name', ['bad_name'], temp_dir2, temp_dir)
+            with tempfile.TemporaryDirectory() as temp_dir2:
+                # bad run name should raise an error
+                with pytest.raises(ValueError, match='not a valid run name'):
+                    rosetta.copy_image_files('cohort_name', ['bad_name'], temp_dir2, temp_dir,
+                                             bin_dir)
 
-            # bad paths should raise an error
-            with pytest.raises(ValueError, match='could not be found'):
-                rosetta.copy_image_files('cohort_name', run_names, 'bad_path', temp_dir)
-                rosetta.copy_image_files('cohort_name', run_names, temp_dir2, 'bad_path')
+                # bad paths should raise an error
+                with pytest.raises(ValueError, match='could not be found'):
+                    rosetta.copy_image_files('cohort_name', run_names, 'bad_path', temp_dir,
+                                             bin_dir)
+                    rosetta.copy_image_files('cohort_name', run_names, temp_dir2, 'bad_path',
+                                             bin_dir)
 
-            # test successful folder copy
-            rosetta.copy_image_files('cohort_name', run_names, temp_dir2, temp_dir, fovs_per_run=5)
+                # test successful folder copy
+                img_size = rosetta.copy_image_files('cohort_name', run_names, temp_dir2, temp_dir,
+                                                    bin_dir, fovs_per_run=5)
+                assert img_size == 32
 
-            # check that correct total and per run fovs are copied
-            extracted_fov_dir = os.path.join(temp_dir2, 'cohort_name', 'extracted_images')
-            assert len(list_folders(extracted_fov_dir)) == 15
-            for i in range(1, 4):
-                assert len(list(list_folders(extracted_fov_dir, f'run_{i}'))) == 5
-            assert len(list(list_folders(extracted_fov_dir, 'stitched_images'))) == 0
+                # check that correct total and per run fovs are copied
+                extracted_fov_dir = os.path.join(temp_dir2, 'cohort_name', 'extracted_images')
+                assert len(list_folders(extracted_fov_dir)) == 15
+                for i in range(1, 4):
+                    assert len(list(list_folders(extracted_fov_dir, f'run_{i}'))) == 5
+                assert len(list(list_folders(extracted_fov_dir, 'stitched_images'))) == 0
 
-            # check that files in fov folders are copied
-            for folder in list_folders(extracted_fov_dir):
-                assert os.path.exists(os.path.join(extracted_fov_dir, folder, 'test_image.tif'))
+                # check that files in fov folders are copied
+                for folder in list_folders(extracted_fov_dir):
+                    assert os.path.exists(os.path.join(
+                        extracted_fov_dir, folder, 'test_image.tif'))
 
 
 def test_rescale_raw_imgs():
