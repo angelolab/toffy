@@ -499,7 +499,7 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, masses=None):
         mult_matrix.to_csv(os.path.join(save_dir, base_name + '_mult_%s.csv' % (str(i))))
 
 
-def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs_dir, bin_file_dir,
+def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs_dir,
                      fovs_per_run=5):
     """ Creates a new directory for rosetta testing and copies over a random subset of
         previously extracted images
@@ -508,14 +508,11 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
         run_names (list): gives names of run folders to retrieve extracted images from
         rosetta_testing_dir (str): directory where to create cohort rosetta testing folder
         extracted_imgs_dir (str): directory containing images from each run,
-        bin_file_dir (str): directory containing json run file
         fovs_per_run: number of fovs from each run to use for testing, default 5
-    Returns:
-        max_img_size (int) which is the largest fov image size of the testing fovs chosen
 
     """
     # path validation
-    validate_paths([rosetta_testing_dir, extracted_imgs_dir, bin_file_dir], data_prefix=False)
+    validate_paths([rosetta_testing_dir, extracted_imgs_dir], data_prefix=False)
 
     # validate provided run names
     for run in run_names:
@@ -527,7 +524,6 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
     os.makedirs(os.path.join(cohort_rosetta_dir, 'extracted_images'))
 
     # randomly choose fovs from a run and copy them to the img subdir in rosetta testing dir
-    max_img_size = 0
     for i, run in enumerate(ns.natsorted(run_names)):
         run_path = os.path.join(extracted_imgs_dir, run)
 
@@ -535,19 +531,12 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
         fovs_in_run = ns.natsorted(fovs_in_run)
         rosetta_fovs = random.sample(fovs_in_run, k=fovs_per_run)
 
-        # check for largest image size in run
-        img_size = image_stitching.get_max_img_size(os.path.join(bin_file_dir, run), rosetta_fovs)
-        if img_size > max_img_size:
-            max_img_size = img_size
-
         for fov in rosetta_fovs:
             fov_path = os.path.join(os.path.join(extracted_imgs_dir, run, fov))
             # prepend the run name to each fov
             new_path = os.path.join(os.path.join(cohort_rosetta_dir, 'extracted_images',
                                                  run + '_' + fov))
             shutil.copytree(fov_path, new_path)
-
-    return max_img_size
 
 
 def rescale_raw_imgs(img_out_dir, scale=200):
