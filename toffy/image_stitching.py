@@ -18,13 +18,14 @@ def get_max_img_size(tiff_out_dir, run_dir=None, fov_list=None):
         Returns:
             value of max image size"""
 
-    run_name = os.path.basename(run_dir)
-    run_file_path = os.path.join(run_dir, run_name + '.json')
+    if run_dir:
+        run_name = os.path.basename(run_dir)
+        run_file_path = os.path.join(run_dir, run_name + '.json')
 
     img_sizes = []
 
     # check for a run file
-    if os.path.exists(run_file_path):
+    if run_dir and os.path.exists(run_file_path):
         # retrieve all pixel width dimensions of the fovs
         run_data = json_utils.read_json_file(run_file_path)
 

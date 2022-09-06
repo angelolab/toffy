@@ -44,7 +44,7 @@ def test_get_max_img_size():
         test_utils._write_tifs(tmpdir, larger_fov, channel_list, (32, 32), '', False, int)
 
         # test success for all fovs
-        max_img_size = image_stitching.get_max_img_size(tmpdir, 'bin_dir')
+        max_img_size = image_stitching.get_max_img_size(tmpdir)
         assert max_img_size == 32
 
         # test success for fov list
@@ -80,7 +80,7 @@ def test_stitch_images(mocker):
         shutil.rmtree(os.path.join(tmpdir, 'stitched_images'))
 
         # test stitching for specific channels
-        image_stitching.stitch_images(tmpdir, tmpdir, ['Au', 'CD3'])
+        image_stitching.stitch_images(tmpdir, channels=['Au', 'CD3'])
         assert sorted(io_utils.list_files(os.path.join(tmpdir, 'stitched_images'))) == \
                sorted(['Au_stitched.tiff', 'CD3_stitched.tiff'])
         shutil.rmtree(os.path.join(tmpdir, 'stitched_images'))
