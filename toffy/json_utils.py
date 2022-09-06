@@ -80,8 +80,7 @@ def list_moly_fovs(bin_file_dir, fov_list=None):
 
     for file in json_files:
         json_path = os.path.join(bin_file_dir, file)
-        with open(json_path, 'r') as jp:
-            json_file = json.load(jp)
+        json_file = read_json_file(json_path, encoding='utf-8')
 
         if json_file.get('standardTarget', "") == "Molybdenum Foil":
             moly_name = file.split('.json')[0]
