@@ -213,7 +213,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                    data_prefix=False)
 
     # get list of all fovs
-    fovs = list_folders(raw_data_dir)
+    fovs = list_folders(raw_data_dir, substrs='fov')
 
     # load csv files
     comp_mat = pd.read_csv(comp_mat_path, index_col=0)
