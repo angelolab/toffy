@@ -269,9 +269,16 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
     # get all folders from the sweep
     sweep_fovs = io_utils.list_folders(sweep_path)
     sweep_fov_paths = [os.path.join(sweep_path, fov) for fov in sweep_fovs]
+    # check for sufficient directory structure
+    if len(sweep_fovs) < 4:
+        raise ValueError("Invalid amount of FOV folders. Please use at lease 4 voltages.")
 
     # compute pulse heights and channel counts for each FOV
     for fov_path in sweep_fov_paths:
+        bin_file = io_utils.list_files(fov_path, substrs='bin')
+        # check for bin file in each folder
+        if len(bin_file) == 0:
+            raise ValueError(f"No bin file detected in {fov_path}")
         write_mph_per_mass(base_dir=fov_path, output_dir=fov_path, fov='fov-1-scan-1',
                            masses=moly_masses)
         write_counts_per_mass(base_dir=fov_path, output_dir=fov_path, fov='fov-1-scan-1',
