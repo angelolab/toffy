@@ -224,11 +224,12 @@ def combine_run_metrics(run_dir, substring):
     metrics.to_csv(os.path.join(run_dir, substring + '_combined.csv'), index=False)
 
 
-def combine_tuning_curve_metrics(dir_list):
+def combine_tuning_curve_metrics(dir_list, count_range=(0, 100000)):
     """Combines metrics together into a single dataframe for fitting a turning curve
 
     Args:
         dir_list (list): list of directories to pull metrics from
+        range (tuple): range of appropriate mass count values for the FOVs
 
     Returns:
         pd.DataFrame: dataframe containing aggregates metrics"""
@@ -242,6 +243,11 @@ def combine_tuning_curve_metrics(dir_list):
         # combine tables together
         pulse_heights = pd.read_csv(os.path.join(dir, 'fov-1-scan-1_pulse_heights.csv'))
         channel_counts = pd.read_csv(os.path.join(dir, 'fov-1-scan-1_channel_counts.csv'))
+        for count in channel_counts:
+            if count < count_range[0] or count > count_range[1]:
+                warnings.warn(f"The counts for the FOV contained in {dir} are outside of the "
+                              f"expected range, and thus it will be excluded.")
+                pass
         combined = pulse_heights.merge(channel_counts, 'outer', on=['fov', 'mass'])
 
         if len(combined) != len(pulse_heights):
@@ -252,6 +258,10 @@ def combine_tuning_curve_metrics(dir_list):
         # add directory label and add to list
         combined['directory'] = dir
         all_dirs.append(combined)
+
+    # check for sufficient data
+    if len(all_dirs) < 4:
+        raise ValueError("Invalid amount of FOV data. Please choose another sweep.")
 
     # combine data from each dir together
     all_data = pd.concat(all_dirs)
@@ -279,7 +289,7 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
     sweep_fov_paths = [os.path.join(sweep_path, fov) for fov in sweep_fovs]
     # check for sufficient directory structure
     if len(sweep_fovs) < 4:
-        raise ValueError("Invalid amount of FOV folders. Please use at lease 4 voltages.")
+        raise ValueError("Invalid amount of FOV folders. Please use at least 4 voltages.")
 
     # compute pulse heights and channel counts for each FOV
     for fov_path in sweep_fov_paths:
@@ -293,7 +303,7 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
                               masses=moly_masses)
 
     # combine data together into single df
-    tuning_data = combine_tuning_curve_metrics(sweep_fov_paths)
+    tuning_data = combine_tuning_curve_metrics(sweep_fov_paths, count_range=(0, 100000))
 
     # generate fitted curve
     coeffs = fit_calibration_curve(tuning_data['pulse_height'].values,
