@@ -121,7 +121,8 @@ def create_objective_function(obj_func):
     return objectives[obj_func]
 
 
-def fit_calibration_curve(x_vals, y_vals, obj_func, outliers=None, plot_fit=False, save_path=None):
+def fit_calibration_curve(x_vals, y_vals, obj_func, outliers=None, plot_fit=False, save_path=None,
+                          x_label=None, y_label=None):
     """Finds the optimal weights to fit the supplied values for the specified function
 
     Args:
@@ -131,6 +132,8 @@ def fit_calibration_curve(x_vals, y_vals, obj_func, outliers=None, plot_fit=Fals
         outliers (tuple or None): optional tuple of ([x_coords], [y_coords]) to plot
         plot_fit (bool): whether or not to plot the fit of the function vs the values
         save_path (str or None): location to save the plot of the fitted values
+        x_label (str or None): label for the x-axis
+        y_label (str or None):label for the y-axis
 
     Returns:
         list: the weights of the fitted function"""
@@ -147,6 +150,11 @@ def fit_calibration_curve(x_vals, y_vals, obj_func, outliers=None, plot_fit=Fals
         x_line = np.arange(min(x_vals), max(x_vals), 1)
         y_line = objective(x_line, *popt)
         plt.plot(x_line, y_line, '--', color='red')
+
+        if x_label:
+            plt.xlabel(x_label)
+        if y_label:
+            plt.ylabel(y_label)
 
         if outliers is not None:
             plt.scatter(outliers[0], outliers[1])
@@ -290,7 +298,9 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
     # generate fitted curve
     coeffs = fit_calibration_curve(tuning_data['pulse_height'].values,
                                    tuning_data['norm_channel_count'].values, 'exp', plot_fit=True,
-                                   save_path=os.path.join(sweep_path, 'function_fit.jpg'))
+                                   save_path=os.path.join(sweep_path, 'function_fit.jpg'),
+                                   x_label='Median Pulse Height',
+                                   y_label='Normalized Channel Counts')
 
     # save the fitted curve
     norm_json = {'name': 'exp', 'weights': coeffs.tolist()}
