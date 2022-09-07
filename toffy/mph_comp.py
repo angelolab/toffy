@@ -5,6 +5,7 @@ import json
 import matplotlib.pyplot as plt
 from natsort import natsort_keygen
 
+from toffy.json_utils import read_json_file
 from mibi_bin_tools import bin_files
 from ark.utils import io_utils
 from toffy.normalize import combine_run_metrics
@@ -28,15 +29,14 @@ def get_estimated_time(bin_file_dir, fov):
         raise FileNotFoundError(f"The FOV name supplied doesn't have a JSON file: {fov}")
 
     # retrieve estimated time (frame dimensions x pixel dwell time)
-    with open(os.path.join(bin_file_dir, json_file[0])) as file:
-        run_metadata = json.load(file)
-        try:
-            size = run_metadata.get('frameSize')
-            time = run_metadata.get('dwellTimeMillis')
-            estimated_time = int(size**2 * time)
-        except TypeError:
-            raise KeyError("The FOV json file is missing one of the necessary keys "
-                           "(frameSize or dwellTimeMillis)")
+    run_metadata = read_json_file(os.path.join(bin_file_dir, json_file[0]), encoding='utf-8')
+    try:
+        size = run_metadata.get('frameSize')
+        time = run_metadata.get('dwellTimeMillis')
+        estimated_time = int(size**2 * time)
+    except TypeError:
+        raise KeyError("The FOV json file is missing one of the necessary keys "
+                       "(frameSize or dwellTimeMillis)")
 
     return estimated_time
 
