@@ -246,7 +246,7 @@ def combine_tuning_curve_metrics(dir_list, count_range=(0, 100000)):
         for count in channel_counts.channel_count:
             if (count <= count_range[0]) or (count >= count_range[1]):
                 warnings.warn(f"The counts for the FOV contained in {dir} are outside of the "
-                              f"expected range, and thus it will be excluded.")
+                              f"expected range and will be excluded.")
                 low_val = True
         if low_val:
             break
@@ -266,7 +266,6 @@ def combine_tuning_curve_metrics(dir_list, count_range=(0, 100000)):
     all_data.reset_index()
 
     # check for sufficient data
-    print(set(all_data.directory))
     if len(set(all_data.directory)) < 4:
         raise ValueError("Invalid amount of FOV data. Please choose another sweep.")
 
