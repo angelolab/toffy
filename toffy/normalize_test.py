@@ -163,13 +163,20 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
             os.makedirs(full_path)
             mph_dfs[i].to_csv(os.path.join(full_path, 'fov-1-scan-1_pulse_heights.csv'),
                               index=False)
-            all_mph.extend(mph_dfs[i]['pulse_height'])
 
             count_dfs[i].to_csv(os.path.join(full_path, 'fov-1-scan-1_channel_counts.csv'),
                                 index=False)
-            all_counts.extend(count_dfs[i]['channel_count'])
 
-            dir_paths.append(os.path.join(temp_dir, dir_names[i]))
+            if not count_dfs[i]['channel_count'][9] == 0:
+                all_mph.extend(mph_dfs[i]['pulse_height'])
+                all_counts.extend(count_dfs[i]['channel_count'])
+                dir_paths.append(os.path.join(temp_dir, dir_names[i]))
+            # low channel count
+            else:
+                # remove values for the fov
+                mph_dfs.pop(i)
+                count_dfs.pop(i)
+                dir_names.pop(i)
 
         combined = normalize.combine_tuning_curve_metrics(dir_paths)
 
