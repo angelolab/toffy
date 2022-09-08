@@ -182,7 +182,7 @@ def get_masses_from_channel_names(names, panel_df):
 def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info,
                           input_masses=None, output_masses=None, save_format='rescaled',
                           raw_data_sub_folder='', batch_size=1, gaus_rad=1, norm_const=200,
-                          ffc_channels=['chan_39'], correct_streaks=False, streak_chan='Noodle'):
+                          ffc_masses=[39], correct_streaks=False, streak_chan='Noodle'):
     """Function to compensate MIBI data with a flow-cytometry style compensation matrix
 
     Args:
@@ -204,7 +204,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         batch_size: number of images to process at a time
         gaus_rad: radius for blurring image data. Passing 0 will result in no blurring
         norm_const: constant used for rescaling if save_format == 'rescaled'
-        ffc_channels (list): channels that need to be flat field corrected.
+        ffc_masses (list): masses that need to be flat field corrected.
         correct_streaks (bool): whether to correct streaks in the image
         streak_chan (str): the channel to use for streak correction
     """
@@ -220,6 +220,10 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
     acquired_masses = panel_info['Mass'].values
     acquired_targets = panel_info['Target'].values
     all_masses = comp_mat.columns.values.astype('int')
+
+    # convert ffc mass into ffc channel names
+    ffc_channels = [panel_info.loc[panel_info.Mass == mass].Target.values[0] for
+                    mass in ffc_masses]
 
     validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, input_masses,
                     output_masses, all_masses, fovs, save_format, raw_data_sub_folder, batch_size,
