@@ -31,7 +31,7 @@ def merge_duplicate_masses(panel):
     # combine target names
     for mass in duplicates['Mass'].unique():
         duplicate_targets = panel.loc[panel['Mass'] == mass, 'Target']
-        target_name = ''.join(name + '_' for name in duplicate_targets)[:-1]
+        target_name = ''.join(str(name) + '_' for name in duplicate_targets)[:-1]
         panel.loc[panel['Mass'] == mass, 'Target'] = target_name
 
     # only keep one row for each mass value
@@ -82,7 +82,7 @@ def convert_panel(panel_path):
         panel.columns = ['Mass', 'Target', 'Start', 'Stop']
         return panel
     # if not ionpath panel, raise error
-    elif list(panel.columns) != ['ID (Lot)', 'Target', 'Clone', 'Mass', 'Element', 'Manufacture',
+    elif list(panel.columns) != ['ID (Lot)', 'Target', 'Clone', 'Mass', 'Element', 'Manufactured',
                                  'Stock', 'Titer', 'Volume (μL)', 'Staining Batch\n']:
         raise ValueError(f'{panel_name}.csv is not an Ionpath or toffy structured panel.')
 
