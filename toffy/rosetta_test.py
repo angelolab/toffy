@@ -469,6 +469,11 @@ def test_copy_image_files(mocker):
                 rosetta.copy_image_files('cohort_name', run_names, 'bad_path', temp_dir)
                 rosetta.copy_image_files('cohort_name', run_names, temp_dir2, 'bad_path')
 
+            # not enough fov files for provided arg
+            with pytest.raises(ValueError, match='do not contain the minimum amount of FOVs'):
+                rosetta.copy_image_files('cohort_name', run_names, temp_dir2, temp_dir,
+                                         fovs_per_run=10)
+
             # test successful folder copy
             rosetta.copy_image_files('cohort_name', run_names, temp_dir2, temp_dir, fovs_per_run=5)
 
