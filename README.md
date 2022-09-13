@@ -28,7 +28,7 @@ We have also recorded workshop talks which complement the repository. [MIBI Work
 
 ### 1. Using toffy for the first time
 The first time you use toffy on one of the commercial instruments, you'll need to perform some basic tasks to ensure everything is working properly. The [set up](./templates/1_set_up_toffy.ipynb) jupyter notebook will guide you through this process and the resulting directory structure is explained below ([directory structure](#directory-structure)).
-[Workshop Talk: Toffy Setup](https://youtu.be/g52-oqP_QjA?list=PLjNbkEm4vA27f8-EB7q9u_lDPI7oxohhn&t=254)
+[Workshop Talk: Toffy Setup](https://youtu.be/g52-oqP_QjA?list=PLjNbkEm4vA27f8-EB7q9u_lDPI7oxohhn&t=243)
 
 ### 2. Setting up a MIBI run 
 For large MIBI runs, it is often convenient to automatically generate the JSON file containing the individual FOVs. There are two notebooks for this task, one for large tiled regions, the second for TMAs. If you will be tiling multiple adjacent FOVs together into a single image, the [tiling](./templates/2_create_tiled_mibi_run.ipynb) notebook can automate this process. You provide the location of the top corner of the tiled region, along with the number of fovs along the rows and columns, and it will automatically create the appropriate JSON file. 
