@@ -92,7 +92,7 @@ def generate_sample_fovs_list(fov_coords, fov_names, fov_sizes):
 
 # generation parameters for the extraction/qc callback build
 # this should be limited to the panel, foldernames, and kwargs
-FOV_CALLBACKS = ('extract_tiffs', 'generate_qc', 'generate_mph')
+FOV_CALLBACKS = ('extract_tiffs', 'generate_qc', 'generate_mph', 'generate_pulse_heights')
 RUN_CALLBACKS = ('plot_qc_metrics', 'plot_mph_metrics', 'image_stitching')
 
 
@@ -123,6 +123,10 @@ class ExtractionQCGenerationCases:
     def case_mph_only(self):
         cbs, kwargs = self.case_all_callbacks()
         return cbs[2:3], kwargs
+
+    def case_pulse_heights_only(self):
+        cbs, kwargs = self.case_all_callbacks()
+        return cbs[3:4], kwargs
 
     def case_extraction_intensities(self):
         cbs, kwargs = self.case_all_callbacks()
@@ -253,6 +257,27 @@ def check_mph_dir_structure(mph_out_dir: str, plot_dir: str, point_names: List[s
     if combined:
         assert os.path.exists(os.path.join(mph_out_dir, 'mph_pulse_combined.csv'))
         assert os.path.exists(os.path.join(plot_dir, 'fov_vs_mph.jpg'))
+
+
+def check_pulse_dir_structure(pulse_out_dir: str, point_names: List[str], bad_points: List[str]):
+    """Checks pulse heights directory for minimum expected structure
+
+    Args:
+        pulse_out_dir (str):
+            Folder containing pulse height files
+        point_names (list):
+            List of expected point names
+        bad_points (list):
+            list of points which should not have structure created
+
+    Raises:
+        AssertionError:
+            Assertion error on missing csv
+    """
+
+    for point, bad in zip(point_names, bad_points):
+        assert os.path.exists(os.path.join(pulse_out_dir, f'{point}-pulse_heights.csv'))
+        assert not os.path.exists(os.path.join(pulse_out_dir, f'{bad}-pulse_heights.csv'))
 
 
 def check_stitched_dir_structure(stitched_dir: str, channels: List[str]):
@@ -417,14 +442,15 @@ class WatcherCases:
             check_mph_dir_structure,
             functools.partial(
                 check_stitched_dir_structure,
-                channels=list(panel['Target']))
+                channels=list(panel['Target'])),
+            check_pulse_dir_structure
         ]
 
         kwargs = {'panel': panel, 'intensities': intensity, 'replace': replace}
 
         return (
             ['plot_qc_metrics', 'plot_mph_metrics', 'image_stitching'],
-            ['extract_tiffs'],
+            ['extract_tiffs', 'generate_pulse_heights'],
             kwargs,
             validators
         )

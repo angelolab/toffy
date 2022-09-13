@@ -89,12 +89,14 @@ def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, fov_cbs, kwargs, validators
             qc_out_dir = os.path.join(tmpdir, 'cb_1', RUN_DIR_NAME)
             mph_out_dir = os.path.join(tmpdir, 'cb_2', RUN_DIR_NAME)
             plot_dir = os.path.join(tmpdir, 'cb_2_plots', RUN_DIR_NAME)
+            pulse_out_dir = os.path.join(tmpdir, 'cb_3', RUN_DIR_NAME)
             stitched_dir = os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME, 'stitched_images')
 
             # add directories to kwargs
             kwargs['tiff_out_dir'] = tiff_out_dir
             kwargs['qc_out_dir'] = qc_out_dir
             kwargs['mph_out_dir'] = mph_out_dir
+            kwargs['pulse_out_dir'] = pulse_out_dir
             kwargs['plot_dir'] = plot_dir
 
             run_data = os.path.join(tmpdir, 'test_run')
@@ -154,6 +156,9 @@ def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, fov_cbs, kwargs, validators
 
             # stitch images check
             validators[3](os.path.join(tmpdir, 'cb_0', RUN_DIR_NAME, 'stitched_images'))
+
+            # pulse heights check
+            validators[4](os.path.join(tmpdir, 'cb_3', RUN_DIR_NAME), fovs, bad_fovs)
 
     except OSError:
         warnings.warn('Temporary file cleanup was incomplete.')
