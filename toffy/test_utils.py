@@ -276,8 +276,8 @@ def check_pulse_dir_structure(pulse_out_dir: str, point_names: List[str], bad_po
     """
 
     for point, bad in zip(point_names, bad_points):
-        assert os.path.exists(os.path.join(pulse_out_dir, f'{point}-pulse_heights.csv'))
-        assert not os.path.exists(os.path.join(pulse_out_dir, f'{bad}-pulse_heights.csv'))
+        assert os.path.exists(os.path.join(pulse_out_dir, f'{point}_pulse_heights.csv'))
+        assert not os.path.exists(os.path.join(pulse_out_dir, f'{bad}_pulse_heights.csv'))
 
 
 def check_stitched_dir_structure(stitched_dir: str, channels: List[str]):
