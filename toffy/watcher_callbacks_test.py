@@ -10,9 +10,9 @@ from toffy import watcher_callbacks
 from toffy.json_utils import write_json_file
 from toffy.test_utils import (
     mock_visualize_qc_metrics,
-    ExtractionQCGenerationCases,
-    ExtractionQCCallCases,
-    PlotQCMetricsCases,
+    FovCallbackCases,
+    WatcherTestData,
+    RunCallbackCases,
     check_extraction_dir_structure,
     check_qc_dir_structure,
     check_mph_dir_structure,
@@ -28,8 +28,8 @@ COMBINED_RUN_JSON_SPOOF = {
 }
 
 
-@parametrize_with_cases('callbacks, kwargs', cases=ExtractionQCGenerationCases)
-@parametrize_with_cases('data_path',  cases=ExtractionQCCallCases)
+@parametrize_with_cases('callbacks, kwargs', cases=FovCallbackCases)
+@parametrize_with_cases('data_path',  cases=WatcherTestData)
 def test_build_fov_callback(callbacks, kwargs, data_path):
 
     intensities = kwargs.get('intensities', ['Au', 'chan_39'])
@@ -78,8 +78,8 @@ def test_build_fov_callback(callbacks, kwargs, data_path):
 
 
 @patch('toffy.watcher_callbacks.visualize_qc_metrics', side_effect=mock_visualize_qc_metrics)
-@parametrize_with_cases('callbacks, kwargs', cases=PlotQCMetricsCases)
-@parametrize_with_cases('data_path', cases=ExtractionQCCallCases)
+@parametrize_with_cases('callbacks, kwargs', cases=RunCallbackCases)
+@parametrize_with_cases('data_path', cases=WatcherTestData)
 def test_build_callbacks(viz_mock, callbacks, kwargs, data_path):
     with tempfile.TemporaryDirectory() as tmp_dir:
 

@@ -107,7 +107,7 @@ def mock_visualize_mph(mph_df, out_dir, regression: bool = False):
         _make_small_file(out_dir, 'fov_vs_mph.jpg')
 
 
-class ExtractionQCGenerationCases:
+class FovCallbackCases:
     def case_all_callbacks(self):
         panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel.csv')
         return FOV_CALLBACKS, {'panel': pd.read_csv(panel_path)}
@@ -150,7 +150,7 @@ class ExtractionQCGenerationCases:
         return ['invalid_callback'], {}
 
 
-class PlotQCMetricsCases:
+class RunCallbackCases:
     def case_default(self):
         panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel.csv')
         return RUN_CALLBACKS, {'panel': pd.read_csv(panel_path)}
@@ -343,9 +343,9 @@ def create_sample_run(name_list, run_order_list, scan_count_list, create_json=Fa
     return sample_run
 
 
-# calling cases for the built extraction/qc callback
+# calling cases for data to test against
 # this should be limited to folders to call; no generation parameters allowed  >:(
-class ExtractionQCCallCases:
+class WatcherTestData:
     def case_combined(self):
         return os.path.join(Path(__file__).parent, 'data', 'combined')
 
