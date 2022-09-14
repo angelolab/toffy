@@ -242,11 +242,6 @@ class FovCallbacks:
         if not os.path.exists(pulse_out_dir):
             os.makedirs(pulse_out_dir)
 
-        if self.__fov_data is None:
-            if panel is None:
-                raise ValueError('Must provide panel if fov data is not already generated...')
-            self._generate_fov_data(panel, **kwargs)
-
         write_mph_per_mass(
             base_dir=self.run_folder,
             output_dir=pulse_out_dir,
