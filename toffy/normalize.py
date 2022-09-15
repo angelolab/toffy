@@ -224,7 +224,7 @@ def combine_run_metrics(run_dir, substring):
     metrics.to_csv(os.path.join(run_dir, substring + '_combined.csv'), index=False)
 
 
-def combine_tuning_curve_metrics(dir_list, count_range=(0, 100000)):
+def combine_tuning_curve_metrics(dir_list, count_range=(0, 3000000)):
     """Combines metrics together into a single dataframe for fitting a turning curve
 
     Args:
@@ -278,7 +278,7 @@ def combine_tuning_curve_metrics(dir_list, count_range=(0, 100000)):
 
 def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100],
                            save_path=os.path.join('..', 'toffy', 'norm_func.json'),
-                           count_range=(0, 100000)):
+                           count_range=(0, 3000000)):
     """Creates a tuning curve for an instrument based on the provided moly sweep
 
     Args:
