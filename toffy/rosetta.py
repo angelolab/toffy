@@ -519,9 +519,17 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
     validate_paths([rosetta_testing_dir, extracted_imgs_dir], data_prefix=False)
 
     # validate provided run names
+    small_runs = []
     for run in run_names:
         if not os.path.exists(os.path.join(extracted_imgs_dir, run)):
             raise ValueError(f'{run} is not a valid run name found in {extracted_imgs_dir}')
+        fovs_in_run = list_folders(os.path.join(extracted_imgs_dir, run), substrs='fov')
+        # check number of fovs in each run
+        if len(fovs_in_run) < fovs_per_run:
+            small_runs.append(run)
+    if len(small_runs) > 0:
+        raise ValueError(f"The run folders {small_runs} do not contain the minimum amount of FOVs "
+                         f"({fovs_per_run}) defined by the fovs_per_run given.")
 
     # make rosetta testing dir and extracted images subdir
     cohort_rosetta_dir = os.path.join(rosetta_testing_dir, cohort_name)
