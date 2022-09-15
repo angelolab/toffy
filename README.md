@@ -64,7 +64,7 @@ For more information, see the [reorganizing your data walkthrough](https://www.y
 ![flow-chart](templates/img/toffy_processing.png)
 
 ## Installation
-In order to get toffy working, you'll need to first install some dependencies and the repository itself. [Workshop Talk: Toffy Setup](https://www.youtube.com/watch?v=g52-oqP_QjA&list=PLjNbkEm4vA27f8-EB7q9u_lDPI7oxohhn&index=1)
+In order to get toffy working, you'll need to first install some dependencies and the repository itself. For more information, see the  [toffy setup walkthrough](https://www.youtube.com/watch?v=g52-oqP_QjA&list=PLjNbkEm4vA27f8-EB7q9u_lDPI7oxohhn&index=1)
 
 ### Requirements for specific operating systems
 The process of setting up is largely the same for different operating systems. However, there are a few key differences. 
