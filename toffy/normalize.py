@@ -54,7 +54,7 @@ def write_counts_per_mass(base_dir, output_dir, fov, masses, start_offset=0.5,
 
 
 def write_mph_per_mass(base_dir, output_dir, fov, masses, start_offset=0.5, stop_offset=0.5):
-    """Records the mean pulse height (MPH) per mass for the specified FOV
+    """Records the median pulse height (MPH) per mass for the specified FOV
 
     Args:
         base_dir (str): the directory containing the FOV
