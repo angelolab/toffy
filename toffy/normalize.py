@@ -236,10 +236,9 @@ def combine_tuning_curve_metrics(dir_list, count_range=(0, 3000000)):
 
     # create list to hold all extracted data
     all_dirs = []
-
     # loop through each run folder
     for dir in dir_list:
-        low_val = False
+        extreme_val = False
         # combine tables together
         pulse_heights = pd.read_csv(os.path.join(dir, 'fov-1-scan-1_pulse_heights.csv'))
         channel_counts = pd.read_csv(os.path.join(dir, 'fov-1-scan-1_channel_counts.csv'))
@@ -247,9 +246,9 @@ def combine_tuning_curve_metrics(dir_list, count_range=(0, 3000000)):
             if (count <= count_range[0]) or (count >= count_range[1]):
                 warnings.warn(f"The counts for the FOV contained in {dir} are outside of the "
                               f"expected range and will be excluded.")
-                low_val = True
-        if low_val:
-            break
+                extreme_val = True
+        if extreme_val:
+            continue
 
         combined = pulse_heights.merge(channel_counts, 'outer', on=['fov', 'mass'])
         if len(combined) != len(pulse_heights):

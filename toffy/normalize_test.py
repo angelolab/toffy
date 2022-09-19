@@ -156,6 +156,7 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
 
         # variables to hold all unique values of each metric
         all_mph, all_counts, dir_paths = [], [], []
+        extreme_val = []
 
         # create csv files with data to be combined
         for i in range(len(dir_names)):
@@ -171,12 +172,11 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
                 all_mph.extend(mph_dfs[i]['pulse_height'])
                 all_counts.extend(count_dfs[i]['channel_count'])
                 dir_paths.append(os.path.join(temp_dir, dir_names[i]))
-            # low channel count
             else:
-                # remove values for the fov
-                mph_dfs.pop(i)
-                count_dfs.pop(i)
-                dir_names.pop(i)
+                extreme_val.append(dir_names[i])
+
+        for fov in extreme_val:
+            dir_names.remove(fov)
 
         combined = normalize.combine_tuning_curve_metrics(dir_paths)
 
