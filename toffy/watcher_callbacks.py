@@ -230,7 +230,7 @@ class FovCallbacks:
         """Generates pulse height csvs from bin files, and saves output to provided directory
 
         Args:
-            pulse_out_dir (str): where to output pulse height csvs to
+            pulse_out_dir (str): where to output pulse height csvs
             panel (pd.DataFrame): Target mass integration ranges
             **kwargs (dict):
                 Additional arguments for `toffy.normalize.write_mph_per_mass`. Accepted kwargs are:
