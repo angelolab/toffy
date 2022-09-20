@@ -13,11 +13,9 @@ from mibi_bin_tools.bin_files import extract_bin_files, _write_out
 from mibi_bin_tools.type_utils import any_true
 
 from toffy.qc_comp import compute_qc_metrics_direct, combine_qc_metrics, visualize_qc_metrics
-
 from toffy.mph_comp import compute_mph_metrics, combine_mph_metrics, visualize_mph
-
 from toffy.image_stitching import stitch_images
-
+from toffy.normalize import write_mph_per_mass
 from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 
 
@@ -144,7 +142,7 @@ class FovCallbacks:
             tiff_out_dir (str):
                 Path where tiffs are written
             panel (pd.DataFrame):
-                Target massf integration ranges
+                Target mass integration ranges
             **kwargs (dict):
                 Additional arguments for `mibi_bin_tools.bin_files.extract_bin_files`.
                 Accepted kwargs are
@@ -208,14 +206,12 @@ class FovCallbacks:
 
         Args:
             mph_out_dir (str): where to output mph csvs to
-
             **kwargs (dict):
                 Additional arguments for `toffy.qc_comp.compute_mph_metrics`. Accepted kwargs are:
 
              - mass
              - mass_start
              - mass_stop
-
         """
 
         if not os.path.exists(mph_out_dir):
@@ -229,6 +225,30 @@ class FovCallbacks:
             mass_start=kwargs.get('mass_start', 97.5),
             mass_stop=kwargs.get('mass_stop', 98.5),
         )
+
+    def generate_pulse_heights(self, pulse_out_dir: str, panel: pd.DataFrame = None, **kwargs):
+        """Generates pulse height csvs from bin files, and saves output to provided directory
+
+        Args:
+            pulse_out_dir (str): where to output pulse height csvs
+            panel (pd.DataFrame): Target mass integration ranges
+            **kwargs (dict):
+                Additional arguments for `toffy.normalize.write_mph_per_mass`. Accepted kwargs are:
+
+             - start_offset
+             - stop_offset
+        """
+
+        if not os.path.exists(pulse_out_dir):
+            os.makedirs(pulse_out_dir)
+
+        write_mph_per_mass(
+            base_dir=self.run_folder,
+            output_dir=pulse_out_dir,
+            fov=self.point_name,
+            masses=panel['Mass'].values,
+            start_offset=kwargs.get('mass_start', 0.3),
+            stop_offset=kwargs.get('mass_stop', 0))
 
 
 def build_fov_callback(*args, **kwargs):

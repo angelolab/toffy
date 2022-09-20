@@ -10,12 +10,13 @@ from toffy import watcher_callbacks
 from toffy.json_utils import write_json_file
 from toffy.test_utils import (
     mock_visualize_qc_metrics,
-    ExtractionQCGenerationCases,
-    ExtractionQCCallCases,
-    PlotQCMetricsCases,
+    FovCallbackCases,
+    WatcherTestData,
+    RunCallbackCases,
     check_extraction_dir_structure,
     check_qc_dir_structure,
     check_mph_dir_structure,
+    check_pulse_dir_structure,
     check_stitched_dir_structure,
 )
 
@@ -27,8 +28,8 @@ COMBINED_RUN_JSON_SPOOF = {
 }
 
 
-@parametrize_with_cases('callbacks, kwargs', cases=ExtractionQCGenerationCases)
-@parametrize_with_cases('data_path',  cases=ExtractionQCCallCases)
+@parametrize_with_cases('callbacks, kwargs', cases=FovCallbackCases)
+@parametrize_with_cases('data_path',  cases=WatcherTestData)
 def test_build_fov_callback(callbacks, kwargs, data_path):
 
     intensities = kwargs.get('intensities', ['Au', 'chan_39'])
@@ -37,11 +38,12 @@ def test_build_fov_callback(callbacks, kwargs, data_path):
     with tempfile.TemporaryDirectory() as tmp_dir:
 
         extracted_dir = os.path.join(tmp_dir, 'extracted')
-        qc_dir = os.path.join(tmp_dir, 'qc')
+        file_dir = os.path.join(tmp_dir, 'fov_data')
         plot_dir = os.path.join(tmp_dir, 'plots')
         kwargs['tiff_out_dir'] = extracted_dir
-        kwargs['qc_out_dir'] = qc_dir
-        kwargs['mph_out_dir'] = qc_dir
+        kwargs['qc_out_dir'] = file_dir
+        kwargs['mph_out_dir'] = file_dir
+        kwargs['pulse_out_dir'] = file_dir
         kwargs['plot_dir'] = plot_dir
 
         run_data = os.path.join(tmp_dir, 'tissue')
@@ -68,14 +70,16 @@ def test_build_fov_callback(callbacks, kwargs, data_path):
             check_extraction_dir_structure(extracted_dir, point_names, [], ['SMA'],
                                            intensities, replace)
         if 'generate_qc' in callbacks:
-            check_qc_dir_structure(qc_dir, point_names, [])
+            check_qc_dir_structure(file_dir, point_names, [])
         if 'generate_mph' in callbacks:
-            check_mph_dir_structure(qc_dir, plot_dir, point_names, [])
+            check_mph_dir_structure(file_dir, plot_dir, point_names, [])
+        if 'generate_pulse_heights' in callbacks:
+            check_pulse_dir_structure(file_dir, point_names, [])
 
 
 @patch('toffy.watcher_callbacks.visualize_qc_metrics', side_effect=mock_visualize_qc_metrics)
-@parametrize_with_cases('callbacks, kwargs', cases=PlotQCMetricsCases)
-@parametrize_with_cases('data_path', cases=ExtractionQCCallCases)
+@parametrize_with_cases('callbacks, kwargs', cases=RunCallbackCases)
+@parametrize_with_cases('data_path', cases=WatcherTestData)
 def test_build_callbacks(viz_mock, callbacks, kwargs, data_path):
     with tempfile.TemporaryDirectory() as tmp_dir:
 
