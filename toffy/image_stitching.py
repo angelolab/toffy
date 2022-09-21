@@ -9,10 +9,11 @@ from ark.utils import data_utils, load_utils, io_utils, misc_utils
 from mibi_bin_tools.io_utils import remove_file_extensions
 
 
-def get_max_img_size(tiff_out_dir, run_dir=None, fov_list=None):
+def get_max_img_size(tiff_out_dir, img_sub_folder='', run_dir=None, fov_list=None):
     """Retrieves the maximum FOV image size listed in the run file, or for the given FOVs
         Args:
             tiff_out_dir (str): path to the extracted images for the specific run
+            img_sub_folder (str): optional name of image sub-folder within each fov
             run_dir (str): path to the run directory containing the run json files, default None
             fov_list (list): list of fovs to check max size for, default none which check all fovs
         Returns:
@@ -45,10 +46,10 @@ def get_max_img_size(tiff_out_dir, run_dir=None, fov_list=None):
     else:
         if not fov_list:
             fov_list = io_utils.list_folders(tiff_out_dir, substrs='fov-')
-        channels = io_utils.list_files(os.path.join(tiff_out_dir, fov_list[0]))
+        channels = io_utils.list_files(os.path.join(tiff_out_dir, fov_list[0], img_sub_folder))
         # check image size for each fov
         for fov in fov_list:
-            test_file = io.imread(os.path.join(tiff_out_dir, fov, channels[0]))
+            test_file = io.imread(os.path.join(tiff_out_dir, fov, img_sub_folder, channels[0]))
             img_sizes.append(test_file.shape[1])
 
     # largest in run
@@ -87,7 +88,7 @@ def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None
 
     # get load and stitching args
     num_cols = math.isqrt(len(folders))
-    max_img_size = get_max_img_size(tiff_out_dir, run_dir)
+    max_img_size = get_max_img_size(tiff_out_dir, img_sub_folder, run_dir)
 
     # make stitched subdir
     os.makedirs(stitched_dir)

@@ -26,12 +26,12 @@ def test_get_max_img_size():
         json_utils.write_json_file(json_path, RUN_JSON_SPOOF)
 
         # test success for all fovs
-        max_img_size = image_stitching.get_max_img_size('extracted_dir', test_dir)
+        max_img_size = image_stitching.get_max_img_size('extracted_dir', run_dir=test_dir)
         assert max_img_size == 32
 
         # test success for fov list
-        max_img_size = image_stitching.get_max_img_size('extracted_dir', test_dir,
-                                                        ['fov-2-scan-1', 'fov-3-scan-1'])
+        max_img_size = image_stitching.get_max_img_size('extracted_dir', run_dir=test_dir,
+                                                        fov_list=['fov-2-scan-1', 'fov-3-scan-1'])
         assert max_img_size == 16
 
     # test by reading image sizes
@@ -48,9 +48,22 @@ def test_get_max_img_size():
         assert max_img_size == 32
 
         # test success for fov list
-        max_img_size = image_stitching.get_max_img_size(tmpdir, 'bin_dir',
-                                                        ['fov-1-scan-1', 'fov-2-scan-1'])
+        max_img_size = image_stitching.get_max_img_size(tmpdir, run_dir='bin_dir',
+                                                        fov_list=['fov-1-scan-1', 'fov-2-scan-1'])
         assert max_img_size == 16
+
+    # test by reading image sizes in subdir
+    with tempfile.TemporaryDirectory() as tmpdir:
+        channel_list = ['Au', 'CD3', 'CD4', 'CD8', 'CD11c']
+        fov_list = ['fov-1-scan-1', 'fov-2-scan-1']
+        larger_fov = ['fov-3-scan-1']
+
+        test_utils._write_tifs(tmpdir, fov_list, channel_list, (16, 16), 'sub_dir', False, int)
+        test_utils._write_tifs(tmpdir, larger_fov, channel_list, (32, 32), 'sub_dir', False, int)
+
+        # test success for all fovs
+        max_img_size = image_stitching.get_max_img_size(tmpdir, img_sub_folder='sub_dir')
+        assert max_img_size == 32
 
 
 def test_stitch_images(mocker):
