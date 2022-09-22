@@ -178,7 +178,7 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
         for fov in extreme_val:
             dir_names.remove(fov)
 
-        combined = normalize.combine_tuning_curve_metrics(dir_paths)
+        combined = normalize.combine_tuning_curve_metrics(dir_paths, count_range=(0, 101))
 
         # data may be in a different order due to matching dfs, but all values should be present
         assert set(all_mph) == set(combined['pulse_height'])
@@ -253,6 +253,7 @@ def test_create_tuning_function(tmpdir, mocker):
     # define paths for generated outputs
     save_path = os.path.join(tmpdir, 'norm_func.json')
     plot_path = os.path.join(sweep_dir, 'function_fit.jpg')
+    all_plot_path = os.path.join(sweep_dir, 'function_fit_all_data.jpg')
 
     # 3 runs should raise an error
     with pytest.raises(ValueError, match="Invalid amount of FOV folders"):
@@ -268,10 +269,21 @@ def test_create_tuning_function(tmpdir, mocker):
 
     test_utils._make_blank_file(run_dir, 'fov-1-scan-1.bin')
 
-    # test success
+    # test success with count_range
     normalize.create_tuning_function(sweep_path=sweep_dir, save_path=save_path)
     assert os.path.exists(save_path)
     assert os.path.exists(plot_path)
+    assert os.path.exists(all_plot_path)
+
+    os.remove(save_path)
+    os.remove(plot_path)
+    os.remove(all_plot_path)
+
+    # test success without count range
+    normalize.create_tuning_function(sweep_path=sweep_dir, save_path=save_path, count_range=None)
+    assert os.path.exists(save_path)
+    assert os.path.exists(plot_path)
+    assert not os.path.exists(all_plot_path)
 
 
 def test_identify_outliers():

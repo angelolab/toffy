@@ -122,7 +122,7 @@ def create_objective_function(obj_func):
 
 
 def fit_calibration_curve(x_vals, y_vals, obj_func, outliers=None, plot_fit=False, save_path=None,
-                          x_label=None, y_label=None):
+                          x_label=None, y_label=None, title=None, show_plot=False):
     """Finds the optimal weights to fit the supplied values for the specified function
 
     Args:
@@ -134,6 +134,7 @@ def fit_calibration_curve(x_vals, y_vals, obj_func, outliers=None, plot_fit=Fals
         save_path (str or None): location to save the plot of the fitted values
         x_label (str or None): label for the x-axis
         y_label (str or None):label for the y-axis
+        title (str or None): label for the plot title
 
     Returns:
         list: the weights of the fitted function"""
@@ -155,12 +156,17 @@ def fit_calibration_curve(x_vals, y_vals, obj_func, outliers=None, plot_fit=Fals
             plt.xlabel(x_label)
         if y_label:
             plt.ylabel(y_label)
+        if title:
+            plt.title(title)
 
         if outliers is not None:
             plt.scatter(outliers[0], outliers[1])
 
         if save_path is not None:
             plt.savefig(save_path)
+
+        if show_plot:
+            plt.show()
         plt.close()
 
     return popt
@@ -224,7 +230,7 @@ def combine_run_metrics(run_dir, substring):
     metrics.to_csv(os.path.join(run_dir, substring + '_combined.csv'), index=False)
 
 
-def combine_tuning_curve_metrics(dir_list, count_range=(0, 3000000)):
+def combine_tuning_curve_metrics(dir_list, count_range):
     """Combines metrics together into a single dataframe for fitting a turning curve
 
     Args:
@@ -235,18 +241,19 @@ def combine_tuning_curve_metrics(dir_list, count_range=(0, 3000000)):
         pd.DataFrame: dataframe containing aggregates metrics"""
 
     # create list to hold all extracted data
-    all_dirs = []
+    all_dirs, excluded_fovs = [], []
     # loop through each run folder
     for dir in dir_list:
         extreme_val = False
         # combine tables together
         pulse_heights = pd.read_csv(os.path.join(dir, 'fov-1-scan-1_pulse_heights.csv'))
         channel_counts = pd.read_csv(os.path.join(dir, 'fov-1-scan-1_channel_counts.csv'))
-        for count in channel_counts.channel_count:
-            if (count <= count_range[0]) or (count >= count_range[1]):
-                warnings.warn(f"The counts for the FOV contained in {dir} are outside of the "
-                              f"expected range and will be excluded.")
-                extreme_val = True
+        if count_range:
+            for count in channel_counts.channel_count:
+                if (count <= count_range[0]) or (count >= count_range[1]):
+                    extreme_val = True
+                    excluded_fovs.append(os.path.basename(dir))
+                    break
         if extreme_val:
             continue
 
@@ -259,6 +266,12 @@ def combine_tuning_curve_metrics(dir_list, count_range=(0, 3000000)):
         # add directory label and add to list
         combined['directory'] = dir
         all_dirs.append(combined)
+
+    if len(excluded_fovs) > 0:
+        print("The counts for the FOV contained in the following folders are outside of "
+              "the expected range and will be excluded: ", *excluded_fovs, sep='\n- ')
+    elif count_range:
+        print("No extreme values detected.")
 
     # combine data from each dir together
     all_data = pd.concat(all_dirs)
@@ -296,27 +309,46 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
 
     # compute pulse heights and channel counts for each FOV
     for fov_path in sweep_fov_paths:
-        bin_file = io_utils.list_files(fov_path, substrs='bin')
-        # check for bin file in each folder
-        if len(bin_file) == 0:
-            raise ValueError(f"No bin file detected in {fov_path}")
-        write_mph_per_mass(base_dir=fov_path, output_dir=fov_path, fov='fov-1-scan-1',
-                           masses=moly_masses)
-        write_counts_per_mass(base_dir=fov_path, output_dir=fov_path, fov='fov-1-scan-1',
-                              masses=moly_masses)
+        if not os.path.exists(os.path.join(fov_path, 'fov-1-scan-1_pulse_heights.csv')) or \
+                not os.path.exists(os.path.join(fov_path, 'fov-1-scan-1_channel_counts.csv')):
+            bin_file = io_utils.list_files(fov_path, substrs='bin')
+            # check for bin file in each folder
+            if len(bin_file) == 0:
+                raise ValueError(f"No bin file detected in {fov_path}")
 
-    # combine data together into single df
+            write_mph_per_mass(base_dir=fov_path, output_dir=fov_path, fov='fov-1-scan-1',
+                               masses=moly_masses)
+            write_counts_per_mass(base_dir=fov_path, output_dir=fov_path, fov='fov-1-scan-1',
+                                  masses=moly_masses)
+
+    # combine all data together into single df for comparison
+    if count_range:
+        all_data = combine_tuning_curve_metrics(sweep_fov_paths, count_range=None)
+
+        # generate curve with extreme values included
+        all_coeffs = fit_calibration_curve(all_data['pulse_height'].values,
+                                           all_data['norm_channel_count'].values, 'exp',
+                                           plot_fit=True,
+                                           save_path=os.path.join(
+                                               sweep_path, 'function_fit_all_data.jpg'),
+                                           x_label='Median Pulse Height',
+                                           y_label='Normalized Channel Counts',
+                                           title='Tuning Curve (all data)', show_plot=True)
+
+    # tuning curve, if count_range given then extreme values excluded
     tuning_data = combine_tuning_curve_metrics(sweep_fov_paths, count_range=count_range)
 
     # generate fitted curve
-    coeffs = fit_calibration_curve(tuning_data['pulse_height'].values,
-                                   tuning_data['norm_channel_count'].values, 'exp', plot_fit=True,
-                                   save_path=os.path.join(sweep_path, 'function_fit.jpg'),
-                                   x_label='Median Pulse Height',
-                                   y_label='Normalized Channel Counts')
+    tuning_coeffs = fit_calibration_curve(tuning_data['pulse_height'].values,
+                                          tuning_data['norm_channel_count'].values, 'exp',
+                                          plot_fit=True,
+                                          save_path=os.path.join(sweep_path, 'function_fit.jpg'),
+                                          x_label='Median Pulse Height',
+                                          y_label='Normalized Channel Counts',
+                                          title='Tuning Curve', show_plot=True)
 
     # save the fitted curve
-    norm_json = {'name': 'exp', 'weights': coeffs.tolist()}
+    norm_json = {'name': 'exp', 'weights': tuning_coeffs.tolist()}
     write_json_file(json_path=save_path, json_object=norm_json)
 
 
