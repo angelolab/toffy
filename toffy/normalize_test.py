@@ -152,7 +152,8 @@ def test_combine_run_metrics(metrics):
 
 
 @parametrize_with_cases('dir_names, mph_dfs, count_dfs', test_cases.TuningCurveFiles)
-def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
+@pytest.mark.parametrize('count_range', [None, (0, 101)])
+def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs, count_range):
     with tempfile.TemporaryDirectory() as temp_dir:
 
         # variables to hold all unique values of each metric
@@ -167,18 +168,22 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
 
             count_dfs[i].to_csv(os.path.join(full_path, 'fov-1-scan-1_channel_counts.csv'),
                                 index=False)
+            dir_paths.append(os.path.join(temp_dir, dir_names[i]))
 
-            if not count_dfs[i]['channel_count'][9] == 0:
+            chan_min = count_dfs[i]['channel_count'].min()
+            chan_max = count_dfs[i]['channel_count'].max()
+
+            # if any values are extreme
+            if count_range and (chan_min <= count_range[0] or chan_max >= count_range[1]):
+                extreme_vals.append(dir_names[i])
+            else:
                 all_mph.extend(mph_dfs[i]['pulse_height'])
                 all_counts.extend(count_dfs[i]['channel_count'])
-                dir_paths.append(os.path.join(temp_dir, dir_names[i]))
-            else:
-                extreme_vals.append(dir_names[i])
 
         for fov in extreme_vals:
             dir_names.remove(fov)
 
-        combined = normalize.combine_tuning_curve_metrics(dir_paths, count_range=(0, 101))
+        combined = normalize.combine_tuning_curve_metrics(dir_paths, count_range=count_range)
 
         # data may be in a different order due to matching dfs, but all values should be present
         assert set(all_mph) == set(combined['pulse_height'])
