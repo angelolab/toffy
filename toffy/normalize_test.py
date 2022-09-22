@@ -10,6 +10,7 @@ import tempfile
 import xarray as xr
 
 from pytest_cases import parametrize_with_cases
+from unittest.mock import patch
 
 from ark.utils import test_utils, load_utils, io_utils
 from toffy import normalize
@@ -155,8 +156,7 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
     with tempfile.TemporaryDirectory() as temp_dir:
 
         # variables to hold all unique values of each metric
-        all_mph, all_counts, dir_paths = [], [], []
-        extreme_val = []
+        all_mph, all_counts, dir_paths, extreme_vals = [], [], [], []
 
         # create csv files with data to be combined
         for i in range(len(dir_names)):
@@ -173,9 +173,9 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
                 all_counts.extend(count_dfs[i]['channel_count'])
                 dir_paths.append(os.path.join(temp_dir, dir_names[i]))
             else:
-                extreme_val.append(dir_names[i])
+                extreme_vals.append(dir_names[i])
 
-        for fov in extreme_val:
+        for fov in extreme_vals:
             dir_names.remove(fov)
 
         combined = normalize.combine_tuning_curve_metrics(dir_paths, count_range=(0, 101))
@@ -249,6 +249,7 @@ def test_create_tuning_function(tmpdir, mocker):
     # mock functions that interact with bin files directly
     mocker.patch('toffy.normalize.get_median_pulse_height', mocked_pulse_height)
     mocker.patch('toffy.normalize.extract_bin_files', mocked_extract_bin_file)
+    mocker.patch('toffy.normalize.plt.show')
 
     # define paths for generated outputs
     save_path = os.path.join(tmpdir, 'norm_func.json')

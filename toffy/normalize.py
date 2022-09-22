@@ -135,6 +135,7 @@ def fit_calibration_curve(x_vals, y_vals, obj_func, outliers=None, plot_fit=Fals
         x_label (str or None): label for the x-axis
         y_label (str or None):label for the y-axis
         title (str or None): label for the plot title
+        show_plot (bool): whether to show plot, default False
 
     Returns:
         list: the weights of the fitted function"""
@@ -152,6 +153,7 @@ def fit_calibration_curve(x_vals, y_vals, obj_func, outliers=None, plot_fit=Fals
         y_line = objective(x_line, *popt)
         plt.plot(x_line, y_line, '--', color='red')
 
+        # add labels
         if x_label:
             plt.xlabel(x_label)
         if y_label:
@@ -335,7 +337,7 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
                                            y_label='Normalized Channel Counts',
                                            title='Tuning Curve (all data)', show_plot=True)
 
-    # tuning curve, if count_range given then extreme values excluded
+    # combine tuning date into single df, if count_range given then extreme values excluded
     tuning_data = combine_tuning_curve_metrics(sweep_fov_paths, count_range=count_range)
 
     # generate fitted curve

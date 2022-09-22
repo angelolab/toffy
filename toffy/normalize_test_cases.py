@@ -10,11 +10,12 @@ fovs = ['fov{}'.format(12 - i) for i in range(4)]
 
 
 def generate_tuning_data(channel_counts):
-    """ Creates mph and channel count data frames in the appropriate tuning file formate
+    """ Creates mph and channel count data frames in the appropriate tuning file format
     Args:
         channel_counts (np.array): random values, may include low values for testing
     Returns:
-        mph_df, count_df (pd.DataFrame), mph randomly generated
+        mph_df, count_df (pd.DataFrame), combined dataframes for randomly generated mph and
+          provided counts
 
     """
     # create lists to hold values from each fov in directory
@@ -36,11 +37,9 @@ class TuningCurveFiles:
         dirs = ['Detector_202{}v_2022-01-13_13-30-5{}'.format(i, i) for i in range(1, 5)]
 
         # create lists to hold dfs from each directory
-        mph_dfs = []
-        count_dfs = []
+        mph_dfs, count_dfs = [], []
 
         for dir in dirs:
-
             # create dfs from current directory
             channel_counts = np.random.randint(3, 100, len(masses))
             mph_df, count_df = generate_tuning_data(channel_counts)
@@ -56,8 +55,7 @@ class TuningCurveFiles:
         dirs = ['Detector_202{}v_2022-01-13_13-30-5{}'.format(i, i) for i in range(1, 6)]
 
         # create lists to hold dfs from each directory
-        mph_dfs = []
-        count_dfs = []
+        mph_dfs, count_dfs = [], []
 
         for i, dir in enumerate(dirs):
             # include a low channel value in the last fov
@@ -80,8 +78,7 @@ class TuningCurveFiles:
         dirs = ['Detector_202{}v_2022-01-13_13-30-5{}'.format(i, i) for i in range(1, 7)]
 
         # create lists to hold dfs from each directory
-        mph_dfs = []
-        count_dfs = []
+        mph_dfs, count_dfs = [], []
 
         for i, dir in enumerate(dirs):
             # include a low channel value in the last fov
