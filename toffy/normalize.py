@@ -292,6 +292,13 @@ def combine_tuning_curve_metrics(dir_list, count_range):
 
 
 def plot_voltage_vs_counts(sweep_fov_paths, combined_data, save_path):
+    """ Creates a barplot of voltage and maximum channel counts and saves the image
+
+    Args:
+        sweep_fov_paths (list): paths to the sweep folders
+        combined_data (pd.DataFrame): combined data frame of pulse height and channel info
+        save_path (str): where to save plot to
+    """
 
     voltages, max_channel_counts = [], []
 
@@ -319,6 +326,14 @@ def plot_voltage_vs_counts(sweep_fov_paths, combined_data, save_path):
 
 
 def show_multiple_plots(rows, cols, image_paths, image_size=(17, 12)):
+    """ Displays a single image with multiple plots
+
+    Args:
+        rows (int): number of rows of plot grid
+        cols (int): number of columns of plot grid
+        image_paths (list): list of paths to the previously saved plot iamges
+        image_size(tuple): length and width of the new image produces
+    """
     fig = plt.figure(figsize=image_size)
 
     for img, path in enumerate(image_paths):
