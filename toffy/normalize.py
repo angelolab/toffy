@@ -246,19 +246,22 @@ def combine_tuning_curve_metrics(dir_list, count_range):
     all_dirs, excluded_fovs = [], []
     # loop through each run folder
     for dir in dir_list:
-        extreme_val = False
-        # combine tables together
         pulse_heights = pd.read_csv(os.path.join(dir, 'fov-1-scan-1_pulse_heights.csv'))
         channel_counts = pd.read_csv(os.path.join(dir, 'fov-1-scan-1_channel_counts.csv'))
+
+        # check for extreme count values
+        extreme_val = False
         if count_range:
             for count in channel_counts.channel_count:
                 if (count <= count_range[0]) or (count >= count_range[1]):
                     extreme_val = True
                     excluded_fovs.append(os.path.basename(dir))
                     break
+        # do not add extreme value fovs to the combined data frame
         if extreme_val:
             continue
 
+        # combine tables together
         combined = pulse_heights.merge(channel_counts, 'outer', on=['fov', 'mass'])
         if len(combined) != len(pulse_heights):
             raise ValueError("Pulse heights and channel counts must be generated for the same "
@@ -302,7 +305,7 @@ def plot_voltage_vs_counts(sweep_fov_paths, combined_data, save_path):
 
     voltages, max_channel_counts = [], []
 
-    # get voltage for each fov
+    # get voltage and max channel count for each fov
     for fov_path in sweep_fov_paths:
         fov_data = read_json_file(os.path.join(fov_path, 'fov-1-scan-1.json'))
 
@@ -320,7 +323,6 @@ def plot_voltage_vs_counts(sweep_fov_paths, combined_data, save_path):
     plt.bar(voltages, max_channel_counts)
     plt.xlabel('Voltage')
     plt.ylabel('Maximum Channel Counts (in millions)')
-
     plt.savefig(save_path)
     plt.close()
 
@@ -334,8 +336,10 @@ def show_multiple_plots(rows, cols, image_paths, image_size=(17, 12)):
         image_paths (list): list of paths to the previously saved plot iamges
         image_size(tuple): length and width of the new image produces
     """
+
     fig = plt.figure(figsize=image_size)
 
+    # add each plot to the figure
     for img, path in enumerate(image_paths):
         plot = plt.imread(path)
         fig.add_subplot(rows, cols, img+1)
@@ -364,12 +368,12 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
     if len(sweep_fovs) < 4:
         raise ValueError("Invalid amount of FOV folders. Please use at least 4 voltages.")
 
-    # compute pulse heights and channel counts for each FOV
+    # compute pulse heights and channel counts for each FOV if files don't already exist
     for fov_path in sweep_fov_paths:
         if not os.path.exists(os.path.join(fov_path, 'fov-1-scan-1_pulse_heights.csv')) or \
                 not os.path.exists(os.path.join(fov_path, 'fov-1-scan-1_channel_counts.csv')):
-            bin_file = io_utils.list_files(fov_path, substrs='bin')
             # check for bin file in each folder
+            bin_file = io_utils.list_files(fov_path, substrs='bin')
             if len(bin_file) == 0:
                 raise ValueError(f"No bin file detected in {fov_path}")
 
@@ -378,8 +382,8 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
             write_counts_per_mass(base_dir=fov_path, output_dir=fov_path, fov='fov-1-scan-1',
                                   masses=moly_masses)
 
-    # combine all data together into single df for comparison
     if count_range:
+        # combine all data together into single df for comparison
         all_data = combine_tuning_curve_metrics(sweep_fov_paths, count_range=None)
 
         # generate curve with extreme values included
@@ -392,7 +396,7 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
                                            y_label='Normalized Channel Counts',
                                            title='Tuning Curve (all data)', show_plot=False)
 
-        # plot voltage against maxiumum channel count
+        # plot voltage against maximum channel count
         plot_voltage_vs_counts(sweep_fov_paths, all_data,
                                save_path=os.path.join(sweep_path, 'voltage_vs_counts.jpg'))
 
