@@ -270,6 +270,7 @@ def combine_tuning_curve_metrics(dir_list, count_range):
         all_dirs.append(combined)
 
     if len(excluded_fovs) > 0:
+        excluded_fovs = ns.natsorted(excluded_fovs)
         print("The counts for the FOV contained in the following folders are outside of "
               "the expected range and will be excluded: ", *excluded_fovs, sep='\n- ')
     elif count_range:
@@ -288,6 +289,45 @@ def combine_tuning_curve_metrics(dir_list, count_range):
     all_data['norm_channel_count'] = subset.groupby('mass').transform(lambda x: (x / x.max()))
 
     return all_data
+
+
+def plot_voltage_vs_counts(sweep_fov_paths, combined_data, save_path):
+
+    voltages, max_channel_counts = [], []
+
+    # get voltage for each fov
+    for fov_path in sweep_fov_paths:
+        fov_data = read_json_file(os.path.join(fov_path, 'fov-1-scan-1.json'))
+
+        # locate index storing the detector voltage
+        for j in range(0, len(fov_data['hvDac'])):
+            if fov_data['hvDac'][j]['name'] == 'Detector':
+                index = j
+                break
+        fov_voltage = fov_data['hvDac'][index]['currentSetPoint']
+        sub = combined_data.loc[combined_data['directory'] == fov_path, 'channel_count']
+
+        voltages.append(fov_voltage)
+        max_channel_counts.append(sub.max()/1000000)
+
+    plt.bar(voltages, max_channel_counts)
+    plt.xlabel('Voltage')
+    plt.ylabel('Maximum Channel Counts (in millions)')
+
+    plt.savefig(save_path)
+    plt.close()
+
+
+def show_multiple_plots(rows, cols, image_paths, image_size=(17, 12)):
+    fig = plt.figure(figsize=image_size)
+
+    for img, path in enumerate(image_paths):
+        plot = plt.imread(path)
+        fig.add_subplot(rows, cols, img+1)
+        plt.imshow(plot)
+        plt.axis('off')
+
+    plt.show()
 
 
 def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100],
@@ -327,6 +367,9 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
     if count_range:
         all_data = combine_tuning_curve_metrics(sweep_fov_paths, count_range=None)
 
+        plot_voltage_vs_counts(sweep_fov_paths, all_data,
+                               save_path=os.path.join(sweep_path, 'voltage_vs_counts.jpg'))
+
         # generate curve with extreme values included
         all_coeffs = fit_calibration_curve(all_data['pulse_height'].values,
                                            all_data['norm_channel_count'].values, 'exp',
@@ -335,7 +378,10 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
                                                sweep_path, 'function_fit_all_data.jpg'),
                                            x_label='Median Pulse Height',
                                            y_label='Normalized Channel Counts',
-                                           title='Tuning Curve (all data)', show_plot=True)
+                                           title='Tuning Curve (all data)', show_plot=False)
+
+        show_multiple_plots(1, 2, [os.path.join(sweep_path, 'function_fit_all_data.jpg'),
+                                   os.path.join(sweep_path, 'voltage_vs_counts.jpg')])
 
     # combine tuning date into single df, if count_range given then extreme values excluded
     tuning_data = combine_tuning_curve_metrics(sweep_fov_paths, count_range=count_range)
