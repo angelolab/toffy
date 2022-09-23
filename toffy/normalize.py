@@ -382,9 +382,6 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
     if count_range:
         all_data = combine_tuning_curve_metrics(sweep_fov_paths, count_range=None)
 
-        plot_voltage_vs_counts(sweep_fov_paths, all_data,
-                               save_path=os.path.join(sweep_path, 'voltage_vs_counts.jpg'))
-
         # generate curve with extreme values included
         all_coeffs = fit_calibration_curve(all_data['pulse_height'].values,
                                            all_data['norm_channel_count'].values, 'exp',
@@ -394,6 +391,10 @@ def create_tuning_function(sweep_path, moly_masses=[92, 94, 95, 96, 97, 98, 100]
                                            x_label='Median Pulse Height',
                                            y_label='Normalized Channel Counts',
                                            title='Tuning Curve (all data)', show_plot=False)
+
+        # plot voltage against maxiumum channel count
+        plot_voltage_vs_counts(sweep_fov_paths, all_data,
+                               save_path=os.path.join(sweep_path, 'voltage_vs_counts.jpg'))
 
         show_multiple_plots(1, 2, [os.path.join(sweep_path, 'function_fit_all_data.jpg'),
                                    os.path.join(sweep_path, 'voltage_vs_counts.jpg')])

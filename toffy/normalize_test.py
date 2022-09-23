@@ -292,10 +292,13 @@ def test_create_tuning_function(tmpdir, mocker):
     os.makedirs(sweep_dir)
 
     # create individual runs each with a single FOV
-    for voltage in ['25V', '50V', '75V']:
-        run_dir = os.path.join(sweep_dir, '20220101_{}'.format(voltage))
+    for voltage in [25, 50, 75]:
+        run_dir = os.path.join(sweep_dir, '20220101_{}V'.format(voltage))
         os.makedirs(run_dir)
         test_utils._make_blank_file(run_dir, 'fov-1-scan-1.bin')
+        json_path = os.path.join(run_dir, 'fov-1-scan-1.json')
+        json_data = {"hvDac": [{"name": "Detector", "currentSetPoint": voltage}]}
+        write_json_file(json_path, json_data)
 
     # mock functions that interact with bin files directly
     mocker.patch('toffy.normalize.get_median_pulse_height', mocked_pulse_height)
@@ -320,6 +323,9 @@ def test_create_tuning_function(tmpdir, mocker):
         normalize.create_tuning_function(sweep_path=sweep_dir, save_path=save_path)
 
     test_utils._make_blank_file(run_dir, 'fov-1-scan-1.bin')
+    json_path = os.path.join(run_dir, 'fov-1-scan-1.json')
+    json_data = {"hvDac": [{"name": "Detector", "currentSetPoint": 100}]}
+    write_json_file(json_path, json_data)
 
     # test success with count_range
     normalize.create_tuning_function(sweep_path=sweep_dir, save_path=save_path)
