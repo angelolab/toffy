@@ -315,10 +315,10 @@ def plot_voltage_vs_counts(sweep_fov_paths, combined_data, save_path):
                 index = j
                 break
         fov_voltage = fov_data['hvDac'][index]['currentSetPoint']
-        sub = combined_data.loc[combined_data['directory'] == fov_path, 'channel_count']
+        fov_counts = combined_data.loc[combined_data['directory'] == fov_path, 'channel_count']
 
         voltages.append(fov_voltage)
-        max_channel_counts.append(sub.max()/1000000)
+        max_channel_counts.append(fov_counts.max()/1000000)
 
     plt.bar(voltages, max_channel_counts)
     plt.xlabel('Voltage')
@@ -333,8 +333,8 @@ def show_multiple_plots(rows, cols, image_paths, image_size=(17, 12)):
     Args:
         rows (int): number of rows of plot grid
         cols (int): number of columns of plot grid
-        image_paths (list): list of paths to the previously saved plot iamges
-        image_size(tuple): length and width of the new image produces
+        image_paths (list): list of paths to the previously saved plot images
+        image_size (tuple): length and width of the new image produced
     """
 
     fig = plt.figure(figsize=image_size)
