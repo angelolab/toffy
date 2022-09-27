@@ -1,4 +1,3 @@
-import json
 import shutil
 
 import natsort
@@ -8,13 +7,16 @@ import pandas as pd
 import pytest
 import tempfile
 import xarray as xr
+import natsort as ns
 
 from pytest_cases import parametrize_with_cases
+from unittest.mock import patch
 
 from ark.utils import test_utils, load_utils, io_utils
 from toffy import normalize
 import toffy.normalize_test_cases as test_cases
 from toffy.json_utils import read_json_file, write_json_file
+from toffy.test_utils import _make_small_file
 
 
 parametrize = pytest.mark.parametrize
@@ -151,11 +153,12 @@ def test_combine_run_metrics(metrics):
 
 
 @parametrize_with_cases('dir_names, mph_dfs, count_dfs', test_cases.TuningCurveFiles)
-def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
+@pytest.mark.parametrize('count_range', [None, (0, 101)])
+def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs, count_range):
     with tempfile.TemporaryDirectory() as temp_dir:
 
         # variables to hold all unique values of each metric
-        all_mph, all_counts, dir_paths = [], [], []
+        all_mph, all_counts, dir_paths, extreme_vals = [], [], [], []
 
         # create csv files with data to be combined
         for i in range(len(dir_names)):
@@ -163,15 +166,25 @@ def test_combine_tuning_curve_metrics(dir_names, mph_dfs, count_dfs):
             os.makedirs(full_path)
             mph_dfs[i].to_csv(os.path.join(full_path, 'fov-1-scan-1_pulse_heights.csv'),
                               index=False)
-            all_mph.extend(mph_dfs[i]['pulse_height'])
 
             count_dfs[i].to_csv(os.path.join(full_path, 'fov-1-scan-1_channel_counts.csv'),
                                 index=False)
-            all_counts.extend(count_dfs[i]['channel_count'])
-
             dir_paths.append(os.path.join(temp_dir, dir_names[i]))
 
-        combined = normalize.combine_tuning_curve_metrics(dir_paths)
+            chan_min = count_dfs[i]['channel_count'].min()
+            chan_max = count_dfs[i]['channel_count'].max()
+
+            # if any values are extreme
+            if count_range and (chan_min <= count_range[0] or chan_max >= count_range[1]):
+                extreme_vals.append(dir_names[i])
+            else:
+                all_mph.extend(mph_dfs[i]['pulse_height'])
+                all_counts.extend(count_dfs[i]['channel_count'])
+
+        for fov in extreme_vals:
+            dir_names.remove(fov)
+
+        combined = normalize.combine_tuning_curve_metrics(dir_paths, count_range=count_range)
 
         # data may be in a different order due to matching dfs, but all values should be present
         assert set(all_mph) == set(combined['pulse_height'])
@@ -228,28 +241,107 @@ def test_smooth_outliers():
     assert np.allclose(smoothed_vals[outliers], np.array([outlier_0, outlier_18]))
 
 
+def test_plot_voltage_vs_counts():
+
+    with tempfile.TemporaryDirectory() as sweep_dir:
+        folders = ['sweep_folder1', 'sweep_folder2', 'sweep_folder3', 'sweep_folder4']
+        fov_paths = []
+        voltages = [2000, 2020, 2040, 2060]
+
+        for i, fov in enumerate(folders):
+            fov_paths.append(os.path.join(sweep_dir, fov))
+            os.makedirs(os.path.join(sweep_dir, fov))
+
+            json_path = os.path.join(sweep_dir, fov, 'fov-1-scan-1.json')
+            json_data = {"hvDac": [{"name": "Detector", "currentSetPoint": voltages[i]}]}
+            write_json_file(json_path, json_data)
+
+        masses = [1, 2, 3]
+        combined_data = pd.DataFrame({
+            'directory': ns.natsorted(fov_paths*len(masses)),
+            'mass': masses*len(folders),
+            'pulse_height': np.random.randint(1000, 3000, 12),
+            'channel_count': np.random.randint(1000000, 3000000, 12)
+        })
+
+        save_path = os.path.join(sweep_dir, 'voltage_vs_counts.jpg')
+
+        # test plot creation
+        normalize.plot_voltage_vs_counts(fov_paths, combined_data, save_path)
+        assert os.path.exists(save_path)
+
+
+@patch("toffy.normalize.plt")
+def test_show_multiple_plots(mock_plt):
+    with tempfile.TemporaryDirectory() as temp_dir:
+        plots = ['plot_1.jpg', 'plot_2.jpg', 'plot_3.jpg']
+        paths = [os.path.join(temp_dir, img) for img in plots]
+
+        for img in plots:
+            _make_small_file(temp_dir, img)
+
+        normalize.show_multiple_plots(rows=2, cols=2, image_paths=paths)
+
+        # check that the last image is loaded in
+        mock_plt.imread.assert_called_with(os.path.join(temp_dir, 'plot_3.jpg'))
+
+
 def test_create_tuning_function(tmpdir, mocker):
     # create directory to hold the sweep
     sweep_dir = os.path.join(tmpdir, 'sweep_1')
     os.makedirs(sweep_dir)
 
     # create individual runs each with a single FOV
-    for voltage in ['25V', '50V', '75V']:
-        run_dir = os.path.join(sweep_dir, '20220101_{}'.format(voltage))
+    for voltage in [25, 50, 75]:
+        run_dir = os.path.join(sweep_dir, '20220101_{}V'.format(voltage))
         os.makedirs(run_dir)
-        os.makedirs(os.path.join(run_dir, 'fov-1-scan-1'))
+        test_utils._make_blank_file(run_dir, 'fov-1-scan-1.bin')
+        json_path = os.path.join(run_dir, 'fov-1-scan-1.json')
+        json_data = {"hvDac": [{"name": "Detector", "currentSetPoint": voltage}]}
+        write_json_file(json_path, json_data)
 
     # mock functions that interact with bin files directly
     mocker.patch('toffy.normalize.get_median_pulse_height', mocked_pulse_height)
     mocker.patch('toffy.normalize.extract_bin_files', mocked_extract_bin_file)
+    mocker.patch('toffy.normalize.plt.show')
 
     # define paths for generated outputs
     save_path = os.path.join(tmpdir, 'norm_func.json')
     plot_path = os.path.join(sweep_dir, 'function_fit.jpg')
+    all_plot_path = os.path.join(sweep_dir, 'function_fit_all_data.jpg')
 
+    # 3 runs should raise an error
+    with pytest.raises(ValueError, match="Invalid amount of FOV folders"):
+        normalize.create_tuning_function(sweep_path=sweep_dir, save_path=save_path)
+
+    # create 4th run
+    run_dir = os.path.join(sweep_dir, '20220101_{100V}')
+    os.makedirs(run_dir)
+
+    # missing bin file should raise an error
+    with pytest.raises(ValueError, match="No bin file detected"):
+        normalize.create_tuning_function(sweep_path=sweep_dir, save_path=save_path)
+
+    test_utils._make_blank_file(run_dir, 'fov-1-scan-1.bin')
+    json_path = os.path.join(run_dir, 'fov-1-scan-1.json')
+    json_data = {"hvDac": [{"name": "Detector", "currentSetPoint": 100}]}
+    write_json_file(json_path, json_data)
+
+    # test success with count_range
     normalize.create_tuning_function(sweep_path=sweep_dir, save_path=save_path)
     assert os.path.exists(save_path)
     assert os.path.exists(plot_path)
+    assert os.path.exists(all_plot_path)
+
+    os.remove(save_path)
+    os.remove(plot_path)
+    os.remove(all_plot_path)
+
+    # test success without count range
+    normalize.create_tuning_function(sweep_path=sweep_dir, save_path=save_path, count_range=None)
+    assert os.path.exists(save_path)
+    assert os.path.exists(plot_path)
+    assert not os.path.exists(all_plot_path)
 
 
 def test_identify_outliers():
