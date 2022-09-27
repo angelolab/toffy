@@ -252,11 +252,10 @@ def combine_tuning_curve_metrics(dir_list, count_range):
         # check for extreme count values
         extreme_val = False
         if count_range:
-            for count in channel_counts.channel_count:
-                if (count <= count_range[0]) or (count >= count_range[1]):
-                    extreme_val = True
-                    excluded_fovs.append(os.path.basename(dir))
-                    break
+            counts = channel_counts.channel_count
+            if any(counts <= count_range[0]) or any(counts >= count_range[1]):
+                extreme_val = True
+                excluded_fovs.append(os.path.basename(dir))
         # do not add extreme value fovs to the combined data frame
         if extreme_val:
             continue
