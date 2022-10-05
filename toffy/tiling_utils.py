@@ -756,8 +756,8 @@ def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str] = Non
 
             # copy the fov metadata over and add cur_x, cur_y, and name
             fov = copy.deepcopy(tiling_params['fovs'][region_index])
-            fov['centerPointMicrons']['x'] = cur_col
-            fov['centerPointMicrons']['y'] = cur_row
+            fov['centerPointMicrons']['x'] = cur_row
+            fov['centerPointMicrons']['y'] = cur_col
             fov['name'] = fov_names[index]
 
             # append value to fov_regions
