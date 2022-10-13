@@ -76,6 +76,9 @@ def test_list_moly_fovs(tmpdir):
         with open(json_path, 'w') as jp:
             json.dump(tissue_json, jp)
 
+    # run file json
+    _make_blank_file(tmpdir, os.path.basename(tmpdir) + '.json')
+
     pred_moly_fovs = json_utils.list_moly_fovs(tmpdir)
 
     assert np.array_equal(pred_moly_fovs.sort(), moly_fovs.sort())
