@@ -23,6 +23,18 @@ def test_extract_missing_fovs(mocked_print):
         'Stop': 98.5,
     }])
 
+    # only 1 fov that has empty json should raise a warning
+    with tempfile.TemporaryDirectory() as tmpdir:
+        test_utils._make_blank_file(tmpdir, 'fov-1-scan-1.bin')
+        test_utils._make_blank_file(tmpdir, 'fov-1-scan-1.json')
+
+        with pytest.warns(Warning) as warninfo:
+            bin_extraction.extract_missing_fovs(tmpdir, tmpdir, panel, extract_intensities=False)
+        warns = {(warn.category, warn.message.args[0]) for warn in warninfo}
+        assert warns == {(UserWarning, "The following FOVs have empty json files and will not be "
+                                       "processed:\n ['fov-1-scan-1']"),
+                         (Warning, f"No viable bin files were found in {tmpdir}")}
+
     # test that it does not re-extract fovs
     with tempfile.TemporaryDirectory() as extraction_dir:
         os.makedirs(os.path.join(extraction_dir, 'fov-1-scan-1'))
@@ -50,8 +62,9 @@ def test_extract_missing_fovs(mocked_print):
         # check for correct output
         with tempfile.TemporaryDirectory() as extraction_dir:
             os.makedirs(os.path.join(extraction_dir, 'fov-1-scan-1'))
-            bin_extraction.extract_missing_fovs(combined_bin_file_dir, extraction_dir,
-                                                panel, extract_intensities=False)
+            with pytest.warns(UserWarning, match='empty json files'):
+                bin_extraction.extract_missing_fovs(combined_bin_file_dir, extraction_dir,
+                                                    panel, extract_intensities=False)
 
             assert mocked_print.mock_calls == \
                    [call('Skipping the following previously extracted FOVs: ', 'fov-1-scan-1'),
