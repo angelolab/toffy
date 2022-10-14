@@ -28,6 +28,10 @@ def extract_missing_fovs(bin_file_dir, extraction_dir, panel,
     if empty_fovs:
         fovs = list(set(fovs).difference(empty_fovs))
 
+    if len(fovs) == 0:
+        warnings.warn(f"No viable bin files were found in {bin_file_dir}", Warning)
+        return
+
     # check for moly fovs
     moly_fovs = list_moly_fovs(bin_file_dir, fovs)
 

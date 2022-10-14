@@ -70,12 +70,17 @@ def list_moly_fovs(bin_file_dir, fov_list=None):
     Returns:
         list: list of FOVs which are moly FOVs"""
 
+    run_name = os.path.basename(bin_file_dir)
+
     # check provided fovs
     if fov_list:
         json_files = [fov + '.json' for fov in fov_list]
     # check all fovs in bin_file_dir
     else:
         json_files = io_utils.list_files(bin_file_dir, '.json')
+        # ignore run file
+        if run_name + '.json' in json_files:
+            json_files.remove(run_name + '.json')
     moly_fovs = []
 
     for file in json_files:
