@@ -57,7 +57,7 @@ def convert_panel(panel_path):
 
     # read in metadata contained in the first few lines
     col_index = 0
-    with open(panel_path) as r:
+    with open(panel_path, encoding='utf-8') as r:
         lines = r.readlines()
         for index, line in enumerate(lines):
             # line containing the column names we want
