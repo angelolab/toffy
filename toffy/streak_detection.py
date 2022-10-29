@@ -17,6 +17,8 @@ import pandas as pd
 from functools import partial
 import xarray as xr
 
+from toffy.image_utils import save_image
+
 
 @dataclass
 class StreakData:
@@ -83,7 +85,7 @@ def _save_streak_data(streak_data: StreakData, name: str):
     st = partial(_get_save_dir, data_dir, name)
 
     if type(data) is np.ndarray:
-        io.imsave(st("tiff"), data, check_contrast=False)
+        save_image(st("tiff"), data)
     elif type(data) is pd.DataFrame:
         data.to_csv(st("csv"), index=True)
 
@@ -383,7 +385,7 @@ def save_corrected_channels(
     for channel in corrected_channels.channels.values:
         img: np.ndarray = corrected_channels.loc[:, :, channel].values
         fp = Path(streak_data.corrected_dir, channel + ".tiff")
-        io.imsave(fp, img, check_contrast=False)
+        save_image(fp, img)
 
     # Save streak masks
     if save_streak_data:

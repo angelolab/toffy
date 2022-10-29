@@ -19,6 +19,7 @@ from ark.utils import io_utils, load_utils, misc_utils
 from mibi_bin_tools.io_utils import remove_file_extensions
 from mibi_bin_tools.bin_files import extract_bin_files, get_median_pulse_height
 from mibi_bin_tools.panel_utils import make_panel
+from toffy.image_utils import save_image
 
 from toffy.json_utils import read_json_file, write_json_file
 
@@ -653,8 +654,8 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
     normalized_images = img_data / norm_vals.reshape((1, 1, 1, len(norm_vals)))
 
     for idx, chan in enumerate(channels):
-        io.imsave(os.path.join(output_fov_dir, chan + '.tiff'),
-                  normalized_images[0, :, :, idx], check_contrast=False)
+        fname = os.path.join(outout_fov_dir, chan + ".tiff")
+        save_image(fname, normalized_images[0, :, :, idx])
 
     # save logs
     log_df = pd.DataFrame({'channels': channels,
