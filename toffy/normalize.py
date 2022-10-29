@@ -654,7 +654,7 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
     normalized_images = img_data / norm_vals.reshape((1, 1, 1, len(norm_vals)))
 
     for idx, chan in enumerate(channels):
-        fname = os.path.join(outout_fov_dir, chan + ".tiff")
+        fname = os.path.join(output_fov_dir, chan + ".tiff")
         save_image(fname, normalized_images[0, :, :, idx])
 
     # save logs
