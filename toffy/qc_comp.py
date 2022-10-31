@@ -7,11 +7,10 @@ from requests.exceptions import HTTPError
 from scipy.ndimage import gaussian_filter
 import seaborn as sns
 from shutil import rmtree
-from skimage.io import imsave
 
 from toffy.mibitracker_utils import MibiTrackerError
 from toffy.mibitracker_utils import MibiRequests
-from toffy import settings
+from toffy import settings, image_utils
 
 import ark.utils.io_utils as io_utils
 import ark.utils.misc_utils as misc_utils
@@ -182,10 +181,8 @@ def download_mibitracker_data(email, password, run_name, run_label, base_dir, ti
             chan_file = '%s.tiff' % chan
 
             # write the data to a .tiff file in the FOV directory structure
-            imsave(
-                os.path.join(base_dir, tiff_dir, img['number'], img_sub_folder, chan_file),
-                chan_data, check_contrast=False
-            )
+            fname: str = os.path.join(base_dir, tiff_dir, img['number'], img_sub_folder, chan_file)
+            image_utils.save_image(fname, chan_data)
 
         # append the run name and run id to the list
         run_order.append((img['number'], img['id']))
