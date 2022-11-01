@@ -8,6 +8,8 @@ from toffy import json_utils
 from ark.utils import data_utils, load_utils, io_utils, misc_utils
 from mibi_bin_tools.io_utils import remove_file_extensions
 
+from toffy.image_utils import save_image
+
 
 def get_max_img_size(tiff_out_dir, img_sub_folder='', run_dir=None, fov_list=None):
     """Retrieves the maximum FOV image size listed in the run file, or for the given FOVs
@@ -100,5 +102,5 @@ def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None
                                                     max_image_size=max_img_size, dtype='float32')
         stitched = data_utils.stitch_images(image_data, num_cols)
         current_img = stitched.loc['stitched_image', :, :, chan].values
-        io.imsave(os.path.join(stitched_dir, chan + '_stitched.tiff'),
-                  current_img.astype('float32'), check_contrast=False)
+        fname = os.path.join(stitched_dir, chan + "_stitched.tiff")
+        save_image(fname, current_img.astype("float32"))

@@ -7,6 +7,7 @@ import skimage.io as io
 import numpy as np
 
 from toffy import file_hash
+from toffy.image_utils import save_image
 
 
 def test_get_hash():
@@ -15,7 +16,7 @@ def test_get_hash():
         for img in range(2):
             array = np.random.rand(36).reshape((6, 6))
             temp_file_path = os.path.join(temp_dir, 'test_file_{}.tiff'.format(img))
-            io.imsave(temp_file_path, array, check_contrast=False)
+            save_image(temp_file_path, array)
 
         shutil.copy(os.path.join(temp_dir, 'test_file_0.tiff'),
                     os.path.join(temp_dir, 'test_file_0_copy.tiff'))
@@ -37,7 +38,7 @@ def test_compare_directories():
         for img in range(5):
             array = np.random.rand(36).reshape((6, 6))
             temp_file_path = os.path.join(dir_1, 'test_file_{}.tiff'.format(img))
-            io.imsave(temp_file_path, array, check_contrast=False)
+            save_image(temp_file_path, array)
 
         # copy same data into second directory
         dir_2 = os.path.join(top_level_dir, 'dir_2')

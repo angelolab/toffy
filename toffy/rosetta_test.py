@@ -8,6 +8,7 @@ import skimage.io as io
 from pathlib import Path
 
 from toffy import rosetta
+from toffy.image_utils import save_image
 
 import toffy.rosetta_test_cases as test_cases
 from ark.utils import test_utils
@@ -312,7 +313,8 @@ def test_add_source_channel_to_tiled_image():
         os.makedirs(tiled_dir)
         for i in range(2):
             vals = np.random.rand(im_size * 3 * im_size * num_fovs).reshape(tiled_shape)
-            io.imsave(os.path.join(tiled_dir, 'tiled_image_{}.tiff'.format(i)), vals)
+            fname = os.path.join(tiled_dir, f"tiled_image_{i}.tiff")
+            save_image(fname, vals)
 
         output_dir = os.path.join(top_level_dir, 'output_dir')
         os.makedirs(output_dir)

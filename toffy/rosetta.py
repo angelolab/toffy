@@ -14,6 +14,7 @@ from scipy.ndimage import gaussian_filter
 from ark.utils.load_utils import load_imgs_from_tree, load_imgs_from_dir
 from ark.utils.io_utils import list_folders, validate_paths, list_files, remove_file_extensions
 from ark.utils.misc_utils import verify_same_elements, verify_in_list
+from toffy.image_utils import save_image
 
 from toffy.streak_detection import streak_correction
 from toffy.json_utils import read_json_file
@@ -294,12 +295,11 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                 # save tifs to appropriate directories
                 if save_format in ['rescaled', 'both']:
                     save_path = os.path.join(rescale_folder, channel_name)
-                    io.imsave(save_path, comp_data[j, :, :, idx] / norm_const,
-                              check_contrast=False)
+                    save_image(save_path, comp_data[j, :, :, idx] / norm_const)
 
                 if save_format in ['raw', 'both']:
                     save_path = os.path.join(raw_folder, channel_name)
-                    io.imsave(save_path, comp_data[j, :, :, idx], check_contrast=False)
+                    save_image(save_path, comp_data[j, :, :, idx])
 
 
 def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
@@ -351,9 +351,8 @@ def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
                                                max_image_size=max_img_size)
                 tiled_image[(max_img_size * idx):(max_img_size * (idx + 1)), start:end] = \
                     dir_data.values[i, :, :, 0]
-
-        io.imsave(os.path.join(output_dir, channels[j] + '_comparison.tiff'),
-                  tiled_image, check_contrast=False)
+        fname = os.path.join(output_dir, channels[j] + "_comparison.tiff")
+        save_image(fname, tiled_image)
 
 
 def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, source_channel,
@@ -399,7 +398,7 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
         # combine together and save
         combined_tile = np.concatenate([rescaled_source, current_tile])
         save_name = tile_name.split('.tiff')[0] + '_source_' + source_channel + '.tiff'
-        io.imsave(os.path.join(output_dir, save_name), combined_tile, check_contrast=False)
+        save_image(os.path.join(output_dir, save_name), combined_tile)
 
 
 def replace_with_intensity_image(run_dir, channel='Au', replace=True, fovs=None):
@@ -573,7 +572,8 @@ def rescale_raw_imgs(img_out_dir, scale=200):
         for chan in chans:
             img = io.imread(os.path.join(fov_dir, chan))
             img = (img / scale).astype('float32')
-            io.imsave(os.path.join(sub_dir, chan), img, check_contrast=False)
+            fname = os.path.join(sub_dir, chan)
+            save_image(fname, img)
 
 
 def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, folder_path, panel,
