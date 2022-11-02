@@ -714,7 +714,7 @@ def normalize_image_data(img_dir, norm_dir, pulse_height_dir, panel_info,
 
         # get images
         images = load_utils.load_imgs_from_tree(img_dir, fovs=[fov], channels=channels,
-                                                dtype='float32', img_sub_folder=img_sub_folder)
+                                                img_sub_folder=img_sub_folder)
 
         # normalize and save
         normalize_fov(img_data=images, norm_vals=norm_vals, norm_dir=norm_dir, fov=fov,

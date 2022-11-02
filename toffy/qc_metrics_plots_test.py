@@ -1,5 +1,3 @@
-from ark.utils.load_utils import load_imgs_from_tree, load_imgs_from_dir
-from ark.utils.load_utils import load_imgs_from_tree, load_imgs_from_dir
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
@@ -22,15 +20,15 @@ def test_call_violin_swarm():
 
     # Test that file is created.
     with tempfile.TemporaryDirectory() as temp_dir:
-        qc_metrics_plots.call_violin_swarm_plot(plotting_df, fig_label="test123", figsize=(20, 3),
-                                                fig_dir=temp_dir)
+        _ = qc_metrics_plots.call_violin_swarm_plot(plotting_df, fig_label="test123",
+                                                    figsize=(20, 3), fig_dir=temp_dir)
         assert os.path.exists(temp_dir+"test123"+"_batch_effects.png")
 
     # Test that no file is created when not passing fig_dir
     with tempfile.TemporaryDirectory() as temp_dir:
         file_number_before = len(os.listdir(temp_dir))
-        qc_metrics_plots.call_violin_swarm_plot(plotting_df, fig_label="test123", figsize=(20, 3),
-                                                fig_dir=None)
+        _ = qc_metrics_plots.call_violin_swarm_plot(plotting_df, fig_label="test123",
+                                                    figsize=(20, 3), fig_dir=None)
         file_number_after = len(os.listdir(temp_dir))
         assert file_number_before == file_number_after
 

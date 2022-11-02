@@ -11,14 +11,13 @@ import natsort as ns
 import skimage.io as io
 from scipy.ndimage import gaussian_filter
 
-from ark.utils.load_utils import load_imgs_from_tree, load_imgs_from_dir
+from ark.utils.load_utils import load_imgs_from_tree
 from ark.utils.io_utils import list_folders, validate_paths, list_files, remove_file_extensions
 from ark.utils.misc_utils import verify_same_elements, verify_in_list
 from toffy.image_utils import save_image
 
 from toffy.streak_detection import streak_correction
 from toffy.json_utils import read_json_file
-from toffy import image_stitching
 
 
 def transform_compensation_json(json_path, comp_mat_path):
@@ -111,7 +110,7 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
     verify_same_elements(acquired_masses=acquired_masses, compensation_masses=all_masses)
 
     # check first FOV to make sure all channels are present
-    test_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=fovs[0:1], dtype='float32',
+    test_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=fovs[0:1],
                                     img_sub_folder=raw_data_sub_folder)
 
     verify_in_list(listed_channels=acquired_targets, image_files=test_data.channels.values)
@@ -247,7 +246,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         # load batch of fovs
         batch_fovs = fovs[i: i + batch_size]
         batch_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=batch_fovs,
-                                         channels=acquired_targets, dtype='float32',
+                                         channels=acquired_targets,
                                          img_sub_folder=raw_data_sub_folder)
 
         # blur data
@@ -370,7 +369,7 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
 
     # load source images
     source_imgs = load_imgs_from_tree(raw_img_dir, channels=[source_channel],
-                                      dtype='float32', img_sub_folder=img_sub_folder,
+                                      img_sub_folder=img_sub_folder,
                                       max_image_size=max_img_size)
 
     # convert stacked images to concatenated row
