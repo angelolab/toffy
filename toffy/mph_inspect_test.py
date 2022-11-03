@@ -51,7 +51,7 @@ def test_visualize_intensity_data(mocker):
     mass_stop = 98.5
 
     # bad path should raise an error
-    with pytest.raises(ValueError):
+    with pytest.raises(FileNotFoundError):
         mph_inspect.visualize_intensity_data(bad_path, mass, mass_start, mass_stop)
 
     # bad fov name should raise error

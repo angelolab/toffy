@@ -27,7 +27,7 @@ def test_get_estimated_time():
     good_fov = 'fov-1-scan-1'
 
     # bad directory path should raise an error
-    with pytest.raises(ValueError):
+    with pytest.raises(FileNotFoundError):
         mph.get_estimated_time(bad_path, good_fov)
 
     # bad fov name data should raise an error
@@ -88,7 +88,7 @@ def test_combine_mph_metrics():
     bad_path = os.path.join(Path(__file__).parent, "data", "not-a-folder")
 
     # bad directory path should raise an error
-    with pytest.raises(ValueError):
+    with pytest.raises(FileNotFoundError):
         mph.combine_mph_metrics(bad_path)
 
     data1 = create_sample_mph_data(fov='fov-1', mph_value=1000, total_count=50000, time=500)
@@ -121,7 +121,7 @@ def test_visualize_mph():
         }, index=[0, 1])
 
     # bad output directory path should raise an error
-    with pytest.raises(ValueError):
+    with pytest.raises(FileNotFoundError):
         mph.visualize_mph(mph_data, bad_path, regression=False)
 
     with tempfile.TemporaryDirectory() as temp_dir:
