@@ -1,11 +1,13 @@
-import skimage.io as io
 import pathlib
+from typing import Dict, Union
+
 import numpy as np
-from typing import Union
+import skimage.io as io
 
 
-def save_image(fname: Union[str, pathlib.Path], data: np.ndarray,
-               compression_level: int = 6) -> None:
+def save_image(
+    fname: Union[str, pathlib.Path], data: np.ndarray, compression_level: int = 8
+) -> None:
     """
     A thin wrapper around `skimage.io.imsave()`.
 
@@ -17,10 +19,9 @@ def save_image(fname: Union[str, pathlib.Path], data: np.ndarray,
             increases compression ratio. The range of compress is `[1,9]`. Defaults to 6.
     """
     # Compression Config:
-    plugin_args: dict[str, any] = {
-        'compress': compression_level,
+    plugin_args: Dict[str, Union[str, int, Dict]] = {
+        "compression": "zlib",
+        "compressionargs": {"level": compression_level},
     }
-    if isinstance(fname, pathlib.Path):
-        fname: str = fname.as_posix()
 
     io.imsave(fname=fname, arr=data, plugin="tifffile", check_contrast=False, **plugin_args)

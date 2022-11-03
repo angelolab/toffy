@@ -1,4 +1,4 @@
-from ark.utils.load_utils import load_imgs_from_tree, load_imgs_from_dir
+from ark.utils.load_utils import load_imgs_from_tree
 import matplotlib.pyplot as plt
 import seaborn as sns
 import numpy as np
@@ -23,8 +23,7 @@ def call_violin_swarm_plot(plotting_df, fig_label, figsize=(20, 3), fig_dir=None
     plt.xticks(rotation=45)
     if fig_dir:
         plt.savefig(fig_dir+fig_label+"_batch_effects.png", dpi=300)
-    plt.show()
-    plt.close()
+    return ax
 
 
 def make_batch_effect_plot(data_dir, normal_tissues, exclude_channels=None,

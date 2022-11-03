@@ -104,7 +104,7 @@ def test_read_json_file():
 
         # Test bad path
         bad_path = "/neasdf1246ljea/asdfje12ua3421ndsf/asdf.json"
-        with pytest.raises(ValueError, match=r'A bad path*'):
+        with pytest.raises(FileNotFoundError, match=r'A bad path*'):
             json_utils.read_json_file(bad_path)
 
         # Read json with read_json_file function assuming file path is good
@@ -127,7 +127,7 @@ def test_write_json_file():
         bad_path = "/mf8575b20d/bgjeidu45483hdck/asdf.json"
 
         # test bad path
-        with pytest.raises(ValueError, match=r"A bad path*"):
+        with pytest.raises(FileNotFoundError, match=r"A bad path*"):
             json_utils.write_json_file(json_path=bad_path, json_object=moly_json)
 
         # Write file after file path is validated

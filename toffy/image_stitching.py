@@ -99,7 +99,7 @@ def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None
     for chan in channels:
         image_data = load_utils.load_imgs_from_tree(tiff_out_dir, img_sub_folder=img_sub_folder,
                                                     fovs=folders, channels=[chan],
-                                                    max_image_size=max_img_size, dtype='float32')
+                                                    max_image_size=max_img_size)
         stitched = data_utils.stitch_images(image_data, num_cols)
         current_img = stitched.loc['stitched_image', :, :, chan].values
         fname = os.path.join(stitched_dir, chan + "_stitched.tiff")

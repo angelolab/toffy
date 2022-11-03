@@ -204,7 +204,7 @@ def test_compensate_image_data(output_masses, input_masses, gaus_rad, save_forma
         # make fake data for testing
         fovs, chans = test_utils.gen_fov_chan_names(num_fovs=3, num_chans=3)
         filelocs, data_xr = test_utils.create_paired_xarray_fovs(
-            data_dir, fovs, chans, img_shape=(10, 10), fills=True)
+            data_dir, fovs, chans, img_shape=(10, 10), fills=True, dtype=np.float64)
         os.makedirs(os.path.join(data_dir, 'stitched_images'))
 
         # create compensation matrix
@@ -467,7 +467,7 @@ def test_copy_image_files(mocker):
                 rosetta.copy_image_files('cohort_name', ['bad_name'], temp_dir2, temp_dir)
 
             # bad paths should raise an error
-            with pytest.raises(ValueError, match='could not be found'):
+            with pytest.raises(FileNotFoundError, match='could not be found'):
                 rosetta.copy_image_files('cohort_name', run_names, 'bad_path', temp_dir)
                 rosetta.copy_image_files('cohort_name', run_names, temp_dir2, 'bad_path')
 
@@ -502,7 +502,7 @@ def test_rescale_raw_imgs():
         img_data = load_imgs_from_tree(temp_dir)
 
         # bad extracted img path should raise an error
-        with pytest.raises(ValueError):
+        with pytest.raises(FileNotFoundError):
             rosetta.rescale_raw_imgs('bad_path')
 
         # test successful image saving
@@ -558,7 +558,7 @@ def test_generate_rosetta_test_imgs(mocker):
 
         with tempfile.TemporaryDirectory() as temp_dir:
             # bad paths should raise error
-            with pytest.raises(ValueError):
+            with pytest.raises(FileNotFoundError):
                 rosetta.generate_rosetta_test_imgs('bad_path', temp_img_dir, mults,
                                                    temp_dir, panel)
                 rosetta.generate_rosetta_test_imgs(rosetta_mat_path, 'bad_path', mults,
