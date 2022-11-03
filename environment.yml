@@ -3,7 +3,7 @@ dependencies:
   - python=3.8
   - pip
   - pip:
-    - git+https://github.com/angelolab/ark-analysis.git@v0.4.3
+    - git+https://github.com/angelolab/ark-analysis.git@v0.4.4
     - git+https://github.com/angelolab/mibi-bin-tools.git@v0.2.4
     - jupyter>=1.0.0,<2
     - jupyter_contrib_nbextensions>=0.5.1,<1
