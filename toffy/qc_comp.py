@@ -10,7 +10,8 @@ from shutil import rmtree
 
 from toffy.mibitracker_utils import MibiTrackerError
 from toffy.mibitracker_utils import MibiRequests
-from toffy import settings, image_utils
+from toffy import settings
+from tmi.image_utils import save_image
 
 import ark.utils.io_utils as io_utils
 import ark.utils.misc_utils as misc_utils
@@ -182,7 +183,7 @@ def download_mibitracker_data(email, password, run_name, run_label, base_dir, ti
 
             # write the data to a .tiff file in the FOV directory structure
             fname: str = os.path.join(base_dir, tiff_dir, img['number'], img_sub_folder, chan_file)
-            image_utils.save_image(fname, chan_data)
+            save_image(fname, chan_data)
 
         # append the run name and run id to the list
         run_order.append((img['number'], img['id']))

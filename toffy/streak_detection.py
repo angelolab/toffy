@@ -17,7 +17,7 @@ import pandas as pd
 from functools import partial
 import xarray as xr
 
-from toffy.image_utils import save_image
+from tmi.image_utils import save_image
 
 
 @dataclass
