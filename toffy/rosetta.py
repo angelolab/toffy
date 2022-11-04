@@ -14,7 +14,7 @@ from scipy.ndimage import gaussian_filter
 from ark.utils.load_utils import load_imgs_from_tree
 from ark.utils.io_utils import list_folders, validate_paths, list_files, remove_file_extensions
 from ark.utils.misc_utils import verify_same_elements, verify_in_list
-from toffy.image_utils import save_image
+from tmi.image_utils import save_image
 
 from toffy.streak_detection import streak_correction
 from toffy.json_utils import read_json_file

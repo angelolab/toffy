@@ -8,7 +8,7 @@ from toffy import json_utils
 from ark.utils import data_utils, load_utils, io_utils, misc_utils
 from mibi_bin_tools.io_utils import remove_file_extensions
 
-from toffy.image_utils import save_image
+from tmi.image_utils import save_image
 
 
 def get_max_img_size(tiff_out_dir, img_sub_folder='', run_dir=None, fov_list=None):

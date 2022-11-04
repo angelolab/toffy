@@ -3,11 +3,10 @@ import shutil
 import tempfile
 import pytest
 
-import skimage.io as io
 import numpy as np
 
 from toffy import file_hash
-from toffy.image_utils import save_image
+from tmi.image_utils import save_image
 
 
 def test_get_hash():

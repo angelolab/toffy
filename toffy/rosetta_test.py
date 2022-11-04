@@ -8,7 +8,7 @@ import skimage.io as io
 from pathlib import Path
 
 from toffy import rosetta
-from toffy.image_utils import save_image
+from tmi.image_utils import save_image
 
 import toffy.rosetta_test_cases as test_cases
 from ark.utils import test_utils
