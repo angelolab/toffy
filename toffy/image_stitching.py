@@ -131,8 +131,11 @@ def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None
     if tiled:
         folders_dict = get_tiled_names(folders, run_dir)
         # returns a dict with keys RnCm and values og folder names
-        expected_fovs, num_rows, num_cols = load_utils.get_tiled_fov_names(
-            list(folders_dict.keys()), return_dims=True)
+        try:
+            expected_fovs, num_rows, num_cols = load_utils.get_tiled_fov_names(
+                list(folders_dict.keys()), return_dims=True)
+        except AttributeError:
+            raise ValueError(f'FOV names found in the run file were not in tiled (RnCm) format.')
     else:
         num_cols = math.isqrt(len(folders))
         max_img_size = get_max_img_size(tiff_out_dir, img_sub_folder, run_dir)
