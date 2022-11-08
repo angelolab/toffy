@@ -22,6 +22,8 @@ RUN_JSON_SPOOF = {
 
 
 def make_run_file(tmp_dir):
+    """Create a run subir and run json in the provided dir and return the path to this new dir."""
+
     test_dir = os.path.join(tmp_dir, 'data', 'test_run')
     os.makedirs(test_dir)
     json_path = os.path.join(test_dir, 'test_run.json')
@@ -148,7 +150,6 @@ def test_stitch_images(mocker, tiled):
 
     with tempfile.TemporaryDirectory() as tmpdir:
         test_dir = make_run_file(tmpdir)
-        test_utils._write_tifs(tmpdir, fov_list, channel_list, (10, 10), '', False, int)
         test_utils._write_tifs(tmpdir, fov_list, channel_list, (10, 10), 'sub_dir', False, int)
 
         # test stitching for images in subdir

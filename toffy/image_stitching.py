@@ -62,7 +62,7 @@ def get_max_img_size(tiff_out_dir, img_sub_folder='', run_dir=None, fov_list=Non
 def get_tiled_names(fov_list, run_dir):
     """Retrieves the original tiled name for each fov
         Args:
-            fov_list (list): list of fovs
+            fov_list (list): list of fovs that have an existing image dir
             run_dir (str): path to the run directory containing the run json file
         Returns:
             dictionary with RnCm name as keys and the fov-x-scan-1 name as values"""
@@ -96,6 +96,10 @@ def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None
             channels (list): list of channels to produce stitched images for, None will do all
             img_sub_folder (str): optional name of image sub-folder within each fov
             tiled (bool): whether to stitch images back into original tiled shape """
+
+    io_utils.validate_paths(tiff_out_dir)
+    if run_dir:
+        io_utils.validate_paths(run_dir)
 
     # check for previous stitching
     stitched_dir = os.path.join(tiff_out_dir, 'stitched_images')
@@ -151,4 +155,4 @@ def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None
         stitched = data_utils.stitch_images(image_data, num_cols)
         current_img = stitched.loc['stitched_image', :, :, chan].values
         fname = os.path.join(stitched_dir, chan + "_stitched.tiff")
-        save_image(fname, current_img.astype("float32"))
+        save_image(fname, current_img)
