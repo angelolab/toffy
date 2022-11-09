@@ -130,6 +130,8 @@ def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None
     # get load and stitching args
     if tiled:
         folders_dict = get_tiled_names(folders, run_dir)
+        if 'MoQC' in list(folders_dict.keys()):
+            folders_dict.pop('MoQC')
         # returns a dict with keys RnCm and values og folder names
         try:
             expected_fovs, num_rows, num_cols = load_utils.get_tiled_fov_names(
