@@ -83,7 +83,9 @@ def get_tiled_names(fov_list, run_dir):
         if default_name in fov_list:
             # get tiled name
             tiled_name = fov.get('name')
-            fov_names[tiled_name] = default_name
+            # filter out moly fovs
+            if tiled_name != 'MoQC':
+                fov_names[tiled_name] = default_name
 
     return fov_names
 
@@ -130,8 +132,6 @@ def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None
     # get load and stitching args
     if tiled:
         folders_dict = get_tiled_names(folders, run_dir)
-        if 'MoQC' in list(folders_dict.keys()):
-            folders_dict.pop('MoQC')
         # returns a dict with keys RnCm and values og folder names
         try:
             expected_fovs, num_rows, num_cols = load_utils.get_tiled_fov_names(

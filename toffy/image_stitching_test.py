@@ -14,7 +14,7 @@ RUN_JSON_SPOOF = {
             {'runOrder': 2, 'scanCount': 1, 'frameSizePixels': {'width': 16, 'height': 16},
              'name': 'R2C1'},
             {'runOrder': 3, 'scanCount': 1, 'frameSizePixels': {'width': 8, 'height': 8},
-             'name': 'R1C1'},
+             'name': 'MoQC'},
             {'runOrder': 4, 'scanCount': 1, 'frameSizePixels': {'width': 16, 'height': 16},
              'name': 'R2C2'},
         ],
@@ -85,16 +85,16 @@ def test_get_tiled_names():
     with tempfile.TemporaryDirectory() as tmp_dir:
         test_dir = make_run_file(tmp_dir)
 
-        fov_list = ['fov-1-scan-1', 'fov-2-scan-1', 'fov-3-scan-1', 'fov-4-scan-1']
-        tiled_names = ['R1C3', 'R2C1', 'R1C1', 'R2C2']
+        fov_list = ['fov-1-scan-1', 'fov-2-scan-1', 'fov-4-scan-1']
+        tiled_names = ['R1C3', 'R2C1', 'R2C2']
 
         fov_names = image_stitching.get_tiled_names(fov_list, test_dir)
         assert list(fov_names.values()) == fov_list
         assert list(fov_names.keys()) == tiled_names
 
         # check for subset of fovs in run that actually have image dirs
-        fov_list = ['fov-1-scan-1', 'fov-3-scan-1']
-        tiled_names = ['R1C3', 'R1C1']
+        fov_list = ['fov-1-scan-1', 'fov-4-scan-1']
+        tiled_names = ['R1C3', 'R2C2']
 
         fov_names = image_stitching.get_tiled_names(fov_list, test_dir)
         assert list(fov_names.values()) == fov_list
