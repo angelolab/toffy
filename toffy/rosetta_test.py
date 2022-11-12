@@ -232,7 +232,8 @@ def test_compensate_image_data(output_masses, input_masses, gaus_rad, save_forma
             else:
                 assert set(output_files) == set(panel_info['Target'].values[:-1])
 
-            output_data = load_utils.load_imgs_from_tree(data_dir=output_dir, img_sub_folder=folder)
+            output_data = load_utils.load_imgs_from_tree(data_dir=output_dir,
+                                                         img_sub_folder=folder)
 
             assert np.issubdtype(output_data.dtype, np.floating)
 
