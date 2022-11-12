@@ -5,8 +5,6 @@ Copyright (C) 2021 Ionpath, Inc.  All rights reserved.
 import datetime
 import io
 import json
-import os
-import warnings
 
 import requests
 from requests.adapters import HTTPAdapter

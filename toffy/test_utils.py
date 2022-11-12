@@ -1,18 +1,18 @@
-from typing import List
+import functools
+import json
 import os
 import shutil
-import functools
-from pathlib import Path
 import tempfile
-import json
-
-import pytest
-from pytest_cases import parametrize
+from pathlib import Path
+from typing import List
 
 import pandas as pd
+import pytest
+from pytest_cases import parametrize
+from tmi.test_utils import _make_small_file
 
-from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 from toffy.fov_watcher import RunStructure
+from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 
 
 def generate_sample_fov_tiling_entry(coord, name, size):
@@ -348,19 +348,6 @@ def create_sample_run(name_list, run_order_list, scan_count_list, create_json=Fa
 class WatcherTestData:
     def case_combined(self):
         return os.path.join(Path(__file__).parent, 'data', 'combined')
-
-
-def _make_small_file(folder: str, name: str):
-    """Creates small file.  Creating a blank file will cause a stall for 0-size checking
-
-    Args:
-        folder (str):
-            Folder to store file in
-        name (str):
-            Name of small file
-    """
-    with open(os.path.join(folder, name), 'w') as f:
-        f.write('a')
 
 
 class RunStructureTestContext:

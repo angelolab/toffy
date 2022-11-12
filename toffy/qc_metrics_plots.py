@@ -1,10 +1,9 @@
-from ark.utils.load_utils import load_imgs_from_tree
 import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-from toffy import qc_comp
-from ark.utils import io_utils
 import pandas as pd
+import seaborn as sns
+from tmi import io_utils, load_utils
+
+from toffy import qc_comp
 
 
 def call_violin_swarm_plot(plotting_df, fig_label, figsize=(20, 3), fig_dir=None):
@@ -39,9 +38,9 @@ def make_batch_effect_plot(data_dir, normal_tissues, exclude_channels=None,
     """
     for i in range(len(normal_tissues)):
         samples = io_utils.list_folders(dir_name=data_dir, substrs=normal_tissues[i])
-        data = load_imgs_from_tree(data_dir=data_dir,
-                                   img_sub_folder=img_sub_folder,
-                                   fovs=samples)
+        data = load_utils.load_imgs_from_tree(data_dir=data_dir,
+                                              img_sub_folder=img_sub_folder,
+                                              fovs=samples)
         channels = list(data.channels.values)
         if exclude_channels:
             channels = [x for x in channels if x not in exclude_channels]

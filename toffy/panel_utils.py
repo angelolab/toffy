@@ -1,7 +1,7 @@
 import os
-import pandas as pd
 
-from ark.utils import io_utils
+import pandas as pd
+from tmi import io_utils
 
 necessary_masses = pd.DataFrame({
     'Mass': [39, 48, 56, 69, 71, 89, 113, 115, 117, 141, 142, 143, 144, 145, 146, 147, 148, 149,

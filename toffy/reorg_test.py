@@ -1,12 +1,12 @@
 import json
-import numpy as np
-import tempfile
 import os
-import pytest
+import tempfile
 
-from ark.utils import io_utils
-from toffy import reorg
-from toffy import test_utils
+import numpy as np
+import pytest
+from tmi import io_utils
+
+from toffy import reorg, test_utils
 from toffy.json_utils import write_json_file
 
 

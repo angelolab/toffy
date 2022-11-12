@@ -1,12 +1,14 @@
-from typing import Tuple, Callable
-import pytest
+from collections import namedtuple
 from pathlib import Path
-from toffy import streak_detection as sd
+from typing import Callable, Tuple
+
 import numpy as np
 import pandas as pd
+import pytest
 from skimage import io
-from collections import namedtuple
-from ark.utils import test_utils
+from tmi import test_utils
+
+from toffy import streak_detection as sd
 
 
 @pytest.fixture(scope="function")
@@ -377,7 +379,7 @@ def test_save_corrected_channels(tmp_path, streak_dataset):
     row_size = 20
     col_size = 20
 
-    # Generate fake tiff data with ark.test_utils
+    # Generate fake tiff data with tmi.test_utils
     test_fov_data = test_utils._gen_tif_data(
         fov_number=1,
         chan_number=chan_num,

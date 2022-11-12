@@ -1,10 +1,9 @@
 import os
-
-import pytest
 import tempfile
+from pathlib import Path
 
 import numpy as np
-from pathlib import Path
+import pytest
 
 from toffy import mph_inspect
 

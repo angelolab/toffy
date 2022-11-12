@@ -1,15 +1,15 @@
 import os
+import shutil
 import tempfile
+from pathlib import Path
+from unittest.mock import call, patch
+
+import natsort as ns
 import pandas as pd
 import pytest
-import shutil
-from pathlib import Path
-from unittest.mock import patch, call
-import natsort as ns
+from tmi import io_utils, test_utils
 
 from toffy import bin_extraction
-from ark.utils import test_utils
-from mibi_bin_tools import io_utils, bin_files
 
 
 @patch('builtins.print')

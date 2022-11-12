@@ -1,22 +1,14 @@
-from matplotlib.pyplot import connect
-import numpy as np
 import os
-from typing import Union, Tuple
-from pathlib import Path
-from skimage import (
-    filters,
-    exposure,
-    restoration,
-    measure,
-    draw,
-    util,
-    io,
-)
 from dataclasses import dataclass
-import pandas as pd
 from functools import partial
-import xarray as xr
+from pathlib import Path
+from typing import Tuple, Union
 
+import numpy as np
+import pandas as pd
+import xarray as xr
+from matplotlib.pyplot import connect
+from skimage import draw, exposure, filters, io, measure, restoration, util
 from tmi.image_utils import save_image
 
 

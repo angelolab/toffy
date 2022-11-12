@@ -1,13 +1,10 @@
-import json
 import os
 import shutil
-import warnings
-from distutils.dir_util import copy_tree
 
-from ark.utils import io_utils
-from ark.utils.misc_utils import verify_in_list
-from toffy.json_utils import rename_missing_fovs, rename_duplicate_fovs
-from toffy.json_utils import read_json_file
+from tmi import io_utils, misc_utils
+
+from toffy.json_utils import (read_json_file, rename_duplicate_fovs,
+                              rename_missing_fovs)
 
 
 def merge_partial_runs(cohort_dir, run_string):
@@ -86,8 +83,8 @@ def rename_fov_dirs(json_run_path, default_run_dir, output_run_dir=None):
 
         """
 
-    io_utils.validate_paths(json_run_path, data_prefix=False)
-    io_utils.validate_paths(default_run_dir, data_prefix=False)
+    io_utils.validate_paths(json_run_path)
+    io_utils.validate_paths(default_run_dir)
 
     # check that new_dir doesn't already exist
     if output_run_dir is not None:
@@ -119,9 +116,10 @@ def rename_fov_dirs(json_run_path, default_run_dir, output_run_dir=None):
         raise ValueError(f"All FOV folders in {default_run_dir} have already been renamed")
 
     # check if custom fov names & scan counts match the number of existing default directories
-    verify_in_list(warn=True, fovs_in_run_file=list(fov_scan.keys()),
-                   existing_fov_folders=old_dirs)
-    verify_in_list(existing_fov_folders=old_dirs, fovs_in_run_file=list(fov_scan.keys()))
+    misc_utils.verify_in_list(warn=True, fovs_in_run_file=list(fov_scan.keys()),
+                              existing_fov_folders=old_dirs)
+    misc_utils.verify_in_list(existing_fov_folders=old_dirs,
+                              fovs_in_run_file=list(fov_scan.keys()))
 
     # if no output specified, FOVs will be renamed inplace
     if output_run_dir is None:

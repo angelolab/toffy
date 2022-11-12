@@ -1,21 +1,15 @@
+import os
+import tempfile
+from pathlib import Path
+
 import numpy as np
 import pandas as pd
-from requests.exceptions import HTTPError
-import xarray as xr
-
-from toffy.mibitracker_utils import MibiRequests
-from toffy import qc_comp
-from toffy import settings
-from mibi_bin_tools import bin_files
-import ark.utils.io_utils as io_utils
-import ark.utils.misc_utils as misc_utils
-import ark.utils.test_utils as test_utils
-import ark.utils.load_utils as load_utils
-
-import os
-from pathlib import Path
 import pytest
-import tempfile
+from mibi_bin_tools import bin_files
+from tmi import io_utils, load_utils, misc_utils
+
+from toffy import qc_comp, settings
+from toffy.mibitracker_utils import MibiRequests
 
 parametrize = pytest.mark.parametrize
 

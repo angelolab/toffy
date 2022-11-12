@@ -1,25 +1,17 @@
 # adapted from https://machinelearningmastery.com/curve-fitting-with-python/
 import copy
-import json
 import os
-import shutil
 import warnings
 
-import numpy as np
-from scipy.optimize import curve_fit
-import skimage.io as io
 import matplotlib.pyplot as plt
 import natsort as ns
+import numpy as np
 import pandas as pd
-
-from seaborn import algorithms as algo
-from seaborn.utils import ci
-
-from ark.utils import io_utils, load_utils, misc_utils
-from mibi_bin_tools.io_utils import remove_file_extensions
 from mibi_bin_tools.bin_files import extract_bin_files, get_median_pulse_height
 from mibi_bin_tools.panel_utils import make_panel
-from tmi.image_utils import save_image
+from scipy.optimize import curve_fit
+from tmi import image_utils, io_utils, load_utils, misc_utils
+
 from toffy.json_utils import read_json_file, write_json_file
 
 
@@ -654,7 +646,7 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
 
     for idx, chan in enumerate(channels):
         fname = os.path.join(output_fov_dir, chan + ".tiff")
-        save_image(fname, normalized_images[0, :, :, idx])
+        image_utils.save_image(fname, normalized_images[0, :, :, idx])
 
     # save logs
     log_df = pd.DataFrame({'channels': channels,
@@ -728,7 +720,7 @@ def check_detector_voltage(run_dir):
         raise error if changes in voltage were found between fovs
     """
 
-    fovs = remove_file_extensions(io_utils.list_files(run_dir, substrs='.bin'))
+    fovs = io_utils.remove_file_extensions(io_utils.list_files(run_dir, substrs='.bin'))
     fovs = ns.natsorted(fovs)
     changes_in_voltage = []
 

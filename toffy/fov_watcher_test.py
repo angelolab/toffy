@@ -1,27 +1,22 @@
 import os
 import shutil
-import time
 import tempfile
-from pathlib import Path
-from multiprocessing.pool import ThreadPool as Pool
-
+import time
 import warnings
-import pytest
-from pytest_cases import parametrize_with_cases
+from multiprocessing.pool import ThreadPool as Pool
+from pathlib import Path
 from unittest.mock import patch
 
-from mibi_bin_tools import io_utils
+import pytest
+from pytest_cases import parametrize_with_cases
+from tmi import io_utils
 
-from toffy.test_utils import (
-    WatcherCases,
-    RunStructureTestContext,
-    RunStructureCases,
-    mock_visualize_mph,
-    mock_visualize_qc_metrics,
-)
 from toffy.fov_watcher import start_watcher
-from toffy.watcher_callbacks import build_callbacks
 from toffy.json_utils import write_json_file
+from toffy.test_utils import (RunStructureCases, RunStructureTestContext,
+                              WatcherCases, mock_visualize_mph,
+                              mock_visualize_qc_metrics)
+from toffy.watcher_callbacks import build_callbacks
 
 COMBINED_DATA_PATH = os.path.join(Path(__file__).parent, 'data', 'combined')
 RUN_DIR_NAME = 'run_XXX'

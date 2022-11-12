@@ -1,5 +1,6 @@
 from dataclasses import dataclass
-from ark.utils import io_utils, misc_utils
+
+from tmi import io_utils, misc_utils
 
 
 @dataclass
