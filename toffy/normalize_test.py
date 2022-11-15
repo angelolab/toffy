@@ -560,6 +560,12 @@ def test_check_detector_voltage():
             write_json_file(json_path, fov_data)
 
         # constant voltage should run smoothly
+        normalize.check_detector_voltage(tmp_dir)
+
+        # skip empty json files
+        test_utils._make_blank_file(tmp_dir, 'fov-0.bin')
+        test_utils._make_blank_file(tmp_dir, 'fov-0.json')
+        with pytest.warns(UserWarning, match='The following FOVs have empty json files'):
             normalize.check_detector_voltage(tmp_dir)
 
         for i in list(range(4, 11)):
