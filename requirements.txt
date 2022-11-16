@@ -1,4 +1,4 @@
-mibi-bin-tools @ git+https://github.com/angelolab/mibi-bin-tools.git@tmi
+mibi-bin-tools @ git+https://github.com/angelolab/mibi-bin-tools.git@v0.2.5
 tmi @ git+https://github.com/angelolab/tmi.git@v0.0.1
 jupyter>=1.0.0,<2
 jupyter_contrib_nbextensions>=0.5.1,<1
