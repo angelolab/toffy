@@ -12,7 +12,8 @@ from mibi_bin_tools.panel_utils import make_panel
 from scipy.optimize import curve_fit
 from tmi import image_utils, io_utils, load_utils, misc_utils
 
-from toffy.json_utils import read_json_file, write_json_file
+from toffy.json_utils import (check_for_empty_files, read_json_file,
+                              write_json_file)
 
 
 def write_counts_per_mass(base_dir, output_dir, fov, masses, start_offset=0.5,
@@ -721,8 +722,12 @@ def check_detector_voltage(run_dir):
     """
 
     fovs = io_utils.remove_file_extensions(io_utils.list_files(run_dir, substrs='.bin'))
-    fovs = ns.natsorted(fovs)
     changes_in_voltage = []
+
+    # skip any damaged fovs
+    empty_fovs = check_for_empty_files(run_dir)
+    fovs = list(set(fovs).difference(empty_fovs))
+    fovs = ns.natsorted(fovs)
 
     # check for voltage changes and add to list of dictionaries
     for i, fov in enumerate(fovs):
