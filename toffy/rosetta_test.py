@@ -199,7 +199,7 @@ def test_compensate_image_data(output_masses, input_masses, gaus_rad, save_forma
         # make fake data for testing
         fovs, chans = test_utils.gen_fov_chan_names(num_fovs=3, num_chans=3)
         filelocs, data_xr = test_utils.create_paired_xarray_fovs(
-            data_dir, fovs, chans, img_shape=(10, 10), fills=True, dtype=np.float64)
+            data_dir, fovs, chans, img_shape=(10, 10), fills=True, dtype=np.uint32)
         os.makedirs(os.path.join(data_dir, 'stitched_images'))
 
         # create compensation matrix
