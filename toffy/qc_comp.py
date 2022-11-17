@@ -1,7 +1,5 @@
 import copy
 import os
-# needed to prevent UserWarning: low contrast image barf when saving images
-import warnings
 from shutil import rmtree
 
 import matplotlib.pyplot as plt
@@ -15,8 +13,6 @@ from tmi import image_utils, io_utils, load_utils, misc_utils
 
 from toffy import settings
 from toffy.mibitracker_utils import MibiRequests, MibiTrackerError
-
-warnings.filterwarnings('ignore', category=UserWarning)
 
 
 def create_mibitracker_request_helper(email, password):
