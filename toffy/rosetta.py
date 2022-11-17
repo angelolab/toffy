@@ -247,6 +247,9 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                                                     channels=acquired_targets,
                                                     img_sub_folder=raw_data_sub_folder)
 
+        # convert to float32 for gaussian_filter and rosetta compatibility
+        batch_data = batch_data.astype(np.float32)
+
         # blur data
         if gaus_rad > 0:
             for j in range(batch_data.shape[0]):
