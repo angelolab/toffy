@@ -1,26 +1,21 @@
 import copy
-from inspect import cleandoc
-import ipywidgets as widgets
 import json
+import os
+import tempfile
+from dataclasses import astuple
+
+import ipywidgets as widgets
 import matplotlib.pyplot as plt
 import mock
 import numpy as np
-import os
 import pandas as pd
 import pytest
 from pytest_cases import parametrize_with_cases
-import random
 from sklearn.utils import shuffle
-import tempfile
+from tmi import misc_utils
 
-from dataclasses import dataclass, astuple
-
-from toffy import settings
-from toffy import test_utils
-from toffy import tiling_utils
+from toffy import settings, test_utils, tiling_utils
 from toffy import tiling_utils_test_cases as test_cases
-
-from ark.utils import misc_utils
 from toffy.json_utils import read_json_file, write_json_file
 
 param = pytest.param

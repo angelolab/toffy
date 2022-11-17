@@ -1,23 +1,20 @@
-import shutil
-
-import natsort
-import numpy as np
 import os
-import pandas as pd
-import pytest
+import shutil
 import tempfile
-import xarray as xr
-import natsort as ns
-
-from pytest_cases import parametrize_with_cases
 from unittest.mock import patch
 
-from ark.utils import test_utils, load_utils, io_utils
-from toffy import normalize
-import toffy.normalize_test_cases as test_cases
-from toffy.json_utils import read_json_file, write_json_file
-from toffy.test_utils import _make_small_file
+import natsort
+import natsort as ns
+import numpy as np
+import pandas as pd
+import pytest
+import xarray as xr
+from pytest_cases import parametrize_with_cases
+from tmi import io_utils, load_utils, test_utils
 
+import toffy.normalize_test_cases as test_cases
+from toffy import normalize
+from toffy.json_utils import read_json_file, write_json_file
 
 parametrize = pytest.mark.parametrize
 
@@ -80,12 +77,6 @@ def test_write_mph_per_mass(mocker):
         assert len(output) == len(masses)
         assert set(output['mass'].values) == set(masses)
         assert np.all(output['pulse_height'].values == output['mass'].values * 2)
-
-
-# TODO: move to toolbox repo once created
-def _make_blank_file(folder, name):
-    with open(os.path.join(folder, name), 'w'):
-        pass
 
 
 @parametrize('obj_func_name, num_params', [('poly_2', 3), ('poly_3', 4), ('poly_4', 5),
@@ -278,7 +269,7 @@ def test_show_multiple_plots(mock_plt):
         paths = [os.path.join(temp_dir, img) for img in plots]
 
         for img in plots:
-            _make_small_file(temp_dir, img)
+            test_utils._make_small_file(temp_dir, img)
 
         normalize.show_multiple_plots(rows=2, cols=2, image_paths=paths)
 

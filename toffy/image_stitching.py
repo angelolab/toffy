@@ -1,14 +1,12 @@
-import os
 import math
+import os
 import re
+
 import natsort as ns
 import skimage.io as io
+from tmi import data_utils, image_utils, io_utils, load_utils, misc_utils
 
 from toffy import json_utils
-from ark.utils import data_utils, load_utils, io_utils, misc_utils
-from mibi_bin_tools.io_utils import remove_file_extensions
-
-from tmi.image_utils import save_image
 
 
 def get_max_img_size(tiff_out_dir, img_sub_folder='', run_dir=None, fov_list=None):
@@ -122,12 +120,20 @@ def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None
 
     # retrieve all extracted channel names, or verify the list provided
     if channels is None:
-        channels = remove_file_extensions(io_utils.list_files(
-            dir_name=os.path.join(tiff_out_dir, folders[0], img_sub_folder), substrs='.tiff'))
+        channels = io_utils.remove_file_extensions(
+            io_utils.list_files(
+                dir_name=os.path.join(tiff_out_dir, folders[0], img_sub_folder),
+                substrs='.tiff')
+            )
     else:
-        misc_utils.verify_in_list(channel_inputs=channels, valid_channels=remove_file_extensions(
-            io_utils.list_files(dir_name=os.path.join(tiff_out_dir, folders[0], img_sub_folder),
-                                substrs='.tiff')))
+        misc_utils.verify_in_list(
+            channel_inputs=channels,
+            valid_channels=io_utils.remove_file_extensions(
+                io_utils.list_files(dir_name=os.path.join(
+                    tiff_out_dir, folders[0], img_sub_folder),
+                                    substrs='.tiff')
+                )
+            )
 
     # get load and stitching args
     if tiled:
@@ -160,4 +166,4 @@ def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None
         stitched = data_utils.stitch_images(image_data, num_cols)
         current_img = stitched.loc['stitched_image', :, :, chan].values
         fname = os.path.join(stitched_dir, chan + "_stitched.tiff")
-        save_image(fname, current_img)
+        image_utils.save_image(fname, current_img)

@@ -1,23 +1,22 @@
+import inspect
 import os
 from dataclasses import dataclass, field
-import inspect
 from typing import Iterable
 
 import matplotlib.pyplot as plt
 import pandas as pd
 import xarray as xr
-
-from ark.utils import misc_utils
-
-from mibi_bin_tools.bin_files import extract_bin_files, _write_out
+from mibi_bin_tools.bin_files import _write_out, extract_bin_files
 from mibi_bin_tools.type_utils import any_true
+from tmi import misc_utils
 
-from toffy.qc_comp import compute_qc_metrics_direct, combine_qc_metrics, visualize_qc_metrics
-from toffy.mph_comp import compute_mph_metrics, combine_mph_metrics, visualize_mph
 from toffy.image_stitching import stitch_images
+from toffy.mph_comp import (combine_mph_metrics, compute_mph_metrics,
+                            visualize_mph)
 from toffy.normalize import write_mph_per_mass
+from toffy.qc_comp import (combine_qc_metrics, compute_qc_metrics_direct,
+                           visualize_qc_metrics)
 from toffy.settings import QC_COLUMNS, QC_SUFFIXES
-
 
 RUN_PREREQUISITES = {
     'plot_qc_metrics': set(['generate_qc']),

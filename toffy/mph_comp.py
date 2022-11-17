@@ -1,13 +1,13 @@
 import os
-import pandas as pd
-import numpy as np
-import json
+
 import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+from mibi_bin_tools import bin_files
 from natsort import natsort_keygen
+from tmi import io_utils
 
 from toffy.json_utils import read_json_file
-from mibi_bin_tools import bin_files
-from ark.utils import io_utils
 from toffy.normalize import combine_run_metrics
 
 
@@ -149,7 +149,7 @@ def visualize_mph(mph_df, out_dir, regression: bool = False):
 
     # path validation checks
     if out_dir is not None:
-        io_utils.validate_paths(out_dir, data_prefix=False)
+        io_utils.validate_paths(out_dir)
 
     # visualize the median pulse heights
     plt.style.use('dark_background')

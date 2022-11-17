@@ -1,9 +1,8 @@
+import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
-
-from ark.utils import io_utils, misc_utils
 from mibi_bin_tools.bin_files import get_histograms_per_tof
+from tmi import io_utils, misc_utils
 
 
 def bin_array(arr, bin_factor):

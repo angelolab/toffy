@@ -1,24 +1,20 @@
 import os
-import tempfile
 import shutil
+import tempfile
 from unittest.mock import patch
-from pytest_cases import parametrize_with_cases
 
-from mibi_bin_tools import io_utils
+from pytest_cases import parametrize_with_cases
+from tmi import io_utils
 
 from toffy import watcher_callbacks
 from toffy.json_utils import write_json_file
-from toffy.test_utils import (
-    mock_visualize_qc_metrics,
-    FovCallbackCases,
-    WatcherTestData,
-    RunCallbackCases,
-    check_extraction_dir_structure,
-    check_qc_dir_structure,
-    check_mph_dir_structure,
-    check_pulse_dir_structure,
-    check_stitched_dir_structure,
-)
+from toffy.test_utils import (FovCallbackCases, RunCallbackCases,
+                              WatcherTestData, check_extraction_dir_structure,
+                              check_mph_dir_structure,
+                              check_pulse_dir_structure,
+                              check_qc_dir_structure,
+                              check_stitched_dir_structure,
+                              mock_visualize_qc_metrics)
 
 COMBINED_RUN_JSON_SPOOF = {
     'fovs': [

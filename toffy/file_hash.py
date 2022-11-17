@@ -1,9 +1,9 @@
 # adapted from https://stackoverflow.com/questions/3431825/generating-an-md5-checksum-of-a-file
 import hashlib
 import os
-from ark.utils import io_utils, misc_utils
-
 import warnings
+
+from tmi import io_utils, misc_utils
 
 
 def get_hash(filepath):

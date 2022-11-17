@@ -1,23 +1,18 @@
 import copy
-import os
 import json
-import shutil
+import os
 import random
+import shutil
 
+import natsort as ns
 import numpy as np
 import pandas as pd
-import natsort as ns
-
 import skimage.io as io
 from scipy.ndimage import gaussian_filter
+from tmi import image_utils, io_utils, load_utils, misc_utils
 
-from ark.utils.load_utils import load_imgs_from_tree
-from ark.utils.io_utils import list_folders, validate_paths, list_files, remove_file_extensions
-from ark.utils.misc_utils import verify_same_elements, verify_in_list
-from tmi.image_utils import save_image
-
-from toffy.streak_detection import streak_correction
 from toffy.json_utils import read_json_file
+from toffy.streak_detection import streak_correction
 
 
 def transform_compensation_json(json_path, comp_mat_path):
@@ -107,20 +102,24 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
         raise ValueError("Masses must be sorted numerically in the panel_info file")
 
     # make sure channels in comp matrix are same as those in panel csv
-    verify_same_elements(acquired_masses=acquired_masses, compensation_masses=all_masses)
+    misc_utils.verify_same_elements(acquired_masses=acquired_masses,
+                                    compensation_masses=all_masses)
 
     # check first FOV to make sure all channels are present
-    test_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=fovs[0:1],
-                                    img_sub_folder=raw_data_sub_folder)
+    test_data = load_utils.load_imgs_from_tree(data_dir=raw_data_dir, fovs=fovs[0:1],
+                                               img_sub_folder=raw_data_sub_folder)
 
-    verify_in_list(listed_channels=acquired_targets, image_files=test_data.channels.values)
+    misc_utils.verify_in_list(listed_channels=acquired_targets,
+                              image_files=test_data.channels.values)
 
     # make sure supplied masses are present
     if input_masses is not None:
-        verify_in_list(input_masses=input_masses, compensation_masses=all_masses)
+        misc_utils.verify_in_list(input_masses=input_masses,
+                                  compensation_masses=all_masses)
 
     if output_masses is not None:
-        verify_in_list(output_masses=output_masses, compensation_masses=all_masses)
+        misc_utils.verify_in_list(output_masses=output_masses,
+                                  compensation_masses=all_masses)
 
     # make sure compensation matrix has valid values
     if comp_mat.isna().values.any():
@@ -129,7 +128,7 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
 
     # check for valid save_formats
     allowed_formats = ['raw', 'rescaled', 'both']
-    verify_in_list(save_format=save_format, allowed_formats=allowed_formats)
+    misc_utils.verify_in_list(save_format=save_format, allowed_formats=allowed_formats)
 
     if not isinstance(batch_size, int) or batch_size < 1:
         raise ValueError('batch_size parameter must be a positive integer')
@@ -171,8 +170,8 @@ def get_masses_from_channel_names(names, panel_df):
         list: the masses for the given channels
     """
 
-    verify_in_list(supplied_channel_names=names,
-                   panel_channel_names=panel_df['Target'].values)
+    misc_utils.verify_in_list(supplied_channel_names=names,
+                              panel_channel_names=panel_df['Target'].values)
 
     weights = panel_df.loc[np.isin(panel_df['Target'], names)]['Mass'].values
 
@@ -209,11 +208,10 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         streak_chan (str): the channel to use for streak correction
     """
 
-    validate_paths([raw_data_dir, comp_data_dir, comp_mat_path],
-                   data_prefix=False)
+    io_utils.validate_paths([raw_data_dir, comp_data_dir, comp_mat_path])
 
     # get list of all fovs
-    fovs = list_folders(raw_data_dir, substrs='fov')
+    fovs = io_utils.list_folders(raw_data_dir, substrs='fov')
 
     # load csv files
     comp_mat = pd.read_csv(comp_mat_path, index_col=0)
@@ -245,9 +243,9 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
 
         # load batch of fovs
         batch_fovs = fovs[i: i + batch_size]
-        batch_data = load_imgs_from_tree(data_dir=raw_data_dir, fovs=batch_fovs,
-                                         channels=acquired_targets,
-                                         img_sub_folder=raw_data_sub_folder)
+        batch_data = load_utils.load_imgs_from_tree(data_dir=raw_data_dir, fovs=batch_fovs,
+                                                    channels=acquired_targets,
+                                                    img_sub_folder=raw_data_sub_folder)
 
         # blur data
         if gaus_rad > 0:
@@ -263,7 +261,8 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
 
         # apply flat field correction if specified
         if ffc_channels is not None:
-            verify_in_list(flat_field_correction_masses=ffc_channels, all_masses=acquired_targets)
+            misc_utils.verify_in_list(flat_field_correction_masses=ffc_channels,
+                                      all_masses=acquired_targets)
             for fov in batch_fovs:
                 for chan in ffc_channels:
                     raw_img = batch_data.loc[fov, :, :, chan].values
@@ -294,11 +293,11 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                 # save tifs to appropriate directories
                 if save_format in ['rescaled', 'both']:
                     save_path = os.path.join(rescale_folder, channel_name)
-                    save_image(save_path, comp_data[j, :, :, idx] / norm_const)
+                    image_utils.save_image(save_path, comp_data[j, :, :, idx] / norm_const)
 
                 if save_format in ['raw', 'both']:
                     save_path = os.path.join(raw_folder, channel_name)
-                    save_image(save_path, comp_data[j, :, :, idx])
+                    image_utils.save_image(save_path, comp_data[j, :, :, idx])
 
 
 def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
@@ -313,22 +312,22 @@ def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
         channels: list of channels to compare. """
 
     test_dir = input_dir_list[0]
-    test_fov = list_folders(test_dir)[0]
-    test_data = load_imgs_from_tree(data_dir=test_dir, fovs=[test_fov],
-                                    img_sub_folder=img_sub_folder, channels=channels)
+    test_fov = io_utils.list_folders(test_dir)[0]
+    test_data = load_utils.load_imgs_from_tree(data_dir=test_dir, fovs=[test_fov],
+                                               img_sub_folder=img_sub_folder, channels=channels)
 
     channels = test_data.channels.values
     chanel_num = len(channels)
 
     # check that all dirs have the same number of fovs and correct subset of channels
-    fov_names = list_folders(input_dir_list[0])
+    fov_names = io_utils.list_folders(input_dir_list[0])
     for dir_name in input_dir_list[1:]:
-        current_folders = list_folders(dir_name)
-        verify_same_elements(fov_names1=fov_names, fov_names2=current_folders)
-        current_channels = load_imgs_from_tree(data_dir=dir_name,
-                                               img_sub_folder=img_sub_folder,
-                                               fovs=current_folders[:1]).channels.values
-        verify_in_list(specified_channels=channels, current_channels=current_channels)
+        current_folders = io_utils.list_folders(dir_name)
+        misc_utils.verify_same_elements(fov_names1=fov_names, fov_names2=current_folders)
+        current_channels = load_utils.load_imgs_from_tree(data_dir=dir_name,
+                                                          img_sub_folder=img_sub_folder,
+                                                          fovs=current_folders[:1]).channels.values
+        misc_utils.verify_in_list(specified_channels=channels, current_channels=current_channels)
 
     fov_num = len(fov_names)
 
@@ -345,13 +344,13 @@ def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
 
             # go through each of the directories, read in the images, and place in the right spot
             for idx, key in enumerate(input_dir_list):
-                dir_data = load_imgs_from_tree(key, channels=channels[j:j + 1],
-                                               img_sub_folder=img_sub_folder,
-                                               max_image_size=max_img_size)
+                dir_data = load_utils.load_imgs_from_tree(key, channels=channels[j:j + 1],
+                                                          img_sub_folder=img_sub_folder,
+                                                          max_image_size=max_img_size)
                 tiled_image[(max_img_size * idx):(max_img_size * (idx + 1)), start:end] = \
                     dir_data.values[i, :, :, 0]
         fname = os.path.join(output_dir, channels[j] + "_comparison.tiff")
-        save_image(fname, tiled_image)
+        image_utils.save_image(fname, tiled_image)
 
 
 def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, source_channel,
@@ -368,9 +367,9 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
         percent_norm (int): percentile normalization param to enable easy visualization"""
 
     # load source images
-    source_imgs = load_imgs_from_tree(raw_img_dir, channels=[source_channel],
-                                      img_sub_folder=img_sub_folder,
-                                      max_image_size=max_img_size)
+    source_imgs = load_utils.load_imgs_from_tree(raw_img_dir, channels=[source_channel],
+                                                 img_sub_folder=img_sub_folder,
+                                                 max_image_size=max_img_size)
 
     # convert stacked images to concatenated row
     source_list = [source_imgs.values[fov, :, :, 0] for fov in range(source_imgs.shape[0])]
@@ -378,7 +377,7 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
     perc_source = np.percentile(source_row, percent_norm)
 
     # confirm tiled images have expected shape
-    tiled_images = list_files(tiled_img_dir)
+    tiled_images = io_utils.list_files(tiled_img_dir)
     test_file = io.imread(os.path.join(tiled_img_dir, tiled_images[0]))
     if test_file.shape[1] != source_row.shape[1]:
         raise ValueError('Tiled image {} has shape {}, but source image {} has'
@@ -397,7 +396,7 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
         # combine together and save
         combined_tile = np.concatenate([rescaled_source, current_tile])
         save_name = tile_name.split('.tiff')[0] + '_source_' + source_channel + '.tiff'
-        save_image(os.path.join(output_dir, save_name), combined_tile)
+        image_utils.save_image(os.path.join(output_dir, save_name), combined_tile)
 
 
 def replace_with_intensity_image(run_dir, channel='Au', replace=True, fovs=None):
@@ -411,11 +410,11 @@ def replace_with_intensity_image(run_dir, channel='Au', replace=True, fovs=None)
         replace (bool): controls whether intensity image is copied over with _intensity appended
             or if it will overwrite existing channel"""
 
-    all_fovs = list_folders(run_dir)
+    all_fovs = io_utils.list_folders(run_dir)
 
     # ensure supplied folders are valid
     if fovs is not None:
-        verify_in_list(specified_folders=fovs, all_folders=all_fovs)
+        misc_utils.verify_in_list(specified_folders=fovs, all_folders=all_fovs)
         all_fovs = fovs
 
     # ensure channel is valid
@@ -443,11 +442,11 @@ def remove_sub_dirs(run_dir, sub_dirs, fovs=None):
         fovs (list): list of fovs to remove dirs from, otherwise removes from all fovs
     """
 
-    all_fovs = list_folders(run_dir)
+    all_fovs = io_utils.list_folders(run_dir)
 
     # ensure supplied folders are valid
     if fovs is not None:
-        verify_in_list(specified_folders=fovs, all_folders=all_fovs)
+        misc_utils.verify_in_list(specified_folders=fovs, all_folders=all_fovs)
         all_fovs = fovs
 
     # ensure all sub_dirs exist
@@ -487,7 +486,7 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, masses=None):
             masses = [int(x) for x in masses]
         except ValueError:
             raise ValueError("Masses must be provided as integers")
-        verify_in_list(specified_masses=masses, rosetta_masses=comp_masses)
+        misc_utils.verify_in_list(specified_masses=masses, rosetta_masses=comp_masses)
 
     # loop over each specified multiplier and create separate compensation matrix
     for i in multipliers:
@@ -514,14 +513,14 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
 
     """
     # path validation
-    validate_paths([rosetta_testing_dir, extracted_imgs_dir], data_prefix=False)
+    io_utils.validate_paths([rosetta_testing_dir, extracted_imgs_dir])
 
     # validate provided run names
     small_runs = []
     for run in run_names:
         if not os.path.exists(os.path.join(extracted_imgs_dir, run)):
             raise ValueError(f'{run} is not a valid run name found in {extracted_imgs_dir}')
-        fovs_in_run = list_folders(os.path.join(extracted_imgs_dir, run), substrs='fov')
+        fovs_in_run = io_utils.list_folders(os.path.join(extracted_imgs_dir, run), substrs='fov')
         # check number of fovs in each run
         if len(fovs_in_run) < fovs_per_run:
             small_runs.append(run)
@@ -537,7 +536,7 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
     for i, run in enumerate(ns.natsorted(run_names)):
         run_path = os.path.join(extracted_imgs_dir, run)
 
-        fovs_in_run = list_folders(run_path, substrs='fov')
+        fovs_in_run = io_utils.list_folders(run_path, substrs='fov')
         fovs_in_run = ns.natsorted(fovs_in_run)
         rosetta_fovs = random.sample(fovs_in_run, k=fovs_per_run)
 
@@ -558,21 +557,21 @@ def rescale_raw_imgs(img_out_dir, scale=200):
     Returns:
         saves the rescaled images in a subdir
     """
-    validate_paths(img_out_dir, data_prefix=False)
+    io_utils.validate_paths(img_out_dir)
 
-    fovs = list_folders(img_out_dir)
+    fovs = io_utils.list_folders(img_out_dir)
     for fov in fovs:
         fov_dir = os.path.join(img_out_dir, fov)
         # create subdirectory for the new images
         sub_dir = os.path.join(fov_dir, 'rescaled')
         os.makedirs(sub_dir)
-        chans = list_files(fov_dir)
+        chans = io_utils.list_files(fov_dir)
         # rescale each channel image
         for chan in chans:
             img = io.imread(os.path.join(fov_dir, chan))
             img = (img / scale).astype('float32')
             fname = os.path.join(sub_dir, chan)
-            save_image(fname, img)
+            image_utils.save_image(fname, img)
 
 
 def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, folder_path, panel,
@@ -590,7 +589,7 @@ def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, fold
     Returns:
         Create subdirs containing rosetta compensated images for each multiplier and stitched imgs
     """
-    validate_paths([rosetta_mat_path, img_out_dir, folder_path], data_prefix=False)
+    io_utils.validate_paths([rosetta_mat_path, img_out_dir, folder_path])
 
     # get mass information
     current_channel_mass = get_masses_from_channel_names([current_channel_name], panel)
@@ -603,7 +602,7 @@ def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, fold
     # generate rosetta matrices for each multiplier
     create_rosetta_matrices(default_matrix=rosetta_mat_path, multipliers=multipliers,
                             masses=current_channel_mass, save_dir=folder_path)
-    matrix_name = remove_file_extensions([os.path.basename(rosetta_mat_path)])[0]
+    matrix_name = io_utils.remove_file_extensions([os.path.basename(rosetta_mat_path)])[0]
 
     # loop over each multiplier and compensate the data
     rosetta_dirs = [img_out_dir]

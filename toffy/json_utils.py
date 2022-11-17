@@ -3,8 +3,7 @@ import json
 import os
 import warnings
 
-from ark.utils import io_utils
-from mibi_bin_tools.io_utils import remove_file_extensions
+from tmi import io_utils
 
 
 def rename_missing_fovs(fov_data):
@@ -103,7 +102,7 @@ def read_json_file(json_path, encoding=None):
 
     # call to validate paths will raise errors if anything wrong, and do nothing if
     # file path valid
-    io_utils.validate_paths(json_path, data_prefix=False)
+    io_utils.validate_paths(json_path)
 
     with open(json_path, mode='r', encoding=encoding) as jp:
         json_file = json.load(jp)
@@ -122,7 +121,7 @@ def write_json_file(json_path, json_object, encoding=None):
     dir_path = os.path.dirname(os.path.abspath(json_path))
 
     # Raises error if path doesnt exist
-    io_utils.validate_paths(dir_path, data_prefix=False)
+    io_utils.validate_paths(dir_path)
 
     with open(json_path, mode='w', encoding=encoding) as jp:
         json.dump(json_object, jp)
@@ -172,7 +171,7 @@ def check_for_empty_files(bin_file_dir):
     """
 
     # retrieve all fovs in bin_file_dir
-    fov_names = remove_file_extensions(io_utils.list_files(bin_file_dir, substrs='.bin'))
+    fov_names = io_utils.remove_file_extensions(io_utils.list_files(bin_file_dir, substrs='.bin'))
     empty_json_files = []
 
     # check each json file for size 0

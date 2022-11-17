@@ -1,7 +1,6 @@
-import pytest
-
 import numpy as np
 import pandas as pd
+import pytest
 
 masses = np.arange(5, 15)
 channels = ['chan_{}'.format(i) for i in range(len(masses))]

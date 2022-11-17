@@ -1,27 +1,18 @@
 import copy
-import matplotlib.pyplot as plt
 import os
-import numpy as np
-import pandas as pd
-from requests.exceptions import HTTPError
-from scipy.ndimage import gaussian_filter
-import seaborn as sns
 from shutil import rmtree
 
-from toffy.mibitracker_utils import MibiTrackerError
-from toffy.mibitracker_utils import MibiRequests
-from toffy import settings
-from tmi.image_utils import save_image
-
-import ark.utils.io_utils as io_utils
-import ark.utils.misc_utils as misc_utils
-import ark.utils.load_utils as load_utils
+import matplotlib.pyplot as plt
+import numpy as np
+import pandas as pd
+import seaborn as sns
 from mibi_bin_tools import bin_files
+from requests.exceptions import HTTPError
+from scipy.ndimage import gaussian_filter
+from tmi import image_utils, io_utils, load_utils, misc_utils
 
-
-# needed to prevent UserWarning: low contrast image barf when saving images
-import warnings
-warnings.filterwarnings('ignore', category=UserWarning)
+from toffy import settings
+from toffy.mibitracker_utils import MibiRequests, MibiTrackerError
 
 
 def create_mibitracker_request_helper(email, password):
@@ -34,7 +25,7 @@ def create_mibitracker_request_helper(email, password):
             The user's MIBItracker password
 
     Returns:
-        ark.mibi.mibitracker_utils.MibiRequests:
+        toffy.mibi.mibitracker_utils.MibiRequests:
             A request helper module instance to access a user's MIBItracker info
     """
 
@@ -183,7 +174,7 @@ def download_mibitracker_data(email, password, run_name, run_label, base_dir, ti
 
             # write the data to a .tiff file in the FOV directory structure
             fname: str = os.path.join(base_dir, tiff_dir, img['number'], img_sub_folder, chan_file)
-            save_image(fname, chan_data)
+            image_utils.save_image(fname, chan_data)
 
         # append the run name and run id to the list
         run_order.append((img['number'], img['id']))

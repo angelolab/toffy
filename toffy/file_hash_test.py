@@ -1,12 +1,12 @@
 import os
 import shutil
 import tempfile
-import pytest
 
 import numpy as np
+import pytest
+from tmi.image_utils import save_image
 
 from toffy import file_hash
-from tmi.image_utils import save_image
 
 
 def test_get_hash():

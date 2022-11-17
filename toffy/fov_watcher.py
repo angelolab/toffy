@@ -1,11 +1,13 @@
 import os
-import warnings
-from pathlib import Path
 import time
+import warnings
 from datetime import datetime
+from pathlib import Path
 from typing import Callable, Tuple
+
 from watchdog.events import FileCreatedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
+
 from toffy.json_utils import read_json_file
 
 

@@ -1,11 +1,9 @@
-import matplotlib.pyplot as plt
-import seaborn as sns
-import numpy as np
-from toffy import qc_comp
-from ark.utils import io_utils, test_utils
-import pandas as pd
-import tempfile
 import os
+import tempfile
+
+import pandas as pd
+from tmi import test_utils
+
 from toffy import qc_metrics_plots
 
 

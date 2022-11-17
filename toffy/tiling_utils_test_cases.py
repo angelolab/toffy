@@ -1,5 +1,6 @@
-from copy import deepcopy
 import functools
+from copy import deepcopy
+
 import mock
 import numpy as np
 import pandas as pd

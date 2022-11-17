@@ -1,9 +1,10 @@
 import warnings
 
 import natsort as ns
+from mibi_bin_tools import bin_files
+from tmi import io_utils
 
-from toffy.json_utils import list_moly_fovs, check_for_empty_files
-from mibi_bin_tools import bin_files, io_utils
+from toffy.json_utils import check_for_empty_files, list_moly_fovs
 
 
 def extract_missing_fovs(bin_file_dir, extraction_dir, panel,

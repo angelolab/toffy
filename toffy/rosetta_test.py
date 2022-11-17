@@ -1,23 +1,18 @@
 import copy
 import os
-import pandas as pd
-import numpy as np
 import tempfile
-
-import skimage.io as io
 from pathlib import Path
 
-from toffy import rosetta
-from tmi.image_utils import save_image
+import numpy as np
+import pandas as pd
+import pytest
+import skimage.io as io
+from pytest_cases import parametrize_with_cases
+from tmi import image_utils, io_utils, load_utils, test_utils
 
 import toffy.rosetta_test_cases as test_cases
-from ark.utils import test_utils
-from ark.utils.load_utils import load_imgs_from_tree
-
-from ark.utils.io_utils import list_folders, list_files
+from toffy import rosetta
 from toffy.rosetta import create_rosetta_matrices
-import pytest
-from pytest_cases import parametrize_with_cases
 
 parametrize = pytest.mark.parametrize
 
@@ -219,7 +214,7 @@ def test_compensate_image_data(output_masses, input_masses, gaus_rad, save_forma
                                       streak_chan='chan1')
 
         # all folders created
-        output_folders = list_folders(output_dir)
+        output_folders = io_utils.list_folders(output_dir)
         assert set(fovs) == set(output_folders)
 
         # determine output directory structure
@@ -229,7 +224,7 @@ def test_compensate_image_data(output_masses, input_masses, gaus_rad, save_forma
 
         for folder in format_folders:
             # check that all files were created
-            output_files = list_files(os.path.join(output_dir, fovs[0], folder), '.tif')
+            output_files = io_utils.list_files(os.path.join(output_dir, fovs[0], folder), '.tif')
             output_files = [chan.split('.tif')[0] for chan in output_files]
 
             if output_masses is None or len(output_masses) == 3:
@@ -237,7 +232,8 @@ def test_compensate_image_data(output_masses, input_masses, gaus_rad, save_forma
             else:
                 assert set(output_files) == set(panel_info['Target'].values[:-1])
 
-            output_data = load_imgs_from_tree(data_dir=output_dir, img_sub_folder=folder)
+            output_data = load_utils.load_imgs_from_tree(data_dir=output_dir,
+                                                         img_sub_folder=folder)
 
             assert np.issubdtype(output_data.dtype, np.floating)
 
@@ -314,7 +310,7 @@ def test_add_source_channel_to_tiled_image():
         for i in range(2):
             vals = np.random.rand(im_size * 3 * im_size * num_fovs).reshape(tiled_shape)
             fname = os.path.join(tiled_dir, f"tiled_image_{i}.tiff")
-            save_image(fname, vals)
+            image_utils.save_image(fname, vals)
 
         output_dir = os.path.join(top_level_dir, 'output_dir')
         os.makedirs(output_dir)
@@ -323,7 +319,7 @@ def test_add_source_channel_to_tiled_image():
                                                   max_img_size=10)
 
         # each image should now have an extra row added on top
-        tiled_images = list_files(output_dir)
+        tiled_images = io_utils.list_files(output_dir)
         for im_name in tiled_images:
             image = io.imread(os.path.join(output_dir, im_name))
             assert image.shape == (tiled_shape[0] + im_size, tiled_shape[1])
@@ -351,7 +347,7 @@ def test_replace_with_intensity_image(replace, fovs):
         for current_fov in range(2):
             if fovs is not None and current_fov == 0:
                 # this fov was skipped, no images should be present here
-                files = list_files(os.path.join(run_dir, 'fov0'))
+                files = io_utils.list_files(os.path.join(run_dir, 'fov0'))
                 assert len(files) == 0
             else:
                 # ensure correct extension is present
@@ -481,13 +477,13 @@ def test_copy_image_files(mocker):
 
             # check that correct total and per run fovs are copied
             extracted_fov_dir = os.path.join(temp_dir2, 'cohort_name', 'extracted_images')
-            assert len(list_folders(extracted_fov_dir)) == 15
+            assert len(io_utils.list_folders(extracted_fov_dir)) == 15
             for i in range(1, 4):
-                assert len(list(list_folders(extracted_fov_dir, f'run_{i}'))) == 5
-            assert len(list(list_folders(extracted_fov_dir, 'stitched_images'))) == 0
+                assert len(list(io_utils.list_folders(extracted_fov_dir, f'run_{i}'))) == 5
+            assert len(list(io_utils.list_folders(extracted_fov_dir, 'stitched_images'))) == 0
 
             # check that files in fov folders are copied
-            for folder in list_folders(extracted_fov_dir):
+            for folder in io_utils.list_folders(extracted_fov_dir):
                 assert os.path.exists(os.path.join(
                     extracted_fov_dir, folder, 'test_image.tif'))
 
@@ -499,7 +495,7 @@ def test_rescale_raw_imgs():
         channels = ['Au', 'CD3']
         test_utils._write_tifs(base_dir=temp_dir, fov_names=fovs, img_names=channels,
                                shape=(32, 32), sub_dir='', fills=False, dtype='uint32')
-        img_data = load_imgs_from_tree(temp_dir)
+        img_data = load_utils.load_imgs_from_tree(temp_dir)
 
         # bad extracted img path should raise an error
         with pytest.raises(FileNotFoundError):
@@ -513,7 +509,7 @@ def test_rescale_raw_imgs():
             assert os.path.exists(img_path)
 
         # test successful rescale of data
-        rescaled_img_data = load_imgs_from_tree(temp_dir, 'rescaled')
+        rescaled_img_data = load_utils.load_imgs_from_tree(temp_dir, 'rescaled')
         assert rescaled_img_data.all() == (img_data / 200).all()
 
         assert rescaled_img_data.dtype == 'float32'
