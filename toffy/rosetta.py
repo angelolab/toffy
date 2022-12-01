@@ -19,8 +19,8 @@ def transform_compensation_json(json_path, comp_mat_path):
     """Converts the JSON file from ionpath into a compensation matrix
 
     Args:
-        json_path: path to json file
-        comp_mat_path: path to comp matrix
+        json_path (str): path to json file
+        comp_mat_path (str): path to comp matrix
 
     returns:
         pd.DataTable: matrix with sources channels as rows and target channels as columns"""
