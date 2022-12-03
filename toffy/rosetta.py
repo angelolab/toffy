@@ -630,12 +630,16 @@ def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, fold
     create_rosetta_matrices(default_matrix=rosetta_mat_path, save_dir=folder_path,
                             multipliers=multipliers, current_channel_name=current_channel_name,
                             output_channel_names=output_channel_names, masses=current_channel_mass)
+
+    # define the file prefix used for each compensation matrix file
     matrix_name = io_utils.remove_file_extensions([os.path.basename(rosetta_mat_path)])[0]
+    output_chan_str = '_'.join(output_channel_names) if output_channel_names is not None else 'all'
+    comp_file_prefix = f'{current_channel_name}_{output_chan_str}_{matrix_name}_mult'
 
     # loop over each multiplier and compensate the data
     rosetta_dirs = [img_out_dir]
     for multiplier in multipliers:
-        rosetta_mat_path = os.path.join(folder_path, f'{matrix_name}_mult_{multiplier}.csv')
+        rosetta_mat_path = os.path.join(folder_path, f'{comp_file_prefix}_{multiplier}.csv')
         rosetta_out_dir = os.path.join(folder_path, 'compensated_data_{}'.format(multiplier))
         rosetta_dirs.append(rosetta_out_dir)
         os.makedirs(rosetta_out_dir)
