@@ -639,6 +639,7 @@ def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, fold
     # loop over each multiplier and compensate the data
     rosetta_dirs = [img_out_dir]
     for multiplier in multipliers:
+        print(f'Processing images with multiplier {multiplier}')
         rosetta_mat_path = os.path.join(folder_path, f'{comp_file_prefix}_{multiplier}.csv')
         rosetta_out_dir = os.path.join(folder_path, 'compensated_data_{}'.format(multiplier))
         rosetta_dirs.append(rosetta_out_dir)
