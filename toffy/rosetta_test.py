@@ -157,6 +157,50 @@ def test_validate_inputs():
             rosetta.validate_inputs(**input_dict_gaus_rad)
 
 
+def test_clean_rosetta_test_dir():
+    with tempfile.TemporaryDirectory() as rosetta_test_dir:
+        # make a few dummy comp directories, each with a couple of FOV subdirectories
+        mults = [0.5, 1, 2]
+        fovs = ['fov0', 'fov1']
+        comp_folder_names = []
+        for m in mults:
+            comp_folder_path = os.path.join(rosetta_test_dir, f'compensated_data_{m}')
+            comp_folder_names.append(comp_folder_path)
+            os.mkdir(comp_folder_path)
+
+            for fov in fovs:
+                os.mkdir(os.path.join(comp_folder_path, fov))
+
+        # make a dummy stitched_images directory
+        stitched_image_path = os.path.join(rosetta_test_dir, 'stitched_images')
+        os.mkdir(stitched_image_path)
+
+        # make a few sample roseta matrix files
+        source = 'chan1'
+        out = 'chan2'
+        rosetta_matrix_names = []
+        for m in mults:
+            mat_path = os.path.join(
+                rosetta_test_dir, f'{source}_{out}_rosetta_matrix_mult_{m}.csv'
+            )
+            rosetta_matrix_names.append(mat_path)
+            pd.DataFrame().to_csv(mat_path)
+
+        # run the cleaning process
+        rosetta.clean_rosetta_test_dir(rosetta_test_dir)
+
+        # assert all of the comp directories are deleted
+        for cfn in comp_folder_names:
+            assert not os.path.exists(cfn)
+
+        # assert the stitched image directories is deleted
+        assert not os.path.exists(stitched_image_path)
+
+        # assert the rosetta matrices still exist
+        for rmn in rosetta_matrix_names:
+            assert os.path.exists(rmn)
+
+
 def test_flat_field_correction():
     input_img = np.random.rand(10, 10)
     corrected_img = rosetta.flat_field_correction(img=input_img)
@@ -187,8 +231,8 @@ def test_get_masses_from_channel_names():
 @parametrize('save_format', ['raw', 'rescaled', 'both'])
 @parametrize_with_cases('panel_info', cases=test_cases.CompensateImageDataPanel)
 @parametrize_with_cases('comp_mat', cases=test_cases.CompensateImageDataMat)
-def test_compensate_image_data(output_masses, input_masses, gaus_rad, save_format, panel_info,
-                               comp_mat):
+def test_compensate_image_data(output_masses, input_masses, gaus_rad, save_format,
+                               panel_info, comp_mat):
     with tempfile.TemporaryDirectory() as top_level_dir:
         data_dir = os.path.join(top_level_dir, 'data_dir')
         output_dir = os.path.join(top_level_dir, 'output_dir')
@@ -397,12 +441,16 @@ def test_create_rosetta_matrices():
         base_rosetta.to_csv(base_rosetta_path)
 
         # validate output when all channels are included
+        # NOTE: current_channel_name and output_channel_names are dummies, only for naming files
         multipliers = [0.5, 2, 4]
-        create_rosetta_matrices(base_rosetta_path, temp_dir, multipliers)
+        create_rosetta_matrices(base_rosetta_path, temp_dir, multipliers,
+                                current_channel_name='chan1',
+                                output_channel_names=['chan2', 'chan3'])
 
         for multiplier in multipliers:
-            rosetta_path = os.path.join(temp_dir, 'rosetta_matrix_mult_%s.csv'
-                                        % (str(multiplier)))
+            rosetta_path = os.path.join(
+                temp_dir, 'chan1_chan2_chan3_rosetta_matrix_mult_%s.csv' % (str(multiplier))
+            )
             # grabs output of create_rosetta_matrices
             test_matrix = pd.read_csv(rosetta_path, index_col=0)
             rescaled = (test_matrix / multiplier)
@@ -412,7 +460,10 @@ def test_create_rosetta_matrices():
 
         # validate output for specific channels
         mod_channels = [113, 142]
-        create_rosetta_matrices(base_rosetta_path, temp_dir, multipliers, mod_channels)
+        create_rosetta_matrices(base_rosetta_path, temp_dir, multipliers,
+                                current_channel_name='chan1',
+                                output_channel_names=['chan2', 'chan3'],
+                                masses=mod_channels)
 
         # create mask specifying which channels will change
         change_idx = np.isin(test_channels, mod_channels)
@@ -422,7 +473,9 @@ def test_create_rosetta_matrices():
             mult_vec[change_idx] = mult
 
             # grabs output of create_rosetta_matrices
-            rosetta_path = os.path.join(temp_dir, 'rosetta_matrix_mult_%s.csv' % (str(mult)))
+            rosetta_path = os.path.join(
+                temp_dir, 'chan1_chan2_chan3_rosetta_matrix_mult_%s.csv' % (str(mult))
+            )
             test_matrix = pd.read_csv(rosetta_path, index_col=0)
 
             rescaled = test_matrix.divide(mult_vec, axis='index')
@@ -434,7 +487,9 @@ def test_create_rosetta_matrices():
         bad_matrix.to_csv(bad_matrix_path)
 
         with pytest.raises(ValueError, match='include only numeric'):
-            create_rosetta_matrices(bad_matrix_path, temp_dir, multipliers)
+            create_rosetta_matrices(bad_matrix_path, temp_dir, multipliers,
+                                    current_channel_name='chan1',
+                                    output_channel_names=['chan2', 'chan3'])
 
 
 def mock_img_size(run_dir, fov_list=None):
@@ -567,10 +622,13 @@ def test_generate_rosetta_test_imgs(mocker):
                                                temp_dir, panel)
 
             for i, j, k in zip(mults, range(0, len(fovs)), range(0, len(channels))):
-                assert os.path.exists(os.path.join(temp_dir, f'compensated_data_{i}', fovs[j],
-                                                   'rescaled', channels[k] + '.tiff'))
-                assert os.path.exists(os.path.join(temp_dir,
-                                                   f'commercial_rosetta_matrix_v1_mult_{i}.csv'))
+                assert os.path.exists(
+                    os.path.join(temp_dir, f'compensated_data_{i}', fovs[j],
+                                 'rescaled', channels[k] + '.tiff')
+                )
+                assert os.path.exists(
+                    os.path.join(temp_dir, f'Noodle_all_commercial_rosetta_matrix_v1_mult_{i}.csv')
+                )
 
         with tempfile.TemporaryDirectory() as temp_dir:
             # test success for subset of  channels
@@ -580,7 +638,10 @@ def test_generate_rosetta_test_imgs(mocker):
                                                temp_dir, panel, output_channel_names=one_channel)
 
             for i, j in zip(mults, range(0, len(fovs))):
-                assert os.path.exists(os.path.join(temp_dir, f'compensated_data_{i}', fovs[j],
-                                                   'rescaled', 'Au.tiff'))
-                assert os.path.exists(os.path.join(temp_dir,
-                                                   f'commercial_rosetta_matrix_v1_mult_{i}.csv'))
+                assert os.path.exists(
+                    os.path.join(temp_dir, f'compensated_data_{i}', fovs[j],
+                                 'rescaled', 'Au.tiff')
+                )
+                assert os.path.exists(
+                    os.path.join(temp_dir, f'Noodle_Au_commercial_rosetta_matrix_v1_mult_{i}.csv')
+                )

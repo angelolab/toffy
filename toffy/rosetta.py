@@ -19,8 +19,8 @@ def transform_compensation_json(json_path, comp_mat_path):
     """Converts the JSON file from ionpath into a compensation matrix
 
     Args:
-        json_path: path to json file
-        comp_mat_path: path to comp matrix
+        json_path (str): path to json file
+        comp_mat_path (str): path to comp matrix
 
     returns:
         pd.DataTable: matrix with sources channels as rows and target channels as columns"""
@@ -135,6 +135,22 @@ def validate_inputs(raw_data_dir, comp_mat, acquired_masses, acquired_targets, i
 
     if not isinstance(gaus_rad, int) or gaus_rad < 0:
         raise ValueError('gaus_rad parameter must be a non-negative integer')
+
+
+def clean_rosetta_test_dir(folder_path):
+    """Remove the unnecessary intermediate folders created by rosetta test data computation
+
+    Args:
+        folder_path (str): base dir for testing, image subdirs will be stored here
+    """
+
+    # remove the compensated data folders
+    comp_folders = io_utils.list_folders(folder_path, substrs='compensated_data_')
+    for cf in comp_folders:
+        shutil.rmtree(os.path.join(folder_path, cf))
+
+    # remove the stitched image folder
+    shutil.rmtree(os.path.join(folder_path, 'stitched_images'))
 
 
 def flat_field_correction(img, gaus_rad=100):
@@ -462,13 +478,16 @@ def remove_sub_dirs(run_dir, sub_dirs, fovs=None):
             shutil.rmtree(os.path.join(run_dir, fov, sub_dir))
 
 
-def create_rosetta_matrices(default_matrix, save_dir, multipliers, masses=None):
+def create_rosetta_matrices(default_matrix, save_dir, multipliers, current_channel_name,
+                            output_channel_names, masses=None):
     """Creates a series of compensation matrices for evaluating coefficients
     Args:
         default_matrix (str): path to the rosetta matrix to use as the default
         save_dir (str): output directory
         multipliers (list): the range of values to multiply the default matrix by
             to get new coefficients
+        current_channel_name (str): channel being adjusted
+        output_channel_names (list): subset of the channels to compensate for
         masses (list | None): an optional list of masses to include in the multiplication. If
             only a subset of masses are specified, other masses will retain their values
             in all iterations. If None, all masses are included
@@ -491,6 +510,11 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, masses=None):
             raise ValueError("Masses must be provided as integers")
         misc_utils.verify_in_list(specified_masses=masses, rosetta_masses=comp_masses)
 
+    # define the file prefix used for each compensation matrix file
+    default_mat_prefix = os.path.basename(default_matrix).split('.csv')[0]
+    output_chan_str = '_'.join(output_channel_names) if output_channel_names is not None else 'all'
+    comp_file_prefix = f'{current_channel_name}_{output_chan_str}_{default_mat_prefix}_mult'
+
     # loop over each specified multiplier and create separate compensation matrix
     for i in multipliers:
         mult_matrix = copy.deepcopy(comp_matrix)
@@ -499,8 +523,8 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, masses=None):
             # multiply specified channel by multiplier
             if comp_masses[j] in masses:
                 mult_matrix.iloc[j, :] = comp_matrix.iloc[j, :] * i
-        base_name = os.path.basename(default_matrix).split('.csv')[0]
-        mult_matrix.to_csv(os.path.join(save_dir, base_name + '_mult_%s.csv' % (str(i))))
+        comp_name = f'{comp_file_prefix}_{i}.csv'
+        mult_matrix.to_csv(os.path.join(save_dir, comp_name))
 
 
 def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs_dir,
@@ -603,14 +627,20 @@ def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, fold
         output_masses = None
 
     # generate rosetta matrices for each multiplier
-    create_rosetta_matrices(default_matrix=rosetta_mat_path, multipliers=multipliers,
-                            masses=current_channel_mass, save_dir=folder_path)
+    create_rosetta_matrices(default_matrix=rosetta_mat_path, save_dir=folder_path,
+                            multipliers=multipliers, current_channel_name=current_channel_name,
+                            output_channel_names=output_channel_names, masses=current_channel_mass)
+
+    # define the file prefix used for each compensation matrix file
     matrix_name = io_utils.remove_file_extensions([os.path.basename(rosetta_mat_path)])[0]
+    output_chan_str = '_'.join(output_channel_names) if output_channel_names is not None else 'all'
+    comp_file_prefix = f'{current_channel_name}_{output_chan_str}_{matrix_name}_mult'
 
     # loop over each multiplier and compensate the data
     rosetta_dirs = [img_out_dir]
     for multiplier in multipliers:
-        rosetta_mat_path = os.path.join(folder_path, f'{matrix_name}_mult_{multiplier}.csv')
+        print(f'Processing images with multiplier {multiplier}')
+        rosetta_mat_path = os.path.join(folder_path, f'{comp_file_prefix}_{multiplier}.csv')
         rosetta_out_dir = os.path.join(folder_path, 'compensated_data_{}'.format(multiplier))
         rosetta_dirs.append(rosetta_out_dir)
         os.makedirs(rosetta_out_dir)
