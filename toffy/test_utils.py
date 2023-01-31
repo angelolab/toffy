@@ -454,6 +454,7 @@ class WatcherCases:
         )
 
     @parametrize(intensity=(False, True))
+    @parametrize(replace=(False, True))
     def case_inter_callback(self, intensity, replace):
         rcs, _, fcs, kwargs, validators = self.case_default(intensity, replace)
         ics = rcs[2:]
