@@ -300,12 +300,16 @@ def build_fov_callback(*args, **kwargs):
 
 
 def build_callbacks(run_callbacks: Iterable[str],
+                    intermediate_callbacks: Iterable[str] = None,
                     fov_callbacks: Iterable[str] = ('extract_tiffs',), **kwargs):
     """Deduces and assembles all run & FoV callbacks for the watcher function
 
     Args:
         run_callbacks (Iterable[str]):
             List of run callback names.  These will deduce the prerequisite fov callbacks
+        intermediate_callbacks (Iterable[str]):
+            List of intermediate callback names, these will be subsets of `run_callbacks`
+            but overriden to act as `fov_callbacks`
         fov_callbacks (Iterable[str]):
             List of fov callbacks to be run, regardless of prerequisite status
         **kwargs (Dict[str, Any]):
@@ -324,8 +328,20 @@ def build_callbacks(run_callbacks: Iterable[str],
 
     fov_callbacks = set(fov_callbacks)
 
-    misc_utils.verify_in_list(requested_callbacks=run_callbacks, valid_callbacks=methods)
-    for run_cb in run_callbacks:
+    misc_utils.verify_in_list(
+        requested_callbacks=run_callbacks,
+        valid_callbacks=methods
+    )
+    if intermediate_callbacks:
+        misc_utils.verify_in_list(
+            intermediate_callbacks=intermediate_callbacks,
+            valid_callbacks=methods
+        )
+
+    callbacks_with_prereq = run_callbacks + intermediate_callbacks if intermediate_callbacks \
+        else run_callbacks[:]
+
+    for run_cb in callbacks_with_prereq:
         argnames = inspect.getfullargspec(getattr(RunCallbacks, run_cb))[0]
         argnames = [argname for argname in argnames if argname != 'self']
 
@@ -350,4 +366,18 @@ def build_callbacks(run_callbacks: Iterable[str],
                     f'Could not locate attribute {run_cb} in RunCallbacks object'
                 )
 
-    return fov_callback, run_callback
+    intermediate_callback = None
+    if intermediate_callbacks:
+        def intermediate_callback(run_folder: str):
+            callback_obj = RunCallbacks(run_folder)
+
+            for run_cb in intermediate_callbacks:
+                if cb := getattr(callback_obj, run_cb, None):
+                    cb(**kwargs)
+                else:
+                    # unreachable...
+                    raise ValueError(
+                        f'Could not locate attribute {run_cb} in RunCallbacks object'
+                    )
+
+    return fov_callback, run_callback, intermediate_callback
