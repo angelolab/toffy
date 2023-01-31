@@ -75,7 +75,7 @@ def test_run_structure(run_json, expected_files):
 @patch('toffy.watcher_callbacks.visualize_qc_metrics', side_effect=mock_visualize_qc_metrics)
 @patch('toffy.watcher_callbacks.visualize_mph', side_effect=mock_visualize_mph)
 @pytest.mark.parametrize('add_blank', [False, True])
-@parametrize_with_cases('run_cbs, fov_cbs, kwargs, validators', cases=WatcherCases)
+@parametrize_with_cases('run_cbs, inter_cbs, fov_cbs, kwargs, validators', cases=WatcherCases)
 def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, inter_cbs, fov_cbs,
                  kwargs, validators, add_blank):
     try:
