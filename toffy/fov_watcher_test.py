@@ -76,7 +76,7 @@ def test_run_structure(run_json, expected_files):
 @patch('toffy.watcher_callbacks.visualize_mph', side_effect=mock_visualize_mph)
 @pytest.mark.parametrize('add_blank', [False, True])
 @parametrize_with_cases('run_cbs, fov_cbs, kwargs, validators', cases=WatcherCases)
-def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, fov_cbs, kwargs, validators, add_blank):
+def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, inter_cbs, fov_cbs, kwargs, validators, add_blank):
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
 
@@ -98,7 +98,9 @@ def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, fov_cbs, kwargs, validators
             log_out = os.path.join(tmpdir, 'log_output')
             os.makedirs(run_data)
 
-            fov_callback, run_callback = build_callbacks(run_cbs, fov_cbs, **kwargs)
+            fov_callback, run_callback, inter_callback = build_callbacks(
+                run_cbs, inter_cbs, fov_cbs, **kwargs
+            )
             write_json_file(json_path=os.path.join(run_data, 'test_run.json'),
                             json_object=COMBINED_RUN_JSON_SPOOF)
 
@@ -116,7 +118,8 @@ def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, fov_cbs, kwargs, validators
                 # zero-size files are halted for 1 second or until they have non zero-size
                 res_scan = pool.apply_async(
                     start_watcher,
-                    (run_data, log_out, fov_callback, run_callback, 1, SLOW_COPY_INTERVAL_S)
+                    (run_data, log_out, fov_callback, run_callback, inter_callback,
+                     1, SLOW_COPY_INTERVAL_S)
                 )
 
                 res_scan.get()
