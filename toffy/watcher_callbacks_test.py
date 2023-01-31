@@ -27,7 +27,6 @@ COMBINED_RUN_JSON_SPOOF = {
 @parametrize_with_cases('callbacks, kwargs', cases=FovCallbackCases)
 @parametrize_with_cases('data_path',  cases=WatcherTestData)
 def test_build_fov_callback(callbacks, kwargs, data_path):
-
     intensities = kwargs.get('intensities', ['Au', 'chan_39'])
     replace = kwargs.get('replace', True)
 
@@ -92,7 +91,7 @@ def test_build_callbacks(viz_mock, run_callbacks, inter_callbacks, kwargs, data_
             kwargs['save_dir'] = qc_dir
 
         fcb, rcb, icb = watcher_callbacks.build_callbacks(
-            run_callbacks=run_callbacks, 
+            run_callbacks=run_callbacks,
             intermediate_callbacks=inter_callbacks,
             **kwargs
         )
