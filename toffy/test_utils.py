@@ -447,7 +447,16 @@ class WatcherCases:
 
         return (
             ['plot_qc_metrics', 'plot_mph_metrics', 'image_stitching'],
+            None,
             ['extract_tiffs', 'generate_pulse_heights'],
             kwargs,
             validators
         )
+
+    @parametrize(intensity=(False, True))
+    def case_inter_callback(self, intensity, replace):
+        rcs, _, fcs, kwargs, validators = self.case_default(intensity, replace)
+        ics = rcs[2:]
+        rcs = rcs[:2]
+
+        return (rcs, ics, fcs, kwargs, validators)
