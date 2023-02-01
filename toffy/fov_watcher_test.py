@@ -99,6 +99,15 @@ def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, inter_cbs, fov_cbs,
             log_out = os.path.join(tmpdir, 'log_output')
             os.makedirs(run_data)
 
+            print("run callbacks passed")
+            print(run_cbs)
+
+            print("intermediate callbacks passed")
+            print(inter_cbs)
+
+            print("FOV callbacks passed")
+            print(fov_cbs)
+
             fov_callback, run_callback, inter_callback = build_callbacks(
                 run_cbs, inter_cbs, fov_cbs, **kwargs
             )
