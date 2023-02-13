@@ -115,15 +115,13 @@ def test_watcher(mock_viz_qc, mock_viz_mph, run_cbs, inter_cbs, fov_cbs,
                     (run_data, SLOW_COPY_INTERVAL_S, add_blank)
                 )
 
-                # watcher completion is checked every second
-                # zero-size files are halted for 1 second or until they have non zero-size
-                res_scan = pool.apply_async(
+                # # watcher completion is checked every second
+                # # zero-size files are halted for 1 second or until they have non zero-size
+                pool.apply_async(
                     start_watcher,
                     (run_data, log_out, fov_callback, run_callback, inter_callback,
                      1, SLOW_COPY_INTERVAL_S)
                 )
-
-                res_scan.get()
 
             with open(os.path.join(log_out, 'test_run_log.txt')) as f:
                 logtxt = f.read()
