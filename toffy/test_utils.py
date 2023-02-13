@@ -162,8 +162,8 @@ class RunCallbackCases:
 
     def case_inter_callback(self):
         cbs, ibs, kws = self.case_default()
-        ibs = list(cbs[2:])
-        cbs = list(cbs[:2])
+        ibs = list(cbs[:2])
+        cbs = list(cbs[2:])
         return cbs, ibs, kws
 
     @pytest.mark.xfail(raises=ValueError)
