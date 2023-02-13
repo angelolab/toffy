@@ -3,8 +3,11 @@ import os
 from dataclasses import dataclass, field
 from typing import Iterable
 
-import matplotlib
-matplotlib.use('Agg')
+
+import platform
+if platform.system() == "Darwin":
+    import matplotlib
+    matplotlib.use('Agg')
 
 import matplotlib.pyplot as plt
 import pandas as pd
