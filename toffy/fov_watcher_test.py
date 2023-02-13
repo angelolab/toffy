@@ -42,9 +42,6 @@ def _slow_copy_sample_tissue_data(dest: str, delta: int = 10, one_blank: bool = 
             one_blank = False
         else:
             shutil.copy(os.path.join(COMBINED_DATA_PATH, tissue_file), dest)
-            
-        import threading
-        print(threading.get_native_id())
 
 
 COMBINED_RUN_JSON_SPOOF = {
