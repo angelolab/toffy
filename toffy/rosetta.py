@@ -335,8 +335,15 @@ def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
     test_data = load_utils.load_imgs_from_tree(data_dir=test_dir, fovs=[test_fov],
                                                img_sub_folder=img_sub_folder, channels=channels)
 
-    channels = test_data.channels.values
-    chanel_num = len(channels)
+    if not channels:
+        channels = test_data.channels.values
+
+    misc_utils.verify_in_list(
+        provided_channels=channels,
+        test_data_channels=test_data.channels.values
+    )
+
+    channel_num = len(channels)
 
     # check that all dirs have the same number of fovs and correct subset of channels
     fov_names = io_utils.list_folders(input_dir_list[0])
@@ -351,7 +358,7 @@ def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
     fov_num = len(fov_names)
 
     # loop over each channel
-    for j in range(chanel_num):
+    for j in range(channel_num):
         # create tiled array of dirs x fovs
         tiled_image = np.zeros((max_img_size * len(input_dir_list),
                                 max_img_size * fov_num), dtype=test_data.dtype)
@@ -383,7 +390,8 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
         img_sub_folder (str): subfolder within raw_img_dir to load images from
         max_img_size (int): largest fov image size
         source_channel (str): the channel which will be prepended to the tiled images
-        percent_norm (int): percentile normalization param to enable easy visualization"""
+        percent_norm (int): percentile normalization param to enable easy visualization, set to
+            None to skip this step"""
 
     # load source images
     source_imgs = load_utils.load_imgs_from_tree(raw_img_dir, channels=[source_channel],
@@ -393,7 +401,9 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
     # convert stacked images to concatenated row
     source_list = [source_imgs.values[fov, :, :, 0] for fov in range(source_imgs.shape[0])]
     source_row = np.concatenate(source_list, axis=1)
-    perc_source = np.percentile(source_row, percent_norm)
+    
+    # get percentile of source row if percent_norm set, otherwise leave unset
+    perc_source = np.percentile(source_row, percent_norm) if percent_norm else None
 
     # confirm tiled images have expected shape
     tiled_images = io_utils.list_files(tiled_img_dir)
@@ -407,9 +417,13 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
     for tile_name in tiled_images:
         current_tile = io.imread(os.path.join(tiled_img_dir, tile_name))
 
-        # normalize the source row to be in the same range as the current tile
-        perc_tile = np.percentile(current_tile, percent_norm)
-        perc_ratio = perc_source / perc_tile
+        # if percent_norm set, normalize the source row to be in the same range as the current tile
+        # otherwise, just leave as is (divide by 1)
+        perc_ratio = 1
+        if percent_norm:
+            perc_tile = np.percentile(current_tile, percent_norm)
+            perc_ratio = perc_source / perc_tile
+
         rescaled_source = source_row / perc_ratio
 
         # combine together and save
@@ -602,7 +616,8 @@ def rescale_raw_imgs(img_out_dir, scale=200):
 
 
 def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, folder_path, panel,
-                               current_channel_name='Noodle', output_channel_names=None):
+                               current_channel_name='Noodle', output_channel_names=None,
+                               gaus_rad=1, norm_const=1):
     """ Compensate example FOV images based on given multipliers
     Args:
         rosetta_mat_path (str): path to rosetta compensation matrix
@@ -612,6 +627,8 @@ def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, fold
         panel (pd.DataFrame): the panel containing the masses and channel names
         current_channel_name (str): channel being adjusted, default Noodle
         output_channel_names (list): subset of the channels to compensate for, default None is all
+        gaus_rad: radius for blurring image data. Passing 0 will result in no blurring
+        norm_const: constant used for rescaling
 
     Returns:
         Create subdirs containing rosetta compensated images for each multiplier and stitched imgs
@@ -646,5 +663,5 @@ def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, fold
         os.makedirs(rosetta_out_dir)
         compensate_image_data(raw_data_dir=img_out_dir, comp_data_dir=rosetta_out_dir,
                               comp_mat_path=rosetta_mat_path, raw_data_sub_folder='rescaled',
-                              panel_info=panel, batch_size=1, norm_const=1,
-                              output_masses=output_masses)
+                              panel_info=panel, batch_size=1, gaus_rad=gaus_rad,
+                              norm_const=norm_const, output_masses=output_masses)

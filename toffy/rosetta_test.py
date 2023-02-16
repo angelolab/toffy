@@ -289,7 +289,8 @@ def test_compensate_image_data(output_masses, input_masses, gaus_rad, save_forma
 
 
 @parametrize('dir_num', [2, 3])
-def test_create_tiled_comparison(dir_num):
+@parametrize('channel_subset', [False, True])
+def test_create_tiled_comparison(dir_num, channel_subset):
     with tempfile.TemporaryDirectory() as top_level_dir:
         num_chans = 3
         num_fovs = 4
@@ -308,11 +309,14 @@ def test_create_tiled_comparison(dir_num):
                 full_path, fovs, chans, img_shape=(10, 10), fills=True, sub_dir='rescaled')
 
         # pass full paths to function
+        # NOTE: channel_subset tests for some and all channels provided
         paths = [os.path.join(top_level_dir, img_dir) for img_dir in dir_names]
-        rosetta.create_tiled_comparison(paths, output_dir, max_img_size=10)
+        chan_list = chans[:-1] if channel_subset else chans[:]
+        rosetta.create_tiled_comparison(paths, output_dir, max_img_size=10,
+                                        channels=chan_list if channel_subset else None)
 
         # check that each tiled image was created
-        for i in range(num_chans):
+        for i in range(len(chan_list)):
             chan_name = 'chan{}_comparison.tiff'.format(i)
             chan_img = io.imread(os.path.join(output_dir, chan_name))
             row_len = num_fovs * 10
@@ -333,7 +337,8 @@ def test_create_tiled_comparison(dir_num):
             rosetta.create_tiled_comparison(paths, output_dir, max_img_size=10)
 
 
-def test_add_source_channel_to_tiled_image():
+@parametrize('percent_norm', [98, None])
+def test_add_source_channel_to_tiled_image(percent_norm):
     with tempfile.TemporaryDirectory() as top_level_dir:
         num_fovs = 5
         num_chans = 4
@@ -360,7 +365,7 @@ def test_add_source_channel_to_tiled_image():
         os.makedirs(output_dir)
         rosetta.add_source_channel_to_tiled_image(raw_img_dir=raw_dir, tiled_img_dir=tiled_dir,
                                                   output_dir=output_dir, source_channel='chan1',
-                                                  max_img_size=10)
+                                                  max_img_size=10, percent_norm=percent_norm)
 
         # each image should now have an extra row added on top
         tiled_images = io_utils.list_files(output_dir)
