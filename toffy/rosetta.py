@@ -401,7 +401,7 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
     # convert stacked images to concatenated row
     source_list = [source_imgs.values[fov, :, :, 0] for fov in range(source_imgs.shape[0])]
     source_row = np.concatenate(source_list, axis=1)
-    
+
     # get percentile of source row if percent_norm set, otherwise leave unset
     perc_source = np.percentile(source_row, percent_norm) if percent_norm else None
 
