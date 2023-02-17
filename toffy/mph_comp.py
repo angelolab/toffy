@@ -182,11 +182,7 @@ def visualize_mph(mph_df, out_dir, regression: bool = False):
         m, b = np.polyfit(x2, y2, 1)
         ax1.plot(x2, m * x2 + b)
 
-    # Clear previous plot and display the updated one
-    display(fig)
-    clear_output(wait=True)
-    plt.pause(0.5)
-
+    fig.show()
     # save figure
     file_path = os.path.join(out_dir, 'fov_vs_mph.jpg')
     if os.path.exists(file_path):
