@@ -5,7 +5,6 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Tuple
 from matplotlib import pyplot as plt
-from IPython.display import clear_output
 
 from watchdog.events import FileCreatedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
@@ -240,6 +239,7 @@ class FOV_EventHandler(FileSystemEventHandler):
 
             if self.inter_func:
                 self.inter_func(self.run_folder)
+                plt.show()
 
             logf.close()
             self.check_complete()
