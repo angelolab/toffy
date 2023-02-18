@@ -59,7 +59,6 @@ class RunCallbacks:
         combine_qc_metrics(qc_out_dir)
         fig, axes = plt.subplots(3, 1)
         for i, metric_name in enumerate(QC_COLUMNS):
-            axes[i].cla()
             visualize_qc_metrics(metric_name, qc_out_dir, ax=axes[i], **viz_kwargs)
 
     def plot_mph_metrics(self, mph_out_dir, plot_dir, **kwargs):
