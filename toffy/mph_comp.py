@@ -9,7 +9,6 @@ from tmi import io_utils
 
 from toffy.json_utils import read_json_file
 from toffy.normalize import combine_run_metrics
-from IPython.display import display, clear_output
 
 
 def get_estimated_time(bin_file_dir, fov):
@@ -182,9 +181,8 @@ def visualize_mph(mph_df, out_dir, regression: bool = False):
         m, b = np.polyfit(x2, y2, 1)
         ax1.plot(x2, m * x2 + b)
 
-    fig.show()
     # save figure
-    file_path = os.path.join(out_dir, 'fov_vs_mph.jpg')
+    file_path = os.path.join(out_dir, 'fov_vs_mph.png')
     if os.path.exists(file_path):
         os.remove(file_path)
     plt.savefig(file_path)
