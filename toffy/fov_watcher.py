@@ -239,8 +239,6 @@ class FOV_EventHandler(FileSystemEventHandler):
             self.run_structure.processed(point_name)
 
             if self.inter_func:
-                clear_output(wait=True)
-                plt.pause(0.5)
                 self.inter_func(self.run_folder)
 
             logf.close()
