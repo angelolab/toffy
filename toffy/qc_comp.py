@@ -471,7 +471,7 @@ def visualize_qc_metrics(metric_name, qc_metric_dir, axes_size=16, wrap=6,
     qc_metric_df = qc_metric_df[~qc_metric_df['channel'].str.startswith('chan_')]
 
     # catplot allows for easy facets on a barplot
-    g = sns.barplot(
+    g = sns.catplot(
         x='fov',
         y=metric_name,
         col='channel',
