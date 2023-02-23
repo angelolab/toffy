@@ -162,8 +162,8 @@ class RunCallbackCases:
 
     def case_inter_callback(self):
         cbs, ibs, kws = self.case_default()
-        ibs = list(cbs[2:])
-        cbs = list(cbs[:2])
+        ibs = list(cbs[:2])
+        cbs = list(cbs[2:])
         return cbs, ibs, kws
 
     @pytest.mark.xfail(raises=ValueError)
@@ -266,7 +266,7 @@ def check_mph_dir_structure(mph_out_dir: str, plot_dir: str, point_names: List[s
 
     if combined:
         assert os.path.exists(os.path.join(mph_out_dir, 'mph_pulse_combined.csv'))
-        assert os.path.exists(os.path.join(plot_dir, 'fov_vs_mph.jpg'))
+        assert os.path.exists(os.path.join(plot_dir, 'fov_vs_mph.png'))
 
 
 def check_pulse_dir_structure(pulse_out_dir: str, point_names: List[str], bad_points: List[str]):
