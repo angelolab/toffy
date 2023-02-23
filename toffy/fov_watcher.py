@@ -239,7 +239,6 @@ class FOV_EventHandler(FileSystemEventHandler):
 
             if self.inter_func:
                 self.inter_func(self.run_folder)
-                plt.show()
 
             logf.close()
             self.check_complete()
