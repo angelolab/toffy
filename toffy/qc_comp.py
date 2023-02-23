@@ -1,12 +1,14 @@
 import copy
 import os
+import pathlib
 from shutil import rmtree
+from typing import List, Optional, Union
 
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from mibi_bin_tools import bin_files
+import seaborn.objects as so
 from requests.exceptions import HTTPError
 from scipy.ndimage import gaussian_filter
 from tmi import image_utils, io_utils, load_utils, misc_utils
@@ -264,14 +266,11 @@ def sort_bin_file_fovs(fovs, suffix_ignore=None):
     )
 
 
-def compute_qc_metrics(bin_file_path, extracted_imgs_path, fov_name,
+def compute_qc_metrics(extracted_imgs_path, fov_name,
                        gaussian_blur=False, blur_factor=1, save_csv=None):
     """Compute the QC metric matrices for the image data provided
 
     Args:
-        bin_file_path (str):
-            the directory to the MIBI bin files for extraction,
-            also where the fov-level QC metric files will be written
         extracted_imgs_path (str):
             the directory when extracted images are stored
         fov_name (str):
@@ -291,9 +290,6 @@ def compute_qc_metrics(bin_file_path, extracted_imgs_path, fov_name,
     """
 
     # path validation checks
-    if not os.path.exists(bin_file_path):
-        raise FileNotFoundError("bin_file_path %s does not exist" % bin_file_path)
-
     if not os.path.exists(extracted_imgs_path):
         raise FileNotFoundError("extracted_imgs_path %s does not exist" % extracted_imgs_path)
 
@@ -420,28 +416,48 @@ def combine_qc_metrics(qc_metrics_dir):
         metric_df.to_csv(os.path.join(qc_metrics_dir, 'combined_%s.csv' % ms), index=False)
 
 
-def visualize_qc_metrics(metric_name, qc_metric_dir, axes_size=16, wrap=6,
-                         dpi=None, save_dir=None, ax=None):
-    """Visualize a barplot of a specific QC metric
+def visualize_qc_metrics(metric_name: str,
+                         qc_metric_dir: Union[str, pathlib.Path],
+                         save_dir: Union[str, pathlib.Path],
+                         channel_filters: Optional[List[str]] = ["chan_"],
+                         axes_font_size: int = 16,
+                         wrap: int = 6,
+                         dpi: int = 300,
+                         return_plot: bool = False
+                         ) -> Optional[sns.FacetGrid]:
+    """
+    Visualize the barplot of a specific QC metric.
 
     Args:
         metric_name (str):
-            The name of the QC metric, used as the y-axis label
-        qc_metric_dir (str):
+            The name of the QC metric to plot. Used as the y-axis label. Options include:
+            `"Non-zero mean intensity"`, `"Total intensity"`, `"99.9% intensity value"`.
+        qc_metric_dir (Union[str, pathlib.Path]):
             The path to the directory containing the `'combined_{qc_metric}.csv'` files
-        axes_size (int):
-            The font size of the axes labels
-        wrap (int):
-            How many plots to display per row
-        dpi (int):
-            If saving, the resolution of the image to use
-            Ignored if save_dir is None
-        save_dir (str):
-            If saving, the name of the directory to save visualization to
-        ax (matplotlib.axes.Axes):
-            Axes to place catplots
-    """
+        save_dir (Optional[Union[str, pathlib.Path]], optional):
+            The name of the directory to save the plot to. Defaults to None.
+        channel_filters (List[str], optional):
+            A list of channels to filter out.
+        axes_font_size (int, optional):
+            The font size of the axes labels. Defaults to 16.
+        wrap (int, optional):
+            The number of plots to display per row. Defaults to 6.
+        dpi (Optional[int], optional):
+            The resolution of the image to use for saving. Defaults to None.
+        return_plot (bool):
+            If `True`, this will return the plot. Defaults to `False`
 
+    Raises:
+        ValueError:
+            When an invalid metric is provided.
+        FileNotFoundError:
+            The QC metric directory `qc_metric_dir` does not exist.
+        FileNotFoundError:
+            The QC metric `combined_csv` file is does not exist in `qc_metric_dir`.
+
+    Returns:
+        Optional[sns.FacetGrid]: Returns the Seaborn FacetGrid catplot of the QC metrics.
+    """
     # verify the metric provided is valid
     if metric_name not in settings.QC_COLUMNS:
         raise ValueError("Invalid metric %s provided, must be set to 'Non-zero mean intensity', "
@@ -467,52 +483,42 @@ def visualize_qc_metrics(metric_name, qc_metric_dir, axes_size=16, wrap=6,
     # filter out naturally-occurring elements as well as Noodle
     qc_metric_df = qc_metric_df[~qc_metric_df['channel'].isin(settings.QC_CHANNEL_IGNORE)]
 
-    # filter out anything prefixed with 'chan_'
-    qc_metric_df = qc_metric_df[~qc_metric_df['channel'].str.startswith('chan_')]
+    # filter out any channel in the channel_filters list
+    if channel_filters is not None:
+        qc_metric_df: pd.DataFrame = qc_metric_df[~qc_metric_df["channel"].str.contains(
+            "|".join(channel_filters))]
 
     # catplot allows for easy facets on a barplot
-    g = sns.catplot(
-        x='fov',
+    qc_fg: sns.FacetGrid = sns.catplot(
+        x="fov",
         y=metric_name,
-        col='channel',
+        col="channel",
         col_wrap=wrap,
         data=qc_metric_df,
-        kind='bar',
-        color='black',
+        kind="bar",
+        color="black",
         sharex=True,
         sharey=False,
-        ax=ax,
     )
 
-    # per Erin's visualization, don't show the hundreds of fov labels on the x-axis
-    _ = plt.xticks([])
-
     # remove the 'channel =' in each subplot title
-    _ = g.set_titles(template='{col_name}')
+    qc_fg.set_titles(template="{col_name}")
+    qc_fg.figure.supxlabel(t="fov", x=0.5, y=0, ha="center", size=axes_font_size)
+    qc_fg.figure.supylabel(t=f"{metric_name}", x=0, y=0.5, va="center", size=axes_font_size)
+    qc_fg.set(xticks=[], yticks=[])
 
     # per Erin's visualization remove the default axis title on the y-axis
     # and instead show 'fov' along x-axis and the metric name along the y-axis (overarching)
-    _ = g.set_axis_labels('', '')
-    _ = g.fig.text(
-        x=0.5,
-        y=0,
-        horizontalalignment='center',
-        s='fov',
-        size=axes_size
-    )
-    _ = g.fig.text(
-        x=0,
-        y=0.5,
-        verticalalignment='center',
-        s=metric_name,
-        size=axes_size,
-        rotation=90
-    )
+    qc_fg.set_axis_labels(x_var="", y_var="")
+    qc_fg.set_xticklabels([])
+    qc_fg.set_yticklabels([])
 
-    # save the figure if specified
-    if save_dir:
-        g.savefig(os.path.join(save_dir, '%s_barplot_stats.png' % metric_name), dpi = dpi)
-        # misc_utils.save_figure(save_dir, '%s_barplot_stats.png' % metric_name, dpi=dpi)
+    # save the figure always
+    # Return the figure if specified.
+    qc_fg.savefig(os.path.join(save_dir, f"{metric_name}_barplot_stats.png"), dpi=dpi)
+
+    if return_plot:
+        return qc_fg
 
 
 def format_img_data(img_data):

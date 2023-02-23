@@ -239,27 +239,21 @@ def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
         # define a sample qc_path to write to
         qc_path = os.path.join(temp_dir, 'sample_qc_dir')
 
-        # bin folder error check
-        with pytest.raises(FileNotFoundError):
-            qc_comp.compute_qc_metrics(
-                'bad_bin_path', extracted_imgs_path, fovs[0], gaussian_blur
-            )
-
         # extraction folder error check
         with pytest.raises(FileNotFoundError):
             qc_comp.compute_qc_metrics(
-                bin_file_path, 'bad_extraction_path', fovs[0], gaussian_blur
+                'bad_extraction_path', fovs[0], gaussian_blur
             )
 
         # fov error check
         with pytest.raises(FileNotFoundError):
             qc_comp.compute_qc_metrics(
-                bin_file_path, extracted_imgs_path, 'bad_fov', gaussian_blur
+                extracted_imgs_path, 'bad_fov', gaussian_blur
             )
 
         # first time: create new files, also asserts qc_path is created
         qc_comp.compute_qc_metrics(
-            bin_file_path, extracted_imgs_path, fovs[0], gaussian_blur, save_csv=bin_file_path
+            extracted_imgs_path, fovs[0], gaussian_blur, save_csv=bin_file_path
         )
 
         for ms, mc in zip(settings.QC_SUFFIXES, settings.QC_COLUMNS):
