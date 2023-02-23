@@ -511,7 +511,8 @@ def visualize_qc_metrics(metric_name, qc_metric_dir, axes_size=16, wrap=6,
 
     # save the figure if specified
     if save_dir:
-        misc_utils.save_figure(save_dir, '%s_barplot_stats.png' % metric_name, dpi=dpi)
+        g.savefig(os.path.join(save_dir, '%s_barplot_stats.png' % metric_name), dpi = dpi)
+        # misc_utils.save_figure(save_dir, '%s_barplot_stats.png' % metric_name, dpi=dpi)
 
 
 def format_img_data(img_data):
