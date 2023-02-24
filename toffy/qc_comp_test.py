@@ -386,25 +386,26 @@ def test_visualize_qc_metrics():
 
         # pass an invalid metric
         with pytest.raises(ValueError):
-            qc_comp.visualize_qc_metrics('bad_metric', '')
+            qc_comp.visualize_qc_metrics(metric_name='bad_metric', qc_metric_dir='', save_dir='')
 
         # pass an invalid qc_metric_dir
         with pytest.raises(FileNotFoundError):
-            qc_comp.visualize_qc_metrics('Non-zero mean intensity', 'bad_qc_dir')
+            qc_comp.visualize_qc_metrics('Non-zero mean intensity', 'bad_qc_dir', save_dir='')
 
         # pass a qc_metric_dir without the combined files
         os.mkdir(os.path.join(temp_dir, 'empty_qc_dir'))
         with pytest.raises(FileNotFoundError):
             qc_comp.visualize_qc_metrics(
                 'Non-zero mean intensity',
-                os.path.join(temp_dir, 'empty_qc_dir')
+                os.path.join(temp_dir, 'empty_qc_dir'),
+                save_dir=''
             )
 
         # now test the visualization process for each metric
         for metric in metrics:
-            # test without saving
-            qc_comp.visualize_qc_metrics(metric, temp_dir)
-            assert not os.path.exists(os.path.join(temp_dir, '%s_barplot_stats.png' % metric))
+            # test without saving (should raise an error)
+            with pytest.raises(TypeError):
+                qc_comp.visualize_qc_metrics(metric, temp_dir)
 
             # test with saving
             qc_comp.visualize_qc_metrics(metric, temp_dir, save_dir=temp_dir)
