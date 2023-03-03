@@ -143,6 +143,9 @@ def clean_rosetta_test_dir(folder_path):
     Args:
         folder_path (str): base dir for testing, image subdirs will be stored here
     """
+    print("Cleaning out Rosetta")
+    from timeit import default_timer
+    start_whole = default_timer()
 
     # remove the compensated data folders
     comp_folders = io_utils.list_folders(folder_path, substrs='compensated_data_')
@@ -151,6 +154,8 @@ def clean_rosetta_test_dir(folder_path):
 
     # remove the stitched image folder
     shutil.rmtree(os.path.join(folder_path, 'stitched_images'))
+    end_whole = default_timer()
+    print("Total time to clean out Rosetta: %.3f" % (end_whole - start_whole))
 
 
 def flat_field_correction(img, gaus_rad=100):
@@ -223,7 +228,8 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         correct_streaks (bool): whether to correct streaks in the image
         streak_chan (str): the channel to use for streak correction
     """
-
+    from timeit import default_timer
+    start_whole = default_timer()
     io_utils.validate_paths([raw_data_dir, comp_data_dir, comp_mat_path])
 
     # get list of all fovs
@@ -254,14 +260,19 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
         out_indices = np.where(np.isin(all_masses, output_masses))[0]
 
     # loop over each set of FOVs in the batch
+    io_time = 0
     for i in range(0, len(fovs), batch_size):
         print("Processing image {}".format(i+1))
 
         # load batch of fovs
         batch_fovs = fovs[i: i + batch_size]
+        start_load = default_timer()
         batch_data = load_utils.load_imgs_from_tree(data_dir=raw_data_dir, fovs=batch_fovs,
                                                     channels=acquired_targets,
                                                     img_sub_folder=raw_data_sub_folder)
+        end_load = default_timer()
+        print("Total time to load cohort for batch (%d, %d): %.3f" % (i, i + batch_size, end_load - start_load))
+        io_time += end_load - start_load
 
         # convert to float32 for gaussian_filter and rosetta compatibility
         batch_data = batch_data.astype(np.float32)
@@ -306,6 +317,7 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                 os.makedirs(raw_folder)
 
             # this may be only a subset of masses, based on output_masses
+            start_write = default_timer()
             for idx, val in enumerate(out_indices):
                 channel_name = batch_data.channels.values[val] + '.tiff'
 
@@ -317,6 +329,12 @@ def compensate_image_data(raw_data_dir, comp_data_dir, comp_mat_path, panel_info
                 if save_format in ['raw', 'both']:
                     save_path = os.path.join(raw_folder, channel_name)
                     image_utils.save_image(save_path, comp_data[j, :, :, idx])
+            end_write = default_timer()
+            print("Total time to write out all masses: %.3f" % (end_write - start_write))
+            io_time += end_write - start_write
+    end_whole = default_timer()
+    print("Total time spent doing IO: %.3f" % io_time)
+    print("Time to run full compensation: %.3f" % (end_whole - start_whole))
 
 
 def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
@@ -330,10 +348,18 @@ def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
         img_sub_folder: subfolder within each input directory to load images from
         channels: list of channels to compare. """
 
+    print("Creating tiled comparison")
+    from timeit import default_timer
+    io_time = 0
+    start_whole = default_timer()
     test_dir = input_dir_list[0]
     test_fov = io_utils.list_folders(test_dir)[0]
+    start_load_test = default_timer()
     test_data = load_utils.load_imgs_from_tree(data_dir=test_dir, fovs=[test_fov],
                                                img_sub_folder=img_sub_folder, channels=channels)
+    end_load_test = default_timer()
+    print("Total time to load data from test_dir: %.3f" % (end_load_test - start_load_test))
+    io_time += end_load_test - start_load_test
 
     if not channels:
         channels = test_data.channels.values
@@ -347,6 +373,7 @@ def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
 
     # check that all dirs have the same number of fovs and correct subset of channels
     fov_names = io_utils.list_folders(input_dir_list[0])
+    start_verify = default_timer()
     for dir_name in input_dir_list[1:]:
         current_folders = io_utils.list_folders(dir_name)
         misc_utils.verify_same_elements(fov_names1=fov_names, fov_names2=current_folders)
@@ -354,6 +381,9 @@ def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
                                                           img_sub_folder=img_sub_folder,
                                                           fovs=current_folders[:1]).channels.values
         misc_utils.verify_in_list(specified_channels=channels, current_channels=current_channels)
+    end_verify = default_timer()
+    print("Total time to load and verify FOVs and channels: %.3f" % (end_verify - start_verify))
+    io_time += end_verify - start_verify
 
     fov_num = len(fov_names)
 
@@ -370,13 +400,24 @@ def create_tiled_comparison(input_dir_list, output_dir, max_img_size,
 
             # go through each of the directories, read in the images, and place in the right spot
             for idx, key in enumerate(input_dir_list):
+                start_load_channels = default_timer()
                 dir_data = load_utils.load_imgs_from_tree(key, channels=channels[j:j + 1],
                                                           img_sub_folder=img_sub_folder,
                                                           max_image_size=max_img_size)
+                end_load_channels = default_timer()
+                # print("Total time to load in channels %s from %s: %.3f" % (str(channels[j:j + 1]), key, end_load_channels - start_load_channels))
+                io_time += end_load_channels - start_load_channels
                 tiled_image[(max_img_size * idx):(max_img_size * (idx + 1)), start:end] = \
                     dir_data.values[i, :, :, 0]
         fname = os.path.join(output_dir, channels[j] + "_comparison.tiff")
+        start_write = default_timer()
         image_utils.save_image(fname, tiled_image)
+        end_write = default_timer()
+        # print("Total time to write out tiled image: %.3f" % (end_write - start_write))
+        io_time += end_write - start_write
+    end_whole = default_timer()
+    print("Total time spend doing IO: %.3f" % io_time)
+    print("Total time to create tiled comparison: %.3f" % (end_whole - start_whole))
 
 
 def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, source_channel,
@@ -393,10 +434,18 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
         percent_norm (int): percentile normalization param to enable easy visualization, set to
             None to skip this step"""
 
+    print("Adding source channel to tiled image")
+    from timeit import default_timer
+    io_time = 0
+    start_whole = default_timer()
     # load source images
+    start_read = default_timer()
     source_imgs = load_utils.load_imgs_from_tree(raw_img_dir, channels=[source_channel],
                                                  img_sub_folder=img_sub_folder,
                                                  max_image_size=max_img_size)
+    end_read = default_timer()
+    print("Total time to load in all images: %.3f" % (end_read - start_read))
+    io_time += end_read - start_read
 
     # convert stacked images to concatenated row
     source_list = [source_imgs.values[fov, :, :, 0] for fov in range(source_imgs.shape[0])]
@@ -415,7 +464,11 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
 
     # loop through each tiled image, prepend source row, and save
     for tile_name in tiled_images:
+        start_load_tile = default_timer()
         current_tile = io.imread(os.path.join(tiled_img_dir, tile_name))
+        end_load_tile = default_timer()
+        # print("Time to load tile %s: %.3f" % (tile_name, end_load_tile - start_load_tile))
+        io_time += end_load_tile - start_load_tile
 
         # if percent_norm set, normalize the source row to be in the same range as the current tile
         # otherwise, just leave as is (divide by 1)
@@ -429,7 +482,14 @@ def add_source_channel_to_tiled_image(raw_img_dir, tiled_img_dir, output_dir, so
         # combine together and save
         combined_tile = np.concatenate([rescaled_source, current_tile])
         save_name = tile_name.split('.tiff')[0] + '_source_' + source_channel + '.tiff'
+        start_write_tile = default_timer()
         image_utils.save_image(os.path.join(output_dir, save_name), combined_tile)
+        end_write_tile = default_timer()
+        # print("Time to write tile %s: %.3f" % (tile_name, end_write_tile - start_write_tile))
+        io_time += end_write_tile - start_write_tile
+    end_whole = default_timer()
+    print("Total time spent doing IO: %.3f" % (end_whole - start_whole))
+    print("Total time to add source channel to tiled image: %.3f" % (end_whole - start_whole))
 
 
 def replace_with_intensity_image(run_dir, channel='Au', replace=True, fovs=None):
@@ -506,7 +566,10 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, current_chann
             only a subset of masses are specified, other masses will retain their values
             in all iterations. If None, all masses are included
     """
+    print("Generating Rosetta test matrices")
     # Read input matrix
+    from timeit import default_timer
+    start_whole = default_timer()
     comp_matrix = pd.read_csv(default_matrix, index_col=0)
     comp_masses = comp_matrix.index
 
@@ -530,6 +593,7 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, current_chann
     comp_file_prefix = f'{current_channel_name}_{output_chan_str}_{default_mat_prefix}_mult'
 
     # loop over each specified multiplier and create separate compensation matrix
+    multiplier_io_time = 0
     for i in multipliers:
         mult_matrix = copy.deepcopy(comp_matrix)
 
@@ -538,7 +602,14 @@ def create_rosetta_matrices(default_matrix, save_dir, multipliers, current_chann
             if comp_masses[j] in masses:
                 mult_matrix.iloc[j, :] = comp_matrix.iloc[j, :] * i
         comp_name = f'{comp_file_prefix}_{i}.csv'
+        start_write = default_timer()
         mult_matrix.to_csv(os.path.join(save_dir, comp_name))
+        end_write = default_timer()
+        print("Total time to write Rosetta matrix with multiplier %d: %.3f" % (i, end_write - start_write))
+        multiplier_io_time += end_write - start_write
+    end_whole = default_timer()
+    print("Total time spent writing out multiplier data: %.3f" % multiplier_io_time)
+    print("Time to create all Rosetta matrices: %.3f" % (end_whole - start_whole))
 
 
 def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs_dir,
@@ -553,6 +624,9 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
         fovs_per_run: number of fovs from each run to use for testing, default 5
 
     """
+    print("Copying image files")
+    from timeit import default_timer
+    start_whole = default_timer()
     # path validation
     io_utils.validate_paths([rosetta_testing_dir, extracted_imgs_dir])
 
@@ -574,6 +648,7 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
     os.makedirs(os.path.join(cohort_rosetta_dir, 'extracted_images'))
 
     # randomly choose fovs from a run and copy them to the img subdir in rosetta testing dir
+    write_time = 0
     for i, run in enumerate(ns.natsorted(run_names)):
         run_path = os.path.join(extracted_imgs_dir, run)
 
@@ -581,12 +656,19 @@ def copy_image_files(cohort_name, run_names, rosetta_testing_dir, extracted_imgs
         fovs_in_run = ns.natsorted(fovs_in_run)
         rosetta_fovs = random.sample(fovs_in_run, k=fovs_per_run)
 
+        start_write = default_timer()
         for fov in rosetta_fovs:
             fov_path = os.path.join(os.path.join(extracted_imgs_dir, run, fov))
             # prepend the run name to each fov
             new_path = os.path.join(os.path.join(cohort_rosetta_dir, 'extracted_images',
                                                  run + '_' + fov))
             shutil.copytree(fov_path, new_path)
+        end_write = default_timer()
+        print("Time to copy run %s: %.3f" % (run, end_write - start_write))
+        write_time += (end_write - start_write)
+    end_whole = default_timer()
+    print("Time spent writing out data: %.3f" % write_time)
+    print("Time to run whole copying process: %.3f" % (end_whole - start_whole))
 
 
 def rescale_raw_imgs(img_out_dir, scale=200):
@@ -598,9 +680,14 @@ def rescale_raw_imgs(img_out_dir, scale=200):
     Returns:
         saves the rescaled images in a subdir
     """
+    print("Rescaling raw images")
+    from timeit import default_timer
+    start_whole = default_timer()
     io_utils.validate_paths(img_out_dir)
 
     fovs = io_utils.list_folders(img_out_dir)
+    from timeit import default_timer
+    io_time = 0
     for fov in fovs:
         fov_dir = os.path.join(img_out_dir, fov)
         # create subdirectory for the new images
@@ -609,10 +696,21 @@ def rescale_raw_imgs(img_out_dir, scale=200):
         chans = io_utils.list_files(fov_dir)
         # rescale each channel image
         for chan in chans:
+            start_read = default_timer()
             img = io.imread(os.path.join(fov_dir, chan))
+            end_read = default_timer()
+            # print("Total time to read channel %s for fov %s: %.3f" % (chan, fov, end_read - start_read))
+            io_time += end_read - start_read
             img = (img / scale).astype('float32')
             fname = os.path.join(sub_dir, chan)
+            start_write = default_timer()
             image_utils.save_image(fname, img)
+            end_write = default_timer()
+            io_time += end_write - start_write
+            # print("Total time to save channel %s for fov %s: %.3f" % (chan, fov, end_write - start_write))
+    end_whole = default_timer()
+    print("Total time doing IO (reading and writing channels): %.3f" % io_time)
+    print("Total time to rescale all channels: %.3f" % (end_whole - start_whole))
 
 
 def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, folder_path, panel,
@@ -633,6 +731,9 @@ def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, fold
     Returns:
         Create subdirs containing rosetta compensated images for each multiplier and stitched imgs
     """
+    print("Generating Rosetta test images")
+    from timeit import default_timer
+    start_whole = default_timer()
     io_utils.validate_paths([rosetta_mat_path, img_out_dir, folder_path])
 
     # get mass information
@@ -665,3 +766,6 @@ def generate_rosetta_test_imgs(rosetta_mat_path, img_out_dir,  multipliers, fold
                               comp_mat_path=rosetta_mat_path, raw_data_sub_folder='rescaled',
                               panel_info=panel, batch_size=1, gaus_rad=gaus_rad,
                               norm_const=norm_const, output_masses=output_masses)
+
+    end_whole = default_timer()
+    print("Total time to generate Rosetta test images: %.3f" % (end_whole - start_whole))

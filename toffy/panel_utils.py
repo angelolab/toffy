@@ -119,12 +119,16 @@ def load_panel(panel_path):
     """
 
     # read in the provided panel info
+    from timeit import default_timer
     panel_name = os.path.basename(panel_path).split('.')[0]
     panel_dir = os.path.dirname(panel_path)
 
     # if panel path points to toffy panel, load it
     if '-toffy' in panel_name:
+        start = default_timer()
         toffy_panel = pd.read_csv(panel_path, index_col=False)
+        end = default_timer()
+        print("Time to load in panel: %.3f" % (end - start))
         if list(toffy_panel.columns) != ['Mass', 'Target', 'Start', 'Stop']:
             raise ValueError(f'{panel_name}.csv is not correctly formatted. Please remove '
                              f'\'-toffy\' from the file name.')
@@ -135,7 +139,10 @@ def load_panel(panel_path):
         files = io_utils.list_files(panel_dir, substrs=panel_name)
         if panel_name + '-toffy.csv' in files:
             converted_panel_path = os.path.join(panel_dir, panel_name + '-toffy.csv')
+            start = default_timer()
             toffy_panel = pd.read_csv(converted_panel_path, index_col=False)
+            end = default_timer()
+            print("Time to load in panel: %.3f" % (end - start))
             print(f'Detected {panel_name}-toffy.csv in {panel_dir}. '
                   f'Loading in toffy formatted panel data.')
         # if no toffy panel, create one
