@@ -4,6 +4,7 @@ import warnings
 from datetime import datetime
 from pathlib import Path
 from typing import Callable, Tuple
+from matplotlib import pyplot as plt
 
 from watchdog.events import FileCreatedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
@@ -156,7 +157,9 @@ class FOV_EventHandler(FileSystemEventHandler):
     """
     def __init__(self, run_folder: str, log_folder: str,
                  fov_callback: Callable[[str, str], None],
-                 run_callback: Callable[[str], None], timeout: int = 1.03 * 60 * 60):
+                 run_callback: Callable[[str], None],
+                 intermediate_callback: Callable[[str], None] = None,
+                 timeout: int = 1.03 * 60 * 60):
         """Initializes FOV_EventHandler
 
         Args:
@@ -168,6 +171,8 @@ class FOV_EventHandler(FileSystemEventHandler):
                 callback to run on each fov
             run_callback (Callable[[None], None]):
                 callback to run over the entire run
+            intermediate_callback (Callable[[None], None]):
+                run callback overriden to run on each fov
             timeout (int):
                 number of seconds to wait for non-null filesize before raising an error
         """
@@ -183,6 +188,7 @@ class FOV_EventHandler(FileSystemEventHandler):
 
         self.fov_func = fov_callback
         self.run_func = run_callback
+        self.inter_func = intermediate_callback
 
         for root, dirs, files in os.walk(run_folder):
             for name in files:
@@ -231,6 +237,9 @@ class FOV_EventHandler(FileSystemEventHandler):
             self.fov_func(self.run_folder, point_name)
             self.run_structure.processed(point_name)
 
+            if self.inter_func:
+                self.inter_func(self.run_folder)
+
             logf.close()
             self.check_complete()
 
@@ -257,7 +266,9 @@ class FOV_EventHandler(FileSystemEventHandler):
 
 
 def start_watcher(run_folder: str, log_folder: str, fov_callback: Callable[[str, str], None],
-                  run_callback: Callable[[None], None], completion_check_time: int = 30,
+                  run_callback: Callable[[None], None],
+                  intermediate_callback: Callable[[str, str], None] = None,
+                  completion_check_time: int = 30,
                   zero_size_timeout: int = 1.03 * 60 * 60):
     """ Passes bin files to provided callback functions as they're created
 
@@ -272,6 +283,9 @@ def start_watcher(run_folder: str, log_folder: str, fov_callback: Callable[[str,
         run_callback (Callable[[None], None]):
             function ran once the run has completed. assemble this using
             `watcher_callbacks.build_callbacks`
+        intermediate_callback (Callable[[None], None]):
+            function defined as run callback overriden as fov callback. assemble this using
+            `watcher_callbacks.build_callbacks`
         completion_check_time (int):
             how long to wait before checking watcher completion, in seconds.
             note, this doesn't effect the watcher itself, just when this wrapper function exits.
@@ -280,7 +294,7 @@ def start_watcher(run_folder: str, log_folder: str, fov_callback: Callable[[str,
     """
     observer = Observer()
     event_handler = FOV_EventHandler(run_folder, log_folder, fov_callback, run_callback,
-                                     zero_size_timeout)
+                                     intermediate_callback, zero_size_timeout)
     observer.schedule(event_handler, run_folder, recursive=True)
     observer.start()
 

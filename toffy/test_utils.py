@@ -153,21 +153,31 @@ class FovCallbackCases:
 class RunCallbackCases:
     def case_default(self):
         panel_path = os.path.join(Path(__file__).parent, 'data', 'sample_panel.csv')
-        return RUN_CALLBACKS, {'panel': pd.read_csv(panel_path)}
+        return RUN_CALLBACKS, None, {'panel': pd.read_csv(panel_path)}
 
     def save_figure(self):
-        cbs, kws = self.case_default()
+        cbs, ibs, kws = self.case_default()
         kws['save_dir'] = True
-        return cbs, kws
+        return cbs, ibs, kws
+
+    def case_inter_callback(self):
+        cbs, ibs, kws = self.case_default()
+        ibs = list(cbs[:2])
+        cbs = list(cbs[2:])
+        return cbs, ibs, kws
 
     @pytest.mark.xfail(raises=ValueError)
     def case_missing_panel(self):
-        cbs, _ = self.case_default()
-        return cbs, {}
+        cbs, _, _ = self.case_default()
+        return cbs, None, {}
 
     @pytest.mark.xfail(raises=ValueError)
-    def case_bad_callback(self):
-        return ['invalid_callback'], {}
+    def case_bad_run_callback(self):
+        return ['invalid_callback'], None, {}
+
+    @pytest.mark.xfail(raises=ValueError)
+    def case_bad_inter_callback(self):
+        return RUN_CALLBACKS, ['invalid_callback'], {}
 
 
 def check_extraction_dir_structure(ext_dir: str, point_names: List[str], bad_points: List[str],
@@ -256,7 +266,7 @@ def check_mph_dir_structure(mph_out_dir: str, plot_dir: str, point_names: List[s
 
     if combined:
         assert os.path.exists(os.path.join(mph_out_dir, 'mph_pulse_combined.csv'))
-        assert os.path.exists(os.path.join(plot_dir, 'fov_vs_mph.jpg'))
+        assert os.path.exists(os.path.join(plot_dir, 'fov_vs_mph.png'))
 
 
 def check_pulse_dir_structure(pulse_out_dir: str, point_names: List[str], bad_points: List[str]):
@@ -437,7 +447,17 @@ class WatcherCases:
 
         return (
             ['plot_qc_metrics', 'plot_mph_metrics', 'image_stitching'],
+            None,
             ['extract_tiffs', 'generate_pulse_heights'],
             kwargs,
             validators
         )
+
+    @parametrize(intensity=(False, True))
+    @parametrize(replace=(False, True))
+    def case_inter_callback(self, intensity, replace):
+        rcs, _, fcs, kwargs, validators = self.case_default(intensity, replace)
+        ics = rcs[:2]
+        rcs = rcs[2:]
+
+        return (rcs, ics, fcs, kwargs, validators)
