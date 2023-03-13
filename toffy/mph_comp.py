@@ -152,8 +152,7 @@ def visualize_mph(mph_df, out_dir, regression: bool = False):
         io_utils.validate_paths(out_dir)
 
     # visualize the median pulse heights
-    # plt.style.use('dark_background')
-    # plt.title('FOV total counts vs median pulse height')
+    plt.title('FOV total counts vs median pulse height')
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
     x = mph_df['cum_total_count']/1000000
