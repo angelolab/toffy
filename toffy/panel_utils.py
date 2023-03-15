@@ -119,7 +119,6 @@ def load_panel(panel_path):
     """
 
     # read in the provided panel info
-    from timeit import default_timer
     panel_name = os.path.basename(panel_path).split('.')[0]
     panel_dir = os.path.dirname(panel_path)
 
