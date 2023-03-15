@@ -658,7 +658,7 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
     norm_div = norm_vals.reshape((1, 1, 1, len(norm_vals)))
     normalized_images = np.divide(
         img_data,
-        norm_vals.reshape((1, 1, 1, len(norm_vals))),
+        norm_div,
         out=np.zeros_like(img_data, dtype=img_data.dtype),
         where=norm_div != 0
     )
