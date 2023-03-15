@@ -384,7 +384,8 @@ def test_fit_mass_mph_curve(tmpdir, min_obs):
         assert np.allclose(preds[0], np.median(mph_vals))
 
 
-def test_create_fitted_mass_mph_vals(tmpdir):
+@parametrize('skip_norm_func', [False, True])
+def test_create_fitted_mass_mph_vals(tmpdir, skip_norm_func):
     masses = ['88', '100', '120']
     fovs = ['fov1', 'fov2', 'fov3', 'fov4']
     obj_func = 'poly_2'
@@ -392,8 +393,11 @@ def test_create_fitted_mass_mph_vals(tmpdir):
     # each mass has a unique multiplier for fitted function
     mass_mults = [1, 2, 3]
 
+    # if skip_norm_func, pass on creating mass for 120
+    end_idx = 2 if skip_norm_func else 3
+
     # create json for each channel
-    for mass_idx in range(len(masses)):
+    for mass_idx in range(len(masses[:end_idx])):
         weights = [mass_mults[mass_idx], 0, 0]
         mass_json = {'name': obj_func, 'weights': weights}
         mass_path = os.path.join(tmpdir, masses[mass_idx] + '_norm_func.json')
@@ -419,24 +423,43 @@ def test_create_fitted_mass_mph_vals(tmpdir):
         fov_order = np.linspace(0, len(fovs) - 1, len(fovs))
         fitted_vals = modified_df.loc[modified_df['mass'] == mass, 'pulse_height_fit'].values
 
+        # special case for skip_norm_func and the final mass
+        if skip_norm_func and mass_idx == len(masses) - 1:
+            mult = 0
+
         assert np.array_equal(fov_order * mult, fitted_vals)
 
 
+@parametrize('test_zeros', [False, True])
 @parametrize_with_cases('metrics', cases=test_cases.CombineRunMetricFiles)
-def test_create_fitted_pulse_heights_file(tmpdir, metrics):
+def test_create_fitted_pulse_heights_file(tmpdir, test_zeros, metrics):
 
     # create metric files
     pulse_dir = os.path.join(tmpdir, 'pulse_heights')
     os.makedirs(pulse_dir)
     for metric in metrics:
         name, values_df = metric[0], pd.DataFrame(metric[1])
+
+        # if test_zeros, set first mass pulse height to 0 for every FOV
+        if test_zeros:
+            values_df.iloc[0, 0] = 0
+
         values_df.to_csv(os.path.join(pulse_dir, name), index=False)
 
     panel = test_cases.panel
     fovs = natsort.natsorted(test_cases.fovs)
 
-    df = normalize.create_fitted_pulse_heights_file(pulse_height_dir=pulse_dir, panel_info=panel,
-                                                    norm_dir=tmpdir, mass_obj_func='poly_3')
+    if test_zeros:
+        with pytest.warns(UserWarning, match='Skipping normalization'):
+            df = normalize.create_fitted_pulse_heights_file(
+                pulse_height_dir=pulse_dir, panel_info=panel,
+                norm_dir=tmpdir, mass_obj_func='poly_3'
+            )
+    else:
+        df = normalize.create_fitted_pulse_heights_file(
+            pulse_height_dir=pulse_dir, panel_info=panel,
+            norm_dir=tmpdir, mass_obj_func='poly_3'
+        )
 
     # all four FOVs included
     assert len(np.unique(df['fov'].values)) == 4
@@ -445,11 +468,17 @@ def test_create_fitted_pulse_heights_file(tmpdir, metrics):
     ordered_fovs = df.loc[df['mass'] == 10, 'fov'].values.astype('str')
     assert np.array_equal(ordered_fovs, fovs)
 
+    # assert mass 5 is zero if test_zeros is True
+    if test_zeros:
+        assert np.all(df[df['mass'] == 5]['pulse_height'].values == 0)
+        df = df[df['mass'] != 5].copy()
+
     # fitted values are distinct from original
     assert np.all(df['pulse_height'].values != df['pulse_height_fit'])
 
 
-def test_normalize_fov(tmpdir):
+@parametrize('test_zeros', [False, True])
+def test_normalize_fov(tmpdir, test_zeros):
     # create image data
     fovs, chans = test_utils.gen_fov_chan_names(num_fovs=1, num_chans=3)
     _, data_xr = test_utils.create_paired_xarray_fovs(
@@ -457,6 +486,12 @@ def test_normalize_fov(tmpdir):
 
     # create inputs
     norm_vals = np.random.rand(len(chans))
+
+    # if test_zeros, set the first norm_val to 0 and the first channel to 0
+    if test_zeros:
+        norm_vals[0] = 0.
+        data_xr[..., 0] = 0.
+
     extreme_vals = (-1, 1)
     norm_dir = os.path.join(tmpdir, 'norm_dir')
     os.makedirs(norm_dir)
@@ -501,7 +536,7 @@ def test_normalize_image_data(tmpdir, metrics):
 
     fovs, chans = test_cases.fovs, test_cases.channels
     filelocs, data_xr = test_utils.create_paired_xarray_fovs(
-        img_dir, fovs, chans, img_shape=(10, 10))
+        img_dir, fovs, chans, img_shape=(10, 10), dtype="float32")
 
     # create mph norm func
     weights = np.random.rand(3)

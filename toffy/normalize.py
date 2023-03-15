@@ -565,8 +565,15 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
     fov_order = np.linspace(0, num_fovs - 1, num_fovs)
 
     for mass in masses:
-        # load channel-specific prediction function
+        # if channel-specific prediction function does not exist, set to 0
         mass_path = os.path.join(obj_func_dir, str(mass) + '_norm_func.json')
+        mass_idx = pulse_height_df['mass'] == mass
+
+        if not os.path.exists(mass_path):
+            pulse_height_df.loc[mass_idx, 'pulse_height_fit'] = 0.
+            continue
+
+        # load channel-specific prediction function
         mass_json = read_json_file(mass_path)
 
         # compute predicted MPH
@@ -575,7 +582,6 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
         pred_vals = pred_func(fov_order)
 
         # update df
-        mass_idx = pulse_height_df['mass'] == mass
         pulse_height_df.loc[mass_idx, 'pulse_height_fit'] = pred_vals
 
     return pulse_height_df
@@ -612,6 +618,12 @@ def create_fitted_pulse_heights_file(pulse_height_dir, panel_info, norm_dir, mas
     # loop over each mass, and fit a curve for MPH over the course of the run
     for mass in masses:
         mph_vals = pulse_height_df.loc[pulse_height_df['mass'] == mass, 'pulse_height'].values
+
+        # only create a _norm_func file if the mph_vals are non-zero
+        if np.all(mph_vals == 0):
+            warnings.warn("Skipping normalization for mass %s with all zero pulse heights" % mass)
+            continue
+
         fit_mass_mph_curve(mph_vals=mph_vals, mass=mass, save_dir=fit_dir,
                            obj_func=mass_obj_func)
 
@@ -641,9 +653,15 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
                       'value for fov {}. Manual inspection for accuracy is '
                       'recommended: {}'.format(fov, bad_channels))
 
-    # correct images and save
+    # correct images and save, ensure that no division by zero happens
     norm_vals = norm_vals.astype(img_data.dtype)
-    normalized_images = img_data / norm_vals.reshape((1, 1, 1, len(norm_vals)))
+    norm_div = norm_vals.reshape((1, 1, 1, len(norm_vals)))
+    normalized_images = np.divide(
+        img_data,
+        norm_vals.reshape((1, 1, 1, len(norm_vals))),
+        out=np.zeros_like(img_data, dtype=img_data.dtype),
+        where=norm_div != 0
+    )
 
     for idx, chan in enumerate(channels):
         fname = os.path.join(output_fov_dir, chan + ".tiff")
@@ -701,8 +719,17 @@ def normalize_image_data(img_dir, norm_dir, pulse_height_dir, panel_info,
     for fov in img_fovs:
         # compute per-mass normalization constant
         pulse_height_fov = pulse_height_df.loc[pulse_height_df['fov'] == fov, :]
-        norm_vals = norm_func(pulse_height_fov['pulse_height_fit'].values)
         channels = pulse_height_fov['Target'].values
+
+        # suppress warnings that can be caused by passing 0 or inf values into norm_func
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            norm_vals = norm_func(pulse_height_fov['pulse_height_fit'].values)
+
+        # nan or inf norm_vals can appear by passing zeros to norm_func, force back to 0
+        norm_vals[norm_vals == np.inf] = 0
+        norm_vals[norm_vals == -np.inf] = 0
+        norm_vals[np.isnan(norm_vals)] = 0
 
         # get images
         images = load_utils.load_imgs_from_tree(img_dir, fovs=[fov], channels=channels,
