@@ -127,4 +127,4 @@ def test_visualize_mph():
     with tempfile.TemporaryDirectory() as temp_dir:
         # test for saving to directory
         mph.visualize_mph(mph_data, out_dir=temp_dir, regression=True)
-        assert os.path.exists(os.path.join(temp_dir, 'fov_vs_mph.jpg'))
+        assert os.path.exists(os.path.join(temp_dir, 'fov_vs_mph.png'))

@@ -27,7 +27,6 @@ COMBINED_RUN_JSON_SPOOF = {
 @parametrize_with_cases('callbacks, kwargs', cases=FovCallbackCases)
 @parametrize_with_cases('data_path',  cases=WatcherTestData)
 def test_build_fov_callback(callbacks, kwargs, data_path):
-
     intensities = kwargs.get('intensities', ['Au', 'chan_39'])
     replace = kwargs.get('replace', True)
 
@@ -74,9 +73,9 @@ def test_build_fov_callback(callbacks, kwargs, data_path):
 
 
 @patch('toffy.watcher_callbacks.visualize_qc_metrics', side_effect=mock_visualize_qc_metrics)
-@parametrize_with_cases('callbacks, kwargs', cases=RunCallbackCases)
+@parametrize_with_cases('run_callbacks, inter_callbacks, kwargs', cases=RunCallbackCases)
 @parametrize_with_cases('data_path', cases=WatcherTestData)
-def test_build_callbacks(viz_mock, callbacks, kwargs, data_path):
+def test_build_callbacks(viz_mock, run_callbacks, inter_callbacks, kwargs, data_path):
     with tempfile.TemporaryDirectory() as tmp_dir:
 
         extracted_dir = os.path.join(tmp_dir, 'extracted')
@@ -91,7 +90,11 @@ def test_build_callbacks(viz_mock, callbacks, kwargs, data_path):
         if kwargs.get('save_dir', False):
             kwargs['save_dir'] = qc_dir
 
-        fcb, rcb = watcher_callbacks.build_callbacks(run_callbacks=callbacks, **kwargs)
+        fcb, rcb, icb = watcher_callbacks.build_callbacks(
+            run_callbacks=run_callbacks,
+            intermediate_callbacks=inter_callbacks,
+            **kwargs
+        )
 
         run_data = os.path.join(tmp_dir, 'tissue')
         os.makedirs(run_data)
@@ -109,6 +112,9 @@ def test_build_callbacks(viz_mock, callbacks, kwargs, data_path):
         for name in point_names:
             fcb(run_data, name)
         rcb(run_data)
+
+        if icb:
+            icb(run_data)
 
         check_extraction_dir_structure(extracted_dir, point_names, [], ['SMA'])
         check_qc_dir_structure(qc_dir, point_names, [], 'save_dir' in kwargs)
