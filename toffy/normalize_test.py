@@ -87,8 +87,11 @@ def test_create_objective_function(obj_func_name, num_params):
 
     # number of weights + 1 for x
     inputs = [1] * (num_params + 1)
+    res = obj_func(*inputs)
 
-    _ = obj_func(*inputs)
+    # test out with an invalid value for log functions
+    inputs = [0] * (num_params + 1)
+    res = obj_func(*inputs)
 
 
 @parametrize('plot_fit', [True, False])

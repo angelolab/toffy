@@ -102,10 +102,19 @@ def create_objective_function(obj_func):
         return a * x + b * x ** 2 + c * x ** 3 + d * x ** 4 + e * x ** 5 + f
 
     def log(x, a, b):
-        return a * np.log(x) + b
+        # edge case appears when x is a single int/float that returns non NaN/inf for np.log
+        # in this case, return the base np.log calculation
+        try:
+            return (a * np.ma.log(x) + b).filled(0)
+        except AttributeError:
+            return a * np.log(x) + b
 
     def exp(x, a, b, c, d):
-        x_log = np.log(x)
+        try:
+            x_log = (np.ma.log(x)).filled(0)
+        except AttributeError:
+            x_log = a * np.log(x) + b
+
         return a * x_log + b * x_log ** 2 + c * x_log ** 3 + d
 
     objectives = {'poly_2': poly_2, 'poly_3': poly_3, 'poly_4': poly_4, 'poly_5': poly_5,
@@ -656,12 +665,11 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
     # correct images and save, ensure that no division by zero happens
     norm_vals = norm_vals.astype(img_data.dtype)
     norm_div = norm_vals.reshape((1, 1, 1, len(norm_vals)))
-    normalized_images = np.divide(
-        img_data,
-        norm_div,
-        out=np.zeros_like(img_data, dtype=img_data.dtype),
-        where=norm_div != 0
+    norm_vals_masked = np.ma.masked_values(
+        x=norm_vals,
+        value=0
     )
+    normalized_images = np.ma.divide(img_data.values, norm_div).filled(0)
 
     for idx, chan in enumerate(channels):
         fname = os.path.join(output_fov_dir, chan + ".tiff")
@@ -720,16 +728,7 @@ def normalize_image_data(img_dir, norm_dir, pulse_height_dir, panel_info,
         # compute per-mass normalization constant
         pulse_height_fov = pulse_height_df.loc[pulse_height_df['fov'] == fov, :]
         channels = pulse_height_fov['Target'].values
-
-        # suppress warnings that can be caused by passing 0 or inf values into norm_func
-        with warnings.catch_warnings():
-            warnings.simplefilter("ignore")
-            norm_vals = norm_func(pulse_height_fov['pulse_height_fit'].values)
-
-        # nan or inf norm_vals can appear by passing zeros to norm_func, force back to 0
-        norm_vals[norm_vals == np.inf] = 0
-        norm_vals[norm_vals == -np.inf] = 0
-        norm_vals[np.isnan(norm_vals)] = 0
+        norm_vals = norm_func(pulse_height_fov['pulse_height_fit'].values)
 
         # get images
         images = load_utils.load_imgs_from_tree(img_dir, fovs=[fov], channels=channels,
