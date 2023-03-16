@@ -1,0 +1,77 @@
+name: Test
+
+on:
+  workflow_call:
+
+permissions:
+  contents: read # to fetch code (actions/checkout)
+
+jobs:
+  build_lint_test:
+    name: Build and Test ${{ github.repository }} Pure Python Wheels
+    runs-on: ubuntu-latest
+    strategy:
+      # Ensure that a wheel builder finishes even if another fails
+      fail-fast: false
+      matrix:
+        python-version: [3.8]
+        poetry-version: [latest]
+
+    steps:
+      - name: Checkout ${{ github.repository }}
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Install Poetry
+        uses: snok/install-poetry@v1
+        with:
+          version: ${{matrix.poetry-version}}
+          virtualenvs-create: true
+          virtualenvs-in-project: true
+          installer-parallel: true
+
+      - name: Set up Python ${{matrix.python-version}}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{matrix.python-version}}
+          cache: "poetry"
+
+      - name: Set up Poetry Dynamic Versioning
+        run: |
+          poetry self add "poetry-dynamic-versioning[plugin]"
+
+      - name: Linting, Typechecking and Formatting
+        uses: pre-commit/action@v3.0.0
+
+      - name: Install Dependencies
+        run: poetry install --no-interaction --no-root
+
+      - name: Install ${{ github.repository }}
+        run: |
+          poetry install --no-interaction
+
+      - name: Run Tests
+        run: |
+          poetry install --with test --no-interaction --no-root
+          poetry run pytest
+
+      - name: Build Pure Python Wheels and Source Distribution
+        run: |
+          poetry build
+
+      - name: Check sdist Metadata
+        run: pipx run twine check dist/*
+
+      - name: Store Wheel and sdist Artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: distributions
+          path: dist/*
+
+      - name: Archive Coverage
+        uses: actions/upload-artifact@v3
+        with:
+          name: coverage
+          path: |
+            coverage.lcov
