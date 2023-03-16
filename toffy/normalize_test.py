@@ -93,6 +93,21 @@ def test_create_objective_function(obj_func_name, num_params):
     inputs = [0] * (num_params + 1)
     res = obj_func(*inputs)
 
+    # test with a list of valid values
+    inputs = [np.array([1, 1, 1])]
+    inputs.extend([1] * num_params)
+    res = obj_func(*inputs)
+
+    # test with a list of invalid values
+    inputs = [np.array([0, 0, 0])]
+    inputs.extend([1] * num_params)
+    res = obj_func(*inputs)
+
+    # test with a mix of valid and invalid values
+    inputs = [np.array([0, 1, 1])]
+    inputs.extend([1] * num_params)
+    res = obj_func(*inputs)
+
 
 @parametrize('plot_fit', [True, False])
 @parametrize('obj_func', ['poly_2', 'poly_3', 'poly_4', 'poly_5', 'log', 'exp'])
