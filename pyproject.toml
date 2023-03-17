@@ -1,3 +1,124 @@
+[tool.poetry]
+name = "Toffy"
+version = "0.0.0"
+description = "Scripts for interacting with and generating data from the commercial MIBIScope."
+authors = [
+    "Noah Frey Greenwald <nfgreen@stanford.edu>",
+    "Adam Kagel <ackagel@stanford.edu>",
+    "Alex Kong <alkong@stanford.edu>",
+    "Cami Laura Sowers <csowers@stanford.edu>",
+    "Sricharan Reddy Varra <srivarra@stanford.edu>",
+]
+license = "Modified Apache 2.0"
+homepage = "https://github.com/angelolab/toffy"
+repository = "https://github.com/angelolab/toffy"
+documentation = "https://toffy.readthedocs.io"
+readme = "README.md"
+classifiers = [
+    "License :: OSI Approved :: Apache Software License",
+    "Development Status :: 4 - Beta",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+]
+packages = [{ include = 'toffy', from = 'src' }]
+
 [build-system]
-requires = ["setuptools", "numpy>=1.20.0,<1.22", "Cython>=0.29.24,<1"]
-build-backend = "setuptools.build_meta"
+requires = ["poetry-core", "poetry-dynamic-versioning"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+bump = true
+style = "pep440"
+metadata = false
+
+[tool.poetry.dependencies]
+python = "^3.8"
+alpineer = "^0.1.5"
+mibi-bin-tools = "^0.2.8"
+ipywidgets = "^8.0.4"
+natsort = "^8.3.1"
+numpy = "^1.24.2"
+seaborn = "^0.12.2"
+scikit-learn = "^1.2.2"
+watchdog = "^2.3.1"
+tqdm = "^4.65.0"
+
+[tool.poetry.group.test]
+optional = true
+
+[tool.poetry.group.test.dependencies]
+coveralls = { version = "^3.3.1", extras = ["toml"] }
+pytest = "^7.2.2"
+pytest-cases = "^3.6.14"
+pytest-cov = "^4.0.0"
+pytest-mock = "^3.10.0"
+pytest-pycodestyle = "^2.3.1"
+pytest-randomly = "^3.12.0"
+mock = "^5.0.1"
+
+[tool.poetry.group.dev]
+optional = true
+
+[tool.poetry.group.dev.dependencies]
+black = "^22.10.0"
+isort = "^5.10.1"
+jupyterlab = "^3.6.1"
+jupyter-contrib-nbextensions = "^0.7.0"
+
+## TYPE CHECKING ##
+
+[tool.mypy]
+python_version = "3.8"
+mypy_path = "$MYPY_CONFIG_FILE_DIR/src:$MYPY_CONFIG_FILE_DIR/tests"
+warn_return_any = true
+warn_unused_configs = true
+warn_unused_ignores = false
+ignore_missing_imports = true
+
+## LINTING, FORMATTING ##
+
+[tool.black]
+line-length = 100
+target-version = ['py38']
+include = '\.pyi?$'
+preview = true
+
+[tool.isort]
+py_version = 38
+line_length = 100
+profile = "black"
+multi_line_output = 3
+
+## COVERAGE ##
+
+[tool.coverage.paths]
+source = ["src", "*/site-packages"]
+
+[tool.coverage.run]
+branch = true
+source = ["toffy"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "except ImportError",
+    "raise AssertionError",
+    "raise NotImplementedError",
+]
+
+show_missing = true
+ignore_errors = false
+fail_under = 45
+omit = ["**/*test*.py"]
+
+## TESTING ##
+
+[tool.pytest.ini_options]
+addopts = ["-vv", "-s", "--cov", "--pycodestyle", "--cov-report=lcov"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+    "ignore::PendingDeprecationWarning",
+]
+testpaths = ["tests"]
+norecursedirs = ["tests/utilities"]
