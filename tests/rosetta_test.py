@@ -204,6 +204,11 @@ def test_clean_rosetta_test_dir():
             rosetta_matrix_names.append(mat_path)
             pd.DataFrame().to_csv(mat_path)
 
+        # make example ._ files to simulate external drives
+        Path(os.path.join(rosetta_test_dir, "._random")).touch()
+        Path(os.path.join(rosetta_test_dir, "compensated_data_%s" % mults[0], "._random")).touch()
+        Path(os.path.join(rosetta_test_dir, "stitched_images", "._random")).touch()
+
         # run the cleaning process
         rosetta.clean_rosetta_test_dir(rosetta_test_dir)
 

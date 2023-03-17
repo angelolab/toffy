@@ -157,16 +157,20 @@ def clean_rosetta_test_dir(folder_path):
         folder_path (str): base dir for testing, image subdirs will be stored here
     """
 
-    # helper function to prevent linking issues with external drives
-    def ignore_extended_attributes(func, filename, exc_info):
-        is_meta_file = os.path.basename(filename).startswith("._")
-        if not (func is os.unlink and is_meta_file):
-            raise
+    # # helper function to prevent linking issues with external drives
+    # def ignore_extended_attributes(func, filename, exc_info):
+    #     is_meta_file = os.path.basename(filename).startswith("._")
+    #     if not (func is os.unlink and is_meta_file):
+    #         raise
+
+    # remove any files beginning with ._, needed to ensure external drive hidden files clear
+    os.system("find %s -type f -name '._*' -delete" % folder_path)
 
     # remove the compensated data folders
     comp_folders = io_utils.list_folders(folder_path, substrs="compensated_data_")
     for cf in comp_folders:
-        shutil.rmtree(os.path.join(folder_path, cf), onerror=ignore_extended_attributes)
+        # shutil.rmtree(os.path.join(folder_path, cf), onerror=ignore_extended_attributes)
+        shutil.rmtree(os.path.join(folder_path, cf))
 
     # remove the stitched image folder
     shutil.rmtree(os.path.join(folder_path, "stitched_images"))
