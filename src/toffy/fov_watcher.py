@@ -74,6 +74,10 @@ class RunStructure:
 
         filename = Path(path).parts[-1]
 
+        # if filename starts with a '.' (temp file), it should be ignored
+        if filename[0] == ".":
+            return False, ""
+
         # filename is not corrct format of fov.bin or fov.json
         if len(filename.split(".")) != 2:
             warnings.warn(
