@@ -1,0 +1,29 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v4.4.0
+    hooks:
+      - id: check-yaml
+        name: Check - YAML
+      - id: end-of-file-fixer
+        name: Check - End Files on New Line
+      - id: trailing-whitespace
+        name: Remove Trailing Whitespace
+        stages: [commit, push, manual]
+  - repo: https://github.com/psf/black
+    rev: 23.1.0
+    hooks:
+      - id: black
+        name: Formatting - black
+        stages: [commit, push, manual]
+  - repo: https://github.com/pycqa/isort
+    rev: 5.12.0
+    hooks:
+      - id: isort
+        name: Formatting - isort
+        stages: [commit, push, manual]
+  - repo: https://github.com/python-poetry/poetry
+    rev: 1.4.0
+    hooks:
+      - id: poetry-check
+        name: Check - Poetry Configuration
+        stages: [commit, push, manual]
