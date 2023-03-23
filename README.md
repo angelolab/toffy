@@ -261,4 +261,3 @@ Before opening, please double check and see that someone else hasn't opened an i
 
 ## How to cite
 Please directly cite the `toffy` repo (https://github.com/angelolab/toffy) if it was a part of your analysis.
-
