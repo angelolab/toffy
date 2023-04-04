@@ -1,7 +1,7 @@
 # toffy
 The toffy repo is designed to simplify the process of generating and processing data on the MIBIScope platform.
 
-This repo is currently in beta testing. None of the code has been published yet, and we will be making breaking changes frequently. If you find bugs, please [open an issue](https://github.com/angelolab/toffy/issues/new/choose). If you have questions or want to collaborate, please reach out to Noah (nfgreen@stanford.edu)
+This repo is currently in beta testing. None of the code has been published yet, and we will be making breaking changes frequently. If you find bugs, please [open an issue](https://github.com/angelolab/toffy/issues/new/choose).
 
 ## Table of Contents
 - [Overview](#overview)
@@ -21,6 +21,7 @@ This repo is currently in beta testing. None of the code has been published yet,
 - [Panel format](#panel-format)
 - [Median Pulse Height](#median-pulse-height)
 - [Questions?](#questions)
+- [How to cite](#how-to-cite)
 
 ## Overview
 The repo has four main parts, with associated code and jupyter notebooks for each.
@@ -257,3 +258,6 @@ The median pulse height (MPH) provides a way to assess the sensitivity of the de
 If you have a general question or are having trouble with part of the repo, head to the [discussions](https://github.com/angelolab/toffy/discussions) tab to get help. If you've found a bug with the codebase, first make sure there's not already an [open issue](https://github.com/angelolab/toffy/issues), and if not, you can then [open an issue](https://github.com/angelolab/toffy/issues/new/choose) describing the bug.
 
 Before opening, please double check and see that someone else hasn't opened an issue for your question already.
+
+## How to cite
+Please directly cite the `toffy` repo (https://github.com/angelolab/toffy) if it was a part of your analysis.
