@@ -105,6 +105,37 @@ necessary_masses = pd.DataFrame(
 )
 
 
+def generate_prof_panel(panel: pd.DataFrame):
+    """Adjust a panel to contain mass-proficient ranges
+
+    Only applicable for masses with ranges separated by 0.3 between 'Stop' and 'Start'.
+    For these markers, 'Start' will be set to 'Stop' and 'Stop' will be set to 'Stop' + 0.3.
+
+    Args:
+        panel (pd.DataFrame): panel dataframe with columns Mass, Target, Start, and Stop.
+
+    Returns:
+        pd.DataFrame:
+            Updated panel for mass proficient extraction.
+    """
+    panel_positive = panel.copy()
+
+    # extract only rows where 'Start' - 'End' = -0.3, round to account for floating point error
+    panel_positive_rows = panel_positive[
+        (panel_positive["Start"] - panel_positive["Stop"]).round(1) == -0.3
+    ].index.values
+
+    # explicitly modify the integration range to (0, 0.3)
+    panel_positive.loc[panel_positive_rows, "Start"] = panel_positive.loc[
+        panel_positive_rows, "Stop"
+    ].copy()
+    panel_positive.loc[panel_positive_rows, "Stop"] = (
+        panel_positive.loc[panel_positive_rows, "Start"].copy() + 0.3
+    )
+
+    return panel_positive
+
+
 def merge_duplicate_masses(panel):
     """Check a panel df for duplicate mass values and return a unique mass panel with the
         target names combined

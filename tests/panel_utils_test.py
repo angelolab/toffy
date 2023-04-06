@@ -9,6 +9,23 @@ from alpineer import test_utils
 from toffy import panel_utils
 
 
+def test_generate_prof_panel():
+    # only Calprotectin's range should be adjusted
+    toffy_panel = pd.DataFrame(
+        {
+            "Mass": [69, 71, 89],
+            "Target": ["Calprotectin", "Chymase", "Mast Cell Tryptase"],
+            "Start": [68.7, 70.6, 89.3],
+            "Stop": [69, 71, 89],
+        }
+    )
+
+    toffy_panel_prof = panel_utils.generate_prof_panel(toffy_panel)
+
+    assert list(toffy_panel_prof["Start"]) == [69, 70.6, 89.3]
+    assert list(toffy_panel_prof["Stop"]) == [69.3, 71, 89]
+
+
 def test_merge_duplicate_masses():
     duplicate_panel = pd.DataFrame(
         {

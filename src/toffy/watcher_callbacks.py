@@ -19,6 +19,7 @@ from mibi_bin_tools.type_utils import any_true
 from toffy.image_stitching import stitch_images
 from toffy.mph_comp import combine_mph_metrics, compute_mph_metrics, visualize_mph
 from toffy.normalize import write_mph_per_mass
+from toffy.panel_utils import generate_prof_panel
 from toffy.qc_comp import combine_qc_metrics, compute_qc_metrics_direct, visualize_qc_metrics
 from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 
@@ -105,7 +106,9 @@ class FovCallbacks:
     run_folder: str
     point_name: str
     __panel: pd.DataFrame = field(default=None, init=False)
+    __panel_prof: pd.DataFrame = field(default=None, init=False)
     __fov_data: xr.DataArray = field(default=None, init=False)
+    __fov_data_prof: xr.DataArray = field(default=None, init=False)
 
     def _generate_fov_data(
         self,
@@ -118,6 +121,8 @@ class FovCallbacks:
         """Extracts data from bin files using the given panel
 
         The data and the panel are then cached members of the FovCallbacks object
+
+        Both the deficient and proficient extracted data and panel are computed and cached
 
         Args:
             panel (pd.DataFrame):
@@ -141,10 +146,25 @@ class FovCallbacks:
             time_res=time_res,
         )
 
+        panel_prof = generate_prof_panel(panel)
+
+        self.__fov_data_prof = extract_bin_files(
+            data_dir=self.run_folder,
+            out_dir=None,
+            include_fovs=[self.point_name],
+            panel=panel_prof,
+            intensities=intensities,
+            replace=replace,
+            time_res=time_res,
+        )
+
         self.__panel = panel
+        self.__panel_prof = panel_prof
 
     def extract_tiffs(self, tiff_out_dir: str, panel: pd.DataFrame, **kwargs):
         """Extract tiffs into provided directory, using given panel
+
+        Done for both the extracted deficient and proficient data
 
         Args:
             tiff_out_dir (str):
@@ -162,7 +182,7 @@ class FovCallbacks:
         if not os.path.exists(tiff_out_dir):
             os.makedirs(tiff_out_dir)
 
-        if self.__fov_data is None:
+        if self.__fov_data is None or self.__fov_data_prof is None:
             self._generate_fov_data(panel, **kwargs)
 
         intensities = kwargs.get("intensities", ["Au", "chan_39"])
@@ -172,6 +192,14 @@ class FovCallbacks:
         _write_out(
             img_data=self.__fov_data[0, :, :, :, :].values,
             out_dir=tiff_out_dir,
+            fov_name=self.point_name,
+            targets=list(self.__fov_data.channel.values),
+            intensities=intensities,
+        )
+
+        _write_out(
+            img_data=self.__fov_data_prof[0, :, :, :, :].values,
+            out_dir=tiff_out_dir + "_proficient",
             fov_name=self.point_name,
             targets=list(self.__fov_data.channel.values),
             intensities=intensities,
