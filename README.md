@@ -235,7 +235,7 @@ The median pulse height (MPH) provides a way to assess the sensitivity of the de
         ```
 * [pre-commit](https://pre-commit.com)
     ```sh
-    brew isntall pre-commit
+    brew install pre-commit
     ```
 
 ## Setup
