@@ -3,6 +3,7 @@ import json
 import os
 import random
 import shutil
+import subprocess
 
 import natsort as ns
 import numpy as np
@@ -164,7 +165,7 @@ def clean_rosetta_test_dir(folder_path):
     #         raise
 
     # remove any files beginning with ._, needed to ensure external drive hidden files clear
-    os.system("find %s -type f -name '._*' -delete" % folder_path)
+    _ = subprocess.call(["find", folder_path, "-type", "f", "-name", "._*-delete"])
 
     # remove the compensated data folders
     comp_folders = io_utils.list_folders(folder_path, substrs="compensated_data_")

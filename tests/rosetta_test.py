@@ -205,7 +205,6 @@ def test_clean_rosetta_test_dir():
             pd.DataFrame().to_csv(mat_path)
 
         # make example ._ files to simulate external drives
-        Path(os.path.join(rosetta_test_dir, "._random")).touch()
         Path(os.path.join(rosetta_test_dir, "compensated_data_%s" % mults[0], "._random")).touch()
         Path(os.path.join(rosetta_test_dir, "stitched_images", "._random")).touch()
 
@@ -222,6 +221,11 @@ def test_clean_rosetta_test_dir():
         # assert the rosetta matrices still exist
         for rmn in rosetta_matrix_names:
             assert os.path.exists(rmn)
+
+        # ensure no ._ files remain
+        rosetta_test_files = Path(rosetta_test_dir)
+        rosetta_test_files = [str(f) for f in list(Path(rosetta_test_files).rglob("*"))]
+        assert not any(["._" in f for f in rosetta_test_files])
 
 
 def test_flat_field_correction():
