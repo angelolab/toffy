@@ -64,7 +64,7 @@ COMBINED_RUN_JSON_SPOOF = {
 
 
 @parametrize_with_cases("run_json, expected_files", cases=RunStructureCases)
-def test_run_structure(run_json, expected_files):
+def test_run_structure(run_json, expected_files, recwarn):
     with RunStructureTestContext(run_json, files=expected_files) as (
         tmpdir,
         run_structure,
@@ -73,9 +73,15 @@ def test_run_structure(run_json, expected_files):
             run_structure.check_run_condition(os.path.join(tmpdir, file))
         assert all(run_structure.check_fov_progress().values())
 
-        # check for hidden files
+        # hidden files should not throw an invalid FOV file warning but still be skipped
+        exist, name = run_structure.check_run_condition(os.path.join(tmpdir, ".fake_file.txt"))
+        for warn_data in recwarn.list:
+            assert "not a valid FOV file and will be skipped" not in str(warn_data.message)
+        assert not exist and name == ""
+
+        # check for invalid file format
         with pytest.warns(Warning, match="is not a valid FOV file and will be skipped"):
-            exist, name = run_structure.check_run_condition(os.path.join(tmpdir, ".fake_file.txt"))
+            exist, name = run_structure.check_run_condition(os.path.join(tmpdir, "fov.bin.txt"))
         assert not exist and name == ""
 
         # check for fake files
