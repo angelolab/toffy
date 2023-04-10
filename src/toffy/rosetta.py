@@ -158,19 +158,12 @@ def clean_rosetta_test_dir(folder_path):
         folder_path (str): base dir for testing, image subdirs will be stored here
     """
 
-    # # helper function to prevent linking issues with external drives
-    # def ignore_extended_attributes(func, filename, exc_info):
-    #     is_meta_file = os.path.basename(filename).startswith("._")
-    #     if not (func is os.unlink and is_meta_file):
-    #         raise
-
     # remove any files beginning with ._, needed to ensure external drive hidden files clear
     _ = subprocess.call(["find", folder_path, "-type", "f", "-name", "._*-delete"])
 
     # remove the compensated data folders
     comp_folders = io_utils.list_folders(folder_path, substrs="compensated_data_")
     for cf in comp_folders:
-        # shutil.rmtree(os.path.join(folder_path, cf), onerror=ignore_extended_attributes)
         shutil.rmtree(os.path.join(folder_path, cf))
 
     # remove the stitched image folder
@@ -367,6 +360,45 @@ def compensate_image_data(
                 if save_format in ["raw", "both"]:
                     save_path = os.path.join(raw_folder, channel_name)
                     image_utils.save_image(save_path, comp_data[j, :, :, idx])
+
+
+def copy_round_one_compensated_images(
+    round_one_comp_folder, round_two_comp_folder, channels_to_copy
+):
+    """Copies channels that don't need round two compensation to the round two comp folder
+
+    Args:
+        round_one_comp_folder (str):
+            path to the round one Rosetta compensated images
+        round_two_comp_folder (str):
+            path to the round two Rosetta compensated images
+        channels_to_copy (list):
+            channels to copy from round_one_comp_folder to round_two_comp_folder
+    """
+    io_utils.validate_paths([round_one_comp_folder, round_two_comp_folder])
+
+    # verify same runs found in both round one and round two Rosetta compensated folders
+    r1_runs = io_utils.list_folders(round_one_comp_folder)
+    r2_runs = io_utils.list_folders(round_two_comp_folder)
+    misc_utils.verify_same_elements(round_one_comp_fovs=r1_runs, round_two_comp_fovs=r2_runs)
+
+    # for each FOV, copy the channel from their r1_runs folder to r2_runs folder
+    for run in r1_runs:
+        fovs = io_utils.list_folders(os.path.join(round_one_comp_folder, run), substrs="fov")
+        print("Found fovs %s" % str(fovs))
+
+        for fov in fovs:
+            channel_files = io_utils.list_files(
+                os.path.join(round_one_comp_folder, run, fov, "rescaled"), substrs=channels_to_copy
+            )
+            print("Found channel files %s" % str(channel_files))
+
+            for cf in channel_files:
+                shutil.copy(
+                    os.path.join(round_one_comp_folder, run, fov, "rescaled", cf),
+                    os.path.join(round_two_comp_folder, run, fov, "rescaled", cf),
+                )
+                print("Copied channel file %s" % cf)
 
 
 def create_tiled_comparison(

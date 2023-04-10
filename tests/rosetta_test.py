@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import skimage.io as io
-from alpineer import image_utils, io_utils, load_utils, test_utils
+from alpineer import image_utils, io_utils, load_utils, misc_utils, test_utils
 from pytest_cases import parametrize_with_cases
 
 from toffy import rosetta
@@ -322,6 +322,51 @@ def test_compensate_image_data(
                     assert np.sum(output_data.values[i, :, :, j]) <= np.sum(
                         data_xr.values[i, :, :, j]
                     )
+
+
+def test_copy_round_one_compensated_images():
+    with tempfile.TemporaryDirectory() as top_level_dir:
+        round_one_folder = os.path.join(top_level_dir, "round_one")
+        round_two_folder = os.path.join(top_level_dir, "round_two")
+        runs = ["run1", "run2"]
+        fovs = ["fov-1-scan-1", "fov-2-scan-2"]
+        channel_list = ["chan1", "chan2", "chan3"]
+
+        for run in runs:
+            os.makedirs(os.path.join(round_one_folder, run))
+            os.makedirs(os.path.join(round_two_folder, run))
+
+            for fov in fovs:
+                # create sample FOV folders
+                os.makedirs(os.path.join(round_one_folder, run, fov, "rescaled"))
+                os.makedirs(os.path.join(round_two_folder, run, fov, "rescaled"))
+
+                # create sample channel files, include one that has already been written to round 2
+                channel_list = ["chan1", "chan2", "chan3"]
+                for chan in channel_list:
+                    Path(
+                        os.path.join(round_one_folder, run, fov, "rescaled", chan + ".tiff")
+                    ).touch()
+
+                Path(
+                    os.path.join(round_two_folder, run, fov, "rescaled", channel_list[-1] + ".tiff")
+                ).touch()
+
+        # copy the images and assert all channels exist in round two folder
+        rosetta.copy_round_one_compensated_images(
+            round_one_folder, round_two_folder, channel_list[:2]
+        )
+
+        for run in runs:
+            for fov in fovs:
+                chans_in_folder = io_utils.list_files(
+                    os.path.join(round_two_folder, run, fov, "rescaled"), substrs=".tiff"
+                )
+                chans_in_folder = [c.replace(".tiff", "") for c in chans_in_folder]
+
+                misc_utils.verify_same_elements(
+                    all_channels=channel_list, channels_in_folder=chans_in_folder
+                )
 
 
 @parametrize("dir_num", [2, 3])
