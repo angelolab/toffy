@@ -528,7 +528,9 @@ def test_create_fitted_pulse_heights_file(tmpdir, test_zeros, metrics):
 
 
 @parametrize("test_zeros", [False, True])
-def test_normalize_fov(tmpdir, test_zeros):
+@parametrize("test_high_norm", [False, True])
+@parametrize("test_low_norm", [False, True])
+def test_normalize_fov(tmpdir, test_zeros, test_high_norm, test_low_norm):
     # create image data
     fovs, chans = test_utils.gen_fov_chan_names(num_fovs=1, num_chans=3)
     _, data_xr = test_utils.create_paired_xarray_fovs(
@@ -538,28 +540,52 @@ def test_normalize_fov(tmpdir, test_zeros):
     # create inputs
     norm_vals = np.random.rand(len(chans))
 
+    # generate the actual normalization multipliers, needed for extreme normalization cap tests
+    norm_mults = np.copy(norm_vals)
+
     # if test_zeros, set the first norm_val to 0 and the first channel to 0
     if test_zeros:
         norm_vals[0] = 0.0
+        norm_mults[0] = 0.0
         data_xr[..., 0] = 0.0
 
-    extreme_vals = (-1, 1)
+    # if test_extreme, set norm vals lower than 0.1 and higher than 1
+    if test_high_norm:
+        norm_vals[1] = 0.01
+        norm_mults[1] = 0.1
+
+    if test_low_norm:
+        norm_vals[2] = 1.5
+        norm_mults[2] = 1
+
+    extreme_vals = (0.2, 1)
     norm_dir = os.path.join(tmpdir, "norm_dir")
     os.makedirs(norm_dir)
 
     # normalize fov
-    normalize.normalize_fov(
-        img_data=data_xr,
-        norm_vals=norm_vals,
-        norm_dir=norm_dir,
-        fov=fovs[0],
-        channels=chans,
-        extreme_vals=extreme_vals,
-    )
+    if test_high_norm or test_low_norm:
+        with pytest.warns(UserWarning, match="will suffer"):
+            normalize.normalize_fov(
+                img_data=data_xr,
+                norm_vals=norm_vals,
+                norm_dir=norm_dir,
+                fov=fovs[0],
+                channels=chans,
+                extreme_vals=extreme_vals,
+            )
+    else:
+        normalize.normalize_fov(
+            img_data=data_xr,
+            norm_vals=norm_vals,
+            norm_dir=norm_dir,
+            fov=fovs[0],
+            channels=chans,
+            extreme_vals=extreme_vals,
+        )
 
     # check that normalized images were modified by correct amount
     norm_imgs = load_utils.load_imgs_from_tree(norm_dir, channels=chans)
-    assert np.allclose(data_xr.values, norm_imgs.values * norm_vals)
+    assert np.allclose(data_xr.values, norm_imgs.values * norm_mults)
 
     # check correct data type
     assert norm_imgs.dtype == data_xr.dtype
@@ -571,7 +597,7 @@ def test_normalize_fov(tmpdir, test_zeros):
 
     # check that warning is raised for extreme values
     with pytest.warns(UserWarning, match="inspection for accuracy is recommended"):
-        norm_vals[0] = 1.5
+        norm_vals[0] = 0.19
         normalize.normalize_fov(
             img_data=data_xr,
             norm_vals=norm_vals,

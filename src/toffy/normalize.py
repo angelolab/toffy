@@ -720,29 +720,30 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
 
     # cap maximum normalization increase at 10X
     abnormal_increase_mask = np.where(norm_vals < 0.1)
-    if np.any(abnormal_increase_mask):
+    if len(abnormal_increase_mask) > 0:
         abnormal_increase_chans = np.array(channels)[abnormal_increase_mask]
         warnings.warn(
             "The following channel(s) will suffer a >10X increase after normalization "
-            "for fov {}. Normalization capped at 10X for: {}.".format(fov, bad_channels)
+            "for fov {}. Normalization capped at 10X for: {}.".format(fov, abnormal_increase_chans)
         )
         norm_vals[abnormal_increase_mask] = 0.1
 
     decrease_mask = np.where(norm_vals > 1)
-    if np.any(decrease_mask):
+    if len(decrease_mask) > 0:
         decrease_chans = np.array(channels)[decrease_mask]
         warnings.warn(
             "The following channel(s) will suffer a decrease after normalization "
-            "for fov {}. Skipping normalization for: {}.".format(fov, bad_channels)
+            "for fov {}. Skipping normalization for: {}.".format(fov, decrease_chans)
         )
         norm_vals[decrease_mask] = 1.0
 
     # check if any additional values are outside expected range
-    extreme_mask = np.logical_or(norm_vals < extreme_vals[0], norm_vals > extreme_vals[1])
-    extreme_mask = np.logical_and(
-        extreme_mask not in abnormal_increase_mask, extreme_mask not in decrease_mask
-    )
-    if np.any(extreme_mask):
+    extreme_mask = np.where(np.logical_or(norm_vals < extreme_vals[0], norm_vals > extreme_vals[1]))
+
+    # remove channels that have been filtered by abnormal_increase_mask and decrease_mask
+    extreme_mask = np.setdiff1d(extreme_mask, np.union1d(abnormal_increase_mask, decrease_mask))
+
+    if len(extreme_mask) > 0:
         bad_channels = np.array(channels)[extreme_mask]
         warnings.warn(
             "The following additional channel(s) had an extreme normalization "
