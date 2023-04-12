@@ -83,6 +83,11 @@ def test_write_mph_per_mass(mocker):
         assert set(output["mass"].values) == set(masses)
         assert np.all(output["pulse_height"].values == output["mass"].values * 2)
 
+        normalize.write_mph_per_mass(
+            base_dir=temp_dir, output_dir=out_dir, fov="fov1", masses=masses, proficient=True
+        )
+        assert os.path.exists(os.path.join(out_dir, "fov1_pulse_heights_proficient.csv"))
+
 
 @parametrize(
     "obj_func_name, num_params",

@@ -279,6 +279,8 @@ def check_mph_dir_structure(
 def check_pulse_dir_structure(pulse_out_dir: str, point_names: List[str], bad_points: List[str]):
     """Checks pulse heights directory for minimum expected structure
 
+    Done for both proficient and deficient pulse height data
+
     Args:
         pulse_out_dir (str):
             Folder containing pulse height files
@@ -295,6 +297,11 @@ def check_pulse_dir_structure(pulse_out_dir: str, point_names: List[str], bad_po
     for point, bad in zip(point_names, bad_points):
         assert os.path.exists(os.path.join(pulse_out_dir, f"{point}_pulse_heights.csv"))
         assert not os.path.exists(os.path.join(pulse_out_dir, f"{bad}_pulse_heights.csv"))
+
+        assert os.path.exists(os.path.join(pulse_out_dir, f"{point}_pulse_heights_proficient.csv"))
+        assert not os.path.exists(
+            os.path.join(pulse_out_dir, f"{bad}_pulse_heights_proficient.csv")
+        )
 
 
 def check_stitched_dir_structure(stitched_dir: str, channels: List[str]):

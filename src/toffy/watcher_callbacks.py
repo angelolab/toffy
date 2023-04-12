@@ -265,6 +265,8 @@ class FovCallbacks:
     def generate_pulse_heights(self, pulse_out_dir: str, panel: pd.DataFrame = None, **kwargs):
         """Generates pulse height csvs from bin files, and saves output to provided directory
 
+        Done for both deficient and proficient data
+
         Args:
             pulse_out_dir (str): where to output pulse height csvs
             panel (pd.DataFrame): Target mass integration ranges
@@ -285,6 +287,16 @@ class FovCallbacks:
             masses=panel["Mass"].values,
             start_offset=kwargs.get("mass_start", 0.3),
             stop_offset=kwargs.get("mass_stop", 0),
+        )
+
+        write_mph_per_mass(
+            base_dir=self.run_folder,
+            output_dir=pulse_out_dir,
+            fov=self.point_name,
+            masses=panel["Mass"].values,
+            start_offset=kwargs.get("mass_start_prof", 0),
+            stop_offset=kwargs.get("mass_stop_prof", 0.3),
+            proficient=True,
         )
 
 
