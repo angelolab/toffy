@@ -109,10 +109,19 @@ def create_objective_function(obj_func):
         return a * x + b * x**2 + c * x**3 + d * x**4 + e * x**5 + f
 
     def log(x, a, b):
-        return a * np.log(x) + b
+        # edge case appears when x is a single int/float that returns non NaN/inf for np.log
+        # in this case, return the base np.log calculation
+        try:
+            return (a * np.ma.log(x) + b).filled(0)
+        except AttributeError:
+            return a * np.log(x) + b
 
     def exp(x, a, b, c, d):
-        x_log = np.log(x)
+        try:
+            x_log = (np.ma.log(x)).filled(0)
+        except AttributeError:
+            x_log = a * np.log(x) + b
+
         return a * x_log + b * x_log**2 + c * x_log**3 + d
 
     objectives = {
@@ -636,8 +645,15 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
     fov_order = np.linspace(0, num_fovs - 1, num_fovs)
 
     for mass in masses:
-        # load channel-specific prediction function
+        # if channel-specific prediction function does not exist, set to 0
         mass_path = os.path.join(obj_func_dir, str(mass) + "_norm_func.json")
+        mass_idx = pulse_height_df["mass"] == mass
+
+        if not os.path.exists(mass_path):
+            pulse_height_df.loc[mass_idx, "pulse_height_fit"] = 0.0
+            continue
+
+        # load channel-specific prediction function
         mass_json = read_json_file(mass_path)
 
         # compute predicted MPH
@@ -646,7 +662,6 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
         pred_vals = pred_func(fov_order)
 
         # update df
-        mass_idx = pulse_height_df["mass"] == mass
         pulse_height_df.loc[mass_idx, "pulse_height_fit"] = pred_vals
 
     return pulse_height_df
@@ -683,6 +698,12 @@ def create_fitted_pulse_heights_file(pulse_height_dir, panel_info, norm_dir, mas
     # loop over each mass, and fit a curve for MPH over the course of the run
     for mass in masses:
         mph_vals = pulse_height_df.loc[pulse_height_df["mass"] == mass, "pulse_height"].values
+
+        # only create a _norm_func file if the mph_vals are non-zero
+        if np.all(mph_vals == 0):
+            warnings.warn("Skipping normalization for mass %s with all zero pulse heights" % mass)
+            continue
+
         fit_mass_mph_curve(mph_vals=mph_vals, mass=mass, save_dir=fit_dir, obj_func=mass_obj_func)
 
     # update pulse_height_df to include fitted mph values
@@ -713,9 +734,11 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
             "recommended: {}".format(fov, bad_channels)
         )
 
-    # correct images and save
+    # correct images and save, ensure that no division by zero happens
     norm_vals = norm_vals.astype(img_data.dtype)
-    normalized_images = img_data / norm_vals.reshape((1, 1, 1, len(norm_vals)))
+    norm_div = norm_vals.reshape((1, 1, 1, len(norm_vals)))
+    norm_vals_masked = np.ma.masked_values(x=norm_vals, value=0)
+    normalized_images = np.ma.divide(img_data.values, norm_div).filled(0)
 
     for idx, chan in enumerate(channels):
         fname = os.path.join(output_fov_dir, chan + ".tiff")
@@ -784,8 +807,8 @@ def normalize_image_data(
     for fov in img_fovs:
         # compute per-mass normalization constant
         pulse_height_fov = pulse_height_df.loc[pulse_height_df["fov"] == fov, :]
-        norm_vals = norm_func(pulse_height_fov["pulse_height_fit"].values)
         channels = pulse_height_fov["Target"].values
+        norm_vals = norm_func(pulse_height_fov["pulse_height_fit"].values)
 
         # get images
         images = load_utils.load_imgs_from_tree(
