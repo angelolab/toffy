@@ -1,4 +1,6 @@
 name: toffy_env
+channels:
+  - conda-forge
 dependencies:
   - python=3.8
   - pip
