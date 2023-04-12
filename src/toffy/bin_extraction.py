@@ -5,6 +5,7 @@ from alpineer import io_utils
 from mibi_bin_tools import bin_files
 
 from toffy.json_utils import check_for_empty_files, list_moly_fovs
+from toffy.panel_utils import generate_prof_panel
 
 
 def extract_missing_fovs(
@@ -66,6 +67,14 @@ def extract_missing_fovs(
             extraction_dir,
             include_fovs=missing_fovs,
             panel=panel,
+            intensities=extract_intensities,
+            replace=replace,
+        )
+        bin_files.extract_bin_files(
+            bin_file_dir,
+            extraction_dir + "_proficient",
+            include_fovs=missing_fovs,
+            panel=generate_prof_panel(panel),
             intensities=extract_intensities,
             replace=replace,
         )
