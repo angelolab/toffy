@@ -5,7 +5,6 @@ from alpineer import io_utils
 from mibi_bin_tools import bin_files
 
 from toffy.json_utils import check_for_empty_files, list_moly_fovs
-from toffy.panel_utils import generate_prof_panel
 
 
 def extract_missing_fovs(
