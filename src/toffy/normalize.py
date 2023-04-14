@@ -227,7 +227,9 @@ def combine_run_metrics(run_dir, substring):
         run_dir (str): the directory containing the files
         substring(str): the substring contained within the files to be combined"""
 
+    # retrieve all pulse height files, but ignore anything mass proficient
     files = io_utils.list_files(run_dir, substring)
+    files = [file for file in files if "_proficient" not in file]
 
     # validate inputs
     if len(files) == 0:
