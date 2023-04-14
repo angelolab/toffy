@@ -9,7 +9,6 @@ if platform.system() == "Darwin":
 
     matplotlib.use("Agg")
 
-import matplotlib.pyplot as plt
 import pandas as pd
 import xarray as xr
 from alpineer import misc_utils
@@ -20,7 +19,7 @@ from toffy.image_stitching import stitch_images
 from toffy.mph_comp import combine_mph_metrics, compute_mph_metrics, visualize_mph
 from toffy.normalize import write_mph_per_mass
 from toffy.qc_comp import combine_qc_metrics, compute_qc_metrics_direct, visualize_qc_metrics
-from toffy.settings import QC_COLUMNS, QC_SUFFIXES
+from toffy.settings import QC_COLUMNS
 
 RUN_PREREQUISITES = {
     "plot_qc_metrics": set(["generate_qc"]),
