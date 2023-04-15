@@ -15,7 +15,6 @@ from pandas.core.groupby import DataFrameGroupBy
 from requests.exceptions import HTTPError
 from scipy.ndimage import gaussian_filter
 from scipy.stats import rankdata
-from tqdm import tqdm
 
 from toffy import settings
 from toffy.mibitracker_utils import MibiRequests, MibiTrackerError
