@@ -231,7 +231,7 @@ def test_visualize_qc_metrics():
         # save sample combined .csv files for each metric
         for metric in metrics:
             # define the test melted DataFrame for an arbitrary QC metric
-            sample_QCMetricData = pd.DataFrame()
+            sample_qc_metric_data = pd.DataFrame()
 
             for chan, fovs in zip(chans, fov_batches):
                 chan_data = pd.DataFrame(np.random.rand(len(fovs)), columns=[metric])
@@ -239,14 +239,14 @@ def test_visualize_qc_metrics():
                 chan_data["fov"] = fovs
                 chan_data["channel"] = chan
 
-                sample_QCMetricData = pd.concat([sample_QCMetricData, chan_data])
+                sample_qc_metric_data = pd.concat([sample_qc_metric_data, chan_data])
 
             # get the file name of the combined QC metric .csv file to use
             qc_metric_index = settings.QC_COLUMNS.index(metric)
             qc_metric_suffix = settings.QC_SUFFIXES[qc_metric_index] + ".csv"
 
             # save the combined data
-            sample_QCMetricData.to_csv(
+            sample_qc_metric_data.to_csv(
                 os.path.join(temp_dir, "combined_%s" % qc_metric_suffix), index=False
             )
 
