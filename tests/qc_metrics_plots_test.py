@@ -1,7 +1,7 @@
 import itertools
 import os
 from pathlib import Path
-from typing import Generator
+from typing import Dict, Generator, List, Optional
 
 import numpy as np
 import pandas as pd
@@ -25,6 +25,7 @@ def batch_effect_qc_data(rng: np.random.Generator, tmp_path: Path) -> Generator[
     Yields:
         Generator[Path, None, None]: The QC cohort directory.
     """
+
     qc_cohort_metrics_dir = tmp_path / "cohort_metrics"
     qc_cohort_metrics_dir.mkdir(parents=True, exist_ok=True)
 
@@ -32,16 +33,17 @@ def batch_effect_qc_data(rng: np.random.Generator, tmp_path: Path) -> Generator[
     fovs, channels = test_utils.gen_fov_chan_names(num_fovs=3, num_chans=10)
     channels.extend(settings.QC_CHANNEL_IGNORE)
     channel_count: int = len(channels)
+    fov_count: int = len(fovs)
 
-    tissues: list[str] = ["ln", "ln_top", "ln_bottom"]
+    tissues: List[str] = ["ln", "ln_top", "ln_bottom"]
 
     for qc_col, qc_suffix in zip(settings.QC_COLUMNS, settings.QC_SUFFIXES):
         for tissue in tissues:
             df = pd.DataFrame(
                 data={
                     "fov": [f"{fov}_{tissue}" for fov in fovs] * channel_count,
-                    "channel": channels * len(fovs),
-                    qc_col: rng.random(size=(len(fovs) * channel_count,)),
+                    "channel": channels * fov_count,
+                    qc_col: rng.random(size=(fov_count * channel_count,)),
                 }
             )
             df.to_csv(qc_cohort_metrics_dir / f"{tissue}_combined_{qc_suffix}.csv")
@@ -72,11 +74,11 @@ def batch_effect_qc_data(rng: np.random.Generator, tmp_path: Path) -> Generator[
 )
 def test_batch_effect_plot(
     batch_effect_qc_data: Path,
-    _tissues: list[str],
-    _qc_metrics: list[str],
-    _qc_suffixes: list[str],
-    _channel_include: list[str] | None,
-    _channel_exclude: list[str] | None,
+    _tissues: List[str],
+    _qc_metrics: List[str],
+    _qc_suffixes: List[str],
+    _channel_include: Optional[List[str]],
+    _channel_exclude: Optional[List[str]],
 ):
     _save_figure: bool = True
 
@@ -87,6 +89,7 @@ def test_batch_effect_plot(
         channel_include=_channel_include,
         channel_exclude=_channel_exclude,
         save_figure=_save_figure,
+        dpi=30,  # Reduce memory footprint for testing
     )
 
     total_figures = [
@@ -99,7 +102,7 @@ def test_batch_effect_plot(
 
 
 @pytest.fixture(scope="function")
-def cmt_data(rng: np.random.Generator) -> Generator[dict[str, np.ndarray], None, None]:
+def cmt_data(rng: np.random.Generator) -> Generator[Dict[str, np.ndarray], None, None]:
     """
     A fixture which yields a dictionary of the QC Column, and the channel metric TMA
     ranked averages.
@@ -111,6 +114,7 @@ def cmt_data(rng: np.random.Generator) -> Generator[dict[str, np.ndarray], None,
         Generator[dict[str, np.ndarray], None, None]: The key consists of the QC Columns, while
         the values are 12 x 12 arrays with a few non-nan floating point values.
     """
+
     fov_rc: np.ndarray = rng.integers(low=0, high=12, size=(10, 2))
     cmt_dict = {}
 
@@ -125,13 +129,17 @@ def cmt_data(rng: np.random.Generator) -> Generator[dict[str, np.ndarray], None,
     yield cmt_dict
 
 
-def test_qc_tma_metrics_plot(cmt_data: dict[str, np.ndarray], tmp_path: Path):
+def test_qc_tma_metrics_plot(cmt_data: Dict[str, np.ndarray], tmp_path: Path):
     qc_tma_metrics_dir: Path = tmp_path / "metrics"
     qc_tma_metrics_dir.mkdir(parents=True, exist_ok=True)
     tma: str = "TESTING_TMA"
 
     qc_metrics_plots.qc_tma_metrics_plot(
-        cmt_data=cmt_data, qc_tma_metrics_dir=qc_tma_metrics_dir, tma=tma, save_figure=True
+        cmt_data=cmt_data,
+        qc_tma_metrics_dir=qc_tma_metrics_dir,
+        tma=tma,
+        save_figure=True,
+        dpi=30,  # Reduce memory footprint for testing
     )
     # Assert existance of the tma metrics plots
     for qc_suffix in settings.QC_SUFFIXES:

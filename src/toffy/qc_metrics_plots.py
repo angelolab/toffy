@@ -1,6 +1,7 @@
 import itertools
 import os
 from pathlib import Path
+from typing import Dict, List, Union
 
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
@@ -16,12 +17,13 @@ from toffy import settings
 
 
 def batch_effect_plot(
-    qc_cohort_metrics_dir: str | Path,
-    tissues: list[str],
-    qc_metrics: list[str] | None = None,
-    channel_include: list[str] | None = None,
-    channel_exclude: list[str] | None = None,
+    qc_cohort_metrics_dir: Union[str, Path],
+    tissues: List[str],
+    qc_metrics: List[str] = None,
+    channel_include: List[str] = None,
+    channel_exclude: List[str] = None,
     save_figure: bool = False,
+    dpi: int = 300,
 ):
     """
     Creates a combination violin and swarm plot in order to compare QC metrics across channels
@@ -29,14 +31,15 @@ def batch_effect_plot(
     can included exclusively.
 
     Args:
-        qc_cohort_metrics_dir (str | Path): The directory where the cohort metrics will be saved to.
-        tissues (list[str] | None, optional): A list of tissues to plot.
-        qc_metrics (list[str] | None, optional): A list of QC metrics to plot for each tissue.
-        Defaults to None, where all QC metrics are plotted.
-        channel_include (list[str] | None, optional): A list of channels to include in the plots. Defaults to None.
-        channel_exclude (list[str] | None, optional): A list of channels to exclude in the plots. Defaults to None.
+        qc_cohort_metrics_dir (Union[str, Path]): The directory where the cohort metrics will be saved to.
+        tissues (List[str]): A list of tissues to plot.
+        qc_metrics (List[str], optional): A list of QC metrics to plot for each tissue. Defaults to None, where all QC metrics are plotted.
+        channel_include (List[str], optional): A list of channels to include in the plots. Defaults to None.
+        channel_exclude (List[str], optional): A list of channels to exclude in the plots.. Defaults to None.
         save_figure (bool, optional): If `True`, the figure is saved in a subdirectory in the
-        `qc_cohort_metrics_dir` directory. Defaults to `False`.
+        `qc_cohort_metrics_dir` directory. Defaults to False.
+        dpi (int, optional): Dots per inch, the resolution of the image. Defaults to 300.
+
 
     Raises:
         ValueError: Raised when channel_include and channel_exclude contain a shared channel.
@@ -49,17 +52,17 @@ def batch_effect_plot(
 
     # Filter out unused QC suffixess
     if qc_metrics is not None:
-        selected_qcs: list[bool] = [qcm in qc_metrics for qcm in settings.QC_COLUMNS]
+        selected_qcs: List[bool] = [qcm in qc_metrics for qcm in settings.QC_COLUMNS]
         qc_cols = list(itertools.compress(settings.QC_COLUMNS, selected_qcs))
         qc_suffixes = list(itertools.compress(settings.QC_SUFFIXES, selected_qcs))
     else:
-        qc_cols: list[str] = settings.QC_COLUMNS
-        qc_suffixes: list[str] = settings.QC_SUFFIXES
+        qc_cols: List[str] = settings.QC_COLUMNS
+        qc_suffixes: List[str] = settings.QC_SUFFIXES
 
     # A dictionary s.t. {tisue1: [list of qc files, sorted by qc_suffixes],
     #                   tissue2: [list of qc files, sorted by qc_suffixes],
     #                   ...                                             }
-    combined_batches: dict[str, list[str]] = {
+    combined_batches: Dict[str, List[str]] = {
         tissue: ns.natsorted(
             io_utils.list_files(
                 qc_cohort_metrics_dir,
@@ -95,7 +98,7 @@ def batch_effect_plot(
                 be_df: pd.DataFrame = be_df[be_df["channel"].isin(channel_include)]
 
             # Set up the Figure for one axes (which gets overlayed)
-            fig: Figure = plt.figure(figsize=(max(be_df["channel"].nunique() // 4, 4), 6), dpi=600)
+            fig: Figure = plt.figure(figsize=(12, 6), dpi=dpi)
             fig.set_layout_engine(layout="constrained")
             gs = gridspec.GridSpec(1, 1, figure=fig)
             fig.suptitle(f"{tissue} - {qc_col}")
@@ -140,17 +143,15 @@ def batch_effect_plot(
 
             # Sort legend labels
             _handles, _labels = violin_swarm_batch_effect_ax.get_legend_handles_labels()
-            legend_labels_index: list = ns.index_natsorted(_labels)
-            ordered_handles: list = ns.order_by_index(_handles, legend_labels_index)
-            ordered_labels: list = ns.order_by_index(_labels, legend_labels_index)
-
+            legend_labels_index: List = ns.index_natsorted(_labels)
+            ordered_handles: List = ns.order_by_index(_handles, legend_labels_index)
+            ordered_labels: List = ns.order_by_index(_labels, legend_labels_index)
+            violin_swarm_batch_effect_ax.legend(handles=ordered_handles, labels=ordered_labels)
             sns.move_legend(
-                violin_swarm_batch_effect_ax,
+                obj=violin_swarm_batch_effect_ax,
                 loc="best",
                 title="FOVs",
                 fontsize="x-small",
-                handles=ordered_handles,
-                labels=ordered_labels,
             )
 
             # Save figure
@@ -158,39 +159,40 @@ def batch_effect_plot(
                 fig_dir: Path = Path(qc_cohort_metrics_dir) / "figures"
                 fig_dir.mkdir(parents=True, exist_ok=True)
                 fig.savefig(fname=fig_dir / f"{tissue}_{qc_suffix}")
+            plt.close(fig)
 
 
 def qc_tma_metrics_plot(
-    cmt_data: dict[str, np.ndarray],
-    qc_tma_metrics_dir: str | Path,
+    cmt_data: Dict[str, np.ndarray],
+    qc_tma_metrics_dir: Union[str, Path],
     tma: str,
     save_figure: bool = False,
+    dpi: int = 300,
 ) -> None:
     """
     Produces the QC TMA metrics plot for a given set of QC metrics applied to a user specified
     TMA. The figures are saved in `qc_tma_metrics_dir/figures`. By default the following channels
     are excluded: Au, Fe, Na, Ta, Noodle.
 
-
     Args:
-        cmt_data (dict[str, np.ndarray]): The dictionary of the QC metrics and the associated TMA
+        cmt_data (Dict[str, np.ndarray]): The dictionary of the QC metrics and the associated TMA
         QC matrix.
-        qc_tma_metrics_dir (str | Path): The directory where to place the QC TMA metrics.
+        qc_tma_metrics_dir (Union[str, Path]): The directory where to place the QC TMA metrics.
         tma (str): The FOVs with the TMA in the folder name to gather.
         save_figure (bool, optional): If `True`, the figure is saved in a subdirectory in the
         `qc_tma_metrics_dir` directory. Defaults to `False`.
-
+        dpi (int, optional): Dots per inch, the resolution of the image. Defaults to 300.
     """
 
     # Filter QC columns, and file suffixes
     # makes the list of qc_cols and qc_suffixes ordered the same.
-    filtered_qcs: list[bool] = [qcm in cmt_data.keys() for qcm in settings.QC_COLUMNS]
+    filtered_qcs: List[bool] = [qcm in cmt_data.keys() for qcm in settings.QC_COLUMNS]
     qc_cols = list(itertools.compress(settings.QC_COLUMNS, filtered_qcs))
     qc_suffixes = list(itertools.compress(settings.QC_SUFFIXES, filtered_qcs))
 
     for qc_metric, suffix in zip(qc_cols, qc_suffixes):
         # Set up the Figure for multiple axes
-        fig: Figure = plt.figure()
+        fig: Figure = plt.figure(dpi=dpi)
         fig.set_layout_engine(layout="constrained")
         gs = gridspec.GridSpec(1, 2, figure=fig, wspace=0.1)
         fig.suptitle(f"{tma} - {qc_metric}")
@@ -234,3 +236,4 @@ def qc_tma_metrics_plot(
             fig_dir: Path = Path(qc_tma_metrics_dir) / "figures"
             fig_dir.mkdir(parents=True, exist_ok=True)
             fig.savefig(fname=fig_dir / f"{tma}_{suffix}.png")
+        plt.close(fig)

@@ -561,13 +561,16 @@ def _get_r_c(fov_name: pd.Series, search_term: re.Pattern) -> pd.Series:
 
 
 def qc_tma_metrics(
-    extracted_imgs_path: str | pathlib.Path, qc_tma_metrics_dir: str | pathlib.Path, tma: str
+    extracted_imgs_path: Union[str, pathlib.Path],
+    qc_tma_metrics_dir: Union[str, pathlib.Path],
+    tma: str,
 ) -> None:
-    """Calculates the QC metrics for a user specified TMA.
+    """
+    Calculates the QC metrics for a user specified TMA.
 
     Args:
-        extracted_imgs_path (str | pathlib.Path): The directory where the extracted images are stored.
-        qc_tma_metrics_dir (str | pathlib.Path): The directory where to place the QC TMA metrics.
+        extracted_imgs_path (Union[str,pathlib.Path]): The directory where the extracted images are stored.
+        qc_tma_metrics_dir (Union[str, pathlib.path]): The directory where to place the QC TMA metrics.
         tma (str): The FOVs with the TMA in the folder name to gather.
     """
     # Get all the FOVs that match the input `tma` string
@@ -584,8 +587,8 @@ def qc_tma_metrics(
 
     # Combine the qc metrics for all fovs per TMA
     for ms in settings.QC_SUFFIXES:
-        metric_files: list[str] = io_utils.list_files(qc_tma_metrics_dir, substrs=f"{ms}.csv")
-        metric_files: list[str] = [mf for mf in metric_files if "combined" not in mf]
+        metric_files: List[str] = io_utils.list_files(qc_tma_metrics_dir, substrs=f"{ms}.csv")
+        metric_files: List[str] = [mf for mf in metric_files if "combined" not in mf]
 
         # Define an aggregated metric DataFrame
         combined_metric_df: pd.DataFrame = pd.concat(
@@ -625,31 +628,30 @@ def _create_r_c_tma_matrix(
 
 
 def qc_tma_metrics_rank(
-    qc_tma_metrics_dir: str | pathlib.Path,
+    qc_tma_metrics_dir: Union[str, pathlib.Path],
     tma: str,
-    qc_metrics: list[str] | None,
-    channel_exclude: list[str] | None,
+    qc_metrics: List[str] = None,
+    channel_exclude: List[str] = None,
 ) -> Dict[str, np.ndarray]:
     """
     Creates the average rank for a given TMA across all FOVs and unfiltered / unexcluded channels.
     By default the following channels are excluded: Au, Fe, Na, Ta, Noodle.
 
+
     Args:
-        qc_tma_metrics_dir (str | pathlib.Path): The direcftory where to place the QC TMA metrics.
-        tma (str): The FOVs with the TMA in the folder name to gather.
-        qc_metrics (list[str] | None): The QC metrics to create plots for. Can be a subset of the
+        qc_tma_metrics_dir (Union[str, pathlib.Path]): The direcftory where to place the QC TMA metrics.
+        tma (str): The TMA to gather FOVs in.
+        qc_metrics (List[str], optional): The QC metrics to create plots for. Can be a subset of the
         following:
 
             * Non-zero mean intensity
             * Total intensity
-            * 99.9% intensity value
-        channel_exclude (list[str] | None): An optional list of channels to further filter out.
+            * 99.9% intensity value. Defaults to None.
+        channel_exclude (List[str], optional): An optional list of channels to further filter out. Defaults to None.
 
     Returns:
         Dict[str, np.ndarray]: A dictionary containing the QC column and the a numpy array
-        representing the average ranks for a given TMA.
-    """
-
+        representing the average ranks for a given TMA."""
     # Sort the loaded combined csv files based on QC_SUFFIXES
     combined_metric_tmas = ns.natsorted(
         io_utils.list_files(qc_tma_metrics_dir, substrs=f"{tma}_combined"),
@@ -657,11 +659,11 @@ def qc_tma_metrics_rank(
     )
     # Then filter out unused suffixes
     if qc_metrics is not None:
-        filtered_qcs: list[bool] = [qcm in qc_metrics for qcm in settings.QC_COLUMNS]
+        filtered_qcs: List[bool] = [qcm in qc_metrics for qcm in settings.QC_COLUMNS]
         qc_cols = list(itertools.compress(settings.QC_COLUMNS, filtered_qcs))
         combined_metric_tmas = list(itertools.compress(combined_metric_tmas, filtered_qcs))
     else:
-        qc_cols: list[str] = settings.QC_COLUMNS
+        qc_cols: List[str] = settings.QC_COLUMNS
 
     cmt_data = dict()
     for cmt, qc_col in zip(combined_metric_tmas, qc_cols):
@@ -707,9 +709,9 @@ def qc_tma_metrics_rank(
 
 
 def batch_effect_qc_metrics(
-    cohort_data_dir: str | pathlib.Path,
-    qc_cohort_metrics_dir: str | pathlib.Path,
-    tissues: list[str] | None,
+    cohort_data_dir: Union[str, pathlib.Path],
+    qc_cohort_metrics_dir: Union[str, pathlib.Path],
+    tissues: List[str],
 ) -> None:
     """
     Computes QC metrics for a specified set of tissues and saves the tissue specific QC files
@@ -720,9 +722,12 @@ def batch_effect_qc_metrics(
     * 99.9% intensity value
 
     Args:
-        cohort_data_dir (str | pathlib.Path): The directory which contains the FOVs for a cohort of interest.
-        qc_cohort_metrics_dir (str | pathlib.Path): The directory where the cohort metrics will be saved to.
-        tissues (list[str] | None): A list of tissues to find QC metrics for.
+        cohort_data_dir (Union[str, pathlib.Path]): The directory which contains the FOVs for a cohort of interest.
+        qc_cohort_metrics_dir (Union[str,pathlib.Path]): The directory where the cohort metrics will be saved to.
+        tissues (List[str]): A list of tissues to find QC metrics for.
+
+    Raises:
+        ValueError: Errors if `tissues` is either None, or a list of size 0.
     """
     if tissues is None or len(tissues) < 1:
         raise ValueError("The tissues must be specified")
@@ -732,7 +737,7 @@ def batch_effect_qc_metrics(
 
     samples = io_utils.list_folders(dir_name=cohort_data_dir, substrs=tissues)
 
-    tissue_to_sample_mapping: dict[str, list[str]] = {}
+    tissue_to_sample_mapping: Dict[str, List[str]] = {}
 
     for sample in samples:
         for tissue in tissues:
@@ -754,7 +759,7 @@ def batch_effect_qc_metrics(
     # Combined metrics per Tissue
     for tissue, samples in tissue_to_sample_mapping.items():
         for ms in settings.QC_SUFFIXES:
-            metric_files: list[str] = io_utils.list_files(
+            metric_files: List[str] = io_utils.list_files(
                 qc_cohort_metrics_dir, substrs=[f"{sample}_{ms}.csv" for sample in samples]
             )
 

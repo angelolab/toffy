@@ -4,7 +4,7 @@ import re
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Generator
+from typing import Generator, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
@@ -325,8 +325,8 @@ class QCMetricData:
     fov_count: int
     channel_ignore_count: int
     tma_n_m: np.ndarray
-    fovs: list[str]
-    channels: list[str]
+    fovs: List[str]
+    channels: List[str]
     regex_search_term: re.Pattern
     qc_df: pd.DataFrame
 
@@ -350,10 +350,10 @@ def qc_tmas(rng: np.random.Generator) -> Generator[QCMetricData, None, None]:
     regex_search_term: re.Pattern = re.compile(r"R\+?(\d+)C\+?(\d+)")
     tma_name: str = "Project_TMA1"
 
-    tma_n_m = rng.choice(a=total_n_m_options, size=(fov_count, 2), replace=False)
-    fovs: list[str] = [f"Project_TMA1_R{tma[0]}C{tma[1]}" for tma in tma_n_m]
+    tma_n_m: np.ndarray = rng.choice(a=total_n_m_options, size=(fov_count, 2), replace=False)
+    fovs: List[str] = [f"Project_TMA1_R{tma[0]}C{tma[1]}" for tma in tma_n_m]
 
-    channels: list[str] = [f"chan_{i}" for i in range(channel_count)] + settings.QC_CHANNEL_IGNORE
+    channels: List[str] = [f"chan_{i}" for i in range(channel_count)] + settings.QC_CHANNEL_IGNORE
 
     qc_df: pd.DataFrame = pd.DataFrame(
         data={
@@ -420,7 +420,7 @@ def test_qc_tma_metrics(tmp_path: Path, qc_tmas: QCMetricData) -> None:
         combined_metric_file: str = next(filter(lambda mf: "combined" in mf, all_metric_files))
 
         # Filter out combined files
-        metric_files: list[str] = list(filter(lambda mf: "combined" not in mf, all_metric_files))
+        metric_files: List[str] = list(filter(lambda mf: "combined" not in mf, all_metric_files))
 
         # Make sure that they all have the `tma_name` as the prefix
         assert all(mf.startswith(qc_tmas.tma_name) for mf in all_metric_files)
@@ -476,14 +476,19 @@ def qc_tma_csvs(qc_tmas: QCMetricData, tmp_path: Path) -> Generator[Path, None, 
 
 
 @parametrize(
-    "qc_metrics, channel_exclude",
-    [(settings.QC_COLUMNS[:2], None), ([settings.QC_COLUMNS[0]], ["chan_0"]), (None, None)],
+    "qc_metrics, channel_exclude, _computed_qc_metrics",
+    [
+        (settings.QC_COLUMNS[:2], None, settings.QC_COLUMNS[:2]),
+        ([settings.QC_COLUMNS[0]], ["chan_0"], [settings.QC_COLUMNS[0]]),
+        (None, None, settings.QC_COLUMNS),
+    ],
 )
 def test_qc_tma_metrics_rank(
     qc_tma_csvs: Path,
     qc_tmas: QCMetricData,
-    qc_metrics: list[str],
-    channel_exclude: list[str] | None,
+    qc_metrics: List[str],
+    channel_exclude: Optional[List[str]],
+    _computed_qc_metrics: List[str],
 ) -> None:
     cmt_data = qc_comp.qc_tma_metrics_rank(
         qc_tma_metrics_dir=qc_tma_csvs,
@@ -493,14 +498,14 @@ def test_qc_tma_metrics_rank(
     )
 
     # Make sure only the specified QC metrics ranks get computed.
-    assert set(cmt_data.keys()) == set(qc_metrics)
+    assert set(cmt_data.keys()) == set(_computed_qc_metrics)
 
     # Check that the shape is max(Row) x max(Column)
     assert set([(data.shape) for data in cmt_data.values()]) == set([tuple(qc_tmas.tma_n_m.max(0))])
 
 
 @pytest.fixture(scope="function")
-def cohort_data(tmp_path: Path) -> Generator[tuple[Path, Path], None, None]:
+def cohort_data(tmp_path: Path) -> Generator[Tuple[Path, Path], None, None]:
     """
     A fixture for generating cohort fovs, and channels for various tissues.
 
@@ -518,11 +523,11 @@ def cohort_data(tmp_path: Path) -> Generator[tuple[Path, Path], None, None]:
     for directory in [cohort_dir, cohort_data_dir, cohort_metrics_dir]:
         directory.mkdir(parents=True, exist_ok=True)
 
-    tissues: list[str] = [f"tissue{i}" for i in range(3)]
+    tissues: List[str] = [f"tissue{i}" for i in range(3)]
     fov_names, chan_names = test_utils.gen_fov_chan_names(num_fovs=3, num_chans=5)
 
     chan_names.extend(settings.QC_SUFFIXES)
-    fov_names: list[str] = [
+    fov_names: List[str] = [
         f"{fov}_{tissue}" for fov, tissue in itertools.product(fov_names, tissues)
     ]
 
@@ -534,7 +539,7 @@ def cohort_data(tmp_path: Path) -> Generator[tuple[Path, Path], None, None]:
 
 
 @parametrize("_tissues", [(["tissue"]), (["tissue0"]), (["tissue0", "tissue1", "tissue2"])])
-def test_batch_effect_qc_metrics(cohort_data: tuple[Path, Path], _tissues: list[str]):
+def test_batch_effect_qc_metrics(cohort_data: Tuple[Path, Path], _tissues: Tuple[str]):
     _cohort_data_dir, _cohort_qc_metrics_dir = cohort_data
 
     with pytest.raises(FileNotFoundError):
@@ -543,6 +548,7 @@ def test_batch_effect_qc_metrics(cohort_data: tuple[Path, Path], _tissues: list[
             qc_cohort_metrics_dir=_cohort_qc_metrics_dir,
             tissues=_tissues,
         )
+
     with pytest.raises(FileNotFoundError):
         qc_comp.batch_effect_qc_metrics(
             cohort_data_dir=_cohort_data_dir,
