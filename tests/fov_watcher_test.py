@@ -29,7 +29,9 @@ RUN_DIR_NAME = "run_XXX"
 SLOW_COPY_INTERVAL_S = 1
 
 
-def _slow_copy_sample_tissue_data(dest: str, delta: int = 10, one_blank: bool = False):
+def _slow_copy_sample_tissue_data(
+    dest: str, delta: int = 10, one_blank: bool = False, temp_bin: bool = False
+):
     """slowly copies files from ./data/tissue/
 
     Args:
@@ -37,6 +39,10 @@ def _slow_copy_sample_tissue_data(dest: str, delta: int = 10, one_blank: bool = 
             Where to copy tissue files to
         delta (int):
             Time (in seconds) between each file copy
+        one_blank (bool):
+            Add a blank .bin file or not
+        temp_bin (bool):
+            Use initial temp bin file paths or not
     """
 
     for tissue_file in sorted(os.listdir(COMBINED_DATA_PATH)):
@@ -47,6 +53,23 @@ def _slow_copy_sample_tissue_data(dest: str, delta: int = 10, one_blank: bool = 
             one_blank = False
         else:
             shutil.copy(os.path.join(COMBINED_DATA_PATH, tissue_file), dest)
+            # tissue_path = os.path.join(COMBINED_DATA_PATH, tissue_file)
+            # if temp_bin:
+            #     print("Creating a temporary bin file")
+            #     os.rename(
+            #         tissue_path,
+            #         os.path.join(COMBINED_DATA_PATH, '.' + tissue_file + '.aBcDeF')
+            #     )
+            #     tissue_path = os.path.join(COMBINED_DATA_PATH, '.' + tissue_file + '.aBcDeF')
+            # print("Copying tissue data over")
+            # shutil.copy(tissue_path, dest)
+
+            # # handle renaming
+            # if temp_bin:
+            #     print("Renaming tissue file")
+            #     time.sleep(delta)
+            #     copied_tissue_path = os.path.join(dest, '.' + tissue_file + '.aBcDeF')
+            #     os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
 
 
 COMBINED_RUN_JSON_SPOOF = {
@@ -93,9 +116,10 @@ def test_run_structure(run_json, expected_files, recwarn):
 @patch("toffy.watcher_callbacks.visualize_qc_metrics", side_effect=mock_visualize_qc_metrics)
 @patch("toffy.watcher_callbacks.visualize_mph", side_effect=mock_visualize_mph)
 @pytest.mark.parametrize("add_blank", [False, True])
+@pytest.mark.parametrize("temp_bin", [False])
 @parametrize_with_cases("run_cbs, int_cbs, fov_cbs, kwargs, validators", cases=WatcherCases)
 def test_watcher(
-    mock_viz_qc, mock_viz_mph, run_cbs, int_cbs, fov_cbs, kwargs, validators, add_blank
+    mock_viz_qc, mock_viz_mph, run_cbs, int_cbs, fov_cbs, kwargs, validators, add_blank, temp_bin
 ):
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -131,7 +155,7 @@ def test_watcher(
             with Pool(processes=4) as pool:
                 pool.apply_async(
                     _slow_copy_sample_tissue_data,
-                    (run_data, SLOW_COPY_INTERVAL_S, add_blank),
+                    (run_data, SLOW_COPY_INTERVAL_S, add_blank, temp_bin),
                 )
 
                 # watcher completion is checked every second

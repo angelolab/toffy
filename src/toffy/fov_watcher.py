@@ -3,10 +3,10 @@ import time
 import warnings
 from datetime import datetime
 from pathlib import Path
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Union
 
 from matplotlib import pyplot as plt
-from watchdog.events import FileCreatedEvent, FileSystemEventHandler
+from watchdog.events import FileCreatedEvent, FileMovedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
 from toffy.json_utils import read_json_file
@@ -208,18 +208,7 @@ class FOV_EventHandler(FileSystemEventHandler):
             for name in files:
                 self.on_created(FileCreatedEvent(os.path.join(root, name)))
 
-    def on_created(self, event: FileCreatedEvent):
-        """Handles file creation events
-
-        If FOV structure is completed, the fov callback, `self.fov_func` will be run over the data.
-        This function is automatically called; users generally shouldn't call this function
-
-        Args:
-            event (FileCreatedEvent):
-                file creation event
-        """
-        super().on_created(event)
-
+    def _callback_runner(self, event: Union[FileCreatedEvent, FileMovedEvent]):
         # check if what's created is in the run structure
         try:
             fov_ready, point_name = self.run_structure.check_run_condition(event.src_path)
@@ -234,7 +223,7 @@ class FOV_EventHandler(FileSystemEventHandler):
             return
 
         if fov_ready:
-            print(f"Discovered {point_name}, begining per-fov callbacks...")
+            print(f"Discovered {point_name}, beginning per-fov callbacks...")
             logf = open(self.log_path, "a")
 
             logf.write(
@@ -255,6 +244,104 @@ class FOV_EventHandler(FileSystemEventHandler):
 
             logf.close()
             self.check_complete()
+
+    def on_created(self, event: FileCreatedEvent):
+        """Handles file creation events
+
+        If FOV structure is completed, the fov callback, `self.fov_func` will be run over the data.
+        This function is automatically called; users generally shouldn't call this function
+
+        Args:
+            event (FileCreatedEvent):
+                file creation event
+        """
+        super().on_created(event)
+        # self._callback_runner(event)
+
+        # check if what's created is in the run structure
+        try:
+            fov_ready, point_name = self.run_structure.check_run_condition(event.src_path)
+        except TimeoutError as timeout_error:
+            print(f"Encountered TimeoutError error: {timeout_error}")
+            logf = open(self.log_path, "a")
+            logf.write(
+                f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
+                f"{event.src_path} never reached non-zero file size...\n"
+            )
+            self.check_complete()
+            return
+
+        if fov_ready:
+            print(f"Discovered {point_name}, beginning per-fov callbacks...")
+            logf = open(self.log_path, "a")
+
+            logf.write(
+                f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Extracting {point_name}\n'
+            )
+
+            # run per_fov callbacks
+            logf.write(
+                f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
+                f"Running {self.fov_func.__name__} on {point_name}\n"
+            )
+
+            self.fov_func(self.run_folder, point_name)
+            self.run_structure.processed(point_name)
+
+            if self.inter_func:
+                self.inter_func(self.run_folder)
+
+            logf.close()
+            self.check_complete()
+
+    # def on_moved(self, event: FileMovedEvent):
+    #     """Handles file renaming events
+
+    #     If FOV structure is completed, the fov callback, `self.fov_func` will be run over the data.
+    #     This function is automatically called; users generally shouldn't call this function
+
+    #     Args:
+    #         event (FileCreatedEvent):
+    #             file creation event
+    #     """
+    #     super.on_moved(event)
+    #     self._callback_runner(event)
+
+    #     # # check if what's created is in the run structure
+    #     # try:
+    #     #     fov_ready, point_name = self.run_structure.check_run_condition(event.src_path)
+    #     # except TimeoutError as timeout_error:
+    #     #     print(f"Encountered TimeoutError error: {timeout_error}")
+    #     #     logf = open(self.log_path, "a")
+    #     #     logf.write(
+    #     #         f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
+    #     #         f"{event.src_path} never reached non-zero file size...\n"
+    #     #     )
+    #     #     self.check_complete()
+    #     #     return
+
+    #     # if fov_ready:
+    #     #     print(f"Discovered {point_name}, beginning per-fov callbacks...")
+    #     #     logf = open(self.log_path, "a")
+
+    #     #     logf.write(
+    #     #         f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Extracting {point_name}\n'
+    #     #     )
+
+    #     #     # run per_fov callbacks
+    #     #     logf.write(
+    #     #         f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
+    #     #         f"Running {self.fov_func.__name__} on {point_name}\n"
+    #     #     )
+
+    #     #     self.fov_func(self.run_folder, point_name)
+    #     #     self.run_structure.processed(point_name)
+
+    #     #     if self.inter_func:
+    #     #         self.inter_func(self.run_folder)
+
+    #     #     logf.close()
+    #     #     self.check_complete()
 
     def check_complete(self):
         """Checks run structure fov_progress status
