@@ -208,7 +208,7 @@ class FOV_EventHandler(FileSystemEventHandler):
             for name in files:
                 self.on_created(FileCreatedEvent(os.path.join(root, name)))
 
-    def _callback_runner(self, event: Union[FileCreatedEvent, FileMovedEvent]):
+    def _run_callbacks(self, event: Union[FileCreatedEvent, FileMovedEvent]):
         # check if what's created is in the run structure
         try:
             fov_ready, point_name = self.run_structure.check_run_condition(event.src_path)
@@ -256,7 +256,7 @@ class FOV_EventHandler(FileSystemEventHandler):
                 file creation event
         """
         super().on_created(event)
-        self._callback_runner(event)
+        self._run_callbacks(event)
 
     def on_moved(self, event: FileMovedEvent):
         """Handles file renaming events
@@ -269,7 +269,7 @@ class FOV_EventHandler(FileSystemEventHandler):
                 file creation event
         """
         super.on_moved(event)
-        self._callback_runner(event)
+        self._run_callbacks(event)
 
     def check_complete(self):
         """Checks run structure fov_progress status
