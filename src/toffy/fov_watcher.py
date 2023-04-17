@@ -234,7 +234,7 @@ class FOV_EventHandler(FileSystemEventHandler):
             return
 
         if fov_ready:
-            print(f"Discovered {point_name}, begining per-fov callbacks...")
+            print(f"Discovered {point_name}, beginning per-fov callbacks...")
             logf = open(self.log_path, "a")
 
             logf.write(
