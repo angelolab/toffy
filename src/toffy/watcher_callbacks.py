@@ -417,7 +417,6 @@ def build_callbacks(
                 raise ValueError(f"Could not locate attribute {run_cb} in RunCallbacks object")
 
     intermediate_callback = None
-    intermediate_callback = None
     if intermediate_callbacks:
 
         def intermediate_callback(run_folder: str):
