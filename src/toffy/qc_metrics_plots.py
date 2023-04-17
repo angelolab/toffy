@@ -48,7 +48,7 @@ def batch_effect_plot(
 
     if isinstance(channel_include, list) and isinstance(channel_exclude, list):
         if set(channel_exclude).isdisjoint(set(channel_include)):
-            raise ValueError("You cannot include and exlude the same channel.")
+            raise ValueError("You cannot include and exclude the same channel.")
 
     # Filter out unused QC suffixess
     if qc_metrics is not None:
