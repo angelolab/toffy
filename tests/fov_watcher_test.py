@@ -53,23 +53,19 @@ def _slow_copy_sample_tissue_data(
             one_blank = False
         else:
             shutil.copy(os.path.join(COMBINED_DATA_PATH, tissue_file), dest)
-            # tissue_path = os.path.join(COMBINED_DATA_PATH, tissue_file)
-            # if temp_bin:
-            #     print("Creating a temporary bin file")
-            #     os.rename(
-            #         tissue_path,
-            #         os.path.join(COMBINED_DATA_PATH, '.' + tissue_file + '.aBcDeF')
-            #     )
-            #     tissue_path = os.path.join(COMBINED_DATA_PATH, '.' + tissue_file + '.aBcDeF')
-            # print("Copying tissue data over")
-            # shutil.copy(tissue_path, dest)
+            tissue_path = os.path.join(COMBINED_DATA_PATH, tissue_file)
+            if temp_bin:
+                os.rename(
+                    tissue_path, os.path.join(COMBINED_DATA_PATH, "." + tissue_file + ".aBcDeF")
+                )
+                tissue_path = os.path.join(COMBINED_DATA_PATH, "." + tissue_file + ".aBcDeF")
+            shutil.copy(tissue_path, dest)
 
-            # # handle renaming
-            # if temp_bin:
-            #     print("Renaming tissue file")
-            #     time.sleep(delta)
-            #     copied_tissue_path = os.path.join(dest, '.' + tissue_file + '.aBcDeF')
-            #     os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
+            # handle renaming
+            if temp_bin:
+                time.sleep(delta)
+                copied_tissue_path = os.path.join(dest, "." + tissue_file + ".aBcDeF")
+                os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
 
 
 COMBINED_RUN_JSON_SPOOF = {
