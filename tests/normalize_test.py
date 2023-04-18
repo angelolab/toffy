@@ -562,18 +562,7 @@ def test_normalize_fov(tmpdir, test_zeros, test_high_norm, test_low_norm):
     norm_dir = os.path.join(tmpdir, "norm_dir")
     os.makedirs(norm_dir)
 
-    # normalize fov
-    if test_high_norm or test_low_norm:
-        with pytest.warns(UserWarning, match="will suffer"):
-            normalize.normalize_fov(
-                img_data=data_xr,
-                norm_vals=norm_vals,
-                norm_dir=norm_dir,
-                fov=fovs[0],
-                channels=chans,
-                extreme_vals=extreme_vals,
-            )
-    else:
+    if not test_high_norm or test_low_norm:
         normalize.normalize_fov(
             img_data=data_xr,
             norm_vals=norm_vals,
@@ -582,6 +571,27 @@ def test_normalize_fov(tmpdir, test_zeros, test_high_norm, test_low_norm):
             channels=chans,
             extreme_vals=extreme_vals,
         )
+    else:
+        if test_high_norm:
+            with pytest.warns(UserWarning, match="will suffer a >10X increase"):
+                normalize.normalize_fov(
+                    img_data=data_xr,
+                    norm_vals=norm_vals,
+                    norm_dir=norm_dir,
+                    fov=fovs[0],
+                    channels=chans,
+                    extreme_vals=extreme_vals,
+                )
+        if test_low_norm:
+            with pytest.warns(UserWarning, match="will suffer a decrease"):
+                normalize.normalize_fov(
+                    img_data=data_xr,
+                    norm_vals=norm_vals,
+                    norm_dir=norm_dir,
+                    fov=fovs[0],
+                    channels=chans,
+                    extreme_vals=extreme_vals,
+                )
 
     # check that normalized images were modified by correct amount
     norm_imgs = load_utils.load_imgs_from_tree(norm_dir, channels=chans)
