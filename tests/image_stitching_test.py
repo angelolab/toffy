@@ -148,12 +148,13 @@ def test_stitch_images(mocker, tiled, multiple, subdir):
     ]
     fov_list = ["fov-1-scan-1", "fov-2-scan-1", "fov-3-scan-1", "fov-4-scan-1", "fov-5-scan-1"]
 
-    if tiled:
-        stitched_dir = "stitched_images_tiled"
-    else:
-        stitched_dir = "stitched_images"
-
     with tempfile.TemporaryDirectory() as tmpdir:
+        run_name = os.path.basename(tmpdir)
+        if tiled:
+            stitched_dir = f"{run_name}_tiled"
+        else:
+            stitched_dir = f"{run_name}_stitched"
+
         test_dir = make_run_file(tmpdir, multiple_tiles=multiple)
         test_utils._write_tifs(tmpdir, fov_list, channel_list, (10, 10), subdir, False, int)
 
@@ -182,6 +183,7 @@ def test_stitch_images(mocker, tiled, multiple, subdir):
             else:
                 save_dir = os.path.join(tmpdir, stitched_dir, "Tile_1")
                 image_stitching.stitch_images(tmpdir, test_dir, img_sub_folder=subdir, tiled=tiled)
+                print(os.listdir(tmpdir))
                 assert sorted(io_utils.list_files(save_dir)) == sorted(stitched_tifs)
                 data = load_utils.load_imgs_from_dir(save_dir, files=["Au_stitched.tiff"])
                 assert data.shape == (1, 20, 30, 1)
@@ -221,6 +223,11 @@ def test_stitch_images(mocker, tiled, multiple, subdir):
         shutil.rmtree(os.path.join(tmpdir, stitched_dir))
 
     with tempfile.TemporaryDirectory() as tmpdir:
+        run_name = os.path.basename(tmpdir)
+        if tiled:
+            stitched_dir = f"{run_name}_tiled"
+        else:
+            stitched_dir = f"{run_name}_stitched"
         test_utils._write_tifs(tmpdir, fov_list, channel_list, (10, 10), subdir, False, int)
 
         # test stitching for no run_dir

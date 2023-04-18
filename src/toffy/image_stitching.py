@@ -107,9 +107,10 @@ def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None
         io_utils.validate_paths(run_dir)
 
     # check for previous stitching
-    stitched_dir = os.path.join(tiff_out_dir, "stitched_images")
+    run_name = os.path.basename(tiff_out_dir)
+    stitched_dir = os.path.join(tiff_out_dir, f"{run_name}_stitched")
     if tiled:
-        stitched_dir = os.path.join(tiff_out_dir, "stitched_images_tiled")
+        stitched_dir = os.path.join(tiff_out_dir, f"{run_name}_tiled")
         if run_dir is None:
             raise ValueError(
                 "You must provide the run directory to stitch images into their "
