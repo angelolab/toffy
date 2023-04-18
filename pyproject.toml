@@ -44,6 +44,7 @@ seaborn = "^0.12"
 scikit-learn = "^1"
 watchdog = "^3"
 tqdm = "^4"
+pandas = "^1"
 
 [tool.poetry.group.test]
 optional = true
