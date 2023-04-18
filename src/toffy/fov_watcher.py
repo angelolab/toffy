@@ -268,7 +268,7 @@ class FOV_EventHandler(FileSystemEventHandler):
             event (FileMovedEvent):
                 file moved event
         """
-        super.on_moved(event)
+        super().on_moved(event)
         self._run_callbacks(event)
 
     def check_complete(self):
