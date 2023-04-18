@@ -265,8 +265,8 @@ class FOV_EventHandler(FileSystemEventHandler):
         This function is automatically called; users generally shouldn't call this function
 
         Args:
-            event (FileCreatedEvent):
-                file creation event
+            event (FileMovedEvent):
+                file moved event
         """
         super.on_moved(event)
         self._run_callbacks(event)
