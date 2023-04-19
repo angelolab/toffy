@@ -149,11 +149,16 @@ class FovCallbackCases:
 class RunCallbackCases:
     def case_default(self):
         panel_path = os.path.join(Path(__file__).parents[2], "data", "sample_panel.csv")
-        return RUN_CALLBACKS, None, {"panel": pd.read_csv(panel_path)}
+        return RUN_CALLBACKS, None, {"panel": pd.read_csv(panel_path), "extract_prof": True}
 
     def save_figure(self):
         cbs, ibs, kws = self.case_default()
         kws["save_dir"] = True
+        return cbs, ibs, kws
+
+    def case_dont_extract_prof(self):
+        cbs, ibs, kws = self.case_default()
+        kws["extract_prof"] = False
         return cbs, ibs, kws
 
     def case_inter_callback(self):
@@ -430,7 +435,8 @@ class WatcherCases:
 
     @parametrize(intensity=(False, True))
     @parametrize(replace=(False, True))
-    def case_default(self, intensity, replace):
+    @parametrize(extract_prof=(False, True))
+    def case_default(self, intensity, replace, extract_prof):
         panel = pd.read_csv(os.path.join(Path(__file__).parents[2], "data", "sample_panel.csv"))
         validators = [
             functools.partial(
@@ -445,7 +451,12 @@ class WatcherCases:
             check_pulse_dir_structure,
         ]
 
-        kwargs = {"panel": panel, "intensities": intensity, "replace": replace}
+        kwargs = {
+            "panel": panel,
+            "extract_prof": extract_prof,
+            "intensities": intensity,
+            "replace": replace,
+        }
 
         return (
             ["plot_qc_metrics", "plot_mph_metrics", "image_stitching"],
@@ -457,8 +468,9 @@ class WatcherCases:
 
     @parametrize(intensity=(False, True))
     @parametrize(replace=(False, True))
-    def case_inter_callback(self, intensity, replace):
-        rcs, _, fcs, kwargs, validators = self.case_default(intensity, replace)
+    @parametrize(extract_prof=(False, True))
+    def case_inter_callback(self, intensity, replace, extract_prof):
+        rcs, _, fcs, kwargs, validators = self.case_default(intensity, replace, extract_prof)
         ics = rcs[:2]
         rcs = rcs[2:]
 

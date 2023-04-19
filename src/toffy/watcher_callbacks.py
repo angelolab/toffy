@@ -113,6 +113,7 @@ class FovCallbacks:
     def _generate_fov_data(
         self,
         panel: pd.DataFrame,
+        extract_prof: bool,
         intensities=["Au", "chan_39"],
         replace=True,
         time_res=0.0005,
@@ -127,6 +128,8 @@ class FovCallbacks:
         Args:
             panel (pd.DataFrame):
                 Panel used for extraction
+            extract_prof (bool):
+                If set, extract proficient data
             intensities (bool | List[str]):
                 Intensities argument for `mibi_bin_tools.bin_files.extract_bin_files`
             replace (bool):
@@ -145,23 +148,24 @@ class FovCallbacks:
             replace=replace,
             time_res=time_res,
         )
-
-        panel_prof = generate_prof_panel(panel)
-
-        self.__fov_data_prof = extract_bin_files(
-            data_dir=self.run_folder,
-            out_dir=None,
-            include_fovs=[self.point_name],
-            panel=panel_prof,
-            intensities=intensities,
-            replace=replace,
-            time_res=time_res,
-        )
-
         self.__panel = panel
-        self.__panel_prof = panel_prof
 
-    def extract_tiffs(self, tiff_out_dir: str, panel: pd.DataFrame, **kwargs):
+        if extract_prof:
+            panel_prof = generate_prof_panel(panel)
+            self.__fov_data_prof = extract_bin_files(
+                data_dir=self.run_folder,
+                out_dir=None,
+                include_fovs=[self.point_name],
+                panel=panel_prof,
+                intensities=intensities,
+                replace=replace,
+                time_res=time_res,
+            )
+            self.__panel_prof = panel_prof
+
+    def extract_tiffs(
+        self, tiff_out_dir: str, panel: pd.DataFrame, extract_prof: bool = True, **kwargs
+    ):
         """Extract tiffs into provided directory, using given panel
 
         Done for both the extracted deficient and proficient data
@@ -171,6 +175,8 @@ class FovCallbacks:
                 Path where tiffs are written
             panel (pd.DataFrame):
                 Target mass integration ranges
+            extract_prof (bool):
+                If set, extract mass proficient data
             **kwargs (dict):
                 Additional arguments for `mibi_bin_tools.bin_files.extract_bin_files`.
                 Accepted kwargs are
@@ -183,7 +189,7 @@ class FovCallbacks:
             os.makedirs(tiff_out_dir)
 
         if self.__fov_data is None or self.__fov_data_prof is None:
-            self._generate_fov_data(panel, **kwargs)
+            self._generate_fov_data(panel, extract_prof, **kwargs)
 
         intensities = kwargs.get("intensities", ["Au", "chan_39"])
         if any_true(intensities) and type(intensities) is not list:
@@ -197,15 +203,18 @@ class FovCallbacks:
             intensities=intensities,
         )
 
-        _write_out(
-            img_data=self.__fov_data_prof[0, :, :, :, :].values,
-            out_dir=tiff_out_dir + "_proficient",
-            fov_name=self.point_name,
-            targets=list(self.__fov_data.channel.values),
-            intensities=intensities,
-        )
+        if extract_prof:
+            _write_out(
+                img_data=self.__fov_data_prof[0, :, :, :, :].values,
+                out_dir=tiff_out_dir + "_proficient",
+                fov_name=self.point_name,
+                targets=list(self.__fov_data.channel.values),
+                intensities=intensities,
+            )
 
-    def generate_qc(self, qc_out_dir: str, panel: pd.DataFrame = None, **kwargs):
+    def generate_qc(
+        self, qc_out_dir: str, panel: pd.DataFrame = None, extract_prof: bool = True, **kwargs
+    ):
         """Generates qc metrics from given panel, and saves output to provided directory
 
         Args:
@@ -213,6 +222,8 @@ class FovCallbacks:
                 Path where qc_metrics are written
             panel (pd.DataFrame):
                 Target mass integration ranges
+            extract_prof (bool):
+                If set, extract mass proficient data
             **kwargs (dict):
                 Additional arguments for `toffy.qc_comp.compute_qc_metrics`. Accepted kwargs are:
 
@@ -225,7 +236,7 @@ class FovCallbacks:
         if self.__fov_data is None:
             if panel is None:
                 raise ValueError("Must provide panel if fov data is not already generated...")
-            self._generate_fov_data(panel, **kwargs)
+            self._generate_fov_data(panel, extract_prof, **kwargs)
 
         metric_data = compute_qc_metrics_direct(
             image_data=self.__fov_data,
