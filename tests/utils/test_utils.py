@@ -106,7 +106,12 @@ def mock_visualize_mph(mph_df, out_dir, regression: bool = False):
 class FovCallbackCases:
     def case_all_callbacks(self):
         panel_path = os.path.join(Path(__file__).parents[2], "data", "sample_panel.csv")
-        return FOV_CALLBACKS, {"panel": pd.read_csv(panel_path)}
+        return FOV_CALLBACKS, {"panel": pd.read_csv(panel_path), "extract_prof": True}
+
+    def case_dont_extract_prof(self):
+        cbs, kwargs = self.case_all_callbacks()
+        kwargs["extract_prof"] = False
+        return cbs, kwargs
 
     def case_extract_only(self):
         cbs, kwargs = self.case_all_callbacks()
@@ -302,11 +307,6 @@ def check_pulse_dir_structure(pulse_out_dir: str, point_names: List[str], bad_po
     for point, bad in zip(point_names, bad_points):
         assert os.path.exists(os.path.join(pulse_out_dir, f"{point}_pulse_heights.csv"))
         assert not os.path.exists(os.path.join(pulse_out_dir, f"{bad}_pulse_heights.csv"))
-
-        assert os.path.exists(os.path.join(pulse_out_dir, f"{point}_pulse_heights_proficient.csv"))
-        assert not os.path.exists(
-            os.path.join(pulse_out_dir, f"{bad}_pulse_heights_proficient.csv")
-        )
 
 
 def check_stitched_dir_structure(stitched_dir: str, channels: List[str]):
