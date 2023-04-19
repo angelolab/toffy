@@ -738,13 +738,12 @@ def batch_effect_qc_metrics(
 
     tissue_to_sample_mapping: Dict[str, List[str]] = {}
 
-    for sample in samples:
-        for tissue in tissues:
-            if tissue in sample:
-                if tissue in tissue_to_sample_mapping.keys():
-                    tissue_to_sample_mapping[tissue].append(sample)
-                else:
-                    tissue_to_sample_mapping[tissue] = [sample]
+    for sample, tissue in itertools.product(samples, tissues):
+        if tissue in sample:
+            if tissue not in tissue_to_sample_mapping.keys():
+                tissue_to_sample_mapping[tissue] = [sample]
+            else:
+                tissue_to_sample_mapping[tissue].append(sample)
 
     # Use a set of the samples to avoid duplicate QC metric calculations
     sample_set = set(list(itertools.chain.from_iterable(tissue_to_sample_mapping.values())))
@@ -756,20 +755,21 @@ def batch_effect_qc_metrics(
         )
 
     # Combined metrics per Tissue
-    for tissue, samples in tissue_to_sample_mapping.items():
-        for ms in settings.QC_SUFFIXES:
-            metric_files: List[str] = io_utils.list_files(
-                qc_cohort_metrics_dir, substrs=[f"{sample}_{ms}.csv" for sample in samples]
-            )
+    for (tissue, samples), ms in itertools.product(
+        tissue_to_sample_mapping.items(), settings.QC_SUFFIXES
+    ):
+        metric_files: List[str] = io_utils.list_files(
+            qc_cohort_metrics_dir, substrs=[f"{sample}_{ms}.csv" for sample in samples]
+        )
 
-            metric_files = list(filter(lambda mf: "combined" not in mf, metric_files))
+        metric_files = list(filter(lambda mf: "combined" not in mf, metric_files))
 
-            # Define an aggregated metric DataFrame
-            combined_metric_tissue_df: pd.DataFrame = pd.concat(
-                (pd.read_csv(os.path.join(qc_cohort_metrics_dir, mf)) for mf in metric_files)
-            )
+        # Define an aggregated metric DataFrame
+        combined_metric_tissue_df: pd.DataFrame = pd.concat(
+            (pd.read_csv(os.path.join(qc_cohort_metrics_dir, mf)) for mf in metric_files)
+        )
 
-            combined_metric_tissue_df.to_csv(
-                os.path.join(qc_cohort_metrics_dir, f"{tissue}_combined_{ms}.csv"),
-                index=False,
-            )
+        combined_metric_tissue_df.to_csv(
+            os.path.join(qc_cohort_metrics_dir, f"{tissue}_combined_{ms}.csv"),
+            index=False,
+        )
