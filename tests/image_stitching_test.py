@@ -17,40 +17,26 @@ def make_run_file(tmp_dir, prefixes=[]):
         prefix1 = prefixes[0]
         prefix2 = prefixes[1]
 
-    run_json_spoof = {
-        "fovs": [
-            {
-                "runOrder": 1,
-                "scanCount": 1,
-                "frameSizePixels": {"width": 32, "height": 32},
-                "name": f"{prefix1}R1C3",
-            },
-            {
-                "runOrder": 2,
-                "scanCount": 1,
-                "frameSizePixels": {"width": 16, "height": 16},
-                "name": f"{prefix1}R2C1",
-            },
-            {
-                "runOrder": 3,
-                "scanCount": 1,
-                "frameSizePixels": {"width": 8, "height": 8},
-                "name": f"{prefix1}MoQC",
-            },
-            {
-                "runOrder": 4,
-                "scanCount": 1,
-                "frameSizePixels": {"width": 16, "height": 16},
-                "name": f"{prefix2}R2C2",
-            },
-            {
-                "runOrder": 5,
-                "scanCount": 1,
-                "frameSizePixels": {"width": 16, "height": 16},
-                "name": f"non-tiled",
-            },
-        ],
+    fov_data = {
+        f"{prefix1}R1C3": 32,
+        f"{prefix1}R2C1": 16,
+        f"{prefix1}MoQC": 8,
+        f"{prefix2}R2C2": 16,
+        "nontiled": 16,
     }
+    run_data = []
+
+    for i, fov in enumerate(fov_data.keys()):
+        run_data.append(
+            {
+                "runOrder": i + 1,
+                "scanCount": 1,
+                "frameSizePixels": {"width": fov_data[fov], "height": fov_data[fov]},
+                "name": fov,
+            }
+        )
+
+    run_json_spoof = {"fovs": run_data}
 
     test_dir = os.path.join(tmp_dir, "data", "test_run")
     os.makedirs(test_dir)
