@@ -92,13 +92,20 @@ RUN_CALLBACKS = ("plot_qc_metrics", "plot_mph_metrics", "image_stitching")
 
 
 def mock_visualize_qc_metrics(
-    metric_name, qc_metric_dir, axes_size=16, wrap=6, dpi=None, save_dir=None, ax=None
+    metric_name,
+    qc_metric_dir,
+    return_plot=True,
+    axes_size=16,
+    wrap=6,
+    dpi=None,
+    save_dir=None,
+    ax=None,
 ):
     if save_dir:
         _make_small_file(save_dir, "%s_barplot_stats.png" % metric_name)
 
 
-def mock_visualize_mph(mph_df, out_dir, regression: bool = False):
+def mock_visualize_mph(mph_df, out_dir, return_plot=True, regression: bool = False):
     if out_dir:
         _make_small_file(out_dir, "fov_vs_mph.jpg")
 
