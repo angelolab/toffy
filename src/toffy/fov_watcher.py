@@ -6,7 +6,12 @@ from pathlib import Path
 from typing import Callable, Tuple, Union
 
 from matplotlib import pyplot as plt
-from watchdog.events import FileCreatedEvent, FileMovedEvent, FileSystemEventHandler
+from watchdog.events import (
+    DirCreatedEvent,
+    FileCreatedEvent,
+    FileMovedEvent,
+    FileSystemEventHandler,
+)
 from watchdog.observers import Observer
 
 from toffy.json_utils import read_json_file
@@ -208,10 +213,14 @@ class FOV_EventHandler(FileSystemEventHandler):
             for name in files:
                 self.on_created(FileCreatedEvent(os.path.join(root, name)))
 
-    def _run_callbacks(self, event: Union[FileCreatedEvent, FileMovedEvent]):
+    def _run_callbacks(self, event: Union[DirCreatedEvent, FileCreatedEvent, FileMovedEvent]):
         # check if what's created is in the run structure
         try:
-            fov_ready, point_name = self.run_structure.check_run_condition(event.src_path)
+            if type(event) in [DirCreatedEvent, FileCreatedEvent]:
+                file_trigger = event.src_path
+            else:
+                file_trigger = event.dest_path
+            fov_ready, point_name = self.run_structure.check_run_condition(file_trigger)
         except TimeoutError as timeout_error:
             print(f"Encountered TimeoutError error: {timeout_error}")
             logf = open(self.log_path, "a")
