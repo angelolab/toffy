@@ -47,7 +47,7 @@ def _slow_copy_sample_tissue_data(
 
     for tissue_file in sorted(os.listdir(COMBINED_DATA_PATH)):
         time.sleep(delta)
-        if one_blank and ".bin" in tissue_file:
+        if one_blank and ".bin" in tissue_file and tissue_file[0] != ".":
             # create blank (0 size) file
             open(os.path.join(dest, tissue_file), "w").close()
             one_blank = False
