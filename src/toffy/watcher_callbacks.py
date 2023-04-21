@@ -399,7 +399,7 @@ def build_callbacks(
 
             for run_cb in intermediate_callbacks:
                 if cb := getattr(callback_obj, run_cb, None):
-                    inter_return_vals[cb] = cb(**kwargs)
+                    inter_return_vals[cb.__func__.__name__] = cb(**kwargs)
                 else:
                     # unreachable...
                     raise ValueError(f"Could not locate attribute {run_cb} in RunCallbacks object")
