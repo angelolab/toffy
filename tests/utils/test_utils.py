@@ -16,7 +16,7 @@ from toffy.json_utils import write_json_file
 from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 
 
-def make_run_file(tmp_dir, prefixes=[]):
+def make_run_file(tmp_dir, prefixes=[], include_nontiled=False):
     """Create a run subir and run json in the provided dir and return the path to this new dir."""
 
     if len(prefixes) == 1:
@@ -26,14 +26,15 @@ def make_run_file(tmp_dir, prefixes=[]):
         prefix2 = prefixes[1]
 
     fov_data = {
-        f"{prefix1}R1C3": 32,
-        f"{prefix1}R2C1": 16,
-        f"{prefix1}MoQC": 8,
-        f"{prefix2}R2C2": 16,
-        "nontiled": 16,
+        f"{prefix1}R1C3": 10,
+        f"{prefix1}R2C1": 8,
+        "MoQC": 20,
+        f"{prefix2}R2C2": 8,
     }
-    run_data = []
+    if include_nontiled:
+        fov_data["nontiled"] = 8
 
+    run_data = []
     for i, fov in enumerate(fov_data.keys()):
         run_data.append(
             {
@@ -43,7 +44,6 @@ def make_run_file(tmp_dir, prefixes=[]):
                 "name": fov,
             }
         )
-
     run_json_spoof = {"fovs": run_data}
 
     test_dir = os.path.join(tmp_dir, "data", "test_run")

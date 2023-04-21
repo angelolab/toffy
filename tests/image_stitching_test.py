@@ -16,13 +16,13 @@ def test_get_max_img_size():
 
         # test success for all fovs
         max_img_size = image_stitching.get_max_img_size("extracted_dir", run_dir=test_dir)
-        assert max_img_size == 32
+        assert max_img_size == 20
 
         # test success for fov list
         max_img_size = image_stitching.get_max_img_size(
             "extracted_dir", run_dir=test_dir, fov_list=["fov-2-scan-1", "fov-3-scan-1"]
         )
-        assert max_img_size == 16
+        assert max_img_size == 10
 
     # test by reading image sizes
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -57,13 +57,18 @@ def test_get_max_img_size():
         assert max_img_size == 32
 
 
-@pytest.mark.parametrize("prefix", [[""], ["Tile_1_"]])
-def test_get_tiled_names(prefix):
+@pytest.mark.parametrize("nontiled_fov", [False, True])
+@pytest.mark.parametrize("prefixes", [[""], ["Tile_1_"], ["Tile_1_", "Tile_2_"]])
+def test_get_tiled_names(prefixes, nontiled_fov):
     # test with run file
     with tempfile.TemporaryDirectory() as tmp_dir:
-        test_dir = make_run_file(tmp_dir, prefixes=prefix)
+        test_dir = make_run_file(tmp_dir, prefixes=prefixes, include_nontiled=nontiled_fov)
 
-        tiled_names = [f"{prefix[0]}R1C3", f"{prefix[0]}R2C1", f"{prefix[0]}R2C2"]
+        if len(prefixes) > 1:
+            fov4_prefix = prefixes[1]
+        else:
+            fov4_prefix = prefixes[0]
+        tiled_names = [f"{prefixes[0]}R1C3", f"{prefixes[0]}R2C1", f"{fov4_prefix}R2C2"]
         fov_list = ["fov-1-scan-1", "fov-2-scan-1", "fov-4-scan-1"]
 
         fov_names = image_stitching.get_tiled_names(fov_list, test_dir)
@@ -71,7 +76,7 @@ def test_get_tiled_names(prefix):
         assert list(fov_names.keys()) == tiled_names
 
         # check for subset of fovs in run that actually have image dirs
-        tiled_names = [f"{prefix[0]}R1C3", f"{prefix[0]}R2C2"]
+        tiled_names = [f"{prefixes[0]}R1C3", f"{fov4_prefix}R2C2"]
         fov_list = ["fov-1-scan-1", "fov-4-scan-1"]
 
         fov_names = image_stitching.get_tiled_names(fov_list, test_dir)
@@ -89,9 +94,10 @@ def test_get_tiled_names(prefix):
         (True, ["", "Tile_1_"]),
     ],
 )
+@pytest.mark.parametrize("nontiled_fov", [False, True])
 @pytest.mark.parametrize("subdir", ["", "sub_name"])
-def test_stitch_images(mocker, tiled, tile_names, subdir):
-    mocker.patch("toffy.image_stitching.get_max_img_size", return_value=32)
+def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
+    mocker.patch("toffy.image_stitching.get_max_img_size", return_value=10)
 
     channel_list = ["Au", "CD3", "CD4", "CD8", "CD11c"]
     stitched_tifs = [
@@ -101,7 +107,10 @@ def test_stitch_images(mocker, tiled, tile_names, subdir):
         "CD8_stitched.tiff",
         "CD11c_stitched.tiff",
     ]
-    fov_list = ["fov-1-scan-1", "fov-2-scan-1", "fov-3-scan-1", "fov-4-scan-1", "fov-5-scan-1"]
+    fov_num = 4
+    if nontiled_fov:
+        fov_num = 5
+    fov_list = [f"fov-{i}-scan-1" for i in range(1, fov_num + 1)]
 
     with tempfile.TemporaryDirectory() as tmpdir:
         run_name = os.path.basename(tmpdir)
@@ -110,7 +119,7 @@ def test_stitch_images(mocker, tiled, tile_names, subdir):
         else:
             stitched_dir = f"{run_name}_stitched"
 
-        test_dir = make_run_file(tmpdir, prefixes=tile_names)
+        test_dir = make_run_file(tmpdir, prefixes=tile_names, include_nontiled=nontiled_fov)
         test_utils._write_tifs(tmpdir, fov_list, channel_list, (10, 10), subdir, False, int)
 
         # bad channel should raise an error
@@ -145,12 +154,15 @@ def test_stitch_images(mocker, tiled, tile_names, subdir):
                 data = load_utils.load_imgs_from_dir(save_dir, files=["Au_stitched.tiff"])
                 assert data.shape == (1, 20, 30, 1)
 
-        # max img size 32 with 5 acquired fovs
+        # max img size 10 with 4 or 5 acquired fovs
         else:
             save_dir = os.path.join(tmpdir, stitched_dir)
             assert sorted(io_utils.list_files(save_dir)) == sorted(stitched_tifs)
             data = load_utils.load_imgs_from_dir(save_dir, files=["Au_stitched.tiff"])
-            assert data.shape == (1, 96, 64, 1)
+            if nontiled_fov:
+                assert data.shape == (1, 30, 20, 1)
+            else:
+                assert data.shape == (1, 20, 20, 1)
 
         # test previous stitching raises an error
         with pytest.raises(ValueError, match="The stitch_images subdirectory already exists"):
