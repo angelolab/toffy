@@ -20,7 +20,7 @@ def test_get_max_img_size():
 
         # test success for fov list
         max_img_size = image_stitching.get_max_img_size(
-            "extracted_dir", run_dir=test_dir, fov_list=["fov-2-scan-1", "fov-3-scan-1"]
+            "extracted_dir", run_dir=test_dir, fov_list=["fov-1-scan-1", "fov-2-scan-1"]
         )
         assert max_img_size == 10
 
