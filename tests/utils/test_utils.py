@@ -12,7 +12,46 @@ from alpineer.test_utils import _make_small_file
 from pytest_cases import parametrize
 
 from toffy.fov_watcher import RunStructure
+from toffy.json_utils import write_json_file
 from toffy.settings import QC_COLUMNS, QC_SUFFIXES
+
+
+def make_run_file(tmp_dir, prefixes=[], include_nontiled=False):
+    """Create a run subir and run json in the provided dir and return the path to this new dir."""
+
+    if len(prefixes) == 1:
+        prefix1, prefix2 = prefixes * 2
+    else:
+        prefix1 = prefixes[0]
+        prefix2 = prefixes[1]
+
+    fov_data = {
+        f"{prefix1}R1C3": 10,
+        f"{prefix1}R2C1": 8,
+        "MoQC": 20,
+        f"{prefix2}R2C2": 8,
+    }
+    if include_nontiled:
+        fov_data["nontiled"] = 8
+
+    run_data = []
+    for i, fov in enumerate(fov_data.keys()):
+        run_data.append(
+            {
+                "runOrder": i + 1,
+                "scanCount": 1,
+                "frameSizePixels": {"width": fov_data[fov], "height": fov_data[fov]},
+                "name": fov,
+            }
+        )
+    run_json_spoof = {"fovs": run_data}
+
+    test_dir = os.path.join(tmp_dir, "data", "test_run")
+    os.makedirs(test_dir)
+    json_path = os.path.join(test_dir, "test_run.json")
+    write_json_file(json_path, run_json_spoof)
+
+    return test_dir
 
 
 def generate_sample_fov_tiling_entry(coord, name, size):
