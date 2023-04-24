@@ -6,8 +6,11 @@ import tempfile
 from pathlib import Path
 from typing import List
 
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import pytest
+import seaborn as sns
 from alpineer.test_utils import _make_small_file
 from pytest_cases import parametrize
 
@@ -104,10 +107,35 @@ def mock_visualize_qc_metrics(
     if save_dir:
         _make_small_file(save_dir, "%s_barplot_stats.png" % metric_name)
 
+    if return_plot:
+        qc_metric_df = pd.DataFrame(np.zeros((5, 3)), columns=["fov", metric_name, "channel"])
+        qc_metric_df["fov"] = "fov-1-scan-1"
+        qc_metric_df["channel"] = [f"chan{i}" for i in np.arange(5)]
+        qc_fg = sns.catplot(
+            x="fov",
+            y=metric_name,
+            col="channel",
+            col_wrap=1,
+            data=qc_metric_df,
+            kind="bar",
+            color="black",
+            sharex=True,
+            sharey=False,
+        )
+        return qc_fg
+
 
 def mock_visualize_mph(mph_df, out_dir, return_plot=True, regression: bool = False):
     if out_dir:
         _make_small_file(out_dir, "fov_vs_mph.jpg")
+
+    if return_plot:
+        mph_df = pd.DataFrame(np.random.rand(5, 2), columns=["cum_total_count", "MPH"])
+        fig = plt.figure()
+        ax1 = fig.add_subplot(111)
+        ax1.scatter(mph_df["cum_total_count"], mph_df["MPH"])
+        ax2 = ax1.twiny()
+        return fig
 
 
 class FovCallbackCases:

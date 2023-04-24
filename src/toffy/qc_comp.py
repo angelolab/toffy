@@ -461,9 +461,6 @@ def visualize_qc_metrics(
     Returns:
         Optional[sns.FacetGrid]: Returns the Seaborn FacetGrid catplot of the QC metrics.
     """
-    with open(os.path.join("logfile.txt"), "w") as outfile:
-        outfile.write("Staring QC visualization for metric %s" % metric_name)
-    print("Visualizing QC metric %s" % metric_name)
     # verify the metric provided is valid
     if metric_name not in settings.QC_COLUMNS:
         raise ValueError(
@@ -526,10 +523,6 @@ def visualize_qc_metrics(
     # save the figure always
     # Return the figure if specified.
     qc_fg.savefig(os.path.join(save_dir, f"{metric_name}_barplot_stats.png"), dpi=dpi)
-
-    with open(os.path.join("..", "..", "logfile.txt"), "w") as outfile:
-        outfile.write("The plot for qc_fg is %s" % qc_fg)
-        outfile.write("The return value for qc_fg is None? %s" % (qc_fg is None))
 
     if return_plot:
         return qc_fg
