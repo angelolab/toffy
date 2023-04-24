@@ -573,7 +573,7 @@ def test_normalize_fov(tmpdir, test_zeros, test_high_norm, test_low_norm):
         )
     else:
         if test_high_norm:
-            with pytest.warns(UserWarning, match="are below 10%% sensitivity"):
+            with pytest.warns(UserWarning, match="are below 10% sensitivity"):
                 normalize.normalize_fov(
                     img_data=data_xr,
                     norm_vals=norm_vals,
