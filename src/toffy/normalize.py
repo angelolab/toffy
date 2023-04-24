@@ -723,7 +723,7 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
     if len(abnormal_increase_mask) > 0:
         abnormal_increase_chans = np.array(channels)[abnormal_increase_mask]
         warnings.warn(
-            "The following channel(s) will suffer a >10X increase after normalization "
+            "The following channel(s) are below 10%% sensitivity "
             "for fov {}. Normalization capped at 10X for: {}.".format(fov, abnormal_increase_chans)
         )
         norm_vals[abnormal_increase_mask] = 0.1
