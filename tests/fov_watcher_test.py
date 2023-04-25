@@ -59,14 +59,13 @@ def _slow_copy_sample_tissue_data(
                 shutil.copy(tissue_path, new_tissue_path)
                 shutil.copy(new_tissue_path, dest)
                 os.remove(new_tissue_path)
-            else:
-                shutil.copy(tissue_path, dest)
 
-            # handle renaming
-            if temp_bin and ".bin" in tissue_file:
+                # simulate a renaming event in dest
                 time.sleep(delta)
                 copied_tissue_path = os.path.join(dest, "." + tissue_file + ".aBcDeF")
                 os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
+            else:
+                shutil.copy(tissue_path, dest)
 
 
 COMBINED_RUN_JSON_SPOOF = {
