@@ -259,10 +259,10 @@ class FOV_EventHandler(FileSystemEventHandler):
 
                     if qc_plots:
                         for _, qc_plot in qc_plots.items():
-                            _ = plt.close(qc_plot.fig)
+                            plt.close(qc_plot.fig)
 
                     if mph_plot:
-                        _ = plt.close(mph_plot)
+                        plt.close(mph_plot)
 
                 self.inter_return_vals = self.inter_func(self.run_folder)
 
