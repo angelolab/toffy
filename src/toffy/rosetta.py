@@ -170,6 +170,36 @@ def clean_rosetta_test_dir(folder_path):
     shutil.rmtree(os.path.join(folder_path, "stitched_images"))
 
 
+def combine_compensation_files(cohort_folder_path, compensation_matrix_names, final_matrix_name):
+    """Combine a list of round two compensation matrix files in a given cohort folder.
+    This is done additively since round two compensation files are mutually exclusive w.r.t.
+    output channels.
+    Args:
+        cohort_folder_path (str):
+            Path to the compensation matrix files to combine
+        compensation_matrix_names (list):
+            List of files inside `cohort_folder_path` to combine
+        final_matrix_name (str):
+            Where to write the combined compensation matrix to
+    """
+
+    # load in the first matrix inside compensation_matrix_names
+    final_compensation_matrix = pd.read_csv(
+        os.path.join(cohort_folder_path, compensation_matrix_names[0])
+    )
+
+    # loop over the rest and add them in
+    for matrix in compensation_matrix_names[1:]:
+        final_compensation_matrix = final_compensation_matrix.add(
+            pd.read_csv(os.path.join(cohort_folder_path, matrix))
+        )
+
+    # save the final compensation matrix to final_matrix_name
+    final_compensation_matrix.to_csv(
+        os.path.join(cohort_folder_path, final_matrix_name), index=False
+    )
+
+
 def flat_field_correction(img, gaus_rad=100):
     """Apply flat field correction to an image
 

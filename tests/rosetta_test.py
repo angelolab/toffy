@@ -228,6 +228,44 @@ def test_clean_rosetta_test_dir():
         assert not any(["._" in f for f in rosetta_test_files])
 
 
+def test_combine_compensation_files():
+    with tempfile.TemporaryDirectory() as rosetta_test_dir:
+        # make a few dummy matrix files for different multipliers and channels
+        mults = [0.5, 1, 2]
+        channels = ["chan1", "chan2", "chan3"]
+        channel_pairs = [("chan1", "chan2"), ("chan2", "chan3"), ("chan3", "chan1")]
+
+        for m in mults:
+            for cp in channel_pairs:
+                df = pd.DataFrame(
+                    np.zeros((3, 3)),
+                    index=["chan1", "chan2", "chan3"],
+                    columns=["chan1", "chan2", "chan3"],
+                )
+                df.loc[cp[0], cp[1]] = m
+                df.to_csv(
+                    os.path.join(rosetta_test_dir, f"{cp[0]}_{cp[1]}_compensation_matrix_{m}.csv"),
+                    index=False,
+                )
+
+        # combine the chan1-chan2 x0.5, chan2-chan3 x1, and chan3-chan1 x2 matrix
+        compensation_matrices = [
+            "chan1_chan2_compensation_matrix_0.5.csv",
+            "chan2_chan3_compensation_matrix_1.csv",
+            "chan3_chan1_compensation_matrix_2.csv",
+        ]
+        rosetta.combine_compensation_files(
+            rosetta_test_dir, compensation_matrices, "final_rosetta_matrix.csv"
+        )
+
+        # assert final_rosetta_matrix.csv created and generated correctly
+        final_rosetta_matrix_path = os.path.join(rosetta_test_dir, "final_rosetta_matrix.csv")
+        assert os.path.exists(final_rosetta_matrix_path)
+        final_rosetta_matrix = pd.read_csv(final_rosetta_matrix_path)
+        actual_final_values = np.array([[0, 0.5, 0], [0, 0, 1], [2, 0, 0]])
+        assert np.all(final_rosetta_matrix.values == actual_final_values)
+
+
 def test_flat_field_correction():
     input_img = np.random.rand(10, 10)
     corrected_img = rosetta.flat_field_correction(img=input_img)
