@@ -4,10 +4,10 @@ import platform
 from dataclasses import dataclass, field
 from typing import Iterable
 
-if platform.system() == "Darwin":
-    import matplotlib
+# prevent memory leaking from creating plots that are never shown
+import matplotlib
 
-    matplotlib.use("Agg")
+matplotlib.use("Agg")
 
 import matplotlib.pyplot as plt
 import pandas as pd
