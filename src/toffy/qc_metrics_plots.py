@@ -194,7 +194,7 @@ def qc_tma_metrics_plot(
         # Set up the Figure for multiple axes
         fig: Figure = plt.figure(dpi=dpi)
         fig.set_layout_engine(layout="constrained")
-        gs = gridspec.GridSpec(1, 2, figure=fig, wspace=0.1)
+        gs = gridspec.GridSpec(1, 2, figure=fig, wspace=0.05)
         fig.suptitle(f"{tma} - {qc_metric}")
 
         # Heatmap
@@ -212,13 +212,13 @@ def qc_tma_metrics_plot(
         # Set ticks
         ax_heatmap.set_xticks(
             ticks=ax_heatmap.get_xticks(),
-            labels=[f"{i+1}" for i in range(cmt_data[qc_metric].shape[0])],
+            labels=[f"{i+1}" for i in range(cmt_data[qc_metric].shape[1])],
             rotation=0,
         )
 
         ax_heatmap.set_yticks(
             ticks=ax_heatmap.get_yticks(),
-            labels=[f"{i+1}" for i in range(cmt_data[qc_metric].shape[1])],
+            labels=[f"{i+1}" for i in range(cmt_data[qc_metric].shape[0])],
             rotation=0,
         )
 
@@ -235,5 +235,5 @@ def qc_tma_metrics_plot(
         if save_figure:
             fig_dir: Path = Path(qc_tma_metrics_dir) / "figures"
             fig_dir.mkdir(parents=True, exist_ok=True)
-            fig.savefig(fname=fig_dir / f"{tma}_{suffix}.png")
+            fig.savefig(fname=fig_dir / f"{tma}_{suffix}.png", bbox_inches="tight")
         plt.close(fig)
