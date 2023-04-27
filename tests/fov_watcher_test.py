@@ -124,7 +124,7 @@ def test_watcher(
             mph_out_dir = os.path.join(tmpdir, "cb_2", RUN_DIR_NAME)
             plot_dir = os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME)
             pulse_out_dir = os.path.join(tmpdir, "cb_3", RUN_DIR_NAME)
-            stitched_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, "stitched_images")
+            stitched_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, f"{RUN_DIR_NAME}_stitched")
 
             # add directories to kwargs
             kwargs["tiff_out_dir"] = tiff_out_dir
@@ -204,7 +204,7 @@ def test_watcher(
             )
 
             # stitch images check
-            validators[3](os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, "stitched_images"))
+            validators[3](os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, f"{RUN_DIR_NAME}_stitched"))
 
             # pulse heights check
             validators[4](os.path.join(tmpdir, "cb_3", RUN_DIR_NAME), fovs, bad_fovs)
