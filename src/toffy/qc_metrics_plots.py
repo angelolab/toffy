@@ -59,8 +59,8 @@ def batch_effect_plot(
         qc_cols: List[str] = settings.QC_COLUMNS
         qc_suffixes: List[str] = settings.QC_SUFFIXES
 
-    # A dictionary s.t. {tisue1: [list of qc files, sorted by qc_suffixes],
-    #                   tissue2: [list of qc files, sorted by qc_suffixes],
+    # A dictionary s.t. {tisue1: [list of qc files, sorted by the filtered qc_suffixes],
+    #                   tissue2: [list of qc files, sorted by the filtered qc_suffixes],
     #                   ...                                             }
     combined_batches: Dict[str, List[str]] = {
         tissue: ns.natsorted(
