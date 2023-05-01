@@ -306,7 +306,7 @@ def start_watcher(
     run_callback: Callable[[None], None],
     intermediate_callback: Callable[[str, str], None] = None,
     completion_check_time: int = 30,
-    zero_size_timeout: int = 1.03 * 60 * 60,
+    zero_size_timeout: int = 7800,
 ):
     """Passes bin files to provided callback functions as they're created
 
