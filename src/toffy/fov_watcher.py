@@ -3,6 +3,7 @@ import time
 import warnings
 from datetime import datetime
 from pathlib import Path
+from threading import Lock
 from typing import Callable, Tuple, Union
 
 from matplotlib import pyplot as plt
@@ -208,6 +209,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         self.fov_func = fov_callback
         self.run_func = run_callback
         self.inter_func = intermediate_callback
+        self.lock = Lock()
 
         for root, dirs, files in os.walk(run_folder):
             for name in files:
@@ -264,8 +266,9 @@ class FOV_EventHandler(FileSystemEventHandler):
             event (FileCreatedEvent):
                 file creation event
         """
-        super().on_created(event)
-        self._run_callbacks(event)
+        with self.lock:
+            super().on_created(event)
+            self._run_callbacks(event)
 
     def on_moved(self, event: FileMovedEvent):
         """Handles file renaming events
@@ -277,8 +280,9 @@ class FOV_EventHandler(FileSystemEventHandler):
             event (FileMovedEvent):
                 file moved event
         """
-        super().on_moved(event)
-        self._run_callbacks(event)
+        with self.lock:
+            super().on_moved(event)
+            self._run_callbacks(event)
 
     def check_complete(self):
         """Checks run structure fov_progress status
