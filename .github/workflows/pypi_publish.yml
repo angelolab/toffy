@@ -2,8 +2,7 @@ name: Build Wheels and upload to PyPI
 
 on:
   pull_request:
-    branches:
-      - "releases/**"
+    branches: ["releases/**"]
     types: [labeled, opened, synchronize, reopened]
   release:
     types: [published]
@@ -17,15 +16,24 @@ permissions:
   contents: read # to fetch code (actions/checkout)
 
 jobs:
-  build_wheels_sdist:
-    name: Build, Lint and Test
+  test:
+    name: Test
+    permissions:
+      contents: read
     uses: ./.github/workflows/test.yml
+    secrets: inherit
+
+  build:
+    name: Build
+    permissions:
+      contents: read
+    uses: ./.github/workflows/build.yml
     secrets: inherit
 
   test_pypi_publish:
     # Test PyPI publish, requires wheels and source dist (sdist)
     name: Publish ${{ github.repository }} to TestPyPI
-    needs: [build_wheels_sdist]
+    needs: [test, build]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/download-artifact@v3
@@ -33,17 +41,17 @@ jobs:
           name: distributions
           path: dist
 
-      - uses: pypa/gh-action-pypi-publish@release/v1.6
+      - uses: pypa/gh-action-pypi-publish@release/v1.8
         with:
           user: __token__
           password: ${{ secrets.TEST_PYPI_API_TOKEN }}
-          repository_url: https://test.pypi.org/legacy/
-          packages_dir: dist/
+          repository-url: https://test.pypi.org/legacy/
+          packages-dir: dist/
           verbose: true
 
   pypi_publish:
     name: Publish ${{ github.repository }} to to PyPI
-    needs: [build_wheels_sdist, test_pypi_publish]
+    needs: [test_pypi_publish]
 
     runs-on: ubuntu-latest
     # Publish when a GitHub Release is created, use the following rule:
@@ -56,9 +64,9 @@ jobs:
           path: dist
 
       - name: PYPI Publish
-        uses: pypa/gh-action-pypi-publish@release/v1.6
+        uses: pypa/gh-action-pypi-publish@release/v1.8
         with:
           user: __token__
           password: ${{ secrets.PYPI_API_TOKEN }}
-          packages_dir: dist/
+          packages-dir: dist/
           verbose: true

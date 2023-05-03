@@ -1,12 +1,15 @@
-name: Build, Lint and Test
+name: CI
 
 on:
   push:
-    branches:
-      - "main"
+    branches: [main]
   pull_request:
+    branches: [main]
     types: [labeled, opened, synchronize, reopened]
   workflow_dispatch:
+  merge_group:
+    types: [checks_requested]
+    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
@@ -16,17 +19,24 @@ permissions:
   contents: read # to fetch code (actions/checkout)
 
 jobs:
-  build_lint_test:
+  test:
+    name: Test
     permissions:
       contents: read
       pull-requests: write
-    name: Build, Lint and Test
     secrets: inherit
     uses: ./.github/workflows/test.yml
 
+  build:
+    name: Build
+    permissions:
+      contents: read
+      pull-requests: write
+    secrets: inherit
+    uses: ./.github/workflows/build.yml
 
   upload_coverage:
-    needs: [build_lint_test]
+    needs: [test]
     name: Upload Coverage
     runs-on: ubuntu-latest
     steps:
@@ -42,7 +52,6 @@ jobs:
           path: coverage
 
       - name: Upload Coverage to Coveralls
-        uses: coverallsapp/github-action@master
+        uses: coverallsapp/github-action@v2
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-          path-to-lcov: ${{ github.workspace }}/coverage/coverage.lcov

@@ -203,6 +203,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         self.fov_func = fov_callback
         self.run_func = run_callback
         self.inter_func = intermediate_callback
+        self.inter_return_vals = None
 
         for root, dirs, files in os.walk(run_folder):
             for name in files:
@@ -251,7 +252,17 @@ class FOV_EventHandler(FileSystemEventHandler):
             self.run_structure.processed(point_name)
 
             if self.inter_func:
-                self.inter_func(self.run_folder)
+                # clear plots contained in intermediate return values if set
+                if self.inter_return_vals:
+                    qc_plots = self.inter_return_vals.get("plot_qc_metrics", None)
+                    mph_plot = self.inter_return_vals.get("plot_mph_metrics", None)
+
+                    if qc_plots or mph_plot:
+                        plt.cla()
+                        plt.clf()
+                        plt.close("all")
+
+                self.inter_return_vals = self.inter_func(self.run_folder)
 
             logf.close()
             self.check_complete()
