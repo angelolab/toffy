@@ -211,18 +211,80 @@ class FOV_EventHandler(FileSystemEventHandler):
         self.inter_func = intermediate_callback
         self.inter_return_vals = None
         self.lock = Lock()
+        self.last_fov_num_processed = 0
 
         for root, dirs, files in os.walk(run_folder):
             for name in files:
                 self.on_created(FileCreatedEvent(os.path.join(root, name)))
 
+    def _generate_callback_data(self, point_name: str):
+        print(f"Discovered {point_name}, beginning per-fov callbacks...")
+        logf = open(self.log_path, "a")
+
+        logf.write(f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Extracting {point_name}\n')
+
+        # run per_fov callbacks
+        logf.write(
+            f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
+            f"Running {self.fov_func.__name__} on {point_name}\n"
+        )
+
+        self.fov_func(self.run_folder, point_name)
+        self.run_structure.processed(point_name)
+
+        if self.inter_func:
+            # clear plots contained in intermediate return values if set
+            if self.inter_return_vals:
+                qc_plots = self.inter_return_vals.get("plot_qc_metrics", None)
+                mph_plot = self.inter_return_vals.get("plot_mph_metrics", None)
+
+                if qc_plots or mph_plot:
+                    plt.cla()
+                    plt.clf()
+                    plt.close("all")
+
+            self.inter_return_vals = self.inter_func(self.run_folder)
+
+        logf.close()
+        self.check_complete()
+
+    def _process_missed_fovs(self, path: str):
+        # verify the path provided is correct .bin type, if not skip
+        filename = Path(path).parts[-1]
+        name_ext = filename.split(".")
+        if len(name_ext) != 2 or name_ext[1] != ".bin":
+            return
+
+        # NOTE: MIBI now only stores relevant data in scan 1, ignore any scans > 1
+        scan_num = name_ext[0].split("-")[3]
+        if scan_num > 1:
+            return
+
+        # retrieve the FOV number
+        fov_num = name_ext[0].split("-")[1]
+
+        # a difference of 1 from the last_processed FOV indicates there are no in-between FOVs
+        if fov_num - 1 == self.last_fov_num_processed:
+            return
+
+        # NOTE: from observation, only the most recent FOV will ever be in danger of timing out
+        # so all the FOVs processed in this function should already be fully processed
+        start_index = self.last_fov_num_processed if self.last_fov_num_processed else 1
+        for i in np.arange(self.last_fov_num_processed + 1, fov_num):
+            last_fov_file = f"fov-{self.last_fov_num_processed}-scan-1.bin"
+            self._generate_callback_data(last_fov_file)
+
     def _run_callbacks(self, event: Union[DirCreatedEvent, FileCreatedEvent, FileMovedEvent]):
+        if type(event) in [DirCreatedEvent, FileCreatedEvent]:
+            file_trigger = event.src_path
+        else:
+            file_trigger = event.dest_path
+
+        # process any FOVs that got missed on the previous iteration of on_created/on_moved
+        self._process_missed_fovs(file_trigger)
+
         # check if what's created is in the run structure
         try:
-            if type(event) in [DirCreatedEvent, FileCreatedEvent]:
-                file_trigger = event.src_path
-            else:
-                file_trigger = event.dest_path
             fov_ready, point_name = self.run_structure.check_run_condition(file_trigger)
         except TimeoutError as timeout_error:
             print(f"Encountered TimeoutError error: {timeout_error}")
@@ -232,40 +294,19 @@ class FOV_EventHandler(FileSystemEventHandler):
                 f"{event.src_path} never reached non-zero file size...\n"
             )
             self.check_complete()
+
+            # because timed out FOVs are marked as complete, update last_fov_num_processed
+            point_name = Path(file_trigger).parts[-1]
+            point_number = int(point_name.split("-")[1])
+            self.last_fov_num_processed = point_number + 1
             return
 
         if fov_ready:
-            print(f"Discovered {point_name}, beginning per-fov callbacks...")
-            logf = open(self.log_path, "a")
+            self._generate_callback_data(point_name)
 
-            logf.write(
-                f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Extracting {point_name}\n'
-            )
-
-            # run per_fov callbacks
-            logf.write(
-                f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
-                f"Running {self.fov_func.__name__} on {point_name}\n"
-            )
-
-            self.fov_func(self.run_folder, point_name)
-            self.run_structure.processed(point_name)
-
-            if self.inter_func:
-                # clear plots contained in intermediate return values if set
-                if self.inter_return_vals:
-                    qc_plots = self.inter_return_vals.get("plot_qc_metrics", None)
-                    mph_plot = self.inter_return_vals.get("plot_mph_metrics", None)
-
-                    if qc_plots or mph_plot:
-                        plt.cla()
-                        plt.clf()
-                        plt.close("all")
-
-                self.inter_return_vals = self.inter_func(self.run_folder)
-
-            logf.close()
-            self.check_complete()
+            # update last_fov_num_processed
+            point_number = int(point_name.split("-")[1])
+            self.last_fov_num_processed = point_number + 1
 
     def on_created(self, event: FileCreatedEvent):
         """Handles file creation events
