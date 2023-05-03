@@ -18,7 +18,9 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
 ]
 packages = [{ include = 'toffy', from = 'src' }]
 
@@ -34,7 +36,7 @@ style = "pep440"
 metadata = false
 
 [tool.poetry.dependencies]
-python = "^3.8"
+python = "^3.9"
 alpineer = "^0.1.5"
 mibi-bin-tools = "^0.2.8"
 ipywidgets = "^8"

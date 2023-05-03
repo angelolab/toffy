@@ -1,4 +1,15 @@
 # toffy
+
+<div align="center">
+
+| | |
+| ---        |    ---  |
+| CI / CD | [![CI](https://github.com/angelolab/toffy/actions/workflows/ci.yml/badge.svg)](https://github.com/angelolab/toffy/actions/workflows/ci.yml) [![Coverage Status](https://coveralls.io/repos/github/angelolab/toffy/badge.svg?branch=main)](https://coveralls.io/github/angelolab/mibi-bin-tools?branch=main) |
+| Package | [![PyPI - Version](https://img.shields.io/pypi/v/toffy.svg?logo=pypi&label=PyPI&logoColor=gold)](https://pypi.org/project/toffy/) [![PyPI - Downloads](https://img.shields.io/pypi/dm/toffy.svg?color=blue&label=Downloads&logo=pypi&logoColor=gold)](https://pypi.org/project/toffy/) [![PyPI - Python Version](https://img.shields.io/pypi/pyversions/toffy.svg?logo=python&label=Python&logoColor=gold)](https://pypi.org/project/toffy/) |
+|Meta | [![code style - Black](https://img.shields.io/badge/code%20style-black-000000.svg)](https://github.com/psf/black) [![types - Mypy](https://img.shields.io/badge/types-Mypy-blue.svg)](https://github.com/python/mypy) [![PyPI - License](https://img.shields.io/pypi/l/toffy?color=9400d3)](LICENSE) |
+</div>
+
+
 The toffy repo is designed to simplify the process of generating and processing data on the MIBIScope platform.
 
 This repo is currently in beta testing. None of the code has been published yet, and we will be making breaking changes frequently. If you find bugs, please [open an issue](https://github.com/angelolab/toffy/issues/new/choose).
@@ -244,7 +255,7 @@ The median pulse height (MPH) provides a way to assess the sensitivity of the de
 2. `cd` into `toffy`.
 3. Install the pre-commit hooks with `pre-commit install --install-hooks`
 4. Set up Poetry for `toffy`
-   1. Run `poetry install` to install `alpineer` into your virtual environment (this will create a local virtual environment).
+   1. Run `poetry install` to install `toffy` into your virtual environment (this will create a local virtual environment).
       1. Poetry utilizes [Python's Virtual Environments](https://docs.python.org/3/tutorial/venv.html))
    2. Run `poetry install --with test`: Installs all the [dependencies needed for tests](pyproject.toml) (labeled under `tool.poetry.group.test.dependencies`)
    3. Run `poetry install --with dev`: Installs all the [dependencies needed for development](pyproject.coml) (labeled under `tool.poetry.group.dev.dependencies`)
