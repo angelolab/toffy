@@ -34,7 +34,7 @@ This repo is currently in beta testing. None of the code has been published yet,
 - [Median Pulse Height](#median-pulse-height)
 - [Development Notes](#development-notes)
   - [Requirements](#requirements)
-- [Setup](#setup)
+  - [Setup](#setup)
 - [Questions?](#questions)
 - [How to cite](#how-to-cite)
 
@@ -253,7 +253,7 @@ The median pulse height (MPH) provides a way to assess the sensitivity of the de
     brew install pre-commit
     ```
 
-## Setup
+### Setup
 
 1. Clone the repo: `git clone https://github.com/angelolab/toffy.git`
 2. `cd` into `toffy`.
