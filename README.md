@@ -19,8 +19,8 @@ This repo is currently in beta testing. None of the code has been published yet,
   - [1. Using toffy for the first time](#1-using-toffy-for-the-first-time)
   - [2. Setting up a MIBI run](#2-setting-up-a-mibi-run)
   - [3. Evaluating a MIBI run](#3-evaluating-a-mibi-run)
-  - [4. Processing MIBI data](#4-processing-mibi-data)
-  - [5. Formatting MIBI runs for analysis](#5-formatting-mibi-runs-for-analysis)
+  - [4. Processing After a MIBI run](#4-processing-after-a-mibi-run)
+  - [5. Formatting MIBI Data for Downstream Analysis](#5-formatting-mibi-data-for-downstream-analysis)
 - [Pipeline Flowchart](#pipeline-flowchart)
 - [Installation](#installation)
   - [Requirements for specific operating systems](#requirements-for-specific-operating-systems)
@@ -66,12 +66,12 @@ For more information, see the [image processing and extraction walkthrough](http
   - 3d: [median pulse heights notebook](./templates/3d_compute_median_pulse_height.ipynb) generates plots showing median pulse heights for each FOV, along with estimated run time
   - 3e: [stitch images notebook](./templates/3e_stitch_images.ipynb) creates a single stitched image for each channel in your panel across all of the FOVs in your run
 
-### 4. Processing MIBI data
+### 4. Processing After a MIBI run
 Once your run has finished, you can begin to process the data to make it ready for analysis. To remove background signal contamination, as well as compensate for channel crosstalk, you can use the [compensation](./templates/4a_compensate_image_data.ipynb) notebook. This will guide you through the Rosetta algorithm, which uses a flow-cytometry style compensation approach to remove spurious signal.
 
 Following compensation, you will want to normalize your images to ensure consistent intensity across the run. You can use the [normalization](./templates/4b_normalize_image_data.ipynb) notebook to perform this step.
 
-### 5. Formatting MIBI runs for analysis
+### 5. Formatting MIBI Data for Downstream Analysis
 After the image processing and cleanup from *toffy* is complete, the final step is to format your data to faciliate easy downstream analysis. The [reorganization](./templates/5_rename_and_reorganize.ipynb) notebook will walk you through the process of renaming FOVs, combining partial runs, and consolidating your images.
 For more information, see the [reorganizing your data walkthrough](https://www.youtube.com/watch?v=nKYGWQ7GXC4&list=PLjNbkEm4vA27f8-EB7q9u_lDPI7oxohhn&index=5).
 
