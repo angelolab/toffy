@@ -37,8 +37,8 @@ metadata = false
 
 [tool.poetry.dependencies]
 python = "^3.9"
-alpineer = "^0.1.5"
-mibi-bin-tools = "^0.2.8"
+alpineer = "^0.1.7"
+mibi-bin-tools = "^0.2.9"
 ipywidgets = "^8"
 numpy = "1.*"
 natsort = "^8"
@@ -73,7 +73,7 @@ jupyter-contrib-nbextensions = "^0.7.0"
 ## TYPE CHECKING ##
 
 [tool.mypy]
-python_version = "3.8"
+python_version = "3.9"
 mypy_path = "$MYPY_CONFIG_FILE_DIR/src:$MYPY_CONFIG_FILE_DIR/tests"
 warn_return_any = true
 warn_unused_configs = true
@@ -84,7 +84,7 @@ ignore_missing_imports = true
 
 [tool.black]
 line-length = 100
-target-version = ['py38']
+target-version = ["py39", "py310", "py311"]
 include = '\.pyi?$'
 preview = true
 
