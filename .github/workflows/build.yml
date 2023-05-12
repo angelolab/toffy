@@ -1,4 +1,4 @@
-name: Test
+name: Build
 
 on:
   workflow_call:
@@ -7,14 +7,14 @@ permissions:
   contents: read # to fetch code (actions/checkout)
 
 jobs:
-  test:
+  build:
     name: ${{ github.repository }}
     runs-on: ubuntu-latest
     strategy:
       # Ensure that a wheel builder finishes even if another fails
       fail-fast: false
       matrix:
-        python-version: [3.x] # latest stable release
+        python-version: [3.x]
         poetry-version: [latest]
 
     steps:
@@ -35,31 +35,21 @@ jobs:
         uses: actions/setup-python@v4
         with:
           python-version: ${{matrix.python-version}}
-          check-latest: true
           cache: "poetry"
 
       - name: Set up Poetry Dynamic Versioning
         run: |
           poetry self add "poetry-dynamic-versioning[plugin]"
 
-      - name: Linting, Typechecking and Formatting
-        uses: pre-commit/action@v3.0.0
-
-      - name: Install Dependencies
-        run: poetry install --no-interaction --no-root
-
-      - name: Install ${{ github.repository }}
+      - name: Build Pure Python Wheels and Source Distribution
         run: |
-          poetry install --no-interaction
+          poetry build
 
-      - name: Run Tests
-        run: |
-          poetry install --with test --no-interaction --no-root
-          poetry run pytest
+      - name: Check sdist Metadata
+        run: pipx run twine check dist/*
 
-      - name: Archive Coverage
+      - name: Store Wheel and sdist Artifacts
         uses: actions/upload-artifact@v3
         with:
-          name: coverage
-          path: |
-            coverage.lcov
+          name: distributions
+          path: dist/*

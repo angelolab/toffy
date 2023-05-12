@@ -140,12 +140,13 @@ def combine_mph_metrics(csv_dir, return_data=False):
         return combined_df
 
 
-def visualize_mph(mph_df, out_dir, regression: bool = False):
+def visualize_mph(mph_df, out_dir, regression: bool = False, return_plot: bool = False):
     """Create a scatterplot visualizing median pulse heights by FOV cumulative count
     Args:
         mph_df (pd.DataFrame): data detailing total counts and pulse heights
         out_dir (str): path of directory to save plot to
         regression (bool): whether to plot regression line, default is False
+        return_plot (bool): if True, this will return the plot. Defaults to False.
     """
 
     # path validation checks
@@ -153,7 +154,6 @@ def visualize_mph(mph_df, out_dir, regression: bool = False):
         io_utils.validate_paths(out_dir)
 
     # visualize the median pulse heights
-    plt.title("FOV total counts vs median pulse height")
     fig = plt.figure()
     ax1 = fig.add_subplot(111)
     x = mph_df["cum_total_count"] / 1000000
@@ -163,6 +163,7 @@ def visualize_mph(mph_df, out_dir, regression: bool = False):
     ax1.scatter(x, y)
     ax2 = ax1.twiny()
     ax2.set_xlabel("estimated time (hours)")
+    plt.title("FOV total counts vs median pulse height")
 
     # create time axis
     new_ticks = generate_time_ticks(mph_df)
@@ -186,3 +187,6 @@ def visualize_mph(mph_df, out_dir, regression: bool = False):
     if os.path.exists(file_path):
         os.remove(file_path)
     plt.savefig(file_path)
+
+    if return_plot:
+        return fig
