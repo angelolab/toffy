@@ -170,34 +170,6 @@ def clean_rosetta_test_dir(folder_path):
     shutil.rmtree(os.path.join(folder_path, "stitched_images"))
 
 
-def combine_compensation_files(comp_matrix_path, compensation_matrix_names, final_matrix_name):
-    """Combine a list of round two compensation matrix files in a given cohort folder.
-    This is done additively since round two compensation files are mutually exclusive w.r.t.
-    output channels.
-    Args:
-        cohort_folder_path (str):
-            Path to the compensation matrix files to combine
-        compensation_matrix_names (list):
-            List of files inside `cohort_folder_path` to combine
-        final_matrix_name (str):
-            Where to write the combined compensation matrix to
-    """
-
-    # load in the first matrix inside compensation_matrix_names
-    final_compensation_matrix = pd.read_csv(
-        os.path.join(comp_matrix_path, compensation_matrix_names[0])
-    )
-
-    # loop over the rest and add them in
-    for matrix in compensation_matrix_names[1:]:
-        final_compensation_matrix = final_compensation_matrix.add(
-            pd.read_csv(os.path.join(comp_matrix_path, matrix))
-        )
-
-    # save the final compensation matrix to final_matrix_name
-    final_compensation_matrix.to_csv(os.path.join(comp_matrix_path, final_matrix_name), index=False)
-
-
 def flat_field_correction(img, gaus_rad=100):
     """Apply flat field correction to an image
 
@@ -413,17 +385,20 @@ def copy_round_one_compensated_images(
     # for each FOV, copy the channel from their r1_runs folder to r2_runs folder
     for run in r1_runs:
         fovs = io_utils.list_folders(os.path.join(round_one_comp_folder, run), substrs="fov")
+        print("Found fovs %s" % str(fovs))
 
         for fov in fovs:
             channel_files = io_utils.list_files(
                 os.path.join(round_one_comp_folder, run, fov, "rescaled"), substrs=channels_to_copy
             )
+            print("Found channel files %s" % str(channel_files))
 
             for cf in channel_files:
                 shutil.copy(
                     os.path.join(round_one_comp_folder, run, fov, "rescaled", cf),
                     os.path.join(round_two_comp_folder, run, fov, "rescaled", cf),
                 )
+                print("Copied channel file %s" % cf)
 
 
 def create_tiled_comparison(
