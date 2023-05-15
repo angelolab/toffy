@@ -87,7 +87,7 @@ def test_build_fov_callback(callbacks, kwargs, data_path):
 def test_build_callbacks(viz_mock, run_callbacks, inter_callbacks, kwargs, data_path):
     with tempfile.TemporaryDirectory() as tmp_dir:
         extracted_dir = os.path.join(tmp_dir, "extracted")
-        stitched_dir = os.path.join(extracted_dir, "stitched_images")
+        stitched_dir = os.path.join(extracted_dir, "extracted_stitched")
         qc_dir = os.path.join(tmp_dir, "qc")
         plot_dir = os.path.join(tmp_dir, "plots")
         kwargs["tiff_out_dir"] = extracted_dir
