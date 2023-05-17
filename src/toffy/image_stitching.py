@@ -193,7 +193,7 @@ def stitch_images(
                 )
                 fname = os.path.join(tile_stitched_dir, chan + "_stitched.tiff")
                 stitched = data_utils.stitch_images(image_data, num_cols)
-                current_img = stitched.loc["stitched_image", :, :, chan].values
+                current_img = stitched.loc["stitched_image", :, :, chan].values / scale
                 image_utils.save_image(fname, current_img)
 
         else:
@@ -206,5 +206,5 @@ def stitch_images(
             )
             fname = os.path.join(stitched_dir, chan + "_stitched.tiff")
             stitched = data_utils.stitch_images(image_data, num_cols)
-            current_img = stitched.loc["stitched_image", :, :, chan].values / 200
+            current_img = stitched.loc["stitched_image", :, :, chan].values / scale
             image_utils.save_image(fname, current_img)
