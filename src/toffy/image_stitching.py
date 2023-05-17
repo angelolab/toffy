@@ -93,14 +93,18 @@ def get_tiled_names(fov_list, run_dir):
     return fov_names
 
 
-def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None, tiled=False):
+def stitch_images(
+    tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None, tiled=False, scale=200
+):
     """Creates a new directory containing stitched channel images for the run
     Args:
         tiff_out_dir (str): path to the extracted images for the specific run
         run_dir (str): path to the run directory containing the run json files, default None
         channels (list): list of channels to produce stitched images for, None will do all
         img_sub_folder (str): optional name of image sub-folder within each fov
-        tiled (bool): whether to stitch images back into original tiled shape"""
+        tiled (bool): whether to stitch images back into original tiled shape
+        scale (int): how much to rescale the stitched image by, needed for Photoshop compatibility
+    """
 
     io_utils.validate_paths(tiff_out_dir)
     if run_dir:
@@ -202,5 +206,5 @@ def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None
             )
             fname = os.path.join(stitched_dir, chan + "_stitched.tiff")
             stitched = data_utils.stitch_images(image_data, num_cols)
-            current_img = stitched.loc["stitched_image", :, :, chan].values
+            current_img = stitched.loc["stitched_image", :, :, chan].values / 200
             image_utils.save_image(fname, current_img)
