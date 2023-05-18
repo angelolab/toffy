@@ -718,8 +718,8 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
     else:
         os.makedirs(output_fov_dir)
 
-    # cap maximum normalization increase at 10X
-    abnormal_increase_mask = np.where(norm_vals < 0.1)[0]
+    # cap maximum normalization increase at 10X, ignore 0 (skipped) norm_vals
+    abnormal_increase_mask = np.where(np.logical_and(norm_vals > 0, norm_vals < 0.1))
     if len(abnormal_increase_mask) > 0:
         abnormal_increase_chans = np.array(channels)[abnormal_increase_mask]
         warnings.warn(
