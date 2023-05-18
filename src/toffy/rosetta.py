@@ -159,7 +159,7 @@ def clean_rosetta_test_dir(folder_path):
     """
 
     # remove any files beginning with ._, needed to ensure external drive hidden files clear
-    _ = subprocess.call(["find", folder_path, "-type", "f", "-name", "._*-delete"])
+    _ = subprocess.call(["find", folder_path, "-type", "f", "-name", "._*", "-delete"])
 
     # remove the compensated data folders
     comp_folders = io_utils.list_folders(folder_path, substrs="compensated_data_")
