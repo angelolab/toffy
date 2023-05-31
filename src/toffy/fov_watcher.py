@@ -285,7 +285,7 @@ class FOV_EventHandler(FileSystemEventHandler):
 
         # if the last FOV has been written, then process everything up to that if necessary
         bin_dir = Path(path).parents[0]
-        if os.path.join(base_dir / last_fov):
+        if os.path.join(bin_dir / last_fov):
             for i in np.arange(self.last_fov_num_processed + 1, num_fovs + 1):
                 fov_file = f"fov-{i}_scan_1.bin"
                 self._generate_callback_data(bin_dir / fov_file)
