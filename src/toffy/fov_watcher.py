@@ -6,6 +6,7 @@ from pathlib import Path
 from threading import Lock
 from typing import Callable, Tuple, Union
 
+import numpy as np
 from matplotlib import pyplot as plt
 from watchdog.events import (
     DirCreatedEvent,
