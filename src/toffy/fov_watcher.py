@@ -6,6 +6,7 @@ from pathlib import Path
 from threading import Lock
 from typing import Callable, Tuple, Union
 
+import natsort as ns
 import numpy as np
 from matplotlib import pyplot as plt
 from watchdog.events import (
@@ -215,7 +216,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         self.last_fov_num_processed = 0
 
         for root, dirs, files in os.walk(run_folder):
-            for name in files:
+            for name in ns.natsorted(files):
                 self.on_created(FileCreatedEvent(os.path.join(root, name)))
 
     def _generate_callback_data(self, point_name: str):
