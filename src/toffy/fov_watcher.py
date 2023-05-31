@@ -219,6 +219,9 @@ class FOV_EventHandler(FileSystemEventHandler):
             for name in ns.natsorted(files):
                 self.on_created(FileCreatedEvent(os.path.join(root, name)))
 
+                # increment for every FOV that gets processed in this step
+                self.last_fov_num_processed += 1
+
     def _generate_callback_data(self, point_name: str):
         print(f"Discovered {point_name}, beginning per-fov callbacks...")
         logf = open(self.log_path, "a")
