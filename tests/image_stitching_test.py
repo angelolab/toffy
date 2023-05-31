@@ -96,11 +96,15 @@ def _tiled_image_check(data_tiled, data_base, num_img_row, num_img_col):
 
     # index into each tile separately, compare with the original image / 200
     while row_i < num_img_row:
+        row_start = row_i * row_size
+        row_end = (row_i + 1) * row_size
         while col_i < num_img_col:
+            col_start = col_i * col_size
+            col_end = (col_i + 1) * col_size
             data_subset = data_tiled[
                 0,
-                (row_i * row_size) : ((row_i + 1) * row_size),
-                (col_i * col_size) : ((col_i + 1) * col_size),
+                row_start:row_end,
+                col_start:col_end,
                 0,
             ].values
             data_standard = data_base[fov_i, ..., 0].values
