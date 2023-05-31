@@ -252,16 +252,16 @@ class FOV_EventHandler(FileSystemEventHandler):
         # verify the path provided is correct .bin type, if not skip
         filename = Path(path).parts[-1]
         name_ext = filename.split(".")
-        if len(name_ext) != 2 or name_ext[1] != ".bin":
+        if len(name_ext) != 2 or name_ext[1] != "bin":
             return
 
         # NOTE: MIBI now only stores relevant data in scan 1, ignore any scans > 1
-        scan_num = name_ext[0].split("-")[3]
+        scan_num = int(name_ext[0].split("-")[3])
         if scan_num > 1:
             return
 
         # retrieve the FOV number
-        fov_num = name_ext[0].split("-")[1]
+        fov_num = int(name_ext[0].split("-")[1])
 
         # a difference of 1 from the last_processed FOV indicates there are no in-between FOVs
         if fov_num - 1 == self.last_fov_num_processed:
@@ -271,8 +271,8 @@ class FOV_EventHandler(FileSystemEventHandler):
         # so all the FOVs processed in this function should already be fully processed
         start_index = self.last_fov_num_processed if self.last_fov_num_processed else 1
         for i in np.arange(self.last_fov_num_processed + 1, fov_num):
-            last_fov_file = f"fov-{self.last_fov_num_processed}-scan-1.bin"
-            self._generate_callback_data(last_fov_file)
+            last_fov_file = f"fov-{i}-scan-1.bin"
+            self._generate_callback_data(path.parents[0] / last_fov_file)
 
     def _run_callbacks(self, event: Union[DirCreatedEvent, FileCreatedEvent, FileMovedEvent]):
         if type(event) in [DirCreatedEvent, FileCreatedEvent]:
