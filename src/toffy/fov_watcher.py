@@ -277,7 +277,7 @@ class FOV_EventHandler(FileSystemEventHandler):
             fov_file = f"fov-{i}-scan-1.bin"
             self._generate_callback_data(bin_dir / fov_file)
 
-    def _process_last_fov(self, path: str):
+    def _check_last_fov(self, path: str):
         # get the total number of FOVs, extract name of the last
         # NOTE: MIBI now only stores relevant data in scan 1, ignore any scans > 1
         num_fovs = len(list(self.run_structure.fov_progress.keys()))
@@ -342,7 +342,7 @@ class FOV_EventHandler(FileSystemEventHandler):
             self._run_callbacks(event)
 
             # explicitly check for last bin file, since it has no other events to trigger otherwise
-            self._process_last_fov()
+            self._check_last_fov(event.src_path)
 
     def on_moved(self, event: FileMovedEvent):
         """Handles file renaming events
@@ -359,7 +359,7 @@ class FOV_EventHandler(FileSystemEventHandler):
             self._run_callbacks(event)
 
             # explicitly check for last bin file, since it has no other events to trigger otherwise
-            self._process_last_fov()
+            self._check_last_fov(event.dest_path)
 
     def check_complete(self):
         """Checks run structure fov_progress status
