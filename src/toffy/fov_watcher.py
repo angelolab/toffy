@@ -271,27 +271,28 @@ class FOV_EventHandler(FileSystemEventHandler):
 
         # NOTE: from observation, only the most recent FOV will ever be in danger of timing out
         # so all the FOVs processed in this function should already be fully processed
-        bin_dir = Path(path).parents[0]
+        bin_dir = str(Path(path).parents[0])
         start_index = self.last_fov_num_processed if self.last_fov_num_processed else 1
         for i in np.arange(self.last_fov_num_processed + 1, fov_num):
             fov_file = f"fov-{i}-scan-1.bin"
-            self._generate_callback_data(bin_dir / fov_file)
+            self._generate_callback_data(os.path.join(bin_dir, fov_file))
 
     def _check_last_fov(self, path: str):
-        # get the total number of FOVs, extract name of the last
-        # NOTE: MIBI now only stores relevant data in scan 1, ignore any scans > 1
-        num_fovs = len(list(self.run_structure.fov_progress.keys()))
-        last_fov = f"fov-{num_fovs}-scan-1"
+        # extract the name of the last FOV
+        last_fov = list(self.run_structure.fov_progress.keys())[0]
+
+        # extract the FOV number of the last FOV, this is the total number of FOVs
+        num_fovs = int(last_fov.split("-")[1])
 
         # if the last FOV has been written, then process everything up to that if necessary
-        bin_dir = Path(path).parents[0]
-        if os.path.join(bin_dir / last_fov):
+        bin_dir = str(Path(path).parents[0])
+        if os.path.exists(os.path.join(bin_dir, last_fov)):
             for i in np.arange(self.last_fov_num_processed + 1, num_fovs + 1):
-                fov_file = f"fov-{i}_scan_1.bin"
-                self._generate_callback_data(bin_dir / fov_file)
+                fov_file = f"fov-{i}-scan-1.bin"
+                self._generate_callback_data(os.path.join(bin_dir, fov_file))
 
-            # explicitly invoke check_complete, which will start the run callbacks
-            self.check_complete()
+        # explicitly call check_complete, since the run callbacks now need to process
+        self.check_complete()
 
     def _run_callbacks(self, event: Union[DirCreatedEvent, FileCreatedEvent, FileMovedEvent]):
         if type(event) in [DirCreatedEvent, FileCreatedEvent]:
@@ -366,6 +367,7 @@ class FOV_EventHandler(FileSystemEventHandler):
 
         If run is complete, all calbacks in `per_run` will be run over the whole run.
         """
+
         if all(self.run_structure.check_fov_progress().values()):
             logf = open(self.log_path, "a")
 
