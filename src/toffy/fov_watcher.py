@@ -217,10 +217,14 @@ class FOV_EventHandler(FileSystemEventHandler):
 
         for root, dirs, files in os.walk(run_folder):
             for name in ns.natsorted(files):
-                self.on_created(FileCreatedEvent(os.path.join(root, name)))
+                # NOTE: don't call with check_last_fov to prevent duplicate processing
+                self.on_created(FileCreatedEvent(os.path.join(root, name)), check_last_fov=False)
 
                 # increment for every FOV that gets processed in this step
                 self.last_fov_num_processed += 1
+
+            # edge case if the last FOV gets written during the preprocessing stage
+            self._check_last_fov(root)
 
     def _generate_callback_data(self, point_name: str):
         print(f"Discovered {point_name}, beginning per-fov callbacks...")
@@ -331,7 +335,7 @@ class FOV_EventHandler(FileSystemEventHandler):
             point_number = int(point_name.split("-")[1])
             self.last_fov_num_processed = point_number + 1
 
-    def on_created(self, event: FileCreatedEvent):
+    def on_created(self, event: FileCreatedEvent, check_last_fov: bool = True):
         """Handles file creation events
 
         If FOV structure is completed, the fov callback, `self.fov_func` will be run over the data.
@@ -346,9 +350,10 @@ class FOV_EventHandler(FileSystemEventHandler):
             self._run_callbacks(event)
 
             # explicitly check for last bin file, since it has no other events to trigger otherwise
-            self._check_last_fov(event.src_path)
+            if check_last_fov:
+                self._check_last_fov(event.src_path)
 
-    def on_moved(self, event: FileMovedEvent):
+    def on_moved(self, event: FileMovedEvent, check_last_fov: bool = True):
         """Handles file renaming events
 
         If FOV structure is completed, the fov callback, `self.fov_func` will be run over the data.
@@ -363,7 +368,8 @@ class FOV_EventHandler(FileSystemEventHandler):
             self._run_callbacks(event)
 
             # explicitly check for last bin file, since it has no other events to trigger otherwise
-            self._check_last_fov(event.dest_path)
+            if check_last_fov:
+                self._check_last_fov(event.dest_path)
 
     def check_complete(self):
         """Checks run structure fov_progress status
