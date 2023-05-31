@@ -298,8 +298,8 @@ class FOV_EventHandler(FileSystemEventHandler):
                 fov_file = f"fov-{i}-scan-1.bin"
                 self._generate_callback_data(os.path.join(bin_dir, fov_file))
 
-        # explicitly call check_complete, since the run callbacks now need to process
-        self.check_complete()
+            # explicitly call check_complete, since the run callbacks now need to process
+            self.check_complete()
 
     def _run_callbacks(self, event: Union[DirCreatedEvent, FileCreatedEvent, FileMovedEvent]):
         if type(event) in [DirCreatedEvent, FileCreatedEvent]:
