@@ -405,13 +405,13 @@ def copy_round_one_compensated_images(
     """
     io_utils.validate_paths([round_one_comp_folder, round_two_comp_folder])
 
-    # verify same runs found in both round one and round two Rosetta compensated folders
+    # verify runs found in round two Rosetta folder also found in round one Rosetta folders
     r1_runs = io_utils.list_folders(round_one_comp_folder)
     r2_runs = io_utils.list_folders(round_two_comp_folder)
-    misc_utils.verify_same_elements(round_one_comp_fovs=r1_runs, round_two_comp_fovs=r2_runs)
+    misc_utils.verify_in_list(round_one_comp_fovs=r1_runs, round_two_comp_fovs=r2_runs)
 
     # for each FOV, copy the channel from their r1_runs folder to r2_runs folder
-    for run in r1_runs:
+    for run in r2_runs:
         fovs = io_utils.list_folders(os.path.join(round_one_comp_folder, run), substrs="fov")
 
         for fov in fovs:
