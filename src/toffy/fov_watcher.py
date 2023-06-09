@@ -65,6 +65,10 @@ class RunStructure:
                     "bin": False,
                 }
 
+        # compute the highest FOV number, needed for checking if final FOV processed
+        fov_nums = sorted([int(f.split("-")[1]) for f in self.fov_progress.keys()])
+        self.highest_fov = fov_nums[-1]
+
     def check_run_condition(self, path: str) -> Tuple[bool, str]:
         """Checks if all requisite files exist and are complete
 
@@ -285,18 +289,18 @@ class FOV_EventHandler(FileSystemEventHandler):
             self._generate_callback_data(os.path.join(bin_dir, fov_file))
 
     def _check_last_fov(self, path: str):
-        # extract the name of the last FOV
-        last_fov = list(self.run_structure.fov_progress.keys())[0]
-
-        # extract the FOV number of the last FOV, this is the total number of FOVs
-        num_fovs = int(last_fov.split("-")[1])
+        # define the name of the last FOV
+        last_fov = f"fov-{self.highest_fov}-scan-1.bin"
 
         # if the last FOV has been written, then process everything up to that if necessary
         bin_dir = str(Path(path).parents[0])
         if os.path.exists(os.path.join(bin_dir, last_fov)):
-            for i in np.arange(self.last_fov_num_processed + 1, num_fovs + 1):
+            for i in np.arange(self.last_fov_num_processed + 1, self.highest_fov):
                 fov_file = f"fov-{i}-scan-1.bin"
                 self._generate_callback_data(os.path.join(bin_dir, fov_file))
+
+            # for consistency, update last_fov_num_processed to the highest FOV
+            self.last_fov_num_processed = self.highest_fov
 
             # explicitly call check_complete, since the run callbacks now need to process
             self.check_complete()
