@@ -321,14 +321,14 @@ class FOV_EventHandler(FileSystemEventHandler):
             self.check_complete()
 
             # because timed out FOVs are marked as complete, update last_fov_num_processed
-            self.run_structure.last_fov_num_processed += 1
+            self.last_fov_num_processed += 1
             return
 
         if fov_ready:
             self._generate_callback_data(point_name)
 
             # update last_fov_num_processed
-            self.run_structure.last_fov_num_processed += 1
+            self.last_fov_num_processed += 1
 
     def on_created(self, event: FileCreatedEvent, check_last_fov: bool = True):
         """Handles file creation events
