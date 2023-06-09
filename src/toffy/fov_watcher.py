@@ -287,12 +287,12 @@ class FOV_EventHandler(FileSystemEventHandler):
 
     def _check_last_fov(self, path: str):
         # define the name of the last FOV
-        last_fov = f"fov-{self.highest_fov}-scan-1.bin"
+        last_fov = f"fov-{self.run_structure.highest_fov}-scan-1.bin"
 
         # if the last FOV has been written, then process everything up to that if necessary
         bin_dir = str(Path(path).parents[0])
         if os.path.exists(os.path.join(bin_dir, last_fov)):
-            for i in np.arange(self.last_fov_num_processed + 1, self.highest_fov):
+            for i in np.arange(self.last_fov_num_processed + 1, self.run_structure.highest_fov):
                 fov_file = f"fov-{i}-scan-1.bin"
                 self._generate_callback_data(os.path.join(bin_dir, fov_file))
 
