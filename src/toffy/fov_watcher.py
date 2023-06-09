@@ -224,9 +224,6 @@ class FOV_EventHandler(FileSystemEventHandler):
                 # NOTE: don't call with check_last_fov to prevent duplicate processing
                 self.on_created(FileCreatedEvent(os.path.join(root, name)), check_last_fov=False)
 
-                # increment for every FOV that gets processed in this step
-                self.last_fov_num_processed += 1
-
             # edge case if the last FOV gets written during the preprocessing stage
             self._check_last_fov(root)
 
@@ -287,7 +284,6 @@ class FOV_EventHandler(FileSystemEventHandler):
         for i in np.arange(self.last_fov_num_processed + 1, fov_num):
             fov_file = f"fov-{i}-scan-1.bin"
             self._generate_callback_data(os.path.join(bin_dir, fov_file))
-            self.last_fov_num_processed += 1
 
     def _check_last_fov(self, path: str):
         # define the name of the last FOV
@@ -299,7 +295,6 @@ class FOV_EventHandler(FileSystemEventHandler):
             for i in np.arange(self.last_fov_num_processed + 1, self.highest_fov):
                 fov_file = f"fov-{i}-scan-1.bin"
                 self._generate_callback_data(os.path.join(bin_dir, fov_file))
-                self.last_fov_num_processed += 1
 
             # explicitly call check_complete, since the run callbacks now need to process
             self.check_complete()
@@ -326,14 +321,14 @@ class FOV_EventHandler(FileSystemEventHandler):
             self.check_complete()
 
             # because timed out FOVs are marked as complete, update last_fov_num_processed
-            self.last_fov_num_processed += 1
+            self.run_structure.last_fov_num_processed += 1
             return
 
         if fov_ready:
             self._generate_callback_data(point_name)
 
             # update last_fov_num_processed
-            self.last_fov_num_processed += 1
+            self.run_structure.last_fov_num_processed += 1
 
     def on_created(self, event: FileCreatedEvent, check_last_fov: bool = True):
         """Handles file creation events
