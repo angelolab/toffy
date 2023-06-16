@@ -1,146 +1,237 @@
 import itertools
 import os
 from pathlib import Path
-from typing import Dict, Generator, List, Optional
+from typing import Generator, List, Optional
 
 import numpy as np
 import pandas as pd
 import pytest
 from alpineer import test_utils
+from traitlets import Callable
 
 from toffy import qc_metrics_plots, settings
+from toffy.qc_comp import QCTMA, QCBatchEffect
+
+from .qc_comp_test import BatchEffectMetricData, QCMetricData, cohort_data, qc_tmas
+
+
+def test_visualize_qc_metrics(tmp_path: Path):
+    # define the channels to use
+    chans = ["chan0", "chan1", "chan2"]
+
+    # define the fov names to use for each channel
+    fov_batches = [["fov0", "fov1"], ["fov2", "fov3"], ["fov4", "fov5"]]
+
+    # define the supported metrics to iterate over
+    metrics = ["Non-zero mean intensity", "Total intensity", "99.9% intensity value"]
+
+    # save sample combined .csv files for each metric
+    for metric in metrics:
+        # define the test melted DataFrame for an arbitrary QC metric
+        sample_qc_metric_data = pd.DataFrame()
+
+        for chan, fovs in zip(chans, fov_batches):
+            chan_data = pd.DataFrame(np.random.rand(len(fovs)), columns=[metric])
+
+            chan_data["fov"] = fovs
+            chan_data["channel"] = chan
+
+            sample_qc_metric_data = pd.concat([sample_qc_metric_data, chan_data])
+
+        # get the file name of the combined QC metric .csv file to use
+        qc_metric_index = settings.QC_COLUMNS.index(metric)
+        qc_metric_suffix = settings.QC_SUFFIXES[qc_metric_index] + ".csv"
+
+        # save the combined data
+        sample_qc_metric_data.to_csv(
+            os.path.join(tmp_path, "combined_%s" % qc_metric_suffix), index=False
+        )
+
+    # pass an invalid metric
+    with pytest.raises(ValueError):
+        qc_metrics_plots.visualize_qc_metrics(
+            metric_name="bad_metric", qc_metric_dir="", save_dir=""
+        )
+
+    # pass an invalid qc_metric_dir
+    with pytest.raises(FileNotFoundError):
+        qc_metrics_plots.visualize_qc_metrics("Non-zero mean intensity", "bad_qc_dir", save_dir="")
+
+    # pass a qc_metric_dir without the combined files
+    os.mkdir(os.path.join(tmp_path, "empty_qc_dir"))
+    with pytest.raises(FileNotFoundError):
+        qc_metrics_plots.visualize_qc_metrics(
+            "Non-zero mean intensity", os.path.join(tmp_path, "empty_qc_dir"), save_dir=""
+        )
+
+    # now test the visualization process for each metric
+    for metric in metrics:
+        # test without saving (should raise an error)
+        with pytest.raises(TypeError):
+            qc_metrics_plots.visualize_qc_metrics(metric, tmp_path)
+
+        # test with saving
+        qc_metrics_plots.visualize_qc_metrics(metric, tmp_path, save_dir=tmp_path)
+        assert os.path.exists(os.path.join(tmp_path, "%s_barplot_stats.png" % metric))
 
 
 @pytest.fixture(scope="function")
-def batch_effect_qc_data(rng: np.random.Generator, tmp_path: Path) -> Generator[Path, None, None]:
+def qc_tma_data(qc_tmas: QCMetricData) -> Generator[Callable, None, None]:
     """
-    A fixture which saves combined QC metrics for the following test tissues in an imaginary
-    cohort: "ln", "ln_top", "ln_bottom". Yields the directory where the cohort's QC metrics are
-    saved.
+    A fixture which yields a function which creates the QCTMA class,
+    and computes the metrics, and the rank metrics.
 
     Args:
-        rng (np.random.Generator): The random number generator in `conftest.py`.
-        tmp_path (Path): A temporary directory to write files for testing.
+        qc_tmas (QCMetricData): The fixture which creates the QCMetricData class.
 
     Yields:
-        Generator[Path, None, None]: The QC cohort directory.
+        Generator[Callable, None, None]: Yields a function which creates the QCTMA class,
+        and `tmas` and `channel_exclude` are variables which can be passed to the function.
     """
 
-    qc_cohort_metrics_dir = tmp_path / "cohort_metrics"
-    qc_cohort_metrics_dir.mkdir(parents=True, exist_ok=True)
+    def _compute_qc_tmas_metrics(
+        tmas: List[str],
+        channel_exclude: List[str] = None,
+    ) -> QCTMA:
+        qc_tmas_data = QCTMA(
+            extracted_imgs_path=qc_tmas.tma_extraced_img_dir,
+            qc_tma_metrics_dir=qc_tmas.qc_metrics_dir,
+            qc_metrics=qc_tmas.qc_metrics,
+        )
 
-    # Channels: 10 channels as well as the settings.QC_CHANNEL_IGNORE channels
-    fovs, channels = test_utils.gen_fov_chan_names(num_fovs=3, num_chans=10)
-    channels.extend(settings.QC_CHANNEL_IGNORE)
-    channel_count: int = len(channels)
-    fov_count: int = len(fovs)
+        qc_tmas_data.qc_tma_metrics(tmas=tmas)
+        qc_tmas_data.qc_tma_metrics_rank(tmas=tmas, channel_exclude=channel_exclude)
 
-    tissues: List[str] = ["ln", "ln_top", "ln_bottom"]
+        return qc_tmas_data
 
-    for qc_col, qc_suffix in zip(settings.QC_COLUMNS, settings.QC_SUFFIXES):
-        for tissue in tissues:
-            df = pd.DataFrame(
-                data={
-                    "fov": [f"{fov}_{tissue}" for fov in fovs] * channel_count,
-                    "channel": channels * fov_count,
-                    qc_col: rng.random(size=(fov_count * channel_count,)),
-                }
-            )
-            df.to_csv(qc_cohort_metrics_dir / f"{tissue}_combined_{qc_suffix}.csv")
-
-    yield qc_cohort_metrics_dir
+    yield _compute_qc_tmas_metrics
 
 
-# Set various combinations of tissues and qc_metrics
 @pytest.mark.parametrize(
-    "_tissues,_qc_metrics,_qc_suffixes",
+    "_tmas,_channel_exclude",
     [
-        (["ln"], [settings.QC_COLUMNS[0]], [settings.QC_SUFFIXES[0]]),
-        (["ln", "ln_top", "ln_bottom"], settings.QC_COLUMNS, settings.QC_SUFFIXES),
-        (["ln_top"], None, settings.QC_SUFFIXES),
+        (["Project_TMA1"], ["chan0"]),
+        (["Project_TMA1"], ["chan0", "chan1"]),
     ],
 )
-# Set various channel include / exclude parameterrs
-@pytest.mark.parametrize(
-    "_channel_include, _channel_exclude",
-    [
-        (None, None),  # All channels + default exclude channels
-        (["chan0", "chan1", "chan2"], None),  # Only use channels 0-3
-        (None, ["chan3", "chan4", "chan5"]),  # Exclude channels 3-5
-        pytest.param(
-            ["chan0", "chan3"], ["chan1", "chan3"], marks=pytest.mark.xfail
-        ),  # inlude and exclude contain a shared channel, will error.
-    ],
-)
-def test_batch_effect_plot(
-    batch_effect_qc_data: Path,
-    _tissues: List[str],
-    _qc_metrics: List[str],
-    _qc_suffixes: List[str],
-    _channel_include: Optional[List[str]],
-    _channel_exclude: Optional[List[str]],
-):
-    _save_figure: bool = True
+def test_qc_tmas_metrics_plot(
+    qc_tma_data: QCTMA, _tmas: List[str], _channel_exclude: List[str]
+) -> None:
+    qc_tma: QCTMA = qc_tma_data(_tmas, _channel_exclude)
 
-    qc_metrics_plots.batch_effect_plot(
-        qc_cohort_metrics_dir=batch_effect_qc_data,
-        tissues=_tissues,
-        qc_metrics=_qc_metrics,
-        channel_include=_channel_include,
-        channel_exclude=_channel_exclude,
-        save_figure=_save_figure,
-        dpi=30,  # Reduce memory footprint for testing
-    )
+    qc_metrics_plots.qc_tmas_metrics_plot(qc_tmas=qc_tma, tmas=_tmas, dpi=30, save_figure=True)
 
     total_figures = [
-        f"{tissue}_{qc}.png" for tissue, qc in itertools.product(_tissues, _qc_suffixes)
+        f"{tissue}_{qc}.png" for tissue, qc in itertools.product(_tmas, qc_tma.qc_suffixes)
     ]
 
     # Assert the existance of the batch effect figures
     for fig in total_figures:
-        assert os.path.exists(batch_effect_qc_data / "figures" / fig)
+        assert os.path.exists(qc_tma.qc_tma_metrics_dir / "figures" / fig)
 
 
 @pytest.fixture(scope="function")
-def cmt_data(rng: np.random.Generator) -> Generator[Dict[str, np.ndarray], None, None]:
+def batch_effect_qc_data(cohort_data: BatchEffectMetricData) -> Generator[Callable, None, None]:
     """
-    A fixture which yields a dictionary of the QC Column, and the channel metric TMA
-    ranked averages.
+    Creates the QCBatchEffect class, and computes the metrics, and then filters out unwanted
+        channels.
 
     Args:
-        rng (np.random.Generator): The random number generator in `conftest.py`.
+        cohort_data (BatchEffectMetricData): The Fixture which creates the BatchEffectMetricData
+            class.
 
     Yields:
-        Generator[dict[str, np.ndarray], None, None]: The key consists of the QC Columns, while
-        the values are 12 x 12 arrays with a few non-nan floating point values.
+        Generator[Callable, None, None]: A Function which generates the QCBatchEffect object,
+        computes the QC metricss, and filters channels..
     """
 
-    fov_rc: np.ndarray = rng.integers(low=0, high=12, size=(10, 2))
-    cmt_dict = {}
+    def _compute_qc_batch_effects(
+        tissues: List[str],
+        channel_include: List[str] = None,
+        channel_exclude: List[str] = None,
+    ) -> QCBatchEffect:
+        qc_batch_effects = QCBatchEffect(
+            cohort_data_dir=cohort_data.cohort_data_dir,
+            qc_cohort_metrics_dir=cohort_data.cohort_metrics_dir,
+            qc_metrics=cohort_data.qc_metrics,
+        )
 
-    for qc_col in settings.QC_COLUMNS:
-        tma_matrix: np.ndarray = np.empty(shape=(12, 12))
-        tma_matrix.fill(np.nan)
-        for idx in fov_rc:
-            x, y = idx
-            tma_matrix[x, y] = rng.random(size=1)
-        cmt_dict[qc_col] = tma_matrix
+        qc_batch_effects.batch_effect_qc_metrics(tissues=tissues)
+        qc_batch_effects.batch_effect_filtering(
+            tissues=tissues,
+            channel_include=channel_include,
+            channel_exclude=channel_exclude,
+        )
+        return qc_batch_effects
 
-    yield cmt_dict
+    yield _compute_qc_batch_effects
 
 
-def test_qc_tma_metrics_plot(cmt_data: Dict[str, np.ndarray], tmp_path: Path):
-    qc_tma_metrics_dir: Path = tmp_path / "metrics"
-    qc_tma_metrics_dir.mkdir(parents=True, exist_ok=True)
-    tma: str = "TESTING_TMA"
+@pytest.mark.parametrize(
+    "_tissues,_channel_include,_channel_exclude",
+    [
+        (["tissue"], ["chan0"], ["chan1"]),
+        (["tissue0", "tissue1", "tissue2"], ["chan0", "chan1"], None),
+        (["tissue0"], ["chan0"], ["chan1", "chan2"]),
+    ],
+)
+def test_qc_batch_effect_violin(
+    batch_effect_qc_data: Callable,
+    _tissues: List[str],
+    _channel_include: Optional[List[str]],
+    _channel_exclude: Optional[List[str]],
+) -> None:
+    _save_figure: bool = True
 
-    qc_metrics_plots.qc_tma_metrics_plot(
-        cmt_data=cmt_data,
-        qc_tma_metrics_dir=qc_tma_metrics_dir,
-        tma=tma,
-        save_figure=True,
-        dpi=30,  # Reduce memory footprint for testing
+    qc_batch: QCBatchEffect = batch_effect_qc_data(_tissues, _channel_include, _channel_exclude)
+
+    qc_metrics_plots.qc_batch_effect_violin(
+        qc_batch=qc_batch,
+        tissues=_tissues,
+        save_figure=_save_figure,
+        dpi=30,
     )
-    # Assert existance of the tma metrics plots
-    for qc_suffix in settings.QC_SUFFIXES:
-        assert os.path.exists(qc_tma_metrics_dir / "figures" / f"{tma}_{qc_suffix}.png")
+
+    total_figures: List[str] = [
+        f"{tissue}_violin_{qc}.png"
+        for tissue, qc in itertools.product(_tissues, qc_batch.qc_suffixes)
+    ]
+
+    # Assert the existance of the batch effect figures
+    for fig in total_figures:
+        assert os.path.exists(qc_batch.qc_cohort_metrics_dir / "figures" / fig)
+
+
+@pytest.mark.parametrize(
+    "_tissues,_channel_include,_channel_exclude",
+    [
+        (["tissue"], ["chan0"], ["chan1"]),
+        (["tissue0", "tissue1", "tissue2"], ["chan0", "chan1"], None),
+        (["tissue0"], ["chan0"], ["chan1", "chan2"]),
+    ],
+)
+def test_qc_batch_effect_heatmap(
+    batch_effect_qc_data: Callable,
+    _tissues: List[str],
+    _channel_include: Optional[List[str]],
+    _channel_exclude: Optional[List[str]],
+) -> None:
+    _save_figure: bool = True
+
+    qc_batch: QCBatchEffect = batch_effect_qc_data(_tissues, _channel_include, _channel_exclude)
+
+    qc_metrics_plots.qc_batch_effect_heatmap(
+        qc_batch=qc_batch,
+        tissues=_tissues,
+        save_figure=_save_figure,
+        dpi=30,
+    )
+
+    total_figures: List[str] = [
+        f"{tissue}_heatmap_{qc}.png"
+        for tissue, qc in itertools.product(_tissues, qc_batch.qc_suffixes)
+    ]
+
+    # Assert the existance of the batch effect figures
+    for fig in total_figures:
+        assert os.path.exists(qc_batch.qc_cohort_metrics_dir / "figures" / fig)

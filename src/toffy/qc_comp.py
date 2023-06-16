@@ -3,18 +3,20 @@ import itertools
 import os
 import pathlib
 import re
+from dataclasses import dataclass, field
 from shutil import rmtree
-from typing import Dict, List, Optional, Union
+from typing import Dict, Generator, List, Optional, Tuple, Union
 
 import natsort as ns
 import numpy as np
 import pandas as pd
-import seaborn as sns
+import xarray as xr
 from alpineer import image_utils, io_utils, load_utils, misc_utils
 from pandas.core.groupby import DataFrameGroupBy
 from requests.exceptions import HTTPError
 from scipy.ndimage import gaussian_filter
 from scipy.stats import rankdata
+from tqdm import tqdm
 
 from toffy import settings
 from toffy.mibitracker_utils import MibiRequests, MibiTrackerError
@@ -416,116 +418,6 @@ def combine_qc_metrics(qc_metrics_dir):
         metric_df.to_csv(os.path.join(qc_metrics_dir, "combined_%s.csv" % ms), index=False)
 
 
-def visualize_qc_metrics(
-    metric_name: str,
-    qc_metric_dir: Union[str, pathlib.Path],
-    save_dir: Union[str, pathlib.Path],
-    channel_filters: Optional[List[str]] = ["chan_"],
-    axes_font_size: int = 16,
-    wrap: int = 6,
-    dpi: int = 300,
-    return_plot: bool = False,
-) -> Optional[sns.FacetGrid]:
-    """
-    Visualize the barplot of a specific QC metric.
-
-    Args:
-        metric_name (str):
-            The name of the QC metric to plot. Used as the y-axis label. Options include:
-            `"Non-zero mean intensity"`, `"Total intensity"`, `"99.9% intensity value"`.
-        qc_metric_dir (Union[str, pathlib.Path]):
-            The path to the directory containing the `'combined_{qc_metric}.csv'` files
-        save_dir (Optional[Union[str, pathlib.Path]], optional):
-            The name of the directory to save the plot to. Defaults to None.
-        channel_filters (List[str], optional):
-            A list of channels to filter out.
-        axes_font_size (int, optional):
-            The font size of the axes labels. Defaults to 16.
-        wrap (int, optional):
-            The number of plots to display per row. Defaults to 6.
-        dpi (Optional[int], optional):
-            The resolution of the image to use for saving. Defaults to None.
-        return_plot (bool):
-            If `True`, this will return the plot. Defaults to `False`
-
-    Raises:
-        ValueError:
-            When an invalid metric is provided.
-        FileNotFoundError:
-            The QC metric directory `qc_metric_dir` does not exist.
-        FileNotFoundError:
-            The QC metric `combined_csv` file is does not exist in `qc_metric_dir`.
-
-    Returns:
-        Optional[sns.FacetGrid]: Returns the Seaborn FacetGrid catplot of the QC metrics.
-    """
-    # verify the metric provided is valid
-    if metric_name not in settings.QC_COLUMNS:
-        raise ValueError(
-            "Invalid metric %s provided, must be set to 'Non-zero mean intensity', "
-            "'Total intensity', or '99.9%% intensity value'" % metric_name
-        )
-
-    # verify the path to the QC metric datasets exist
-    if not os.path.exists(qc_metric_dir):
-        raise FileNotFoundError("qc_metric_dir %s does not exist" % qc_metric_dir)
-
-    # get the file name of the combined QC metric .csv file to use
-    qc_metric_index = settings.QC_COLUMNS.index(metric_name)
-    qc_metric_suffix = settings.QC_SUFFIXES[qc_metric_index]
-    qc_metric_path = os.path.join(qc_metric_dir, "combined_%s.csv" % qc_metric_suffix)
-
-    # ensure the user set the right qc_metric_dir
-    if not os.path.exists(qc_metric_path):
-        raise FileNotFoundError(
-            "Could not locate %s, ensure qc_metric_dir is correct" % qc_metric_path
-        )
-
-    # read in the QC metric data
-    qc_metric_df = pd.read_csv(qc_metric_path)
-
-    # filter out naturally-occurring elements as well as Noodle
-    qc_metric_df = qc_metric_df[~qc_metric_df["channel"].isin(settings.QC_CHANNEL_IGNORE)]
-
-    # filter out any channel in the channel_filters list
-    if channel_filters is not None:
-        qc_metric_df: pd.DataFrame = qc_metric_df[
-            ~qc_metric_df["channel"].str.contains("|".join(channel_filters))
-        ]
-
-    # catplot allows for easy facets on a barplot
-    qc_fg: sns.FacetGrid = sns.catplot(
-        x="fov",
-        y=metric_name,
-        col="channel",
-        col_wrap=wrap,
-        data=qc_metric_df,
-        kind="bar",
-        color="black",
-        sharex=True,
-        sharey=False,
-    )
-
-    # remove the 'channel =' in each subplot title
-    qc_fg.set_titles(template="{col_name}")
-    qc_fg.figure.supxlabel(t="fov", x=0.5, y=0, ha="center", size=axes_font_size)
-    qc_fg.figure.supylabel(t=f"{metric_name}", x=0, y=0.5, va="center", size=axes_font_size)
-    qc_fg.set(xticks=[], yticks=[])
-
-    # per Erin's visualization remove the default axis title on the y-axis
-    # and instead show 'fov' along x-axis and the metric name along the y-axis (overarching)
-    qc_fg.set_axis_labels(x_var="", y_var="")
-    qc_fg.set_xticklabels([])
-    qc_fg.set_yticklabels([])
-
-    # save the figure always
-    # Return the figure if specified.
-    qc_fg.savefig(os.path.join(save_dir, f"{metric_name}_barplot_stats.png"), dpi=dpi)
-
-    if return_plot:
-        return qc_fg
-
-
 def format_img_data(img_data):
     """Formats the image array from load_imgs_from_tree to be same structure as the array returned
     by extract_bin_files. Works for one FOV data at a time.
@@ -545,231 +437,528 @@ def format_img_data(img_data):
     return img_data
 
 
-def _get_r_c(fov_name: pd.Series, search_term: re.Pattern) -> pd.Series:
-    """Gets the row and column value from a FOV's name containing RnCm.
+def qc_filtering(qc_metrics: List[str]) -> Tuple[List[str], List[str]]:
+    """
+    Filters the QC columns and suffixes based on the user specified QC metrics,
+    then sorts the suffixes w.r.t the columns. Refer to `settings.py` for the
+    Column and Suffixes available.
 
     Args:
-        fov_name (pd.Series): The FOV's name.
-        search_term (re.Pattern): The regex pattern for searching for RnCm.
+        qc_metrics (List[str]): A list of QC metrics to use. Options include:
+
+                - `"Non-zero mean intensity"`
+                - `"Total intensity"`
+                - `"99.9% intensity value"`
+
 
     Returns:
-        pd.Series: Returns `n` and `m` as a series.
+        Tuple[List[str], List[str]]: Returns the QC Columns and the QC Suffixes
     """
-    r, c = map(int, re.search(search_term, fov_name).group(1, 2))
-    return pd.Series([r, c])
-
-
-def qc_tma_metrics(
-    extracted_imgs_path: Union[str, pathlib.Path],
-    qc_tma_metrics_dir: Union[str, pathlib.Path],
-    tma: str,
-) -> None:
-    """
-    Calculates the QC metrics for a user specified TMA.
-
-    Args:
-        extracted_imgs_path (Union[str,pathlib.Path]): The directory where the extracted images are stored.
-        qc_tma_metrics_dir (Union[str, pathlib.path]): The directory where to place the QC TMA metrics.
-        tma (str): The FOVs with the TMA in the folder name to gather.
-    """
-    # Get all the FOVs that match the input `tma` string
-    fovs = io_utils.list_folders(extracted_imgs_path, substrs=tma)
-
-    # Create regex pattern for searching RnCm
-    search_term: re.Pattern = re.compile(r"R\+?(\d+)C\+?(\d+)")
-
-    # Get qc metrics for each fov
-    for fov in ns.natsorted(fovs):
-        compute_qc_metrics(
-            extracted_imgs_path=extracted_imgs_path, fov_name=fov, save_csv=qc_tma_metrics_dir
-        )
-
-    # Combine the qc metrics for all fovs per TMA
-    for ms in settings.QC_SUFFIXES:
-        metric_files: List[str] = io_utils.list_files(qc_tma_metrics_dir, substrs=f"{ms}.csv")
-        metric_files: List[str] = [mf for mf in metric_files if "combined" not in mf]
-
-        # Define an aggregated metric DataFrame
-        combined_metric_df: pd.DataFrame = pd.concat(
-            (pd.read_csv(os.path.join(qc_tma_metrics_dir, mf)) for mf in metric_files),
-            ignore_index=True,
-        )
-
-        # Extract the Row and Column
-        combined_metric_df[["row", "column"]] = combined_metric_df["fov"].apply(
-            lambda row: _get_r_c(row, search_term)
-        )
-        combined_metric_df.to_csv(
-            os.path.join(qc_tma_metrics_dir, f"{tma}_combined_{ms}.csv"), index=False
-        )
-
-
-def _create_r_c_tma_matrix(
-    group: DataFrameGroupBy, x_size: int, y_size: int, qc_col: str
-) -> pd.Series:
-    """
-    Creates the FOV / TMA matrix.
-
-    Args:
-        group (DataFrameGroupBy): Each group consists of an individual channel, and all of it's associated FOVs.
-        x_size (int): The number of columns in the matrix.
-        y_size (int): The number of rows in the matrix.
-        qc_col (str): The column to get the the QC data.
-
-    Returns:
-        pd.Series[np.ndarray]: Returns the a series containing the matrix.
-    """
-
-    rc_array: np.ndarray = np.full(shape=(x_size, y_size), fill_value=np.nan)
-    rc_array[group["column"] - 1, group["row"] - 1] = group[qc_col]
-
-    return pd.Series([rc_array])
-
-
-def qc_tma_metrics_rank(
-    qc_tma_metrics_dir: Union[str, pathlib.Path],
-    tma: str,
-    qc_metrics: List[str] = None,
-    channel_exclude: List[str] = None,
-) -> Dict[str, np.ndarray]:
-    """
-    Creates the average rank for a given TMA across all FOVs and unfiltered / unexcluded channels.
-    By default the following channels are excluded: Au, Fe, Na, Ta, Noodle.
-
-
-    Args:
-        qc_tma_metrics_dir (Union[str, pathlib.Path]): The direcftory where to place the QC TMA metrics.
-        tma (str): The TMA to gather FOVs in.
-        qc_metrics (List[str], optional): The QC metrics to create plots for. Can be a subset of the
-        following:
-
-            * Non-zero mean intensity
-            * Total intensity
-            * 99.9% intensity value. Defaults to None.
-        channel_exclude (List[str], optional): An optional list of channels to further filter out. Defaults to None.
-
-    Returns:
-        Dict[str, np.ndarray]: A dictionary containing the QC column and the a numpy array
-        representing the average ranks for a given TMA."""
-    # Sort the loaded combined csv files based on QC_SUFFIXES
-    combined_metric_tmas = ns.natsorted(
-        io_utils.list_files(qc_tma_metrics_dir, substrs=f"{tma}_combined"),
-        key=lambda m: (i for i, qc_s in enumerate(settings.QC_SUFFIXES) if qc_s in m),
-    )
-    # Then filter out unused suffixes
+    # Filter out unused QC suffixess
     if qc_metrics is not None:
-        filtered_qcs: List[bool] = [qcm in qc_metrics for qcm in settings.QC_COLUMNS]
-        qc_cols = list(itertools.compress(settings.QC_COLUMNS, filtered_qcs))
-        combined_metric_tmas = list(itertools.compress(combined_metric_tmas, filtered_qcs))
+        selected_qcs: List[bool] = [qcm in qc_metrics for qcm in settings.QC_COLUMNS]
+        qc_cols = list(itertools.compress(settings.QC_COLUMNS, selected_qcs))
+        qc_suffixes = list(itertools.compress(settings.QC_SUFFIXES, selected_qcs))
     else:
         qc_cols: List[str] = settings.QC_COLUMNS
+        qc_suffixes: List[str] = settings.QC_SUFFIXES
 
-    cmt_data = dict()
-    for cmt, qc_col in zip(combined_metric_tmas, qc_cols):
-        # Open and filter the default ignored channels
-        cmt_df: pd.DataFrame = pd.read_csv(os.path.join(qc_tma_metrics_dir, cmt))
-        cmt_df: pd.DataFrame = cmt_df[~cmt_df["channel"].isin(settings.QC_CHANNEL_IGNORE)]
-
-        # Verify that the excluded channels exist in the combined metric tma DataFrame
-        # Then remove the excluded channels
-        if channel_exclude is not None:
-            misc_utils.verify_in_list(
-                channels_to_exclude=channel_exclude,
-                combined_metric_tma_df_channels=cmt_df["channel"].unique(),
-            )
-            cmt_df: pd.DataFrame = cmt_df[~cmt_df["channel"].isin(channel_exclude)]
-
-        # Get matrix dimensions
-        y_size: int = cmt_df["column"].max()
-        x_size: int = cmt_df["row"].max()
-
-        # Create the TMA matrix / for the heatmap
-        channel_tmas: pd.DataFrame = cmt_df.groupby(by="channel", sort=True).apply(
-            lambda group: _create_r_c_tma_matrix(group, y_size, x_size, qc_col)
-        )
-        channel_matrices: np.ndarray = np.array(
-            [c_tma[0] for c_tma in channel_tmas.values],
-        )
-
-        # Rank all FOVs for each channel.
-        ranked_channels: np.ndarray = rankdata(
-            a=channel_matrices.reshape((x_size * y_size), -1),
-            method="average",
-            nan_policy="omit",
-            axis=0,
-        ).reshape(len(channel_tmas), x_size, y_size)
-
-        # Average the rank for each channel.
-        avg_ranked_tma: np.ndarray = ranked_channels.mean(axis=0)
-
-        cmt_data[qc_col] = avg_ranked_tma
-
-    return cmt_data
+    return qc_cols, qc_suffixes
 
 
-def batch_effect_qc_metrics(
-    cohort_data_dir: Union[str, pathlib.Path],
-    qc_cohort_metrics_dir: Union[str, pathlib.Path],
-    tissues: List[str],
-) -> None:
+def _channel_filtering(
+    df: pd.DataFrame, channel_include: List[str] = None, channel_exclude: List[str] = None
+) -> pd.DataFrame:
     """
-    Computes QC metrics for a specified set of tissues and saves the tissue specific QC files
-    in the `qc_cohort_metrics_dir`. Calculates the following metrics for the specified tissues,
-    and the metrics for the invidual FOVs within that cohort:
-    * Non-zero mean intensity
-    * Total intensity
-    * 99.9% intensity value
+    Filters the DataFrame based on the included and excluded channels. In addition
+    the default ignored channels; Au, Fe, Na, Ta, Noodle, are removed.
 
     Args:
-        cohort_data_dir (Union[str, pathlib.Path]): The directory which contains the FOVs for a cohort of interest.
-        qc_cohort_metrics_dir (Union[str,pathlib.Path]): The directory where the cohort metrics will be saved to.
-        tissues (List[str]): A list of tissues to find QC metrics for.
+        df (pd.DataFrame): The DataFrame to filter.
+        channel_include (List[str], optional): A list of channels to include. Defaults to None.
+        channel_exclude (List[str], optional): A list of channels to exclude. Defaults to None.
 
-    Raises:
-        ValueError: Errors if `tissues` is either None, or a list of size 0.
+    Returns:
+        pd.DataFrame: The filtered DataFrame.
     """
-    if tissues is None or len(tissues) < 1:
-        raise ValueError("The tissues must be specified")
 
-    # Input validation: cohort_data_dir, qc_cohort_metrics_dir
-    io_utils.validate_paths([cohort_data_dir, qc_cohort_metrics_dir])
-
-    samples = io_utils.list_folders(dir_name=cohort_data_dir, substrs=tissues)
-
-    tissue_to_sample_mapping: Dict[str, List[str]] = {}
-
-    for sample, tissue in itertools.product(samples, tissues):
-        if tissue in sample:
-            if tissue not in tissue_to_sample_mapping.keys():
-                tissue_to_sample_mapping[tissue] = [sample]
-            else:
-                tissue_to_sample_mapping[tissue].append(sample)
-
-    # Use a set of the samples to avoid duplicate QC metric calculations
-    sample_set = set(list(itertools.chain.from_iterable(tissue_to_sample_mapping.values())))
-
-    # Compute the QC metrics for all unique samples that match with the user's tissue input.
-    for sample in ns.natsorted(sample_set):
-        compute_qc_metrics(
-            extracted_imgs_path=cohort_data_dir, fov_name=sample, save_csv=qc_cohort_metrics_dir
-        )
-
-    # Combined metrics per Tissue
-    for (tissue, samples), ms in itertools.product(
-        tissue_to_sample_mapping.items(), settings.QC_SUFFIXES
+    if (
+        isinstance(channel_include, list)
+        and isinstance(channel_exclude, list)
+        and not set(channel_exclude).isdisjoint(set(channel_include))
     ):
-        metric_files: List[str] = io_utils.list_files(
-            qc_cohort_metrics_dir, substrs=[f"{sample}_{ms}.csv" for sample in samples]
+        raise ValueError("You cannot include and exclude the same channel.")
+
+    # Filter out the default ignored channels
+    df = df[~df["channel"].isin(settings.QC_CHANNEL_IGNORE)]
+
+    # Verify that the excluded channels exist in the DataFrame
+    # Then remove the excluded channels
+    if channel_exclude is not None:
+        misc_utils.verify_in_list(
+            channels_to_exclude=channel_exclude,
+            qc_channels=df["channel"].unique(),
+        )
+        df: pd.DataFrame = df[~df["channel"].isin(channel_exclude)]
+
+    # Verify that the included channels exist in the DataFrame
+    # Then filter the excluded channels
+    if channel_include is not None:
+        misc_utils.verify_in_list(
+            channels_to_include=channel_include,
+            qc_channels=df["channel"].unique(),
+        )
+        df: pd.DataFrame = df[df["channel"].isin(channel_include)]
+    return df
+
+
+@dataclass
+class QCTMA:
+    """
+    Computes the QC metrics for a given list of TMAs of interest and saves TMA specific QC files
+    in the `qc_tma_metrics_dir` directory.
+
+
+    Args:
+        extracted_imgs_path (Union[str,pathlib.Path]): The directory where the extracted images are
+            stored.
+        qc_tma_metrics_dir (Union[str, pathlib.path]): The directory where to save the QC TMA
+            metrics.
+        qc_metrics (List[str]): A list of QC metrics to use. Options include:
+
+                - `"Non-zero mean intensity"`
+                - `"Total intensity"`
+                - `"99.9% intensity value"`
+
+    Attributes:
+        qc_cols (List[str]): A list of the QC columns.
+        qc_suffixes (List[str]): A list of the QC suffixes, ordered w.r.t `qc_cols`.
+        search_term (re.Pattern): The regex pattern to extract n,m from FOV names of the form RnCm.
+        tma_avg_ranks (Dict[str, xr.DataArray]): A dictionary containing the average ranks for each
+            TMA for each QC Metric in `qc_metrics`.
+    """
+
+    extracted_imgs_path: Union[str, pathlib.Path]
+    qc_tma_metrics_dir: Union[str, pathlib.Path]
+    qc_metrics: Optional[List[str]]
+
+    # Fields initialized after `__post_init__`
+    search_term: re.Pattern = field(init=False)
+    qc_cols: List[str] = field(init=False)
+    qc_suffixes: List[str] = field(init=False)
+    tma_avg_ranks: Dict[str, xr.DataArray] = field(init=False)
+
+    def __post_init__(self):
+        # Input validation: Ensure that the paths exist
+        io_utils.validate_paths([self.extracted_imgs_path, self.qc_tma_metrics_dir])
+
+        # Initialize the QC TMA metrics attributes
+
+        # Create regex pattern for searching RnCm
+        self.search_term: re.Pattern = re.compile(r"R\+?(\d+)C\+?(\d+)")
+
+        # Filter out unused QC suffixess
+        self.qc_cols, self.qc_suffixes = qc_filtering(qc_metrics=self.qc_metrics)
+
+        # Set the tma_avg_ranks to be an empty dictionary
+        self.tma_avg_ranks = {}
+
+    def _get_r_c(self, fov_name: pd.Series) -> pd.Series:
+        """Extracts the row and column value from a FOV's name containing RnCm.
+
+        Args:
+            fov_name (pd.Series): The FOV's name.
+        Returns:
+            pd.Series: Returns `n` and `m` as a series of integers.
+        """
+        r, c = map(int, re.search(self.search_term, fov_name).group(1, 2))
+        return pd.Series([r, c])
+
+    def _create_r_c_tma_matrix(
+        self, group: DataFrameGroupBy, x_size: int, y_size: int, qc_col: str
+    ) -> pd.Series:
+        """
+        Creates the FOV / TMA matrix.
+
+        Args:
+            group (DataFrameGroupBy): Each group consists of an individual channel, and all of it's
+                associated FOVs.
+            x_size (int): The number of columns in the matrix.
+            y_size (int): The number of rows in the matrix.
+            qc_col (str): The column to get the the QC data.
+
+        Returns:
+            pd.Series[np.ndarray]: Returns the a series containing the matrix.
+        """
+
+        rc_array: np.ndarray = np.full(shape=(x_size, y_size), fill_value=np.nan)
+        rc_array[group["column"] - 1, group["row"] - 1] = group[qc_col]
+
+        return pd.Series([rc_array])
+
+    def qc_tma_metrics(self, tmas: List[str]):
+        """
+        Calculates the QC metrics for a user specified list of TMAs.
+
+        Args:
+            tmas (List[str]): The FOVs with the TMA in the folder name to gather.
+        """
+        with tqdm(total=len(tmas), desc="Computing QC TMA metrics", unit="TMAs") as pbar:
+            for tma in tmas:
+                self._compute_qc_tma_metrics(tma)
+                pbar.set_postfix(TMA=tma)
+                pbar.update()
+
+    def _compute_qc_tma_metrics(
+        self,
+        tma: str,
+    ) -> None:
+        """
+        Calculates the QC metrics for a user specified TMA.
+
+        Args:
+            tma (str): The name of the TMA.
+        """
+        # Get all the FOVs that match the input `tma` string
+        fovs = io_utils.list_folders(self.extracted_imgs_path, substrs=tma)
+
+        # Compute the qc metrics for each fov
+        for fov in ns.natsorted(fovs):
+            compute_qc_metrics(
+                extracted_imgs_path=self.extracted_imgs_path,
+                fov_name=fov,
+                save_csv=self.qc_tma_metrics_dir,
+            )
+
+        # Combine the qc metrics for all fovs per TMA
+        for qc_suffix in self.qc_suffixes:
+            metric_files: Generator[str] = (
+                mf
+                for mf in io_utils.list_files(self.qc_tma_metrics_dir, substrs=f"{qc_suffix}.csv")
+                if "combined" not in mf
+            )
+            # Define an aggregated metric DataFrame
+            combined_metric_df: pd.DataFrame = pd.concat(
+                (pd.read_csv(os.path.join(self.qc_tma_metrics_dir, mf)) for mf in metric_files),
+                ignore_index=True,
+            )
+            # Extract the Row and Column
+            combined_metric_df[["row", "column"]] = combined_metric_df["fov"].apply(
+                lambda row: self._get_r_c(row)
+            )
+            combined_metric_df.to_csv(
+                os.path.join(self.qc_tma_metrics_dir, f"{tma}_combined_{qc_suffix}.csv"),
+                index=False,
+            )
+
+    def qc_tma_metrics_rank(self, tmas: List[str], channel_exclude: List[str] = None):
+        """
+        Creates the average rank for a given TMA across all FOVs and unexcluded channels.
+        By default the following channels are excluded: Au, Fe, Na, Ta, Noodle.
+
+
+        Args:
+            tmas (List[str]): The FOVs with the TMA in the folder name to gather.
+            channel_exclude (List[str], optional): An optional list of channels to further filter
+                out. Defaults to None.
+        """
+
+        with tqdm(total=len(tmas), desc="Computing QC TMA Metric Ranks", unit="TMAs") as pbar:
+            for tma in tmas:
+                self.tma_avg_ranks[tma] = self._compute_qc_tma_metrics_rank(
+                    tma, channel_exclude=channel_exclude
+                )
+                pbar.set_postfix(TMA=tma)
+                pbar.update()
+
+    def _compute_qc_tma_metrics_rank(
+        self,
+        tma: str,
+        channel_exclude: List[str] = None,
+    ) -> xr.DataArray:
+        """
+        Creates the average rank for a given TMA across all FOVs and unexcluded channels.
+        By default the following channels are excluded: Au, Fe, Na, Ta, Noodle.
+
+
+        Args:
+            tma (str): The TMA to compute the average rank for.
+            channel_exclude (List[str], optional): An optional list of channels to further filter
+                out. Defaults to None.
+
+        Returns:
+            xr.DataArray: An xarray DataArray containing the average rank for each channel across
+                a TMA.
+        """
+
+        # Sort the loaded combined csv files based on the filtered `qc_suffixes`
+        combined_metric_tmas: List[str] = ns.natsorted(
+            io_utils.list_files(self.qc_tma_metrics_dir, substrs=f"{tma}_combined"),
+            key=lambda tma_mf: (i for i, qc_s in enumerate(self.qc_suffixes) if qc_s in tma_mf),
         )
 
-        metric_files = list(filter(lambda mf: "combined" not in mf, metric_files))
+        ranked_channels_matrix = []
 
-        # Define an aggregated metric DataFrame
-        combined_metric_tissue_df: pd.DataFrame = pd.concat(
-            (pd.read_csv(os.path.join(qc_cohort_metrics_dir, mf)) for mf in metric_files)
+        for cmt, qc_col in zip(combined_metric_tmas, self.qc_cols):
+            # Open and filter the default ignored channels
+            cmt_df: pd.DataFrame = pd.read_csv(os.path.join(self.qc_tma_metrics_dir, cmt))
+            cmt_df = _channel_filtering(cmt_df, channel_exclude=channel_exclude)
+
+            # Get matrix dimensions
+            y_size: int = cmt_df["column"].max()
+            x_size: int = cmt_df["row"].max()
+
+            # Create the TMA matrix / for the heatmap
+            channel_tmas: pd.DataFrame = cmt_df.groupby(by="channel", sort=True).apply(
+                lambda group: self._create_r_c_tma_matrix(group, y_size, x_size, qc_col)
+            )
+            channel_matrices: np.ndarray = np.array(
+                [c_tma[0] for c_tma in channel_tmas.values],
+            )
+            # Rank all FOVs for each channel.
+            ranked_channels: np.ndarray = rankdata(
+                a=channel_matrices.reshape((x_size * y_size), -1),
+                method="average",
+                nan_policy="omit",
+                axis=0,
+            ).reshape(len(channel_tmas), x_size, y_size)
+
+            # Average the rank for each channel.
+            avg_ranked_tma: np.ndarray = ranked_channels.mean(axis=0)
+
+            ranked_channels_matrix.append(avg_ranked_tma)
+
+        return xr.DataArray(
+            data=np.stack(ranked_channels_matrix),
+            coords=[self.qc_cols, np.arange(x_size), np.arange(y_size)],
+            dims=["qc_col", "x", "y"],
         )
 
-        combined_metric_tissue_df.to_csv(
-            os.path.join(qc_cohort_metrics_dir, f"{tissue}_combined_{ms}.csv"),
-            index=False,
+
+@dataclass
+class QCBatchEffect:
+    """
+    Computes QC metrics for a specified set of tissues and saves the tissue specific QC files
+    in the `qc_cohort_metrics_dir`.
+
+    Args:
+        cohort_data_dir (Union[str,pathlib.Path]): The directory where the extracted images are
+        stored for a particular batch, or tissue of interest.
+        qc_cohort_metrics_dir (Union[str, pathlib.Path]): The directory where to place the QC TMA
+        metrics.
+        qc_metrics (List[str]): A list of QC metrics to use. Options include:
+
+                - `"Non-zero mean intensity"`
+                - `"Total intensity"`
+                - `"99.9% intensity value"`
+
+    Attributes:
+        qc_cols (List[str]): A list of the QC columns.
+        qc_suffixes (List[str]): A list of the QC suffixes, ordered w.r.t `qc_cols`.
+    """
+
+    cohort_data_dir: Union[str, pathlib.Path]
+    qc_cohort_metrics_dir: Union[str, pathlib.Path]
+    qc_metrics: Optional[List[str]]
+
+    # Fields initialized after `__post_init__`
+    qc_cols: List[str] = field(init=False)
+    qc_suffixes: List[str] = field(init=False)
+
+    # Set by functions
+    qc_batch_metrics: Dict[Tuple[str, str], pd.DataFrame] = field(init=False)
+
+    def __post_init__(self):
+        # Input validation: Ensure that the paths exist
+        io_utils.validate_paths([self.cohort_data_dir, self.qc_cohort_metrics_dir])
+
+        self.qc_cols, self.qc_suffixes = qc_filtering(qc_metrics=self.qc_metrics)
+
+        self.qc_batch_metrics = {}
+
+    def batch_effect_qc_metrics(self, tissues: List[str]) -> None:
+        """
+        Computes QC metrics for a specified set of tissues and saves the tissue specific QC files
+        in the `qc_cohort_metrics_dir`. Calculates the following metrics for the specified tissues,
+        and the metrics for the invidual FOVs within that cohort:
+        * Non-zero mean intensity
+        * Total intensity
+        * 99.9% intensity value
+
+        Args:
+            tissues (List[str]): A list of tissues to find QC metrics for.
+
+        Raises:
+            ValueError: Errors if `tissues` is either None, or a list of size 0.
+        """
+        if tissues is None or not isinstance(tissues, list):
+            raise ValueError("The tissues must be specified as a list of strings")
+
+        with tqdm(
+            total=len(tissues),
+            desc="Computing QC Tissue Batch metrics",
+            unit="Tissues",
+        ) as pbar:
+            for tissue in tissues:
+                self._compute_batch_effect_qc_metrics(tissue)
+                pbar.set_postfix(Tissue=tissue)
+                pbar.update()
+
+    def _compute_batch_effect_qc_metrics(self, tissue: str) -> None:
+        """
+        Computes QC metrics for a specified set of tissues and saves the tissue specific QC files
+        in the `qc_cohort_metrics_dir`.
+
+        Args:
+            tissues (List[str]): A list of tissues to find QC metrics for.
+
+        Raises:
+            ValueError: Errors if `tissues` is either None, or a list of size 0.
+        """
+
+        samples = io_utils.list_folders(dir_name=self.cohort_data_dir, substrs=tissue)
+
+        # Compute the QC metrics for all unique samples that match with the user's tissue input.
+        for sample in ns.natsorted(samples):
+            compute_qc_metrics(
+                extracted_imgs_path=self.cohort_data_dir,
+                fov_name=sample,
+                save_csv=self.qc_cohort_metrics_dir,
+            )
+
+        # Combined metrics per the the samples of a tissue
+        for qc_suffix in self.qc_suffixes:
+            metric_files: Generator[str] = (
+                mf
+                for mf in io_utils.list_files(
+                    self.qc_cohort_metrics_dir,
+                    substrs=[f"{sample}_{qc_suffix}.csv" for sample in samples],
+                )
+                if "combined" not in mf
+            )
+
+            # Define an aggregated metric DataFrame
+            combined_metric_tissue_df: pd.DataFrame = pd.concat(
+                (pd.read_csv(os.path.join(self.qc_cohort_metrics_dir, mf)) for mf in metric_files)
+            )
+
+            combined_metric_tissue_df.to_csv(
+                os.path.join(self.qc_cohort_metrics_dir, f"{tissue}_combined_{qc_suffix}.csv"),
+                index=False,
+            )
+
+    def batch_effect_filtering(
+        self,
+        tissues: List[str],
+        channel_include: List[str] = None,
+        channel_exclude: List[str] = None,
+    ):
+        """
+        Filters the channels provided for a set of FOVs associated to a given Tissue.
+
+        Args:
+            tissues (List[str]): A list of tissues to filter channels.
+            channel_include (List[str], optional): A list of channels to include. Defaults to None.
+            channel_exclude (List[str], optional): A list of channels to exclude. Defaults to None.
+
+        Raises:
+            ValueError: Raised when the input is not a list.
+        """
+        if tissues is None or not isinstance(tissues, list):
+            raise ValueError("The tissues must be specified as a list of strings.")
+
+        with tqdm(
+            total=len(tissues),
+            desc="Filtering QC Tissue Batch metrics",
+            unit="Tissues",
+        ) as pbar:
+            for tissue in tissues:
+                self.qc_batch_metrics.update(
+                    self._batch_effect_filtering(
+                        tissue, channel_include=channel_include, channel_exclude=channel_exclude
+                    )
+                )
+                pbar.set_postfix(Tissue=tissue)
+                pbar.update()
+
+    def _batch_effect_filtering(
+        self,
+        tissue: str,
+        channel_include: List[str] = None,
+        channel_exclude: List[str] = None,
+    ) -> Dict[Tuple[str, str], pd.DataFrame]:
+        """
+        Filters the batch effects data based on the included and excluded channels and tissues.
+
+        Args:
+            tissues (List[str]): A list of tissues to find QC metrics for.
+            channel_include (List[str], optional): An optional list of channels to include.
+                Defaults to None.
+            channel_exclude (List[str], optional): An optional list of channels to further filter
+                out. Defaults to None.
+
+        Returns:
+            Dict[Tuple[str, str], pd.DataFrame]: A dictonary where the keys are a tuple of the
+            tissue and the QC metric, while the value is the post filtered dataframe.
+        """
+        combined_batches: List[str] = ns.natsorted(
+            seq=io_utils.list_files(
+                self.qc_cohort_metrics_dir,
+                substrs=[f"{tissue}_combined_{qc_suffix}" for qc_suffix in self.qc_suffixes],
+            ),
+            key=lambda batch: (i for i, qc_s in enumerate(self.qc_suffixes) if qc_s in batch),
         )
+
+        qc_batch_metrics: Dict[Tuple[str, str], pd.DataFrame] = {}
+
+        for batch, qc_col in zip(combined_batches, self.qc_cols):
+            # Load the csv and filter the default ignored channels
+            t_df = _channel_filtering(
+                df=pd.read_csv(
+                    os.path.join(self.qc_cohort_metrics_dir, batch),
+                    dtype={"fov": str, "channel": str, qc_col: np.float64},
+                ),
+                channel_include=channel_include,
+                channel_exclude=channel_exclude,
+            )
+            qc_batch_metrics[tissue, qc_col] = t_df
+
+        return qc_batch_metrics
+
+    def transformed_batch_effects_data(self, tissue: str, metric: str) -> pd.DataFrame:
+        """
+        Creates a transformed DataFrame for the batch effects data, normalizing by the mean,
+        then taking the `log2` of each value.
+
+        Args:
+            tissue (str): A tissue to tranform the batch effects for.
+            metric (str): The metric to transform.
+
+        Returns:
+            pd.DataFrame: The transformed batch effects data.
+        """
+
+        misc_utils.verify_in_list(user_metric=metric, qc_metrics=self.qc_cols)
+        misc_utils.verify_in_list(
+            user_tissue=tissue, tissues=[k[0] for k in self.qc_batch_metrics.keys()]
+        )
+
+        # Apply a log2 transformation to the mean normalized data.
+        log2_norm_df: pd.DataFrame = (
+            self.qc_batch_metrics[tissue, metric]
+            .pivot(index="channel", columns="fov", values=metric)
+            .transform(func=lambda row: np.log2(row / row.mean()), axis=1)
+        )
+
+        mean_log2_norm_df: pd.DataFrame = (
+            log2_norm_df.mean(axis=0)
+            .to_frame(name="mean")
+            .transpose()
+            .sort_values(by="mean", axis=1)
+        )
+
+        transformed_df: pd.DataFrame = pd.concat(
+            objs=[log2_norm_df, mean_log2_norm_df]
+        ).sort_values(by="mean", axis=1, inplace=False)
+
+        return transformed_df

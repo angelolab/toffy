@@ -1,6 +1,5 @@
 import inspect
 import os
-import platform
 from dataclasses import dataclass, field
 from typing import Iterable
 
@@ -18,7 +17,8 @@ from mibi_bin_tools.type_utils import any_true
 from toffy.image_stitching import stitch_images
 from toffy.mph_comp import combine_mph_metrics, compute_mph_metrics, visualize_mph
 from toffy.normalize import write_mph_per_mass
-from toffy.qc_comp import combine_qc_metrics, compute_qc_metrics_direct, visualize_qc_metrics
+from toffy.qc_comp import combine_qc_metrics, compute_qc_metrics_direct
+from toffy.qc_metrics_plots import visualize_qc_metrics
 from toffy.settings import QC_COLUMNS
 
 RUN_PREREQUISITES = {

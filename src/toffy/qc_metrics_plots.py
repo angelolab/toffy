@@ -1,7 +1,7 @@
 import itertools
 import os
-from pathlib import Path
-from typing import Dict, List, Union
+import pathlib
+from typing import Dict, List, Optional, Union
 
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
@@ -11,186 +11,175 @@ import pandas as pd
 import seaborn as sns
 from alpineer import io_utils, misc_utils
 from matplotlib.axes import Axes
+from matplotlib.colors import ListedColormap, Normalize
 from matplotlib.figure import Figure
+from tqdm import tqdm
 
-from toffy import settings
+from toffy import qc_comp, settings
+from toffy.qc_comp import QCTMA, QCBatchEffect
 
 
-def batch_effect_plot(
-    qc_cohort_metrics_dir: Union[str, Path],
-    tissues: List[str],
-    qc_metrics: List[str] = None,
-    channel_include: List[str] = None,
-    channel_exclude: List[str] = None,
-    save_figure: bool = False,
+def visualize_qc_metrics(
+    metric_name: str,
+    qc_metric_dir: Union[str, pathlib.Path],
+    save_dir: Union[str, pathlib.Path],
+    channel_filters: Optional[List[str]] = ["chan_"],
+    axes_font_size: int = 16,
+    wrap: int = 6,
     dpi: int = 300,
-):
+    return_plot: bool = False,
+) -> Optional[sns.FacetGrid]:
     """
-    Creates a combination violin and swarm plot in order to compare QC metrics across channels
-    for a given set of TMAs. Undesired channels can be filtered out and / or strictly desired channels
-    can included exclusively.
+    Visualize the barplot of a specific QC metric.
 
     Args:
-        qc_cohort_metrics_dir (Union[str, Path]): The directory where the cohort metrics will be saved to.
-        tissues (List[str]): A list of tissues to plot.
-        qc_metrics (List[str], optional): A list of QC metrics to plot for each tissue. Defaults to None, where all QC metrics are plotted.
-        channel_include (List[str], optional): A list of channels to include in the plots. Defaults to None.
-        channel_exclude (List[str], optional): A list of channels to exclude in the plots.. Defaults to None.
-        save_figure (bool, optional): If `True`, the figure is saved in a subdirectory in the
-        `qc_cohort_metrics_dir` directory. Defaults to False.
-        dpi (int, optional): Dots per inch, the resolution of the image. Defaults to 300.
-
+        metric_name (str):
+            The name of the QC metric to plot. Used as the y-axis label. Options include:
+            `"Non-zero mean intensity"`, `"Total intensity"`, `"99.9% intensity value"`.
+        qc_metric_dir (Union[str, pathlib.Path]):
+            The path to the directory containing the `'combined_{qc_metric}.csv'` files
+        save_dir (Optional[Union[str, pathlib.Path]], optional):
+            The name of the directory to save the plot to. Defaults to None.
+        channel_filters (List[str], optional):
+            A list of channels to filter out.
+        axes_font_size (int, optional):
+            The font size of the axes labels. Defaults to 16.
+        wrap (int, optional):
+            The number of plots to display per row. Defaults to 6.
+        dpi (Optional[int], optional):
+            The resolution of the image to use for saving. Defaults to None.
+        return_plot (bool):
+            If `True`, this will return the plot. Defaults to `False`
 
     Raises:
-        ValueError: Raised when channel_include and channel_exclude contain a shared channel.
+        ValueError:
+            When an invalid metric is provided.
+        FileNotFoundError:
+            The QC metric directory `qc_metric_dir` does not exist.
+        FileNotFoundError:
+            The QC metric `combined_csv` file is does not exist in `qc_metric_dir`.
+
+    Returns:
+        Optional[sns.FacetGrid]: Returns the Seaborn FacetGrid catplot of the QC metrics.
     """
-    # Input validation
-
-    if isinstance(channel_include, list) and isinstance(channel_exclude, list):
-        if set(channel_exclude).isdisjoint(set(channel_include)):
-            raise ValueError("You cannot include and exclude the same channel.")
-
-    # Filter out unused QC suffixess
-    if qc_metrics is not None:
-        selected_qcs: List[bool] = [qcm in qc_metrics for qcm in settings.QC_COLUMNS]
-        qc_cols = list(itertools.compress(settings.QC_COLUMNS, selected_qcs))
-        qc_suffixes = list(itertools.compress(settings.QC_SUFFIXES, selected_qcs))
-    else:
-        qc_cols: List[str] = settings.QC_COLUMNS
-        qc_suffixes: List[str] = settings.QC_SUFFIXES
-
-    # A dictionary s.t. {tisue1: [list of qc files, sorted by the filtered qc_suffixes],
-    #                   tissue2: [list of qc files, sorted by the filtered qc_suffixes],
-    #                   ...                                             }
-    combined_batches: Dict[str, List[str]] = {
-        tissue: ns.natsorted(
-            io_utils.list_files(
-                qc_cohort_metrics_dir,
-                substrs=[f"{tissue}_combined_{qc_suffix}" for qc_suffix in qc_suffixes],
-            ),
-            key=lambda m: (i for i, qc_s in enumerate(qc_suffixes) if qc_s in m),
+    # verify the metric provided is valid
+    if metric_name not in settings.QC_COLUMNS:
+        raise ValueError(
+            "Invalid metric %s provided, must be set to 'Non-zero mean intensity', "
+            "'Total intensity', or '99.9%% intensity value'" % metric_name
         )
-        for tissue in tissues
-    }
 
-    for tissue, tissue_stats in combined_batches.items():
-        for tissue_stat, qc_col, qc_suffix in zip(tissue_stats, qc_cols, qc_suffixes):
-            # Load the csv and filter the default ignored channels
-            be_df: pd.DataFrame = pd.read_csv(os.path.join(qc_cohort_metrics_dir, tissue_stat))
-            be_df: pd.DataFrame = be_df[~be_df["channel"].isin(settings.QC_CHANNEL_IGNORE)]
+    # verify the path to the QC metric datasets exist
+    if not os.path.exists(qc_metric_dir):
+        raise FileNotFoundError("qc_metric_dir %s does not exist" % qc_metric_dir)
 
-            # Verify that the excluded channels exist in the combined metric Tissue DataFrame
-            # Then remove the excluded channels
-            if channel_exclude is not None:
-                misc_utils.verify_in_list(
-                    channels_to_exclude=channel_exclude,
-                    combined_tissue_df_channels=be_df["channel"].unique(),
-                )
-                be_df: pd.DataFrame = be_df[~be_df["channel"].isin(channel_exclude)]
+    # get the file name of the combined QC metric .csv file to use
+    qc_metric_index = settings.QC_COLUMNS.index(metric_name)
+    qc_metric_suffix = settings.QC_SUFFIXES[qc_metric_index]
+    qc_metric_path = os.path.join(qc_metric_dir, "combined_%s.csv" % qc_metric_suffix)
 
-            # Verify that the included channels exist in the combined metric Tissue DataFrame
-            # Then filter the excluded channels
-            if channel_include is not None:
-                misc_utils.verify_in_list(
-                    channels_to_include=channel_include,
-                    combined_tissue_df_channels=be_df["channel"].unique(),
-                )
-                be_df: pd.DataFrame = be_df[be_df["channel"].isin(channel_include)]
+    # ensure the user set the right qc_metric_dir
+    if not os.path.exists(qc_metric_path):
+        raise FileNotFoundError(
+            "Could not locate %s, ensure qc_metric_dir is correct" % qc_metric_path
+        )
 
-            # Set up the Figure for one axes (which gets overlayed)
-            fig: Figure = plt.figure(figsize=(12, 6), dpi=dpi)
-            fig.set_layout_engine(layout="constrained")
-            gs = gridspec.GridSpec(1, 1, figure=fig)
-            fig.suptitle(f"{tissue} - {qc_col}")
+    # read in the QC metric data
+    qc_metric_df = pd.read_csv(qc_metric_path)
 
-            # Create shared axis object and plot violin and swarm
-            violin_swarm_batch_effect_ax: Axes = fig.add_subplot(gs[0, 0])
+    # filter out naturally-occurring elements as well as Noodle
+    qc_metric_df = qc_metric_df[~qc_metric_df["channel"].isin(settings.QC_CHANNEL_IGNORE)]
 
-            sns.violinplot(
-                data=be_df,
-                x="channel",
-                y=qc_col,
-                ax=violin_swarm_batch_effect_ax,
-                inner=None,
-                scale="width",
-                color="lightgrey",
-                linewidth=1,
-            )
+    # filter out any channel in the channel_filters list
+    if channel_filters is not None:
+        qc_metric_df: pd.DataFrame = qc_metric_df[
+            ~qc_metric_df["channel"].str.contains("|".join(channel_filters))
+        ]
 
-            sns.swarmplot(
-                data=be_df,
-                x="channel",
-                y=qc_col,
-                ax=violin_swarm_batch_effect_ax,
-                edgecolor="black",
-                hue="fov",
-                size=3,
-            )
+    # catplot allows for easy facets on a barplot
+    qc_fg: sns.FacetGrid = sns.catplot(
+        x="fov",
+        y=metric_name,
+        col="channel",
+        col_wrap=wrap,
+        data=qc_metric_df,
+        kind="bar",
+        color="black",
+        sharex=True,
+        sharey=False,
+    )
 
-            # Post plotting adjustments
+    # remove the 'channel =' in each subplot title
+    qc_fg.set_titles(template="{col_name}")
+    qc_fg.figure.supxlabel(t="fov", x=0.5, y=0, ha="center", size=axes_font_size)
+    qc_fg.figure.supylabel(t=f"{metric_name}", x=0, y=0.5, va="center", size=axes_font_size)
+    qc_fg.set(xticks=[], yticks=[])
 
-            # x axis
-            violin_swarm_batch_effect_ax.set_xticks(
-                ticks=violin_swarm_batch_effect_ax.get_xticks(),
-                labels=violin_swarm_batch_effect_ax.get_xticklabels(),
-                rotation=45,
-                ha="right",
-                rotation_mode="anchor",
-            )
-            violin_swarm_batch_effect_ax.set_xlabel("Channel")
+    # per Erin's visualization remove the default axis title on the y-axis
+    # and instead show 'fov' along x-axis and the metric name along the y-axis (overarching)
+    qc_fg.set_axis_labels(x_var="", y_var="")
+    qc_fg.set_xticklabels([])
+    qc_fg.set_yticklabels([])
 
-            # Legend
+    # save the figure always
+    # Return the figure if specified.
+    qc_fg.savefig(os.path.join(save_dir, f"{metric_name}_barplot_stats.png"), dpi=dpi)
 
-            # Sort legend labels
-            _handles, _labels = violin_swarm_batch_effect_ax.get_legend_handles_labels()
-            legend_labels_index: List = ns.index_natsorted(_labels)
-            ordered_handles: List = ns.order_by_index(_handles, legend_labels_index)
-            ordered_labels: List = ns.order_by_index(_labels, legend_labels_index)
-            violin_swarm_batch_effect_ax.legend(handles=ordered_handles, labels=ordered_labels)
-            sns.move_legend(
-                obj=violin_swarm_batch_effect_ax,
-                loc="best",
-                title="FOVs",
-                fontsize="x-small",
-            )
-
-            # Save figure
-            if save_figure:
-                fig_dir: Path = Path(qc_cohort_metrics_dir) / "figures"
-                fig_dir.mkdir(parents=True, exist_ok=True)
-                fig.savefig(fname=fig_dir / f"{tissue}_{qc_suffix}")
-            plt.close(fig)
+    if return_plot:
+        return qc_fg
 
 
-def qc_tma_metrics_plot(
-    cmt_data: Dict[str, np.ndarray],
-    qc_tma_metrics_dir: Union[str, Path],
+def qc_tmas_metrics_plot(
+    qc_tmas: QCTMA,
+    tmas: List[str],
+    save_figure: bool = False,
+    dpi: int = 300,
+) -> None:
+    """
+    Produces the QC TMA metrics plot for a given set of QC metrics applied to a user specified
+    TMA. The figures are saved in `qc_tma_metrics_dir/figures`.
+
+    Args:
+        qc_tmas (QCTMA): The class which contains the QC TMA data, filepaths, and methods.
+        QC matrix.
+        tma (str): The TMAs to plot the QC metrics for.
+        save_figure (bool, optional): If `True`, the figure is saved in a subdirectory in the
+        `QCTMA.qc_tma_metrics_dir` directory. Defaults to `False`.
+        dpi (int, optional): Dots per inch, the resolution of the image. Defaults to 300.
+    """
+
+    if save_figure:
+        fig_dir: pathlib.Path = pathlib.Path(qc_tmas.qc_tma_metrics_dir) / "figures"
+        fig_dir.mkdir(parents=True, exist_ok=True)
+
+    with tqdm(total=len(tmas), desc="Plotting QC TMA Metric Ranks", unit="TMAs") as pbar:
+        for tma in tmas:
+            _qc_tma_metrics_plot(qc_tmas, tma, save_figure=save_figure, dpi=dpi)
+            pbar.set_postfix(TMA=tma)
+            pbar.update()
+
+
+def _qc_tma_metrics_plot(
+    qc_tmas: QCTMA,
     tma: str,
     save_figure: bool = False,
     dpi: int = 300,
 ) -> None:
     """
     Produces the QC TMA metrics plot for a given set of QC metrics applied to a user specified
-    TMA. The figures are saved in `qc_tma_metrics_dir/figures`. By default the following channels
-    are excluded: Au, Fe, Na, Ta, Noodle.
+    TMA. The figures are saved in `qc_tma_metrics_dir/figures`.
 
     Args:
-        cmt_data (Dict[str, np.ndarray]): The dictionary of the QC metrics and the associated TMA
-        QC matrix.
-        qc_tma_metrics_dir (Union[str, Path]): The directory where to place the QC TMA metrics.
-        tma (str): The FOVs with the TMA in the folder name to gather.
+        qc_tmas (QCTMA): The class which contains the QC TMA data, filepaths, and methods.
+        tma (str): The TMA to plot the metrics for.
         save_figure (bool, optional): If `True`, the figure is saved in a subdirectory in the
         `qc_tma_metrics_dir` directory. Defaults to `False`.
         dpi (int, optional): Dots per inch, the resolution of the image. Defaults to 300.
     """
 
-    # Filter QC columns, and file suffixes
-    # makes the list of qc_cols and qc_suffixes ordered the same.
-    filtered_qcs: List[bool] = [qcm in cmt_data.keys() for qcm in settings.QC_COLUMNS]
-    qc_cols = list(itertools.compress(settings.QC_COLUMNS, filtered_qcs))
-    qc_suffixes = list(itertools.compress(settings.QC_SUFFIXES, filtered_qcs))
+    for qc_metric, suffix in zip(qc_tmas.qc_cols, qc_tmas.qc_suffixes):
+        qc_tma_data: np.ndarray = qc_tmas.tma_avg_ranks[tma].loc[qc_metric].values
 
-    for qc_metric, suffix in zip(qc_cols, qc_suffixes):
         # Set up the Figure for multiple axes
         fig: Figure = plt.figure(dpi=dpi)
         fig.set_layout_engine(layout="constrained")
@@ -200,7 +189,7 @@ def qc_tma_metrics_plot(
         # Heatmap
         ax_heatmap: Axes = fig.add_subplot(gs[0, 0])
         sns.heatmap(
-            cmt_data[qc_metric],
+            data=qc_tma_data,
             square=True,
             ax=ax_heatmap,
             linewidths=1,
@@ -212,13 +201,13 @@ def qc_tma_metrics_plot(
         # Set ticks
         ax_heatmap.set_xticks(
             ticks=ax_heatmap.get_xticks(),
-            labels=[f"{i+1}" for i in range(cmt_data[qc_metric].shape[1])],
+            labels=[f"{i+1}" for i in range(qc_tma_data.shape[1])],
             rotation=0,
         )
 
         ax_heatmap.set_yticks(
             ticks=ax_heatmap.get_yticks(),
-            labels=[f"{i+1}" for i in range(cmt_data[qc_metric].shape[0])],
+            labels=[f"{i+1}" for i in range(qc_tma_data.shape[0])],
             rotation=0,
         )
 
@@ -228,12 +217,283 @@ def qc_tma_metrics_plot(
 
         # Histogram
         ax_hist: Axes = fig.add_subplot(gs[0, 1])
-        sns.histplot(cmt_data[qc_metric].ravel(), ax=ax_hist, bins=10)
+        sns.histplot(qc_tma_data.ravel(), ax=ax_hist, bins=10)
         ax_hist.set(xlabel="Average Rank", ylabel="Count")
         ax_hist.set_title("Average Rank Distribution")
 
         if save_figure:
-            fig_dir: Path = Path(qc_tma_metrics_dir) / "figures"
-            fig_dir.mkdir(parents=True, exist_ok=True)
-            fig.savefig(fname=fig_dir / f"{tma}_{suffix}.png", bbox_inches="tight")
-        plt.close(fig)
+            fig.savefig(
+                fname=pathlib.Path(qc_tmas.qc_tma_metrics_dir) / "figures" / f"{tma}_{suffix}.png",
+                dpi=dpi,
+                bbox_inches="tight",
+            )
+            plt.close(fig)
+
+
+def qc_batch_effect_violin(
+    qc_batch: QCBatchEffect,
+    tissues: List[str],
+    save_figure: bool = False,
+    dpi: int = 300,
+) -> None:
+    """
+    Creates a combination violin and swarm plot in order to compare QC metrics across channels
+    for a given set of TMAs. Undesired channels can be filtered out and / or strictly desired channels
+    can included exclusively.
+
+
+    Args:
+        qc_batch (QCBatchEffect): The class which contains the QC batch effect data, filepaths, and methods.
+        tissues (List[str]): A list of tissues to plot the QC metrics for.
+        save_figure (bool, optional): If `True`, the figure is saved in a subdirectory in the
+        `qc_cohort_metrics_dir` directory. Defaults to `False`.
+        dpi (int, optional): Dots per inch, the resolution of the image. Defaults to 300.
+
+    Raises:
+        ValueError: Raised when the input tissues are not a list of strings.
+    """
+    if tissues is None or not isinstance(tissues, list):
+        raise ValueError("The tissues must be specified as a list of strings.")
+
+    if save_figure:
+        fig_dir: pathlib.Path = pathlib.Path(qc_batch.qc_cohort_metrics_dir) / "figures"
+        fig_dir.mkdir(parents=True, exist_ok=True)
+
+    with tqdm(
+        total=len(tissues),
+        desc="Generating Batch Effect Violin / Swarm Plots",
+        unit="Tissues",
+    ) as pbar:
+        for tissue in tissues:
+            _qc_batch_effect_violin(
+                qc_batch=qc_batch, tissue=tissue, save_figure=save_figure, dpi=dpi
+            )
+            pbar.set_postfix(Tissue=tissue)
+            pbar.update()
+
+
+def _qc_batch_effect_violin(
+    qc_batch: QCBatchEffect,
+    tissue: str,
+    save_figure: bool = False,
+    dpi: int = 300,
+) -> None:
+    """
+    Creates a combination violin and swarm plot in order to compare QC metrics across channels
+    for a given set of TMAs. Undesired channels can be filtered out and / or strictly desired channels
+    can included exclusively.
+
+    Args:
+        qc_batch (QCBatchEffect): The class which contains the QC batch effect data, filepaths, and methods.
+        tissue (str): The tissue to plot the QC metrics for.
+        save_figure (bool, optional): If `True`, the figure is saved in a subdirectory in the
+        `qc_cohort_metrics_dir` directory. Defaults to `False`.
+        dpi (int, optional): Dots per inch, the resolution of the image. Defaults to 300.
+
+    Raises:
+        ValueError: Raised when channel_include and channel_exclude contain a shared channel.
+    """
+
+    for qc_col, qc_suffix in zip(qc_batch.qc_cols, qc_batch.qc_suffixes):
+        qc_batch_df = qc_batch.qc_batch_metrics[tissue, qc_col]
+
+        # Set up the Figure for one axes (which gets overlayed)
+        fig: Figure = plt.figure(figsize=(12, 6), dpi=dpi)
+        fig.set_layout_engine(layout="constrained")
+        gs = gridspec.GridSpec(1, 1, figure=fig)
+        fig.suptitle(f"{tissue} - {qc_col}")
+
+        # Create shared axis object and plot violin and swarm
+        violin_swarm_batch_effect_ax: Axes = fig.add_subplot(gs[0, 0])
+
+        sns.violinplot(
+            data=qc_batch_df,
+            x="channel",
+            y=qc_col,
+            ax=violin_swarm_batch_effect_ax,
+            inner=None,
+            scale="width",
+            color="lightgrey",
+            linewidth=1,
+        )
+
+        sns.stripplot(
+            data=qc_batch_df,
+            x="channel",
+            y=qc_col,
+            ax=violin_swarm_batch_effect_ax,
+            edgecolor="black",
+            hue="fov",
+            size=2,
+        )
+
+        # Post plotting adjustments
+
+        # x axis
+        violin_swarm_batch_effect_ax.set_xticks(
+            ticks=violin_swarm_batch_effect_ax.get_xticks(),
+            labels=violin_swarm_batch_effect_ax.get_xticklabels(),
+            rotation=45,
+            ha="right",
+            rotation_mode="anchor",
+        )
+        violin_swarm_batch_effect_ax.set_xlabel("Channel")
+
+        # Legend
+
+        # Sort legend labels
+        _handles, _labels = violin_swarm_batch_effect_ax.get_legend_handles_labels()
+        legend_labels_index: List = ns.index_natsorted(_labels)
+        ordered_handles: List = ns.order_by_index(_handles, legend_labels_index)
+        ordered_labels: List = ns.order_by_index(_labels, legend_labels_index)
+        violin_swarm_batch_effect_ax.legend(handles=ordered_handles, labels=ordered_labels)
+        sns.move_legend(
+            obj=violin_swarm_batch_effect_ax,
+            loc="best",
+            title="FOVs",
+            fontsize="x-small",
+        )
+
+        # Save figure
+        if save_figure:
+            fig.savefig(
+                fname=pathlib.Path(qc_batch.qc_cohort_metrics_dir)
+                / "figures"
+                / f"{tissue}_violin_{qc_suffix}.png",
+                dpi=dpi,
+                bbox_inches="tight",
+            )
+            plt.close(fig)
+
+
+def qc_batch_effect_heatmap(
+    qc_batch: QCBatchEffect,
+    tissues: List[str],
+    save_figure: bool = False,
+    dpi: int = 300,
+) -> None:
+    """
+    Generates a heatmap of the QC metrics for each tissue in the cohort.
+
+    Args:
+        qc_batch (QCBatchEffect): The class which contains the QC batch effect data, filepaths, and methods.
+        tissues (List[str]): A list of tissues to plot the QC metrics for.
+        save_figure (bool, optional): If `True`, the figure is saved in a subdirectory in the
+        `qc_cohort_metrics_dir` directory. Defaults to `False`.
+        dpi (int, optional): Dots per inch, the resolution of the image. Defaults to 300.
+
+    Raises:
+        ValueError: Raised when the input tissues are not a list of strings.
+    """
+    if tissues is None or not isinstance(tissues, list):
+        raise ValueError("The tissues must be specified as a list of strings.")
+    if save_figure:
+        fig_dir: pathlib.Path = pathlib.Path(qc_batch.qc_cohort_metrics_dir) / "figures"
+        fig_dir.mkdir(parents=True, exist_ok=True)
+    with tqdm(
+        total=len(tissues),
+        desc="Generating Batch Effect Heatmap Plots",
+        unit="Tissues",
+    ) as pbar:
+        for tissue in tissues:
+            _qc_batch_effect_heatmap(
+                qc_batch=qc_batch, tissue=tissue, save_figure=save_figure, dpi=dpi
+            )
+            pbar.set_postfix(Tissue=tissue)
+            pbar.update()
+
+
+def _qc_batch_effect_heatmap(
+    qc_batch: QCBatchEffect,
+    tissue: str,
+    save_figure: bool = False,
+    dpi: int = 300,
+) -> None:
+    """
+    Generates a heatmap of the QC metrics for a tissue in the cohort.
+
+    Args:
+        qc_batch (QCBatchEffect): The class which contains the QC batch effect data, filepaths, and methods.
+        tissue (str): The tissue to plot the QC metrics for.
+        save_figure (bool, optional): If `True`, the figure is saved in a subdirectory in the
+        `qc_cohort_metrics_dir` directory. Defaults to `False`.
+        dpi (int, optional): Dots per inch, the resolution of the image. Defaults to 300.
+
+    Raises:
+        ValueError: Raised when channel_include and channel_exclude contain a shared channel.
+    """
+    for qc_col, qc_suffix in zip(qc_batch.qc_cols, qc_batch.qc_suffixes):
+        t_df: pd.DataFrames = qc_batch.transformed_batch_effects_data(tissue=tissue, metric=qc_col)
+
+        # Set up the Figure for multiple axes
+        fig: Figure = plt.figure(figsize=(12, 12), dpi=dpi)
+        fig.set_layout_engine(layout="constrained")
+        gs = gridspec.GridSpec(nrows=2, ncols=1, figure=fig, height_ratios=[len(t_df.index) - 1, 1])
+
+        # Colorbar Normalization
+        _norm = Normalize(vmin=-1, vmax=1)
+        _cmap = sns.color_palette("vlag", as_cmap=True)
+
+        fig.suptitle(f"{tissue} - {qc_col}")
+
+        # Heatmap
+        ax_heatmap: Axes = fig.add_subplot(gs[0, 0])
+
+        sns.heatmap(
+            t_df[~t_df.index.isin(["mean"])],
+            ax=ax_heatmap,
+            linewidths=1,
+            linecolor="black",
+            cbar_kws={"shrink": 0.5},
+            annot=True,
+            xticklabels=False,
+            norm=_norm,
+            cmap=_cmap,
+        )
+
+        # Axes labels, and ticks
+        ax_heatmap.set_yticks(
+            ticks=ax_heatmap.get_yticks(),
+            labels=ax_heatmap.get_yticklabels(),
+            rotation=0,
+        )
+        ax_heatmap.set_xlabel(None)
+
+        # Averaged values
+        ax_avg: Axes = fig.add_subplot(gs[1, 0])
+
+        sns.heatmap(
+            data=t_df[t_df.index.isin(["mean"])],
+            ax=ax_avg,
+            linewidths=1,
+            linecolor="black",
+            annot=True,
+            fmt=".2f",
+            cmap=ListedColormap(["white"]),
+            cbar=False,
+        )
+        ax_avg.set_yticks(
+            ticks=ax_avg.get_yticks(),
+            labels=["Mean"],
+            rotation=0,
+        )
+        ax_avg.set_xticks(
+            ticks=ax_avg.get_xticks(),
+            labels=ax_avg.get_xticklabels(),
+            rotation=45,
+            ha="right",
+            rotation_mode="anchor",
+        )
+        ax_heatmap.set_ylabel("Channel")
+        ax_avg.set_xlabel("FOV")
+
+        # Save figure
+        if save_figure:
+            fig.savefig(
+                fname=pathlib.Path(qc_batch.qc_cohort_metrics_dir)
+                / "figures"
+                / f"{tissue}_heatmap_{qc_suffix}.png",
+                dpi=dpi,
+                bbox_inches="tight",
+            )
+            plt.close(fig)
