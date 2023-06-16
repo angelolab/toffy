@@ -781,9 +781,10 @@ class QCBatchEffect:
         Computes QC metrics for a specified set of tissues and saves the tissue specific QC files
         in the `qc_cohort_metrics_dir`. Calculates the following metrics for the specified tissues,
         and the metrics for the invidual FOVs within that cohort:
-        * Non-zero mean intensity
-        * Total intensity
-        * 99.9% intensity value
+
+                - `"Non-zero mean intensity"`
+                - `"Total intensity"`
+                - `"99.9% intensity value"`
 
         Args:
             tissues (List[str]): A list of tissues to find QC metrics for.

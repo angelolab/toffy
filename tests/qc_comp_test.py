@@ -642,7 +642,7 @@ class TestQCBatchEffect:
                 set(_channel_exclude) if _channel_exclude else set()
             )
 
-            # Asser that the included channels are included in the dataframe
+            # Assert that the included channels are included in the dataframe
             assert set(qc_df["channel"]).issuperset(
                 set(_channel_include) if _channel_include else set()
             )

@@ -5,7 +5,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Callable, Tuple
 
-import matplotlib.pyplot as plt
+from matplotlib import pyplot as plt
 from watchdog.events import FileCreatedEvent, FileSystemEventHandler
 from watchdog.observers import Observer
 
