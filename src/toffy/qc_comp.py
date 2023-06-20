@@ -5,7 +5,7 @@ import pathlib
 import re
 from dataclasses import dataclass, field
 from shutil import rmtree
-from typing import Dict, Generator, List, Optional, Tuple, Union
+from typing import Callable, Dict, Generator, List, Optional, Tuple, Union
 
 import natsort as ns
 import numpy as np
@@ -454,7 +454,7 @@ def qc_filtering(qc_metrics: List[str]) -> Tuple[List[str], List[str]]:
     Returns:
         Tuple[List[str], List[str]]: Returns the QC Columns and the QC Suffixes
     """
-    # Filter out unused QC suffixess
+    # Filter out unused QC columns and suffixes
     if qc_metrics is not None:
         selected_qcs: List[bool] = [qcm in qc_metrics for qcm in settings.QC_COLUMNS]
         qc_cols = list(itertools.compress(settings.QC_COLUMNS, selected_qcs))
@@ -520,7 +520,7 @@ class QCTMA:
 
 
     Args:
-        extracted_imgs_path (Union[str,pathlib.Path]): The directory where the extracted images are
+        cohort_path (Union[str,pathlib.Path]): The directory where the extracted images are
             stored.
         qc_tma_metrics_dir (Union[str, pathlib.path]): The directory where to save the QC TMA
             metrics.
@@ -538,27 +538,26 @@ class QCTMA:
             TMA for each QC Metric in `qc_metrics`.
     """
 
-    extracted_imgs_path: Union[str, pathlib.Path]
-    qc_tma_metrics_dir: Union[str, pathlib.Path]
     qc_metrics: Optional[List[str]]
+    cohort_path: Union[str, pathlib.Path]
+    metrics_dir: Union[str, pathlib.Path]
 
     # Fields initialized after `__post_init__`
     search_term: re.Pattern = field(init=False)
     qc_cols: List[str] = field(init=False)
     qc_suffixes: List[str] = field(init=False)
+
+    # Set by methods
     tma_avg_ranks: Dict[str, xr.DataArray] = field(init=False)
 
     def __post_init__(self):
         # Input validation: Ensure that the paths exist
-        io_utils.validate_paths([self.extracted_imgs_path, self.qc_tma_metrics_dir])
+        io_utils.validate_paths([self.cohort_path, self.metrics_dir])
 
-        # Initialize the QC TMA metrics attributes
+        self.qc_cols, self.qc_suffixes = qc_filtering(qc_metrics=self.qc_metrics)
 
         # Create regex pattern for searching RnCm
         self.search_term: re.Pattern = re.compile(r"R\+?(\d+)C\+?(\d+)")
-
-        # Filter out unused QC suffixess
-        self.qc_cols, self.qc_suffixes = qc_filtering(qc_metrics=self.qc_metrics)
 
         # Set the tma_avg_ranks to be an empty dictionary
         self.tma_avg_ranks = {}
@@ -596,58 +595,64 @@ class QCTMA:
 
         return pd.Series([rc_array])
 
-    def qc_tma_metrics(self, tmas: List[str]):
+    def compute_qc_tma_metrics(self, tmas: List[str]):
         """
         Calculates the QC metrics for a user specified list of TMAs.
 
         Args:
             tmas (List[str]): The FOVs with the TMA in the folder name to gather.
         """
+
         with tqdm(total=len(tmas), desc="Computing QC TMA metrics", unit="TMAs") as pbar:
             for tma in tmas:
-                self._compute_qc_tma_metrics(tma)
+                self._compute_qc_tma_metrics(tma=tma)
                 pbar.set_postfix(TMA=tma)
                 pbar.update()
 
-    def _compute_qc_tma_metrics(
-        self,
-        tma: str,
-    ) -> None:
-        """
-        Calculates the QC metrics for a user specified TMA.
+    def _compute_qc_tma_metrics(self, tma: str):
+        """_summary_
 
         Args:
-            tma (str): The name of the TMA.
+            tma (str): The TMA to compute the QC metrics for.
         """
-        # Get all the FOVs that match the input `tma` string
-        fovs = io_utils.list_folders(self.extracted_imgs_path, substrs=tma)
+        fovs = io_utils.list_folders(dir_name=self.cohort_path, substrs=tma)
 
-        # Compute the qc metrics for each fov
+        # Compute the QC metrics
         for fov in ns.natsorted(fovs):
-            compute_qc_metrics(
-                extracted_imgs_path=self.extracted_imgs_path,
-                fov_name=fov,
-                save_csv=self.qc_tma_metrics_dir,
+            # Gather the qc tma files for the current fov if they exist
+            pre_computed_metrics = filter(
+                lambda f: "combined" not in f,
+                io_utils.list_files(
+                    dir_name=self.metrics_dir,
+                    substrs=[f"{qc_suffix}.csv" for qc_suffix in self.qc_suffixes],
+                ),
             )
 
-        # Combine the qc metrics for all fovs per TMA
+            # only compute if any QC files are missing for the current fov
+            if len(list(pre_computed_metrics)) != len(self.qc_cols):
+                compute_qc_metrics(
+                    extracted_imgs_path=self.cohort_path,
+                    fov_name=fov,
+                    save_csv=self.metrics_dir,
+                )
+
+        # Generate the combined metrics for each FOV
         for qc_suffix in self.qc_suffixes:
-            metric_files: Generator[str] = (
-                mf
-                for mf in io_utils.list_files(self.qc_tma_metrics_dir, substrs=f"{qc_suffix}.csv")
-                if "combined" not in mf
+            metric_files = filter(
+                lambda f: "combined" not in f,
+                io_utils.list_files(
+                    dir_name=self.metrics_dir,
+                    substrs=f"{qc_suffix}.csv",
+                ),
             )
+
             # Define an aggregated metric DataFrame
-            combined_metric_df: pd.DataFrame = pd.concat(
-                (pd.read_csv(os.path.join(self.qc_tma_metrics_dir, mf)) for mf in metric_files),
-                ignore_index=True,
+            combined_metric_tissue_df: pd.DataFrame = pd.concat(
+                (pd.read_csv(os.path.join(self.metrics_dir, mf)) for mf in metric_files)
             )
-            # Extract the Row and Column
-            combined_metric_df[["row", "column"]] = combined_metric_df["fov"].apply(
-                lambda row: self._get_r_c(row)
-            )
-            combined_metric_df.to_csv(
-                os.path.join(self.qc_tma_metrics_dir, f"{tma}_combined_{qc_suffix}.csv"),
+
+            combined_metric_tissue_df.to_csv(
+                os.path.join(self.metrics_dir, f"{tma}_combined_{qc_suffix}.csv"),
                 index=False,
             )
 
@@ -658,7 +663,7 @@ class QCTMA:
 
 
         Args:
-            tmas (List[str]): The FOVs with the TMA in the folder name to gather.
+            tmas (List[str]): The FOVs withmetet the TMA in the folder name to gather.
             channel_exclude (List[str], optional): An optional list of channels to further filter
                 out. Defaults to None.
         """
@@ -693,16 +698,17 @@ class QCTMA:
 
         # Sort the loaded combined csv files based on the filtered `qc_suffixes`
         combined_metric_tmas: List[str] = ns.natsorted(
-            io_utils.list_files(self.qc_tma_metrics_dir, substrs=f"{tma}_combined"),
+            io_utils.list_files(self.metrics_dir, substrs=f"{tma}_combined"),
             key=lambda tma_mf: (i for i, qc_s in enumerate(self.qc_suffixes) if qc_s in tma_mf),
         )
 
         ranked_channels_matrix = []
 
         for cmt, qc_col in zip(combined_metric_tmas, self.qc_cols):
-            # Open and filter the default ignored channels
-            cmt_df: pd.DataFrame = pd.read_csv(os.path.join(self.qc_tma_metrics_dir, cmt))
-            cmt_df = _channel_filtering(cmt_df, channel_exclude=channel_exclude)
+            # Open and filter the default ignored channels, along with the user specified channels
+            cmt_df: pd.DataFrame = _channel_filtering(
+                df=pd.read_csv(os.path.join(self.metrics_dir, cmt)), channel_exclude=channel_exclude
+            )
 
             # Get matrix dimensions
             y_size: int = cmt_df["column"].max()
@@ -738,11 +744,11 @@ class QCTMA:
 @dataclass
 class QCBatchEffect:
     """
-    Computes QC metrics for a specified set of tissues and saves the tissue specific QC files
+    Computes QC metrics for a specified set of FOVs and saves the tissue specific QC files
     in the `qc_cohort_metrics_dir`.
 
     Args:
-        cohort_data_dir (Union[str,pathlib.Path]): The directory where the extracted images are
+        cohort_path (Union[str,pathlib.Path]): The directory where the extracted images are
         stored for a particular batch, or tissue of interest.
         qc_cohort_metrics_dir (Union[str, pathlib.Path]): The directory where to place the QC TMA
         metrics.
@@ -757,29 +763,34 @@ class QCBatchEffect:
         qc_suffixes (List[str]): A list of the QC suffixes, ordered w.r.t `qc_cols`.
     """
 
-    cohort_data_dir: Union[str, pathlib.Path]
-    qc_cohort_metrics_dir: Union[str, pathlib.Path]
     qc_metrics: Optional[List[str]]
+    cohort_path: Union[str, pathlib.Path]
+    metrics_dir: Union[str, pathlib.Path]
 
     # Fields initialized after `__post_init__`
     qc_cols: List[str] = field(init=False)
     qc_suffixes: List[str] = field(init=False)
-
-    # Set by functions
     qc_batch_metrics: Dict[Tuple[str, str], pd.DataFrame] = field(init=False)
 
     def __post_init__(self):
         # Input validation: Ensure that the paths exist
-        io_utils.validate_paths([self.cohort_data_dir, self.qc_cohort_metrics_dir])
+        io_utils.validate_paths([self.cohort_path, self.metrics_dir])
 
         self.qc_cols, self.qc_suffixes = qc_filtering(qc_metrics=self.qc_metrics)
 
         self.qc_batch_metrics = {}
 
-    def batch_effect_qc_metrics(self, tissues: List[str]) -> None:
+    def compute_batch_effect_qc_metrics(
+        self,
+        batch_name: str,
+        fovs: List[str],
+        channel_exclude: List[str] = None,
+        channel_include: List[str] = None,
+    ) -> None:
         """
-        Computes QC metrics for a specified set of tissues and saves the tissue specific QC files
-        in the `qc_cohort_metrics_dir`. Calculates the following metrics for the specified tissues,
+        Computes QC metrics for a specified set of FOVs (a "batch" of them) and
+        saves their QC files in the `qc_cohort_metrics_dir`. Calculates the
+        following metrics for the specified tissues,
         and the metrics for the invidual FOVs within that cohort:
 
                 - `"Non-zero mean intensity"`
@@ -787,146 +798,71 @@ class QCBatchEffect:
                 - `"99.9% intensity value"`
 
         Args:
-            tissues (List[str]): A list of tissues to find QC metrics for.
-
-        Raises:
-            ValueError: Errors if `tissues` is either None, or a list of size 0.
-        """
-        if tissues is None or not isinstance(tissues, list):
-            raise ValueError("The tissues must be specified as a list of strings")
-
-        with tqdm(
-            total=len(tissues),
-            desc="Computing QC Tissue Batch metrics",
-            unit="Tissues",
-        ) as pbar:
-            for tissue in tissues:
-                self._compute_batch_effect_qc_metrics(tissue)
-                pbar.set_postfix(Tissue=tissue)
-                pbar.update()
-
-    def _compute_batch_effect_qc_metrics(self, tissue: str) -> None:
-        """
-        Computes QC metrics for a specified set of tissues and saves the tissue specific QC files
-        in the `qc_cohort_metrics_dir`.
-
-        Args:
-            tissues (List[str]): A list of tissues to find QC metrics for.
-
-        Raises:
-            ValueError: Errors if `tissues` is either None, or a list of size 0.
-        """
-
-        samples = io_utils.list_folders(dir_name=self.cohort_data_dir, substrs=tissue)
-
-        # Compute the QC metrics for all unique samples that match with the user's tissue input.
-        for sample in ns.natsorted(samples):
-            compute_qc_metrics(
-                extracted_imgs_path=self.cohort_data_dir,
-                fov_name=sample,
-                save_csv=self.qc_cohort_metrics_dir,
-            )
-
-        # Combined metrics per the the samples of a tissue
-        for qc_suffix in self.qc_suffixes:
-            metric_files: Generator[str] = (
-                mf
-                for mf in io_utils.list_files(
-                    self.qc_cohort_metrics_dir,
-                    substrs=[f"{sample}_{qc_suffix}.csv" for sample in samples],
-                )
-                if "combined" not in mf
-            )
-
-            # Define an aggregated metric DataFrame
-            combined_metric_tissue_df: pd.DataFrame = pd.concat(
-                (pd.read_csv(os.path.join(self.qc_cohort_metrics_dir, mf)) for mf in metric_files)
-            )
-
-            combined_metric_tissue_df.to_csv(
-                os.path.join(self.qc_cohort_metrics_dir, f"{tissue}_combined_{qc_suffix}.csv"),
-                index=False,
-            )
-
-    def batch_effect_filtering(
-        self,
-        tissues: List[str],
-        channel_include: List[str] = None,
-        channel_exclude: List[str] = None,
-    ):
-        """
-        Filters the channels provided for a set of FOVs associated to a given Tissue.
-
-        Args:
-            tissues (List[str]): A list of tissues to filter channels.
+            batch_name (str): An identifier to name the batch of FOVs
+            fovs (List[str]): A list of tissues to find QC metrics for.
             channel_include (List[str], optional): A list of channels to include. Defaults to None.
             channel_exclude (List[str], optional): A list of channels to exclude. Defaults to None.
 
+
         Raises:
-            ValueError: Raised when the input is not a list.
+            ValueError: Errors if `tissues` is either None, or a list of size 0.
         """
-        if tissues is None or not isinstance(tissues, list):
-            raise ValueError("The tissues must be specified as a list of strings.")
+        if fovs is None or not isinstance(fovs, list):
+            raise ValueError("The tissues must be specified as a list of strings")
 
         with tqdm(
-            total=len(tissues),
-            desc="Filtering QC Tissue Batch metrics",
-            unit="Tissues",
+            total=len(fovs),
+            desc=f"Computing QC Batch metrics - {batch_name}",
+            unit="FOVs",
         ) as pbar:
-            for tissue in tissues:
-                self.qc_batch_metrics.update(
-                    self._batch_effect_filtering(
-                        tissue, channel_include=channel_include, channel_exclude=channel_exclude
-                    )
+            for fov in ns.natsorted(fovs):
+                # Gather the qc batch files for the current fov if they exist
+                pre_computed_metrics = filter(
+                    lambda f: "combined" not in f,
+                    io_utils.list_files(
+                        dir_name=self.metrics_dir,
+                        substrs=[f"{fov}_{qc_suffix}.csv" for qc_suffix in self.qc_suffixes],
+                    ),
                 )
-                pbar.set_postfix(Tissue=tissue)
+
+                if len(list(pre_computed_metrics)) != len(self.qc_cols):
+                    compute_qc_metrics(
+                        extracted_imgs_path=self.cohort_path,
+                        fov_name=fov,
+                        save_csv=self.metrics_dir,
+                    )
+                    pbar.set_postfix(FOV=fov, status="Computing")
+                else:
+                    pbar.set_postfix(FOV=fov, status="Already Computed")
                 pbar.update()
 
-    def _batch_effect_filtering(
-        self,
-        tissue: str,
-        channel_include: List[str] = None,
-        channel_exclude: List[str] = None,
-    ) -> Dict[Tuple[str, str], pd.DataFrame]:
-        """
-        Filters the batch effects data based on the included and excluded channels and tissues.
+        # Combine metrics for the set of FOVs into a single file per QC metric
+        for qc_col, qc_suffix in zip(self.qc_cols, self.qc_suffixes):
+            metric_files = filter(
+                lambda f: "combined" not in f,
+                io_utils.list_files(
+                    dir_name=self.metrics_dir,
+                    substrs=[f"{fov}_{qc_suffix}.csv" for fov in fovs],
+                ),
+            )
 
-        Args:
-            tissues (List[str]): A list of tissues to find QC metrics for.
-            channel_include (List[str], optional): An optional list of channels to include.
-                Defaults to None.
-            channel_exclude (List[str], optional): An optional list of channels to further filter
-                out. Defaults to None.
-
-        Returns:
-            Dict[Tuple[str, str], pd.DataFrame]: A dictonary where the keys are a tuple of the
-            tissue and the QC metric, while the value is the post filtered dataframe.
-        """
-        combined_batches: List[str] = ns.natsorted(
-            seq=io_utils.list_files(
-                self.qc_cohort_metrics_dir,
-                substrs=[f"{tissue}_combined_{qc_suffix}" for qc_suffix in self.qc_suffixes],
-            ),
-            key=lambda batch: (i for i, qc_s in enumerate(self.qc_suffixes) if qc_s in batch),
-        )
-
-        qc_batch_metrics: Dict[Tuple[str, str], pd.DataFrame] = {}
-
-        for batch, qc_col in zip(combined_batches, self.qc_cols):
-            # Load the csv and filter the default ignored channels
-            t_df = _channel_filtering(
-                df=pd.read_csv(
-                    os.path.join(self.qc_cohort_metrics_dir, batch),
-                    dtype={"fov": str, "channel": str, qc_col: np.float64},
+            # Define an aggregated metric DataFrame, and filter channels
+            combined_batch_df: pd.DataFrame = _channel_filtering(
+                df=pd.concat(
+                    (pd.read_csv(os.path.join(self.metrics_dir, mf)) for mf in metric_files),
                 ),
                 channel_include=channel_include,
                 channel_exclude=channel_exclude,
             )
-            qc_batch_metrics[tissue, qc_col] = t_df
 
-        return qc_batch_metrics
+            self.qc_batch_metrics.update({(batch_name, qc_col): combined_batch_df})
 
-    def transformed_batch_effects_data(self, tissue: str, metric: str) -> pd.DataFrame:
+            combined_batch_df.to_csv(
+                os.path.join(self.metrics_dir, f"{batch_name}_combined_{qc_suffix}.csv"),
+                index=False,
+            )
+
+    def transformed_batch_effects_data(self, batch_name: str, qc_metric: str) -> pd.DataFrame:
         """
         Creates a transformed DataFrame for the batch effects data, normalizing by the mean,
         then taking the `log2` of each value.
@@ -938,18 +874,26 @@ class QCBatchEffect:
         Returns:
             pd.DataFrame: The transformed batch effects data.
         """
+        misc_utils.verify_in_list(user_metric=qc_metric, qc_metrics=self.qc_cols)
 
-        misc_utils.verify_in_list(user_metric=metric, qc_metrics=self.qc_cols)
-        misc_utils.verify_in_list(
-            user_tissue=tissue, tissues=[k[0] for k in self.qc_batch_metrics.keys()]
-        )
+        try:
+            df: pd.DataFrame = self.qc_batch_metrics[batch_name, qc_metric]
+        except KeyError:
+            # A batch Effect which isn't stored in the qc_batch_metrics dictionary, try to load it
+            # in if it exists as a file
+            df: pd.DataFrame = pd.read_csv(
+                os.path.join(
+                    self.metrics_dir,
+                    f"{batch_name}_combined_{self.qc_suffixes[self.qc_cols.index(qc_metric)]}.csv",
+                )
+            )
+        except FileNotFoundError as e:
+            raise FileNotFoundError(f"QC Metric Not Found for batch {batch_name}") from e
 
         # Apply a log2 transformation to the mean normalized data.
-        log2_norm_df: pd.DataFrame = (
-            self.qc_batch_metrics[tissue, metric]
-            .pivot(index="channel", columns="fov", values=metric)
-            .transform(func=lambda row: np.log2(row / row.mean()), axis=1)
-        )
+        log2_norm_df: pd.DataFrame = df.pivot(
+            index="channel", columns="fov", values=qc_metric
+        ).transform(func=lambda row: np.log2(row / row.mean()), axis=1)
 
         mean_log2_norm_df: pd.DataFrame = (
             log2_norm_df.mean(axis=0)

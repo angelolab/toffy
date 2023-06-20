@@ -271,7 +271,7 @@ class QCMetricData:
     fovs: List[str]
     channels: List[str]
     qc_df: pd.DataFrame
-    tma_extraced_img_dir: pathlib.Path
+    cohort_path: pathlib.Path
     qc_metrics_dir: pathlib.Path
     qc_metrics: List[str]
 
@@ -306,15 +306,15 @@ def qc_tmas(
     fovs: List[str] = [f"Project_TMA1_R{tma[0]}C{tma[1]}" for tma in tma_n_m]
 
     # Create the directory containing extracted images for a tma
-    extraced_img_dir: Path = tmp_path / "tma"
-    extraced_img_dir.mkdir(parents=True, exist_ok=True)
+    cohort_path: Path = tmp_path / "tma"
+    cohort_path.mkdir(parents=True, exist_ok=True)
 
     # Create the directory containing the QC metrics data
     qc_metrics_dir: Path = tmp_path / "qc_metrics"
     qc_metrics_dir.mkdir(parents=True, exist_ok=True)
 
     _ = test_utils.create_paired_xarray_fovs(
-        base_dir=extraced_img_dir,
+        base_dir=cohort_path,
         fov_names=fovs,
         channel_names=chan_names,
         img_shape=(20, 20),
@@ -346,7 +346,7 @@ def qc_tmas(
         fovs=fovs,
         channels=chan_names,
         qc_df=qc_df,
-        tma_extraced_img_dir=extraced_img_dir,
+        cohort_path=cohort_path,
         qc_metrics_dir=qc_metrics_dir,
         qc_metrics=settings.QC_COLUMNS,
     )
@@ -416,9 +416,9 @@ class TestQCTMA:
         self.qc_tmas_fixture = qc_tmas
 
         self.qc_tma = qc_comp.QCTMA(
-            extracted_imgs_path=qc_tmas.tma_extraced_img_dir,
-            qc_tma_metrics_dir=qc_tmas.qc_metrics_dir,
             qc_metrics=qc_tmas.qc_metrics,
+            cohort_path=qc_tmas.cohort_path,
+            metrics_dir=qc_tmas.qc_metrics_dir,
         )
 
     def test__post_init__(self) -> None:
@@ -440,8 +440,8 @@ class TestQCTMA:
         assert set(result["R"]) == set(self.qc_tmas_fixture.tma_n_m[:, 0])
         assert set(result["C"]) == set(self.qc_tmas_fixture.tma_n_m[:, 1])
 
-    def test_qc_tma_metrics(self) -> None:
-        self.qc_tma.qc_tma_metrics(tmas=[self.qc_tmas_fixture.tma_name])
+    def test_compute_qc_tma_metrics(self) -> None:
+        self.qc_tma.compute_qc_tma_metrics(tmas=[self.qc_tmas_fixture.tma_name])
 
         for ms in settings.QC_SUFFIXES:
             all_metric_files: str = io_utils.list_files(
@@ -513,8 +513,8 @@ class BatchEffectMetricData:
 
     qc_metrics: List[str]
     qc_df: pd.DataFrame
-    tissues: List[str]
-    cohort_data_dir: pathlib.Path
+    fovs: List[str]
+    cohort_img_dir: pathlib.Path
     cohort_metrics_dir: pathlib.Path
 
 
@@ -526,49 +526,54 @@ def cohort_data(
     A fixture for generating cohort fovs, and channels for various tissues.
 
     Args:
+        rng (np.random.Generator): The random number generator in `conftest.py`.
         tmp_path (Path): A temporary directory to write files for testing.
 
     Yields:
         Generator[BatchEffectMetricData, None, None]: Yields a dataclass containing
         the testing data: qc_metrics, qc dataframe, tissues, and cohort data_directory.
     """
-    cohort_dir: Path = tmp_path / "my_cohort"
-    cohort_data_dir: Path = cohort_dir / "images"
-    cohort_metrics_dir: Path = cohort_dir / "cohort_metrics"
 
-    for directory in [cohort_dir, cohort_data_dir, cohort_metrics_dir]:
+    # Set up Directories for the cohort data
+    cohort_dir: Path = tmp_path / "my_cohort"
+    cohort_img_dir: Path = cohort_dir / "images"
+    cohort_metrics_dir: Path = cohort_dir / "metrics"
+
+    for directory in [cohort_dir, cohort_img_dir, cohort_metrics_dir]:
         directory.mkdir(parents=True, exist_ok=True)
 
+    # Set up the testing data fovs
     channel_count: int = 5
     fov_count: int = 3
-    tissue_count: int = 3
-    tissues: List[str] = [f"tissue{i}" for i in range(tissue_count)]
+
     fov_names, chan_names = test_utils.gen_fov_chan_names(
         num_fovs=fov_count, num_chans=channel_count
     )
 
+    # Add the default channels to ignore
     chan_names.extend(settings.QC_CHANNEL_IGNORE)
-    fov_names: List[str] = [
-        f"{fov}_{tissue}" for fov, tissue in itertools.product(fov_names, tissues)
-    ]
 
     _ = test_utils.create_paired_xarray_fovs(
-        base_dir=cohort_data_dir, fov_names=fov_names, channel_names=chan_names, img_shape=(20, 20)
+        base_dir=cohort_img_dir, fov_names=fov_names, channel_names=chan_names, img_shape=(20, 20)
     )
+
+    batch_names = ["batch0", "batch1", "batch2", "batch3"]
 
     qc_df: pd.DataFrame = pd.DataFrame(
         data={
-            "fov": tissues * len(chan_names),
+            "fov": fov_names * (channel_count + len(settings.QC_CHANNEL_IGNORE)),
             "channel": chan_names * fov_count,
             **{
-                qc_col: rng.random(size=(fov_count * len(chan_names)))
+                qc_col: rng.random(
+                    size=(fov_count * (channel_count + len(settings.QC_CHANNEL_IGNORE)))
+                )
                 for qc_col in settings.QC_COLUMNS
             },
         }
     )
 
-    for tissue, (qc_col, qc_suffix) in itertools.product(
-        tissues, zip(settings.QC_COLUMNS, settings.QC_SUFFIXES)
+    for batch_name, (qc_col, qc_suffix) in itertools.product(
+        batch_names, zip(settings.QC_COLUMNS, settings.QC_SUFFIXES)
     ):
         qc_df[
             [
@@ -576,13 +581,13 @@ def cohort_data(
                 "channel",
                 qc_col,
             ]
-        ].to_csv(cohort_metrics_dir / f"{tissue}_combined_{qc_suffix}.csv", index=False)
+        ].to_csv(cohort_metrics_dir / f"{batch_name}_combined_{qc_suffix}.csv", index=False)
 
     yield BatchEffectMetricData(
         qc_metrics=settings.QC_COLUMNS,
         qc_df=qc_df,
-        tissues=tissues,
-        cohort_data_dir=cohort_data_dir,
+        fovs=fov_names,
+        cohort_img_dir=cohort_img_dir,
         cohort_metrics_dir=cohort_metrics_dir,
     )
 
@@ -590,13 +595,12 @@ def cohort_data(
 class TestQCBatchEffect:
     @pytest.fixture(autouse=True)
     def _setup(self, cohort_data: BatchEffectMetricData) -> None:
-        self.cohort_data_dir = cohort_data.cohort_data_dir
-        self.cohort_qc_metrics_dir = cohort_data.cohort_metrics_dir
+        self.cohort_data: BatchEffectMetricData = cohort_data
 
         self.qc_batch_effect = qc_comp.QCBatchEffect(
-            cohort_data_dir=self.cohort_data_dir,
-            qc_cohort_metrics_dir=self.cohort_qc_metrics_dir,
             qc_metrics=settings.QC_COLUMNS,
+            cohort_path=self.cohort_data.cohort_img_dir,
+            metrics_dir=self.cohort_data.cohort_metrics_dir,
         )
 
     def test__post_init__(self) -> None:
@@ -605,36 +609,37 @@ class TestQCBatchEffect:
 
         assert self.qc_batch_effect.qc_batch_metrics == {}
 
-    @parametrize("_tissues", [(["tissue"]), (["tissue0"]), (["tissue0", "tissue1", "tissue2"])])
-    def test_batch_effect_qc_metrics(self, _tissues) -> None:
-        self.qc_batch_effect.batch_effect_qc_metrics(
-            tissues=_tissues,
-        )
-
-        for tissue, qc_suffix in itertools.product(_tissues, settings.QC_SUFFIXES):
-            assert os.path.exists(
-                self.qc_batch_effect.qc_cohort_metrics_dir / f"{tissue}_combined_{qc_suffix}.csv"
-            )
-
     @parametrize(
-        "_channel_include,_channel_exclude,_tissues",
+        "_batch_name,_channel_include,_channel_exclude",
         [
-            (None, None, ["tissue0"]),
-            (None, ["chan0"], ["tissue0", "tissue1"]),
-            (["chan0"], None, ["tissue0", "tissue1", "tissue2"]),
-            (None, ["chan0", "chan1"], ["tissue0"]),
-            pytest.param(["chan0"], ["chan0"], ["tissue0"], marks=pytest.mark.xfail),
+            ("batch0", None, None),
+            ("batch1", ["chan0"], None),
+            ("batch2", None, ["chan0", "chan1"]),
+            pytest.param("batch3", ["chan0"], ["chan0"], marks=pytest.mark.xfail),
+            pytest.param(None, None, None, marks=pytest.mark.xfail),
         ],
     )
-    def test_batch_effect_filtering(self, _channel_include, _channel_exclude, _tissues) -> None:
-        self.qc_batch_effect.batch_effect_filtering(
-            tissues=_tissues, channel_include=_channel_include, channel_exclude=_channel_exclude
+    def test_compute_batch_effect_qc_metrics(
+        self,
+        _batch_name,
+        _channel_include,
+        _channel_exclude,
+    ) -> None:
+        self.qc_batch_effect.compute_batch_effect_qc_metrics(
+            batch_name=_batch_name,
+            fovs=self.cohort_data.fovs,
+            channel_exclude=_channel_exclude,
+            channel_include=_channel_include,
         )
 
-        for tissue, qc_col in itertools.product(_tissues, settings.QC_COLUMNS):
-            qc_df = self.qc_batch_effect.qc_batch_metrics[tissue, qc_col]
-            # Assert that the default excluded channels: Au, Fe, Na, Ta, Noodle
-            # are not in the dataframe
+        for qc_suffix in settings.QC_SUFFIXES:
+            assert os.path.exists(
+                self.qc_batch_effect.metrics_dir / f"{_batch_name}_combined_{qc_suffix}.csv"
+            )
+
+            qc_df = pd.read_csv(
+                self.qc_batch_effect.metrics_dir / f"{_batch_name}_combined_{qc_suffix}.csv"
+            )
             assert set(qc_df["channel"]).isdisjoint(set(settings.QC_CHANNEL_IGNORE))
 
             # Assert that the excluded channels are removed from the dataframe
@@ -648,20 +653,32 @@ class TestQCBatchEffect:
             )
 
     @parametrize(
-        "_metric,_tissue",
+        "_batch_name,_metric",
         [
-            (settings.QC_COLUMNS[0], "tissue0"),
-            (settings.QC_COLUMNS[1], "tissue1"),
-            (settings.QC_COLUMNS[2], "tissue2"),
+            ("batch0", settings.QC_COLUMNS[0]),
+            ("batch1", settings.QC_COLUMNS[1]),
+            ("batch2", settings.QC_COLUMNS[2]),
+            (
+                "batch3",
+                settings.QC_COLUMNS[0],
+            ),  # Test reading from a file if the metric has been already computed
         ],
     )
-    def test_transformed_batch_effects_data(self, _metric, _tissue) -> None:
-        self.qc_batch_effect.batch_effect_filtering(
-            tissues=[_tissue], channel_include=None, channel_exclude=None
+    def test_transformed_batch_effects_data(self, _batch_name, _metric) -> None:
+        self.qc_batch_effect.compute_batch_effect_qc_metrics(
+            batch_name=_batch_name,
+            fovs=self.cohort_data.fovs,
+            channel_exclude=None,
+            channel_include=None,
         )
 
         transformed_df = self.qc_batch_effect.transformed_batch_effects_data(
-            metric=_metric, tissue=_tissue
+            batch_name=_batch_name, qc_metric=_metric
         )
+        # self.cohort_data.qc_df
 
-        assert transformed_df.shape == (6, 3)
+        # All FOVs exist
+        assert set(transformed_df.axes[1]) == set(self.cohort_data.qc_df["fov"])
+
+        # Ignored channels are not in the dataframe
+        assert set(transformed_df.axes[0]).isdisjoint(set(settings.QC_CHANNEL_IGNORE))

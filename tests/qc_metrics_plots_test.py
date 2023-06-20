@@ -94,12 +94,12 @@ def qc_tma_data(qc_tmas: QCMetricData) -> Generator[Callable, None, None]:
         channel_exclude: List[str] = None,
     ) -> QCTMA:
         qc_tmas_data = QCTMA(
-            extracted_imgs_path=qc_tmas.tma_extraced_img_dir,
-            qc_tma_metrics_dir=qc_tmas.qc_metrics_dir,
             qc_metrics=qc_tmas.qc_metrics,
+            cohort_path=qc_tmas.cohort_path,
+            metrics_dir=qc_tmas.qc_metrics_dir,
         )
 
-        qc_tmas_data.qc_tma_metrics(tmas=tmas)
+        qc_tmas_data.compute_qc_tma_metrics(tmas=tmas)
         qc_tmas_data.qc_tma_metrics_rank(tmas=tmas, channel_exclude=channel_exclude)
 
         return qc_tmas_data
@@ -117,7 +117,7 @@ def qc_tma_data(qc_tmas: QCMetricData) -> Generator[Callable, None, None]:
 def test_qc_tmas_metrics_plot(
     qc_tma_data: QCTMA, _tmas: List[str], _channel_exclude: List[str]
 ) -> None:
-    qc_tma: QCTMA = qc_tma_data(_tmas, _channel_exclude)
+    qc_tma: QCTMA = qc_tma_data(tmas=_tmas, channel_exclude=_channel_exclude)
 
     qc_metrics_plots.qc_tmas_metrics_plot(qc_tmas=qc_tma, tmas=_tmas, dpi=30, save_figure=True)
 
@@ -127,7 +127,7 @@ def test_qc_tmas_metrics_plot(
 
     # Assert the existance of the batch effect figures
     for fig in total_figures:
-        assert os.path.exists(qc_tma.qc_tma_metrics_dir / "figures" / fig)
+        assert os.path.exists(qc_tma.metrics_dir / "figures" / fig)
 
 
 @pytest.fixture(scope="function")
@@ -165,41 +165,6 @@ def batch_effect_qc_data(cohort_data: BatchEffectMetricData) -> Generator[Callab
         return qc_batch_effects
 
     yield _compute_qc_batch_effects
-
-
-@pytest.mark.parametrize(
-    "_tissues,_channel_include,_channel_exclude",
-    [
-        (["tissue"], ["chan0"], ["chan1"]),
-        (["tissue0", "tissue1", "tissue2"], ["chan0", "chan1"], None),
-        (["tissue0"], ["chan0"], ["chan1", "chan2"]),
-    ],
-)
-def test_qc_batch_effect_violin(
-    batch_effect_qc_data: Callable,
-    _tissues: List[str],
-    _channel_include: Optional[List[str]],
-    _channel_exclude: Optional[List[str]],
-) -> None:
-    _save_figure: bool = True
-
-    qc_batch: QCBatchEffect = batch_effect_qc_data(_tissues, _channel_include, _channel_exclude)
-
-    qc_metrics_plots.qc_batch_effect_violin(
-        qc_batch=qc_batch,
-        tissues=_tissues,
-        save_figure=_save_figure,
-        dpi=30,
-    )
-
-    total_figures: List[str] = [
-        f"{tissue}_violin_{qc}.png"
-        for tissue, qc in itertools.product(_tissues, qc_batch.qc_suffixes)
-    ]
-
-    # Assert the existance of the batch effect figures
-    for fig in total_figures:
-        assert os.path.exists(qc_batch.qc_cohort_metrics_dir / "figures" / fig)
 
 
 @pytest.mark.parametrize(
