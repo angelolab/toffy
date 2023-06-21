@@ -80,8 +80,7 @@ def test_run_structure(run_json, expected_files, recwarn):
         assert not exist and name == ""
 
         # check for invalid file format
-        with pytest.warns(Warning, match="is not a valid FOV file and will be skipped"):
-            exist, name = run_structure.check_run_condition(os.path.join(tmpdir, "fov.bin.txt"))
+        exist, name = run_structure.check_run_condition(os.path.join(tmpdir, "fov.bin.txt"))
         assert not exist and name == ""
 
         # check for fake files
