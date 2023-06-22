@@ -227,6 +227,23 @@ class FOV_EventHandler(FileSystemEventHandler):
             # edge case if the last FOV gets written during the preprocessing stage
             self._check_last_fov(root)
 
+    def _check_fov_status(self, path: str):
+        try:
+            fov_ready, point_name = self.run_structure.check_run_condition(path)
+            return fov_ready, point_name
+        except TimeoutError as timeout_error:
+            print(f"Encountered TimeoutError error: {timeout_error}")
+            logf = open(self.log_path, "a")
+            logf.write(
+                f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
+                f"{path} never reached non-zero file size...\n"
+            )
+            self.check_complete()
+
+            # because timed out FOVs are marked as complete, update last_fov_num_processed
+            self.last_fov_num_processed += 1
+            return None, None
+
     def _generate_callback_data(self, point_name: str):
         print(f"Discovered {point_name}, beginning per-fov callbacks...")
         logf = open(self.log_path, "a")
@@ -301,7 +318,15 @@ class FOV_EventHandler(FileSystemEventHandler):
                 self._generate_callback_data(fov_name)
                 self.last_fov_num_processed += 1
 
-            # explicitly call check_complete, since the run callbacks now need to process
+            # need to handle case if the last FOV is awaiting a JSON file
+            # NOTE: will always return or timeout since we explicitly check for existence earlier
+            fov_ready, point_name = self._check_fov_status(path)
+
+            # generate the last FOV data if it doesn't timeout
+            if fov_ready:
+                self._generate_callback_data(point_name)
+
+            # explicitly call check_complete to start run callbacks, since all FOVs are done
             self.check_complete()
 
     def _run_callbacks(self, event: Union[DirCreatedEvent, FileCreatedEvent, FileMovedEvent]):
@@ -314,20 +339,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         self._process_missed_fovs(file_trigger)
 
         # check if what's created is in the run structure
-        try:
-            fov_ready, point_name = self.run_structure.check_run_condition(file_trigger)
-        except TimeoutError as timeout_error:
-            print(f"Encountered TimeoutError error: {timeout_error}")
-            logf = open(self.log_path, "a")
-            logf.write(
-                f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
-                f"{event.src_path} never reached non-zero file size...\n"
-            )
-            self.check_complete()
-
-            # because timed out FOVs are marked as complete, update last_fov_num_processed
-            self.last_fov_num_processed += 1
-            return
+        fov_ready, point_name = self._check_fov_status(file_trigger)
 
         if fov_ready:
             self._generate_callback_data(point_name)
