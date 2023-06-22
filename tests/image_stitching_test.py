@@ -144,7 +144,7 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
     ]
     fov_num = 4
     if nontiled_fov:
-        fov_num = 5
+        fov_num = 6
     fov_list = [f"fov-{i}-scan-1" for i in range(1, fov_num + 1)]
 
     with tempfile.TemporaryDirectory() as tmpdir:
@@ -181,14 +181,14 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
             for i, tile in enumerate(tile_names):
                 save_dir = os.path.join(tmpdir, stitched_dir, tile[:-1])
                 assert sorted(io_utils.list_files(save_dir)) == sorted(stitched_tifs)
-                data = load_utils.load_imgs_from_dir(save_dir, files=["Au_stitched.tiff"])
+                tiled_data = load_utils.load_imgs_from_dir(save_dir, files=["Au_stitched.tiff"])
                 if i == 0:
-                    assert data.shape == (1, 20, 30, 1)
+                    assert tiled_data.shape == (1, 20, 30, 1)
                 else:
-                    assert data.shape == (1, 20, 20, 1)
+                    assert tiled_data.shape == (1, 20, 20, 1)
 
                 _, expected_fovs, num_rows, num_cols = expected_tiles[i]
-                # data_trim = data[0, ..., ..., 0].values
+
                 base_data = load_utils.load_tiled_img_data(
                     tmpdir,
                     {fov: folders_dict[fov] for fov in expected_fovs if fov in folders_dict.keys()},
@@ -197,8 +197,15 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
                     single_dir=False,
                     img_sub_folder=subdir,
                 )
-                _tiled_image_check(data, base_data, num_rows, num_cols)
-        # max img size 10 with 4 or 5 acquired fovs
+                _tiled_image_check(tiled_data, base_data, num_rows, num_cols)
+            # check for tma stitched files
+            if nontiled_fov:
+                save_dir = os.path.join(tmpdir, stitched_dir, "TMA")
+                assert sorted(io_utils.list_files(save_dir)) == sorted(stitched_tifs)
+                tma_data = load_utils.load_imgs_from_dir(save_dir, files=["Au_stitched.tiff"])
+                assert tma_data.shape == (1, 20, 10, 1)
+
+        # max img size 10 with 4 or 6 acquired fovs
         else:
             save_dir = os.path.join(tmpdir, stitched_dir)
             assert sorted(io_utils.list_files(save_dir)) == sorted(stitched_tifs)

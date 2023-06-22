@@ -35,7 +35,8 @@ def make_run_file(tmp_dir, prefixes=[], include_nontiled=False):
         f"{prefix2}R2C2": 8,
     }
     if include_nontiled:
-        fov_data["nontiled"] = 8
+        fov_data["nontiled_1"] = 8
+        fov_data["nontiled_2"] = 8
 
     run_data = []
     for i, fov in enumerate(fov_data.keys()):
