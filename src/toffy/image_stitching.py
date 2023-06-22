@@ -150,6 +150,7 @@ def stitch_images(
         )
 
     # get load and stitching args
+    tma_folders = None
     if tiled:
         # returns a dict with keys RnCm and values og folder names
         tiled_folders_dict = get_tiled_names(folders, run_dir)
