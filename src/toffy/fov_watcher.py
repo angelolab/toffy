@@ -282,8 +282,8 @@ class FOV_EventHandler(FileSystemEventHandler):
         bin_dir = str(Path(path).parents[0])
         start_index = self.last_fov_num_processed + 1 if self.last_fov_num_processed else 1
         for i in np.arange(start_index, fov_num):
-            fov_file = f"fov-{i}-scan-1.bin"
-            self._generate_callback_data(os.path.join(bin_dir, fov_file))
+            fov_name = f"fov-{i}-scan-1"
+            self._generate_callback_data(fov_name)
             self.last_fov_num_processed += 1
 
     def _check_last_fov(self, path: str):
@@ -297,8 +297,8 @@ class FOV_EventHandler(FileSystemEventHandler):
         if not last_fov_is_processed and os.path.exists(os.path.join(bin_dir, last_fov)):
             start_index = self.last_fov_num_processed + 1 if self.last_fov_num_processed else 1
             for i in np.arange(start_index, self.run_structure.highest_fov):
-                fov_file = f"fov-{i}-scan-1.bin"
-                self._generate_callback_data(os.path.join(bin_dir, fov_file))
+                fov_name = f"fov-{i}-scan-1"
+                self._generate_callback_data(fov_name)
                 self.last_fov_num_processed += 1
 
             # explicitly call check_complete, since the run callbacks now need to process
