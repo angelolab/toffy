@@ -152,16 +152,14 @@ def stitch_images(
     # get load and stitching args
     if tiled:
         # returns a dict with keys RnCm and values og folder names
-        folders_dict = get_tiled_names(folders, run_dir)
+        tiled_folders_dict = get_tiled_names(folders, run_dir)
+        tma_folders = ns.natsorted(list(set(folders).difference(set(tiled_folders_dict.values()))))
         try:
             expected_tiles = load_utils.get_tiled_fov_names(
-                list(folders_dict.keys()), return_dims=True
+                list(tiled_folders_dict.keys()), return_dims=True
             )
         except AttributeError:
             raise ValueError(f"FOV names found in the run file were not in tiled (RnCm) format.")
-    else:
-        num_cols = math.isqrt(len(folders))
-        max_img_size = get_max_img_size(tiff_out_dir, img_sub_folder, run_dir)
 
     # make stitched subdir
     os.makedirs(stitched_dir)
@@ -175,7 +173,9 @@ def stitch_images(
                     prefix = "unnamed_tile"
                 # subset the folders_dict for fovs found in the current tile
                 tile_dict = {
-                    fov: folders_dict[fov] for fov in expected_fovs if fov in folders_dict.keys()
+                    fov: tiled_folders_dict[fov]
+                    for fov in expected_fovs
+                    if fov in tiled_folders_dict.keys()
                 }
 
                 # save to individual tile subdirs
@@ -196,7 +196,17 @@ def stitch_images(
                 current_img = stitched.loc["stitched_image", :, :, chan].values / scale
                 image_utils.save_image(fname, current_img)
 
-        else:
+        if tma_folders or not tiled:
+            # save to individual tma subdir
+            if tma_folders:
+                folders = tma_folders
+                stitched_dir = os.path.join(stitched_dir, "TMA")
+                if not os.path.exists(stitched_dir):
+                    os.makedirs(stitched_dir)
+
+            num_cols = math.isqrt(len(folders))
+            max_img_size = get_max_img_size(tiff_out_dir, img_sub_folder, run_dir)
+
             image_data = load_utils.load_imgs_from_tree(
                 tiff_out_dir,
                 img_sub_folder=img_sub_folder,
