@@ -201,9 +201,11 @@ def stitch_images(
             # save to individual tma subdir
             if tma_folders:
                 folders = tma_folders
-                stitched_dir = os.path.join(stitched_dir, "TMA")
-                if not os.path.exists(stitched_dir):
-                    os.makedirs(stitched_dir)
+                stitched_subdir = os.path.join(stitched_dir, "TMA")
+                if not os.path.exists(stitched_subdir):
+                    os.makedirs(stitched_subdir)
+            else:
+                stitched_subdir = stitched_dir
 
             num_cols = math.isqrt(len(folders))
             max_img_size = get_max_img_size(tiff_out_dir, img_sub_folder, run_dir)
@@ -215,7 +217,7 @@ def stitch_images(
                 channels=[chan],
                 max_image_size=max_img_size,
             )
-            fname = os.path.join(stitched_dir, chan + "_stitched.tiff")
+            fname = os.path.join(stitched_subdir, chan + "_stitched.tiff")
             stitched = data_utils.stitch_images(image_data, num_cols)
             current_img = stitched.loc["stitched_image", :, :, chan].values / scale
             image_utils.save_image(fname, current_img)
