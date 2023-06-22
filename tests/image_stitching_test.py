@@ -143,7 +143,11 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
         "CD11c_stitched.tiff",
     ]
     # ignore moly fov in run file
-    fov_list = ["fov-1-scan-1", "fov-2-scan-1", "fov-4-scan-1"]
+    fov_list = (
+        ["fov-1-scan-1", "fov-2-scan-1", "fov-4-scan-1", "fov-5-scan-1", "fov-6-scan-1"]
+        if nontiled_fov
+        else ["fov-1-scan-1", "fov-2-scan-1", "fov-4-scan-1"]
+    )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         run_name = os.path.basename(tmpdir)
