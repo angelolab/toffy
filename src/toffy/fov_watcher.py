@@ -224,8 +224,8 @@ class FOV_EventHandler(FileSystemEventHandler):
                 # NOTE: don't call with check_last_fov to prevent duplicate processing
                 self.on_created(FileCreatedEvent(os.path.join(root, name)), check_last_fov=False)
 
-            # edge case if the last FOV gets written during the preprocessing stage
-            self._check_last_fov(root)
+        # edge case if the last FOV gets written during the preprocessing stage
+        self._check_last_fov(root)
 
     def _check_fov_status(self, path: str):
         try:
