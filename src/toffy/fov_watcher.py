@@ -266,6 +266,9 @@ class FOV_EventHandler(FileSystemEventHandler):
 
             self.inter_return_vals = self.inter_func(self.run_folder)
 
+        # update last_fov_num_processed
+        self.last_fov_num_processed += 1
+
         logf.close()
         self.check_complete()
 
@@ -295,7 +298,6 @@ class FOV_EventHandler(FileSystemEventHandler):
         for i in np.arange(start_index, fov_num):
             fov_name = f"fov-{i}-scan-1"
             self._generate_callback_data(fov_name)
-            self.last_fov_num_processed += 1
 
     def _check_last_fov(self, path: str):
         # define the name of the last FOV
@@ -310,7 +312,6 @@ class FOV_EventHandler(FileSystemEventHandler):
             for i in np.arange(start_index, self.run_structure.highest_fov):
                 fov_name = f"fov-{i}-scan-1"
                 self._generate_callback_data(fov_name)
-                self.last_fov_num_processed += 1
 
             # need to handle case if the last FOV is awaiting a JSON file
             # NOTE: will always return or timeout since we explicitly check for existence earlier
@@ -337,9 +338,6 @@ class FOV_EventHandler(FileSystemEventHandler):
 
         if fov_ready:
             self._generate_callback_data(point_name)
-
-            # update last_fov_num_processed
-            self.last_fov_num_processed += 1
 
     def on_created(self, event: FileCreatedEvent, check_last_fov: bool = True):
         """Handles file creation events
