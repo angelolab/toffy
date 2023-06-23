@@ -297,7 +297,8 @@ class FOV_EventHandler(FileSystemEventHandler):
         start_index = self.last_fov_num_processed + 1 if self.last_fov_num_processed else 1
         for i in np.arange(start_index, fov_num):
             fov_name = f"fov-{i}-scan-1"
-            self._generate_callback_data(fov_name)
+            if fov_name not in self.run_structure.moly_points:
+                self._generate_callback_data(fov_name)
 
     def _check_last_fov(self, path: str):
         # define the name of the last FOV
@@ -311,7 +312,8 @@ class FOV_EventHandler(FileSystemEventHandler):
             start_index = self.last_fov_num_processed + 1 if self.last_fov_num_processed else 1
             for i in np.arange(start_index, self.run_structure.highest_fov):
                 fov_name = f"fov-{i}-scan-1"
-                self._generate_callback_data(fov_name)
+                if fov_name not in self.run_structure.moly_points:
+                    self._generate_callback_data(fov_name)
 
             # need to handle case if the last FOV is awaiting a JSON file
             # NOTE: will always return or timeout since we explicitly check for existence earlier
