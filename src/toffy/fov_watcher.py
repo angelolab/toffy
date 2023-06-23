@@ -314,7 +314,7 @@ class FOV_EventHandler(FileSystemEventHandler):
 
             # need to handle case if the last FOV is awaiting a JSON file
             # NOTE: will always return or timeout since we explicitly check for existence earlier
-            fov_ready, point_name = self._check_fov_status(path)
+            fov_ready, point_name = self._check_fov_status(os.path.join(bin_dir, last_fov))
 
             # generate the last FOV data if it doesn't timeout
             if fov_ready:
