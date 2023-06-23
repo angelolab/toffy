@@ -70,7 +70,7 @@ def _slow_copy_sample_tissue_data(
 
 COMBINED_RUN_JSON_SPOOF = {
     "fovs": [
-        {"runOrder": 1, "scanCount": 2, "frameSizePixels": {"width": 32, "height": 32}},
+        {"runOrder": 1, "scanCount": 1, "frameSizePixels": {"width": 32, "height": 32}},
         {"runOrder": 2, "scanCount": 1, "frameSizePixels": {"width": 32, "height": 32}},
         {
             "runOrder": 3,
@@ -78,6 +78,7 @@ COMBINED_RUN_JSON_SPOOF = {
             "frameSizePixels": {"width": 32, "height": 32},
             "standardTarget": "Molybdenum Foil",
         },
+        {"runOrder": 4, "scanCount": 1, "frameSizePixels": {"width": 32, "height": 32}},
     ],
 }
 
@@ -113,9 +114,19 @@ def test_run_structure(run_json, expected_files, recwarn):
 @patch("toffy.watcher_callbacks.visualize_mph", side_effect=mock_visualize_mph)
 @pytest.mark.parametrize("add_blank", [False, True])
 @pytest.mark.parametrize("temp_bin", [False, True])
+@pytest.mark.parametrize("completion_check_time", [4, 8, 12])
 @parametrize_with_cases("run_cbs, int_cbs, fov_cbs, kwargs, validators", cases=WatcherCases)
 def test_watcher(
-    mock_viz_qc, mock_viz_mph, run_cbs, int_cbs, fov_cbs, kwargs, validators, add_blank, temp_bin
+    mock_viz_qc,
+    mock_viz_mph,
+    run_cbs,
+    int_cbs,
+    fov_cbs,
+    kwargs,
+    validators,
+    add_blank,
+    temp_bin,
+    completion_check_time,
 ):
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -164,7 +175,7 @@ def test_watcher(
                         fov_callback,
                         run_callback,
                         intermediate_callback,
-                        1,
+                        completion_check_time,
                         SLOW_COPY_INTERVAL_S,
                     ),
                 )
@@ -181,10 +192,10 @@ def test_watcher(
             ]
 
             # callbacks are not performed on moly points, remove fov-3-scan-1
-            bad_fovs = [fovs[-1]]
-            fovs = fovs[:-1]
+            bad_fovs = [fovs[-2]]
+            fovs = fovs[:-2] + [fovs[-1]]
 
-            # callbacks are not performed for skipped fovs, remove blank fov
+            # callbacks are not performed for skipped fovs, remove blank fov (fov-1-scan-1)
             if add_blank:
                 bad_fovs.append(fovs[0])
                 fovs = fovs[1:]
