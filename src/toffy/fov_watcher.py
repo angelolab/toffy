@@ -52,18 +52,12 @@ class RunStructure:
             if run_order * scan < 0:
                 raise KeyError(f"Could not locate keys in {run_folder}.json")
 
-            fov_names = [f"fov-{run_order}-scan-{s + 1}" for s in range(scan)]
-
-            # identify moly points
+            # scan 2's don't contain significant imaging data per new MIBI specs
+            fov_name = f"fov-{run_order}-scan-1"
             if fov.get("standardTarget", "") == "Molybdenum Foil":
-                for fov_name in fov_names:
-                    self.moly_points.append(fov_name)
+                self.moly_points.append(fov_name)
 
-            for fov_name in fov_names:
-                self.fov_progress[fov_name] = {
-                    "json": False,
-                    "bin": False,
-                }
+            self.fov_progress[fov_name] = {"json": False, "bin": False}
 
         # compute the highest FOV number, needed for checking if final FOV processed
         fov_nums = sorted([int(f.split("-")[1]) for f in self.fov_progress.keys()])
