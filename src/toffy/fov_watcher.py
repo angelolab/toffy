@@ -2,8 +2,8 @@ import os
 import time
 import warnings
 from datetime import datetime
+from multiprocessing import Lock
 from pathlib import Path
-from threading import Lock
 from typing import Callable, Tuple, Union
 
 import natsort as ns
@@ -106,11 +106,15 @@ class RunStructure:
         if fov_name in self.processed_fovs:
             return False, fov_name
 
-        # does not process moly points
+        # does not process moly points, but add to process list to ensure proper incrementing
         if fov_name in self.moly_points:
+            self.processed(fov_name)
+            self.fov_progress[fov_name]["json"] = True
+            self.fov_progress[fov_name]["bin"] = True
             return False, fov_name
 
         wait_time = 0
+        print(self.fov_progress)
         if fov_name in self.fov_progress:
             if extension in self.fov_progress[fov_name]:
                 while os.path.getsize(path) == 0:
@@ -171,6 +175,8 @@ class FOV_EventHandler(FileSystemEventHandler):
             callback to run over the entire run
     """
 
+    instance_count = 0
+
     def __init__(
         self,
         run_folder: str,
@@ -212,6 +218,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         self.inter_return_vals = None
         self.lock = Lock()
         self.last_fov_num_processed = 0
+        self.all_fovs_complete = False
 
         for root, dirs, files in os.walk(run_folder):
             for name in ns.natsorted(files):
@@ -219,7 +226,10 @@ class FOV_EventHandler(FileSystemEventHandler):
                 self.on_created(FileCreatedEvent(os.path.join(root, name)), check_last_fov=False)
 
         # edge case if the last FOV gets written during the preprocessing stage
-        self._check_last_fov(root)
+        # simulate a trigger using the first FOV file
+        self._check_last_fov(
+            os.path.join(root, list(self.run_structure.fov_progress.keys())[0] + ".bin")
+        )
 
     def _check_fov_status(self, path: str):
         try:
@@ -232,10 +242,15 @@ class FOV_EventHandler(FileSystemEventHandler):
                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
                 f"{path} never reached non-zero file size...\n"
             )
+            logf.close()
+
+            # these count as processed FOVs, so increment
+            self.last_fov_num_processed += 1
+
+            # these count as processed FOVs, so mark as processed
+            self.run_structure.processed(Path(path).parts[-1].split(".")[0])
             self.check_complete()
 
-            # because timed out FOVs are marked as complete, update last_fov_num_processed
-            self.last_fov_num_processed += 1
             return None, None
 
     def _generate_callback_data(self, point_name: str):
@@ -266,9 +281,6 @@ class FOV_EventHandler(FileSystemEventHandler):
 
             self.inter_return_vals = self.inter_func(self.run_folder)
 
-        # update last_fov_num_processed
-        self.last_fov_num_processed += 1
-
         logf.close()
         self.check_complete()
 
@@ -287,8 +299,9 @@ class FOV_EventHandler(FileSystemEventHandler):
         # retrieve the FOV number
         fov_num = int(name_ext[0].split("-")[1])
 
-        # a difference of 1 from the last_processed FOV indicates there are no in-between FOVs
-        if fov_num - 1 == self.last_fov_num_processed:
+        # a difference of 1 from last_fov_num_processed means there are no in-between FOVs
+        # set to <= for safety (this should never happen in theory)
+        if fov_num - 1 <= self.last_fov_num_processed:
             return
 
         # NOTE: from observation, only the most recent FOV will ever be in danger of timing out
@@ -297,42 +310,74 @@ class FOV_EventHandler(FileSystemEventHandler):
         start_index = self.last_fov_num_processed + 1 if self.last_fov_num_processed else 1
         for i in np.arange(start_index, fov_num):
             fov_name = f"fov-{i}-scan-1"
-            if fov_name not in self.run_structure.moly_points:
-                self._generate_callback_data(fov_name)
-            else:
-                # ensure last_fov_num_processed accounts for skipping Moly FOVs
+
+            # protection against already processed FOVs
+            if fov_name not in self.run_structure.processed_fovs:
+                # if not a Moly point then generate, otherwise add to processed_fovs list
+                if fov_name not in self.run_structure.moly_points:
+                    self._generate_callback_data(fov_name)
+                    self.run_structure.fov_progress[fov_name]["json"] = True
+                    self.run_structure.fov_progress[fov_name]["bin"] = True
+                else:
+                    self.run_structure.processed(fov_name)
+
+                # needs to update regardless of whether the FOV was Moly or not
                 self.last_fov_num_processed += 1
 
     def _check_last_fov(self, path: str):
         # define the name of the last FOV
-        last_fov = f"fov-{self.run_structure.highest_fov}-scan-1.bin"
+        last_fov = f"fov-{self.run_structure.highest_fov}-scan-1"
+        last_fov_bin = f"{last_fov}.bin"
+        last_fov_json = f"{last_fov}.json"
 
         # if the last FOV has been written, then process everything up to that if necessary
         # NOTE: don't process if it has already been written
         bin_dir = str(Path(path).parents[0])
-        last_fov_is_processed = self.last_fov_num_processed != self.run_structure.highest_fov
-        if not last_fov_is_processed and os.path.exists(os.path.join(bin_dir, last_fov)):
+        last_fov_is_processed = self.last_fov_num_processed == self.run_structure.highest_fov
+        last_fov_data_exists = os.path.exists(
+            os.path.join(bin_dir, last_fov_bin)
+        ) and os.path.exists(os.path.join(bin_dir, last_fov_json))
+
+        # if not last_fov_is_processed and os.path.exists(os.path.join(bin_dir, last_fov)):
+        if not last_fov_is_processed and last_fov_data_exists:
             start_index = self.last_fov_num_processed + 1 if self.last_fov_num_processed else 1
             for i in np.arange(start_index, self.run_structure.highest_fov):
                 fov_name = f"fov-{i}-scan-1"
-                if fov_name not in self.run_structure.moly_points:
-                    self._generate_callback_data(fov_name)
-                else:
-                    # ensure last_fov_num_processed accounts for skipping Moly FOVs
+
+                # protection against already processed FOVs
+                if fov_name not in self.run_structure.processed_fovs:
+                    # if not a Moly point then generate, otherwise add to processed_fovs list
+                    if fov_name not in self.run_structure.moly_points:
+                        self._generate_callback_data(fov_name)
+                        self.run_structure.fov_progress[fov_name]["json"] = True
+                        self.run_structure.fov_progress[fov_name]["bin"] = True
+                    else:
+                        self.run_structure.processed(fov_name)
+
+                    # needs to update regardless of whether the FOV was Moly or not
                     self.last_fov_num_processed += 1
+
+            # update the last bin file as processed (since we know it's been seen)
+            self.run_structure.fov_progress[last_fov]["bin"] = True
 
             # need to handle case if the last FOV is awaiting a JSON file
             # NOTE: will always return or timeout since we explicitly check for existence earlier
-            fov_ready, point_name = self._check_fov_status(os.path.join(bin_dir, last_fov))
+            fov_ready, point_name = self._check_fov_status(os.path.join(bin_dir, last_fov_json))
 
             # generate the last FOV data if it doesn't timeout
             if fov_ready:
                 self._generate_callback_data(point_name)
 
+            # if this statement enters, the final FOV can't have had a previous duplicate event
+            # so safe to increment
+            self.last_fov_num_processed += 1
+
             # explicitly call check_complete to start run callbacks, since all FOVs are done
             self.check_complete()
 
-    def _run_callbacks(self, event: Union[DirCreatedEvent, FileCreatedEvent, FileMovedEvent]):
+    def _run_callbacks(
+        self, event: Union[DirCreatedEvent, FileCreatedEvent, FileMovedEvent], check_last_fov: bool
+    ):
         if type(event) in [DirCreatedEvent, FileCreatedEvent]:
             file_trigger = event.src_path
         else:
@@ -347,6 +392,15 @@ class FOV_EventHandler(FileSystemEventHandler):
         if fov_ready:
             self._generate_callback_data(point_name)
 
+        # needs to update if .bin file processed OR new moly point detected
+        is_moly = point_name in self.run_structure.moly_points
+        is_processed = point_name in self.run_structure.processed_fovs
+        if fov_ready or (is_moly and not is_processed):
+            self.last_fov_num_processed += 1
+
+        if check_last_fov:
+            self._check_last_fov(file_trigger)
+
     def on_created(self, event: FileCreatedEvent, check_last_fov: bool = True):
         """Handles file creation events
 
@@ -357,13 +411,13 @@ class FOV_EventHandler(FileSystemEventHandler):
             event (FileCreatedEvent):
                 file creation event
         """
+        # this happens if _check_last_fov gets called by a prior FOV, no need to reprocess
+        if self.last_fov_num_processed == self.run_structure.highest_fov:
+            return
+
         with self.lock:
             super().on_created(event)
-            self._run_callbacks(event)
-
-            # explicitly check for last bin file, since it has no other events to trigger otherwise
-            if check_last_fov:
-                self._check_last_fov(event.src_path)
+            self._run_callbacks(event, check_last_fov)
 
     def on_moved(self, event: FileMovedEvent, check_last_fov: bool = True):
         """Handles file renaming events
@@ -375,13 +429,13 @@ class FOV_EventHandler(FileSystemEventHandler):
             event (FileMovedEvent):
                 file moved event
         """
+        # this happens if _check_last_fov gets called by a prior FOV, no need to reprocess
+        if self.last_fov_num_processed == self.run_structure.highest_fov:
+            return
+
         with self.lock:
             super().on_moved(event)
-            self._run_callbacks(event)
-
-            # explicitly check for last bin file, since it has no other events to trigger otherwise
-            if check_last_fov:
-                self._check_last_fov(event.dest_path)
+            self._run_callbacks(event, check_last_fov)
 
     def check_complete(self):
         """Checks run structure fov_progress status
@@ -389,7 +443,8 @@ class FOV_EventHandler(FileSystemEventHandler):
         If run is complete, all calbacks in `per_run` will be run over the whole run.
         """
 
-        if all(self.run_structure.check_fov_progress().values()):
+        if all(self.run_structure.check_fov_progress().values()) and not self.all_fovs_complete:
+            self.all_fovs_complete = True
             logf = open(self.log_path, "a")
 
             logf.write(f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- All FOVs finished\n')
@@ -399,6 +454,8 @@ class FOV_EventHandler(FileSystemEventHandler):
                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
                 f"Running {self.run_func.__name__} on whole run\n"
             )
+
+            logf.close()
 
             self.run_func(self.run_folder)
 
@@ -434,6 +491,7 @@ def start_watcher(
         zero_size_timeout (int):
             number of seconds to wait for non-zero file size
     """
+    print("Inside start_watcher function")
     observer = Observer()
     event_handler = FOV_EventHandler(
         run_folder, log_folder, fov_callback, run_callback, intermediate_callback, zero_size_timeout

@@ -114,7 +114,7 @@ def test_run_structure(run_json, expected_files, recwarn):
 @patch("toffy.watcher_callbacks.visualize_mph", side_effect=mock_visualize_mph)
 @pytest.mark.parametrize("add_blank", [False, True])
 @pytest.mark.parametrize("temp_bin", [False, True])
-@pytest.mark.parametrize("completion_check_time", [4, 8, 12])
+@pytest.mark.parametrize("watcher_start_lag", [4, 8, 12])
 @parametrize_with_cases("run_cbs, int_cbs, fov_cbs, kwargs, validators", cases=WatcherCases)
 def test_watcher(
     mock_viz_qc,
@@ -126,7 +126,7 @@ def test_watcher(
     validators,
     add_blank,
     temp_bin,
-    completion_check_time,
+    watcher_start_lag,
 ):
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -165,6 +165,8 @@ def test_watcher(
                     (run_data, SLOW_COPY_INTERVAL_S, add_blank, temp_bin),
                 )
 
+                time.sleep(watcher_start_lag)
+
                 # watcher completion is checked every second
                 # zero-size files are halted for 1 second or until they have non zero-size
                 res_scan = pool.apply_async(
@@ -175,7 +177,7 @@ def test_watcher(
                         fov_callback,
                         run_callback,
                         intermediate_callback,
-                        completion_check_time,
+                        1,
                         SLOW_COPY_INTERVAL_S,
                     ),
                 )
