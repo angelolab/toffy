@@ -337,7 +337,6 @@ class FOV_EventHandler(FileSystemEventHandler):
             os.path.join(bin_dir, last_fov_bin)
         ) and os.path.exists(os.path.join(bin_dir, last_fov_json))
 
-        # if not last_fov_is_processed and os.path.exists(os.path.join(bin_dir, last_fov)):
         if not last_fov_is_processed and last_fov_data_exists:
             start_index = self.last_fov_num_processed + 1 if self.last_fov_num_processed else 1
             for i in np.arange(start_index, self.run_structure.highest_fov):
