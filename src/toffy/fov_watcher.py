@@ -114,7 +114,6 @@ class RunStructure:
             return False, fov_name
 
         wait_time = 0
-        print(self.fov_progress)
         if fov_name in self.fov_progress:
             if extension in self.fov_progress[fov_name]:
                 while os.path.getsize(path) == 0:
