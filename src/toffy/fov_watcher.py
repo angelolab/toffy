@@ -490,7 +490,6 @@ def start_watcher(
         zero_size_timeout (int):
             number of seconds to wait for non-zero file size
     """
-    print("Inside start_watcher function")
     observer = Observer()
     event_handler = FOV_EventHandler(
         run_folder, log_folder, fov_callback, run_callback, intermediate_callback, zero_size_timeout
