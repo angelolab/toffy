@@ -269,7 +269,9 @@ def compensate_image_data(
 
     # convert ffc mass into ffc channel names
     if ffc_masses is not None:
-        ffc_channels = [panel_info.loc[panel_info.Mass == mass].Target.values[0] for mass in ffc_masses]
+        ffc_channels = [
+            panel_info.loc[panel_info.Mass == mass].Target.values[0] for mass in ffc_masses
+        ]
     else:
         ffc_channels = None
 
@@ -694,7 +696,7 @@ def generate_rosetta_test_imgs(
     panel,
     current_channel_name="Noodle",
     output_channel_names=None,
-    ffc_masses=[39]
+    ffc_masses=[39],
 ):
     """Compensate example FOV images based on given multipliers
     Args:
@@ -752,5 +754,5 @@ def generate_rosetta_test_imgs(
             batch_size=1,
             norm_const=1,
             output_masses=output_masses,
-            ffc_masses=ffc_masses
+            ffc_masses=ffc_masses,
         )
