@@ -226,6 +226,13 @@ def test_flat_field_correction():
     assert corrected_img.shape == input_img.shape
     assert not np.array_equal(corrected_img, input_img)
 
+    # test empty image
+    with pytest.warns(UserWarning, match=''):
+        input_img = np.zeros((10, 10))
+        corrected_img = rosetta.flat_field_correction(img=input_img)
+
+        assert not np.any(input_img)
+
 
 def test_get_masses_from_channel_names():
     targets = ["chan1", "chan2", "chan3"]
