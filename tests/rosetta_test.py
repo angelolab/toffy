@@ -227,7 +227,7 @@ def test_flat_field_correction():
     assert not np.array_equal(corrected_img, input_img)
 
     # test empty image
-    with pytest.warns(UserWarning, match=''):
+    with pytest.warns(UserWarning, match='Image for flatfield correction is empty'):
         input_img = np.zeros((10, 10))
         corrected_img = rosetta.flat_field_correction(img=input_img)
 
