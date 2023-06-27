@@ -231,7 +231,7 @@ def test_flat_field_correction():
         input_img = np.zeros((10, 10))
         corrected_img = rosetta.flat_field_correction(img=input_img)
 
-        assert not np.any(input_img)
+        assert not np.any(corrected_img)
 
 
 def test_get_masses_from_channel_names():
@@ -253,10 +253,11 @@ def test_get_masses_from_channel_names():
 @parametrize("input_masses", [None, [25, 50, 101], [25, 50]])
 @parametrize("gaus_rad", [0, 1, 2])
 @parametrize("save_format", ["raw", "rescaled", "both"])
+@parametrize("ffc_masses", [None, [50]])
 @parametrize_with_cases("panel_info", cases=test_cases.CompensateImageDataPanel)
 @parametrize_with_cases("comp_mat", cases=test_cases.CompensateImageDataMat)
 def test_compensate_image_data(
-    output_masses, input_masses, gaus_rad, save_format, panel_info, comp_mat
+    output_masses, input_masses, gaus_rad, save_format, panel_info, comp_mat, ffc_masses
 ):
     with tempfile.TemporaryDirectory() as top_level_dir:
         data_dir = os.path.join(top_level_dir, "data_dir")
@@ -286,7 +287,7 @@ def test_compensate_image_data(
             output_masses=output_masses,
             save_format=save_format,
             gaus_rad=gaus_rad,
-            ffc_masses=[50],
+            ffc_masses=ffc_masses,
             correct_streaks=True,
             streak_chan="chan1",
         )
@@ -760,3 +761,9 @@ def test_generate_rosetta_test_imgs(mocker):
                 assert os.path.exists(
                     os.path.join(temp_dir, f"Noodle_Au_commercial_rosetta_matrix_v1_mult_{i}.csv")
                 )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            # test if ffc_masses is None
+            rosetta.generate_rosetta_test_imgs(
+                rosetta_mat_path, temp_img_dir, mults, temp_dir, panel, ffc_masses=None
+            )
