@@ -154,7 +154,8 @@ def stitch_images(
     if tiled:
         # returns a dict with keys RnCm and values og folder names
         tiled_folders_dict = get_tiled_names(folders, run_dir)
-        tma_folders = ns.natsorted(list(set(folders).difference(set(tiled_folders_dict.values()))))
+        tma_folders = list(set(folders).difference(set(tiled_folders_dict.values())))
+        tma_folders = ns.natsorted(tma_folders)
         try:
             expected_tiles = load_utils.get_tiled_fov_names(
                 list(tiled_folders_dict.keys()), return_dims=True
