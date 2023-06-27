@@ -655,7 +655,7 @@ def create_rosetta_comp_structure(
     batch_size=1,
     gaus_rad=1,
     norm_const=200,
-    ffc_channels=["chan_39"],
+    ffc_masses=[39],
     correct_streaks=False,
     streak_chan="Noodle",
 ):
