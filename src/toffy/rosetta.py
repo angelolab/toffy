@@ -3,6 +3,7 @@ import json
 import os
 import random
 import shutil
+import warnings
 
 import natsort as ns
 import numpy as np
@@ -175,6 +176,11 @@ def flat_field_correction(img, gaus_rad=100):
 
     Returns:
         np.ndarray: corrected image"""
+
+    # if image is empty, return empty image
+    if not np.any(img):
+        warnings.warn("Image for flatfield correction is empty")
+        return img
 
     # smooth image
     img_smooth = gaussian_filter(img, sigma=gaus_rad)
