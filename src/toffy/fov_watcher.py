@@ -1,3 +1,4 @@
+import logging
 import os
 import time
 import warnings
@@ -207,6 +208,9 @@ class FOV_EventHandler(FileSystemEventHandler):
         self.log_path = os.path.join(log_folder, f"{Path(run_folder).parts[-1]}_log.txt")
         if not os.path.exists(log_folder):
             os.makedirs(log_folder)
+        logging.basicConfig(
+            filename=self.log_path, filemode="a", format="%(name)s - %(levelname)s - %(message)s"
+        )
 
         # create run structure
         self.run_structure = RunStructure(run_folder, timeout=timeout)
@@ -236,12 +240,10 @@ class FOV_EventHandler(FileSystemEventHandler):
             return fov_ready, point_name
         except TimeoutError as timeout_error:
             print(f"Encountered TimeoutError error: {timeout_error}")
-            logf = open(self.log_path, "a")
-            logf.write(
+            logging.warning(
                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
                 f"{path} never reached non-zero file size...\n"
             )
-            logf.close()
 
             # these count as processed FOVs, so increment
             self.last_fov_num_processed += 1
@@ -254,12 +256,8 @@ class FOV_EventHandler(FileSystemEventHandler):
 
     def _generate_callback_data(self, point_name: str):
         print(f"Discovered {point_name}, beginning per-fov callbacks...")
-        logf = open(self.log_path, "a")
-
-        logf.write(f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Extracting {point_name}\n')
-
-        # run per_fov callbacks
-        logf.write(
+        logging.info(f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Extracting {point_name}\n')
+        logging.info(
             f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
             f"Running {self.fov_func.__name__} on {point_name}\n"
         )
@@ -280,7 +278,6 @@ class FOV_EventHandler(FileSystemEventHandler):
 
             self.inter_return_vals = self.inter_func(self.run_folder)
 
-        logf.close()
         self.check_complete()
 
     def _process_missed_fovs(self, path: str):
@@ -428,17 +425,11 @@ class FOV_EventHandler(FileSystemEventHandler):
 
         if all(self.run_structure.check_fov_progress().values()) and not self.all_fovs_complete:
             self.all_fovs_complete = True
-            logf = open(self.log_path, "a")
-
-            logf.write(f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- All FOVs finished\n')
-
-            # run per_runs
-            logf.write(
+            logging.info(f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- All FOVs finished\n')
+            logging.info(
                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
                 f"Running {self.run_func.__name__} on whole run\n"
             )
-
-            logf.close()
 
             self.run_func(self.run_folder)
 
