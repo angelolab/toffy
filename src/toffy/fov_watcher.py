@@ -60,9 +60,9 @@ class RunStructure:
 
             self.fov_progress[fov_name] = {"json": False, "bin": False}
 
-        # compute the highest FOV number, needed for checking if final FOV processed
-        fov_nums = sorted([int(f.split("-")[1]) for f in self.fov_progress.keys()])
-        self.highest_fov = fov_nums[-1]
+        # get the highest FOV number, needed for checking if final FOV processed
+        # NOTE: only scan-1 files considered, so len is good
+        self.highest_fov = len(self.fov_progress)
 
     def check_run_condition(self, path: str) -> Tuple[bool, str]:
         """Checks if all requisite files exist and are complete
