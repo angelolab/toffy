@@ -2,6 +2,8 @@ import os
 import shutil
 import tempfile
 
+import natsort as ns
+import numpy as np
 import pytest
 from alpineer import io_utils, load_utils, test_utils
 
@@ -84,6 +86,39 @@ def test_get_tiled_names(prefixes, nontiled_fov):
         assert list(fov_names.keys()) == tiled_names
 
 
+def _tiled_image_check(data_tiled, data_base, num_img_row, num_img_col):
+    fov_i = 0
+    row_i = 0
+    col_i = 0
+    num_fovs = data_base.shape[0]
+    row_size = data_base.shape[1]
+    col_size = data_base.shape[2]
+
+    # index into each tile separately, compare with the original image / 200
+    while row_i < num_img_row:
+        row_start = row_i * row_size
+        row_end = (row_i + 1) * row_size
+        while col_i < num_img_col:
+            col_start = col_i * col_size
+            col_end = (col_i + 1) * col_size
+            data_subset = data_tiled[
+                0,
+                row_start:row_end,
+                col_start:col_end,
+                0,
+            ].values
+            data_standard = data_base[fov_i, ..., 0].values
+            assert np.allclose(data_subset, data_standard / 200)
+            col_i += 1
+            fov_i += 1
+
+            # after all FOVs checked, break
+            if fov_i == num_fovs:
+                break
+        col_i = 0
+        row_i += 1
+
+
 @pytest.mark.parametrize(
     "tiled, tile_names",
     [
@@ -107,10 +142,12 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
         "CD8_stitched.tiff",
         "CD11c_stitched.tiff",
     ]
-    fov_num = 4
-    if nontiled_fov:
-        fov_num = 5
-    fov_list = [f"fov-{i}-scan-1" for i in range(1, fov_num + 1)]
+    # ignore moly fov in run file
+    fov_list = (
+        ["fov-1-scan-1", "fov-2-scan-1", "fov-4-scan-1", "fov-5-scan-1", "fov-6-scan-1"]
+        if nontiled_fov
+        else ["fov-1-scan-1", "fov-2-scan-1", "fov-4-scan-1"]
+    )
 
     with tempfile.TemporaryDirectory() as tmpdir:
         run_name = os.path.basename(tmpdir)
@@ -131,30 +168,46 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
                 tmpdir, test_dir, ["Au", "bad_channel"], img_sub_folder=subdir, tiled=tiled
             )
 
-        # test successful stitching for all channels
+        # test successful stitching for all channels and division happens by 200
         image_stitching.stitch_images(tmpdir, test_dir, img_sub_folder=subdir, tiled=tiled)
         if tiled:
             if "" in tile_names:
                 tile_names = ["unnamed_tile_" if x == "" else x for x in tile_names]
-            # multiple tiles
-            if len(tile_names) > 1:
-                # check subfolder for each tile
-                for i, tile in enumerate(tile_names):
-                    save_dir = os.path.join(tmpdir, stitched_dir, tile[:-1])
-                    assert sorted(io_utils.list_files(save_dir)) == sorted(stitched_tifs)
-                    data = load_utils.load_imgs_from_dir(save_dir, files=["Au_stitched.tiff"])
-                    if i == 0:
-                        assert data.shape == (1, 20, 30, 1)
-                    else:
-                        assert data.shape == (1, 20, 20, 1)
-            # single tile
-            else:
-                save_dir = os.path.join(tmpdir, stitched_dir, tile_names[0][:-1])
-                assert sorted(io_utils.list_files(save_dir)) == sorted(stitched_tifs)
-                data = load_utils.load_imgs_from_dir(save_dir, files=["Au_stitched.tiff"])
-                assert data.shape == (1, 20, 30, 1)
+            folders_dict = image_stitching.get_tiled_names(
+                ns.natsorted(io_utils.list_folders(tmpdir, substrs="fov-")), test_dir
+            )
+            expected_tiles = load_utils.get_tiled_fov_names(
+                list(folders_dict.keys()), return_dims=True
+            )
 
-        # max img size 10 with 4 or 5 acquired fovs
+            for i, tile in enumerate(tile_names):
+                save_dir = os.path.join(tmpdir, stitched_dir, tile[:-1])
+                assert sorted(io_utils.list_files(save_dir)) == sorted(stitched_tifs)
+                tiled_data = load_utils.load_imgs_from_dir(save_dir, files=["Au_stitched.tiff"])
+                if i == 0:
+                    assert tiled_data.shape == (1, 20, 30, 1)
+                else:
+                    assert tiled_data.shape == (1, 20, 20, 1)
+
+                _, expected_fovs, num_rows, num_cols = expected_tiles[i]
+
+                base_data = load_utils.load_tiled_img_data(
+                    tmpdir,
+                    {fov: folders_dict[fov] for fov in expected_fovs if fov in folders_dict.keys()},
+                    expected_fovs,
+                    "Au",
+                    single_dir=False,
+                    img_sub_folder=subdir,
+                )
+                _tiled_image_check(tiled_data, base_data, num_rows, num_cols)
+            # check for 2 tma stitched files
+            if nontiled_fov:
+                save_dir = os.path.join(tmpdir, stitched_dir, "TMA")
+                assert sorted(io_utils.list_files(save_dir)) == sorted(stitched_tifs)
+                tma_data = load_utils.load_imgs_from_dir(save_dir, files=["Au_stitched.tiff"])
+                assert tma_data.shape == (1, 20, 10, 1)
+
+        # max img size 10 with 3 or 5 acquired fovs
         else:
             save_dir = os.path.join(tmpdir, stitched_dir)
             assert sorted(io_utils.list_files(save_dir)) == sorted(stitched_tifs)
@@ -162,7 +215,19 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
             if nontiled_fov:
                 assert data.shape == (1, 30, 20, 1)
             else:
-                assert data.shape == (1, 20, 20, 1)
+                assert data.shape == (1, 30, 10, 1)
+
+            # data_trim = data[0, ..., ..., 0].values
+            base_data = load_utils.load_imgs_from_tree(
+                tmpdir,
+                img_sub_folder=subdir,
+                fovs=ns.natsorted(io_utils.list_folders(tmpdir, substrs="fov-")),
+                channels=["Au"],
+                max_image_size=image_stitching.get_max_img_size(tmpdir, subdir, test_dir),
+            )
+            num_rows = int(data.shape[1] / base_data.shape[1])
+            num_cols = int(data.shape[2] / base_data.shape[2])
+            _tiled_image_check(data, base_data, num_rows, num_cols)
 
         # test previous stitching raises an error
         with pytest.raises(ValueError, match="The stitch_images subdirectory already exists"):
