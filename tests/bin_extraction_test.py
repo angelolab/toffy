@@ -103,7 +103,7 @@ def test_extract_missing_fovs(mocked_print):
 
             # test that neither moly nor empty fov were extracted
             assert ns.natsorted(io_utils.list_folders(extraction_dir)) == ns.natsorted(
-                ["fov-2-scan-1", "fov-1-scan-2", "fov-1-scan-1"]
+                ["fov-1-scan-1", "fov-2-scan-1", "fov-4-scan-1"]
             )
 
     # test successful extraction of fovs
