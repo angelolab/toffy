@@ -751,7 +751,7 @@ def normalize_image_data(
     img_sub_folder="",
     mass_obj_func="poly_2",
     extreme_vals=(0.4, 1.1),
-    norm_func_path=os.path.join("..", "tuning_curves", "sample_tuning_curve.json"),
+    norm_func_path=os.path.join("..", "tuning_curves", "avg_2600_norm_func.json"),
 ):
     """Normalizes image data based on median pulse height from the run and a tuning curve
 
