@@ -6,13 +6,56 @@ import tempfile
 from pathlib import Path
 from typing import List
 
+import matplotlib.pyplot as plt
+import numpy as np
 import pandas as pd
 import pytest
+import seaborn as sns
 from alpineer.test_utils import _make_small_file
 from pytest_cases import parametrize
 
 from toffy.fov_watcher import RunStructure
+from toffy.json_utils import write_json_file
 from toffy.settings import QC_COLUMNS, QC_SUFFIXES
+
+
+def make_run_file(tmp_dir, prefixes=[], include_nontiled=False):
+    """Create a run subir and run json in the provided dir and return the path to this new dir."""
+
+    if len(prefixes) == 1:
+        prefix1, prefix2 = prefixes * 2
+    else:
+        prefix1 = prefixes[0]
+        prefix2 = prefixes[1]
+
+    fov_data = {
+        f"{prefix1}R1C3": 10,
+        f"{prefix1}R2C1": 8,
+        "MoQC": 20,
+        f"{prefix2}R2C2": 8,
+    }
+    if include_nontiled:
+        fov_data["nontiled_1"] = 8
+        fov_data["nontiled_2"] = 8
+
+    run_data = []
+    for i, fov in enumerate(fov_data.keys()):
+        run_data.append(
+            {
+                "runOrder": i + 1,
+                "scanCount": 1,
+                "frameSizePixels": {"width": fov_data[fov], "height": fov_data[fov]},
+                "name": fov,
+            }
+        )
+    run_json_spoof = {"fovs": run_data}
+
+    test_dir = os.path.join(tmp_dir, "data", "test_run")
+    os.makedirs(test_dir)
+    json_path = os.path.join(test_dir, "test_run.json")
+    write_json_file(json_path, run_json_spoof)
+
+    return test_dir
 
 
 def generate_sample_fov_tiling_entry(coord, name, size):
@@ -92,15 +135,47 @@ RUN_CALLBACKS = ("plot_qc_metrics", "plot_mph_metrics", "image_stitching")
 
 
 def mock_visualize_qc_metrics(
-    metric_name, qc_metric_dir, axes_size=16, wrap=6, dpi=None, save_dir=None, ax=None
+    metric_name,
+    qc_metric_dir,
+    return_plot=True,
+    axes_size=16,
+    wrap=6,
+    dpi=None,
+    save_dir=None,
+    ax=None,
 ):
     if save_dir:
         _make_small_file(save_dir, "%s_barplot_stats.png" % metric_name)
 
+    if return_plot:
+        qc_metric_df = pd.DataFrame(np.zeros((5, 3)), columns=["fov", metric_name, "channel"])
+        qc_metric_df["fov"] = "fov-1-scan-1"
+        qc_metric_df["channel"] = [f"chan{i}" for i in np.arange(5)]
+        qc_fg = sns.catplot(
+            x="fov",
+            y=metric_name,
+            col="channel",
+            col_wrap=1,
+            data=qc_metric_df,
+            kind="bar",
+            color="black",
+            sharex=True,
+            sharey=False,
+        )
+        return qc_fg
 
-def mock_visualize_mph(mph_df, out_dir, regression: bool = False):
+
+def mock_visualize_mph(mph_df, out_dir, return_plot=True, regression: bool = False):
     if out_dir:
         _make_small_file(out_dir, "fov_vs_mph.jpg")
+
+    if return_plot:
+        mph_df = pd.DataFrame(np.random.rand(5, 2), columns=["cum_total_count", "MPH"])
+        fig = plt.figure()
+        ax1 = fig.add_subplot(111)
+        ax1.scatter(mph_df["cum_total_count"], mph_df["MPH"])
+        ax2 = ax1.twiny()
+        return fig
 
 
 class FovCallbackCases:
