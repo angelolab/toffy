@@ -556,7 +556,7 @@ def test_normalize_fov(tmpdir, test_zeros, test_high_norm, test_low_norm):
 
     if test_low_norm:
         norm_vals[2] = 1.5
-        norm_mults[2] = 1
+        norm_mults[2] = 1.1
 
     extreme_vals = (0.2, 1)
     norm_dir = os.path.join(tmpdir, "norm_dir")
