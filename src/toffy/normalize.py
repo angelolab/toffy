@@ -734,8 +734,9 @@ def normalize_fov(img_data, norm_vals, norm_dir, fov, channels, extreme_vals):
     if len(decrease_mask) > 0:
         decrease_chans = np.array(channels)[decrease_mask]
         warnings.warn(
-            "The following channel(s) are at greater than 110% sensitivity, which may indicate that your detector was overgained for this run, "
-            "for fov {}. Normalization capped at 0.9X for: {}.".format(fov, decrease_chans)
+            "The following channel(s) are at greater than 110% sensitivity, which may indicate "
+            "that your detector was overgained for this run for fov {}. "
+            "Normalization capped at 0.9X for: {}.".format(fov, decrease_chans)
         )
         norm_vals[decrease_mask] = 1.1
 
