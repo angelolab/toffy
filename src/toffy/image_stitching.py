@@ -86,30 +86,35 @@ def get_tiled_names(fov_list, run_dir):
         if default_name in fov_list:
             # get tiled name
             tiled_name = fov.get("name")
-            # filter out moly fovs
-            if tiled_name != "MoQC":
+            # filter out non-tiled and moly fovs
+            if re.search(re.compile(r"(R\+?\d+)(C\+?\d+)"), tiled_name) and tiled_name != "MoQC":
                 fov_names[tiled_name] = default_name
 
     return fov_names
 
 
-def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None, tiled=False):
+def stitch_images(
+    tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None, tiled=False, scale=200
+):
     """Creates a new directory containing stitched channel images for the run
     Args:
         tiff_out_dir (str): path to the extracted images for the specific run
         run_dir (str): path to the run directory containing the run json files, default None
         channels (list): list of channels to produce stitched images for, None will do all
         img_sub_folder (str): optional name of image sub-folder within each fov
-        tiled (bool): whether to stitch images back into original tiled shape"""
+        tiled (bool): whether to stitch images back into original tiled shape
+        scale (int): how much to rescale the stitched image by, needed for Photoshop compatibility
+    """
 
     io_utils.validate_paths(tiff_out_dir)
     if run_dir:
         io_utils.validate_paths(run_dir)
 
     # check for previous stitching
-    stitched_dir = os.path.join(tiff_out_dir, "stitched_images")
+    run_name = os.path.basename(tiff_out_dir)
+    stitched_dir = os.path.join(tiff_out_dir, f"{run_name}_stitched")
     if tiled:
-        stitched_dir = os.path.join(tiff_out_dir, "stitched_images_tiled")
+        stitched_dir = os.path.join(tiff_out_dir, f"{run_name}_tiled")
         if run_dir is None:
             raise ValueError(
                 "You must provide the run directory to stitch images into their "
@@ -145,35 +150,67 @@ def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None
         )
 
     # get load and stitching args
+    tma_folders = None
     if tiled:
-        folders_dict = get_tiled_names(folders, run_dir)
         # returns a dict with keys RnCm and values og folder names
+        tiled_folders_dict = get_tiled_names(folders, run_dir)
+        tma_folders = list(set(folders).difference(set(tiled_folders_dict.values())))
+        tma_folders = ns.natsorted(tma_folders)
         try:
-            expected_fovs, num_rows, num_cols = load_utils.get_tiled_fov_names(
-                list(folders_dict.keys()), return_dims=True
+            expected_tiles = load_utils.get_tiled_fov_names(
+                list(tiled_folders_dict.keys()), return_dims=True
             )
         except AttributeError:
             raise ValueError(f"FOV names found in the run file were not in tiled (RnCm) format.")
-    else:
-        num_cols = math.isqrt(len(folders))
-        max_img_size = get_max_img_size(tiff_out_dir, img_sub_folder, run_dir)
 
     # make stitched subdir
     os.makedirs(stitched_dir)
 
     # save the stitched images to the stitched_image subdir
     for chan in channels:
-        # tiled image loading
         if tiled:
-            image_data = load_utils.load_tiled_img_data(
-                tiff_out_dir,
-                folders_dict,
-                expected_fovs,
-                chan,
-                single_dir=False,
-                img_sub_folder=img_sub_folder,
-            )
-        else:
+            for tile in expected_tiles:
+                prefix, expected_fovs, num_rows, num_cols = tile
+                if prefix == "":
+                    prefix = "unnamed_tile"
+                # subset the folders_dict for fovs found in the current tile
+                tile_dict = {
+                    fov: tiled_folders_dict[fov]
+                    for fov in expected_fovs
+                    if fov in tiled_folders_dict.keys()
+                }
+
+                # save to individual tile subdirs
+                tile_stitched_dir = os.path.join(stitched_dir, prefix)
+                if not os.path.exists(tile_stitched_dir):
+                    os.makedirs(tile_stitched_dir)
+
+                image_data = load_utils.load_tiled_img_data(
+                    tiff_out_dir,
+                    tile_dict,
+                    expected_fovs,
+                    chan,
+                    single_dir=False,
+                    img_sub_folder=img_sub_folder,
+                )
+                fname = os.path.join(tile_stitched_dir, chan + "_stitched.tiff")
+                stitched = data_utils.stitch_images(image_data, num_cols)
+                current_img = stitched.loc["stitched_image", :, :, chan].values / scale
+                image_utils.save_image(fname, current_img)
+
+        if tma_folders or not tiled:
+            # save to individual tma subdir
+            if tma_folders:
+                folders = tma_folders
+                stitched_subdir = os.path.join(stitched_dir, "TMA")
+                if not os.path.exists(stitched_subdir):
+                    os.makedirs(stitched_subdir)
+            else:
+                stitched_subdir = stitched_dir
+
+            num_cols = math.isqrt(len(folders))
+            max_img_size = get_max_img_size(tiff_out_dir, img_sub_folder, run_dir)
+
             image_data = load_utils.load_imgs_from_tree(
                 tiff_out_dir,
                 img_sub_folder=img_sub_folder,
@@ -181,7 +218,7 @@ def stitch_images(tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None
                 channels=[chan],
                 max_image_size=max_img_size,
             )
-        stitched = data_utils.stitch_images(image_data, num_cols)
-        current_img = stitched.loc["stitched_image", :, :, chan].values
-        fname = os.path.join(stitched_dir, chan + "_stitched.tiff")
-        image_utils.save_image(fname, current_img)
+            fname = os.path.join(stitched_subdir, chan + "_stitched.tiff")
+            stitched = data_utils.stitch_images(image_data, num_cols)
+            current_img = stitched.loc["stitched_image", :, :, chan].values / scale
+            image_utils.save_image(fname, current_img)
