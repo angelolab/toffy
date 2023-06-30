@@ -1,12 +1,21 @@
+import logging
 import os
 import time
 import warnings
 from datetime import datetime
+from multiprocessing import Lock
 from pathlib import Path
-from typing import Callable, Tuple
+from typing import Callable, Tuple, Union
 
+import natsort as ns
+import numpy as np
 from matplotlib import pyplot as plt
-from watchdog.events import FileCreatedEvent, FileSystemEventHandler
+from watchdog.events import (
+    DirCreatedEvent,
+    FileCreatedEvent,
+    FileMovedEvent,
+    FileSystemEventHandler,
+)
 from watchdog.observers import Observer
 
 from toffy.json_utils import read_json_file
@@ -44,18 +53,16 @@ class RunStructure:
             if run_order * scan < 0:
                 raise KeyError(f"Could not locate keys in {run_folder}.json")
 
-            fov_names = [f"fov-{run_order}-scan-{s + 1}" for s in range(scan)]
-
-            # identify moly points
+            # scan 2's don't contain significant imaging data per new MIBI specs
+            fov_name = f"fov-{run_order}-scan-1"
             if fov.get("standardTarget", "") == "Molybdenum Foil":
-                for fov_name in fov_names:
-                    self.moly_points.append(fov_name)
+                self.moly_points.append(fov_name)
 
-            for fov_name in fov_names:
-                self.fov_progress[fov_name] = {
-                    "json": False,
-                    "bin": False,
-                }
+            self.fov_progress[fov_name] = {"json": False, "bin": False}
+
+        # get the highest FOV number, needed for checking if final FOV processed
+        # NOTE: only scan-1 files considered, so len is good
+        self.highest_fov = len(self.fov_progress)
 
     def check_run_condition(self, path: str) -> Tuple[bool, str]:
         """Checks if all requisite files exist and are complete
@@ -80,10 +87,6 @@ class RunStructure:
 
         # filename is not corrct format of fov.bin or fov.json
         if len(filename.split(".")) != 2:
-            warnings.warn(
-                f"The file {filename} is not a valid FOV file and will be skipped from processing.",
-                Warning,
-            )
             return False, ""
 
         fov_name, extension = filename.split(".")
@@ -100,8 +103,11 @@ class RunStructure:
         if fov_name in self.processed_fovs:
             return False, fov_name
 
-        # does not process moly points
+        # does not process moly points, but add to process list to ensure proper incrementing
         if fov_name in self.moly_points:
+            self.processed(fov_name)
+            self.fov_progress[fov_name]["json"] = True
+            self.fov_progress[fov_name]["bin"] = True
             return False, fov_name
 
         wait_time = 0
@@ -165,6 +171,8 @@ class FOV_EventHandler(FileSystemEventHandler):
             callback to run over the entire run
     """
 
+    instance_count = 0
+
     def __init__(
         self,
         run_folder: str,
@@ -196,6 +204,9 @@ class FOV_EventHandler(FileSystemEventHandler):
         self.log_path = os.path.join(log_folder, f"{Path(run_folder).parts[-1]}_log.txt")
         if not os.path.exists(log_folder):
             os.makedirs(log_folder)
+        logging.basicConfig(
+            filename=self.log_path, filemode="a", format="%(name)s - %(levelname)s - %(message)s"
+        )
 
         # create run structure
         self.run_structure = RunStructure(run_folder, timeout=timeout)
@@ -204,12 +215,169 @@ class FOV_EventHandler(FileSystemEventHandler):
         self.run_func = run_callback
         self.inter_func = intermediate_callback
         self.inter_return_vals = None
+        self.lock = Lock()
+        self.last_fov_num_processed = 0
+        self.all_fovs_complete = False
 
         for root, dirs, files in os.walk(run_folder):
-            for name in files:
-                self.on_created(FileCreatedEvent(os.path.join(root, name)))
+            for name in ns.natsorted(files):
+                # NOTE: don't call with check_last_fov to prevent duplicate processing
+                self.on_created(FileCreatedEvent(os.path.join(root, name)), check_last_fov=False)
 
-    def on_created(self, event: FileCreatedEvent):
+        # edge case if the last FOV gets written during the preprocessing stage
+        # simulate a trigger using the first FOV file
+        self._check_last_fov(
+            os.path.join(root, list(self.run_structure.fov_progress.keys())[0] + ".bin")
+        )
+
+    def _check_fov_status(self, path: str):
+        try:
+            fov_ready, point_name = self.run_structure.check_run_condition(path)
+            return fov_ready, point_name
+        except TimeoutError as timeout_error:
+            print(f"Encountered TimeoutError error: {timeout_error}")
+            logging.warning(
+                f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
+                f"{path} never reached non-zero file size...\n"
+            )
+
+            # these count as processed FOVs, so increment
+            self.last_fov_num_processed += 1
+
+            # these count as processed FOVs, so mark as processed
+            self.run_structure.processed(Path(path).parts[-1].split(".")[0])
+            self.check_complete()
+
+            return None, None
+
+    def _generate_callback_data(self, point_name: str):
+        print(f"Discovered {point_name}, beginning per-fov callbacks...")
+        logging.info(f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Extracting {point_name}\n')
+        logging.info(
+            f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
+            f"Running {self.fov_func.__name__} on {point_name}\n"
+        )
+
+        self.fov_func(self.run_folder, point_name)
+        self.run_structure.processed(point_name)
+
+        if self.inter_func:
+            # clear plots contained in intermediate return values if set
+            if self.inter_return_vals:
+                qc_plots = self.inter_return_vals.get("plot_qc_metrics", None)
+                mph_plot = self.inter_return_vals.get("plot_mph_metrics", None)
+
+                if qc_plots or mph_plot:
+                    plt.cla()
+                    plt.clf()
+                    plt.close("all")
+
+            self.inter_return_vals = self.inter_func(self.run_folder)
+
+        self.check_complete()
+
+    def _process_missed_fovs(self, path: str):
+        # verify the path provided is correct .bin type, if not skip
+        filename = Path(path).parts[-1]
+        name_ext = filename.split(".")
+        if len(name_ext) != 2 or name_ext[1] != "bin":
+            return
+
+        # NOTE: MIBI now only stores relevant data in scan 1, ignore any scans > 1
+        scan_num = int(name_ext[0].split("-")[3])
+        if scan_num > 1:
+            return
+
+        # retrieve the FOV number
+        fov_num = int(name_ext[0].split("-")[1])
+
+        # a difference of 1 from last_fov_num_processed means there are no in-between FOVs
+        # set to <= for safety (this should never happen in theory)
+        if fov_num - 1 <= self.last_fov_num_processed:
+            return
+
+        # NOTE: from observation, only the most recent FOV will ever be in danger of timing out
+        # so all the FOVs processed in this function should already be fully processed
+        bin_dir = str(Path(path).parents[0])
+        start_index = self.last_fov_num_processed + 1 if self.last_fov_num_processed else 1
+        for i in np.arange(start_index, fov_num):
+            fov_name = f"fov-{i}-scan-1"
+            fov_bin_file = os.path.join(self.run_folder, fov_name + ".bin")
+            fov_json_file = os.path.join(self.run_folder, fov_name + ".json")
+
+            # this can happen if there's a lag copying files over
+            while not os.path.exists(fov_bin_file) and not os.path.exists(fov_json_file):
+                time.sleep(60)
+
+            self._fov_callback_driver(os.path.join(self.run_folder, fov_name + ".bin"))
+            self._fov_callback_driver(os.path.join(self.run_folder, fov_name + ".json"))
+
+    def _check_last_fov(self, path: str):
+        # define the name of the last FOV
+        last_fov = f"fov-{self.run_structure.highest_fov}-scan-1"
+        last_fov_bin = f"{last_fov}.bin"
+        last_fov_json = f"{last_fov}.json"
+
+        # if the last FOV has been written, then process everything up to that if necessary
+        # NOTE: don't process if it has already been written
+        bin_dir = str(Path(path).parents[0])
+        last_fov_is_processed = self.last_fov_num_processed == self.run_structure.highest_fov
+        last_fov_data_exists = os.path.exists(
+            os.path.join(bin_dir, last_fov_bin)
+        ) and os.path.exists(os.path.join(bin_dir, last_fov_json))
+
+        if not last_fov_is_processed and last_fov_data_exists:
+            start_index = self.last_fov_num_processed + 1 if self.last_fov_num_processed else 1
+            for i in np.arange(start_index, self.run_structure.highest_fov):
+                fov_name = f"fov-{i}-scan-1"
+                fov_bin_file = os.path.join(self.run_folder, fov_name + ".bin")
+                fov_json_file = os.path.join(self.run_folder, fov_name + ".json")
+
+                # this can happen if there's a lag copying files over
+                while not os.path.exists(fov_bin_file) and not os.path.exists(fov_json_file):
+                    time.sleep(60)
+
+                self._fov_callback_driver(os.path.join(self.run_folder, fov_name + ".bin"))
+                self._fov_callback_driver(os.path.join(self.run_folder, fov_name + ".json"))
+
+            # process the final bin file
+            self._fov_callback_driver(os.path.join(self.run_folder, last_fov_bin))
+            self._fov_callback_driver(os.path.join(self.run_folder, last_fov_json))
+
+            # explicitly call check_complete to start run callbacks, since all FOVs are done
+            self.check_complete()
+
+    def _fov_callback_driver(self, file_trigger: str):
+        # check if what's created is in the run structure
+        fov_ready, point_name = self._check_fov_status(file_trigger)
+
+        if fov_ready:
+            self._generate_callback_data(point_name)
+
+        # needs to update if .bin file processed OR new moly point detected
+        is_moly = point_name in self.run_structure.moly_points
+        is_processed = point_name in self.run_structure.processed_fovs
+        if fov_ready or (is_moly and not is_processed):
+            self.last_fov_num_processed += 1
+
+    def _run_callbacks(
+        self, event: Union[DirCreatedEvent, FileCreatedEvent, FileMovedEvent], check_last_fov: bool
+    ):
+        if type(event) in [DirCreatedEvent, FileCreatedEvent]:
+            file_trigger = event.src_path
+        else:
+            file_trigger = event.dest_path
+
+        # process any FOVs that got missed on the previous iteration of on_created/on_moved
+        self._process_missed_fovs(file_trigger)
+
+        # run the fov callback process on the file
+        self._fov_callback_driver(file_trigger)
+
+        if check_last_fov:
+            self._check_last_fov(file_trigger)
+
+    def on_created(self, event: FileCreatedEvent, check_last_fov: bool = True):
         """Handles file creation events
 
         If FOV structure is completed, the fov callback, `self.fov_func` will be run over the data.
@@ -219,66 +387,42 @@ class FOV_EventHandler(FileSystemEventHandler):
             event (FileCreatedEvent):
                 file creation event
         """
-        super().on_created(event)
-
-        # check if what's created is in the run structure
-        try:
-            fov_ready, point_name = self.run_structure.check_run_condition(event.src_path)
-        except TimeoutError as timeout_error:
-            print(f"Encountered TimeoutError error: {timeout_error}")
-            logf = open(self.log_path, "a")
-            logf.write(
-                f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
-                f"{event.src_path} never reached non-zero file size...\n"
-            )
-            self.check_complete()
+        # this happens if _check_last_fov gets called by a prior FOV, no need to reprocess
+        if self.last_fov_num_processed == self.run_structure.highest_fov:
             return
 
-        if fov_ready:
-            print(f"Discovered {point_name}, beginning per-fov callbacks...")
-            logf = open(self.log_path, "a")
+        with self.lock:
+            super().on_created(event)
+            self._run_callbacks(event, check_last_fov)
 
-            logf.write(
-                f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Extracting {point_name}\n'
-            )
+    def on_moved(self, event: FileMovedEvent, check_last_fov: bool = True):
+        """Handles file renaming events
 
-            # run per_fov callbacks
-            logf.write(
-                f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
-                f"Running {self.fov_func.__name__} on {point_name}\n"
-            )
+        If FOV structure is completed, the fov callback, `self.fov_func` will be run over the data.
+        This function is automatically called; users generally shouldn't call this function
 
-            self.fov_func(self.run_folder, point_name)
-            self.run_structure.processed(point_name)
+        Args:
+            event (FileMovedEvent):
+                file moved event
+        """
+        # this happens if _check_last_fov gets called by a prior FOV, no need to reprocess
+        if self.last_fov_num_processed == self.run_structure.highest_fov:
+            return
 
-            if self.inter_func:
-                # clear plots contained in intermediate return values if set
-                if self.inter_return_vals:
-                    qc_plots = self.inter_return_vals.get("plot_qc_metrics", None)
-                    mph_plot = self.inter_return_vals.get("plot_mph_metrics", None)
-
-                    if qc_plots or mph_plot:
-                        plt.cla()
-                        plt.clf()
-                        plt.close("all")
-
-                self.inter_return_vals = self.inter_func(self.run_folder)
-
-            logf.close()
-            self.check_complete()
+        with self.lock:
+            super().on_moved(event)
+            self._run_callbacks(event, check_last_fov)
 
     def check_complete(self):
         """Checks run structure fov_progress status
 
         If run is complete, all calbacks in `per_run` will be run over the whole run.
         """
-        if all(self.run_structure.check_fov_progress().values()):
-            logf = open(self.log_path, "a")
 
-            logf.write(f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- All FOVs finished\n')
-
-            # run per_runs
-            logf.write(
+        if all(self.run_structure.check_fov_progress().values()) and not self.all_fovs_complete:
+            self.all_fovs_complete = True
+            logging.info(f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- All FOVs finished\n')
+            logging.info(
                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
                 f"Running {self.run_func.__name__} on whole run\n"
             )
@@ -293,7 +437,7 @@ def start_watcher(
     run_callback: Callable[[None], None],
     intermediate_callback: Callable[[str, str], None] = None,
     completion_check_time: int = 30,
-    zero_size_timeout: int = 1.03 * 60 * 60,
+    zero_size_timeout: int = 7800,
 ):
     """Passes bin files to provided callback functions as they're created
 
