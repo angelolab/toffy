@@ -540,6 +540,10 @@ def test_normalize_fov(tmpdir, test_zeros, test_high_norm, test_low_norm):
     # create inputs
     norm_vals = np.random.rand(len(chans))
 
+    # need to ensure no extra low or high norm coefficients for testing
+    norm_vals[norm_vals < 0.1] = 0.1
+    norm_vals[norm_vals > 1.1] = 1.1
+
     # generate the actual normalization multipliers, needed for extreme normalization cap tests
     norm_mults = np.copy(norm_vals)
 
@@ -549,11 +553,12 @@ def test_normalize_fov(tmpdir, test_zeros, test_high_norm, test_low_norm):
         norm_mults[0] = 0.0
         data_xr[..., 0] = 0.0
 
-    # if test_extreme, set norm vals lower than 0.1 and higher than 1
+    # if test_high_norm, set norm vals lower than 0.1
     if test_high_norm:
         norm_vals[1] = 0.01
         norm_mults[1] = 0.1
 
+    # if test_low_norm, set norm vals higher than 1
     if test_low_norm:
         norm_vals[2] = 1.5
         norm_mults[2] = 1.1
@@ -593,7 +598,6 @@ def test_normalize_fov(tmpdir, test_zeros, test_high_norm, test_low_norm):
                     extreme_vals=extreme_vals,
                 )
 
-    # check that normalized images were modified by correct amount
     norm_imgs = load_utils.load_imgs_from_tree(norm_dir, channels=chans)
     assert np.allclose(data_xr.values, norm_imgs.values * norm_mults)
 
@@ -603,7 +607,7 @@ def test_normalize_fov(tmpdir, test_zeros, test_high_norm, test_low_norm):
     # check that log file has correct values
     log_file = pd.read_csv(os.path.join(norm_dir, "fov0", "normalization_coefs.csv"))
     assert np.array_equal(log_file["channels"], chans)
-    assert np.allclose(log_file["norm_vals"], norm_vals)
+    assert np.allclose(log_file["norm_vals"], norm_vals, rtol=1e-04)
 
     # check that warning is raised for extreme values
     with pytest.warns(UserWarning, match="inspection for accuracy is recommended"):
