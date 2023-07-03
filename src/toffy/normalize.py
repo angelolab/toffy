@@ -382,7 +382,7 @@ def show_multiple_plots(rows, cols, image_paths, image_size=(17, 12)):
 def create_tuning_function(
     sweep_path,
     moly_masses=[92, 94, 95, 96, 97, 98, 100],
-    save_path=os.path.join("..", "toffy", "norm_func.json"),
+    save_path=os.path.join("..", "tuning_curves", "sample_tuning_curve.json"),
     count_range=(0, 3000000),
 ):
     """Creates a tuning curve for an instrument based on the provided moly sweep
@@ -777,7 +777,7 @@ def normalize_image_data(
     img_sub_folder="",
     mass_obj_func="poly_2",
     extreme_vals=(0.4, 1.1),
-    norm_func_path=os.path.join("..", "toffy", "norm_func.json"),
+    norm_func_path=os.path.join("..", "tuning_curves", "avg_norm_func_2600.json"),
 ):
     """Normalizes image data based on median pulse height from the run and a tuning curve
 
