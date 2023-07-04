@@ -69,8 +69,16 @@ def write_mph_per_mass(
         mass=masses, target_name=masses, low_range=start_offset, high_range=stop_offset
     )
     for mass in masses:
+        import timeit
+
+        start_time = timeit.default_timer()
         mph_vals.append(
             get_median_pulse_height(data_dir=base_dir, fov=fov, channel=mass, panel=panel)
+        )
+        end_time = timeit.default_timer()
+        print(
+            "Total time to generate median pulse height for mass %s: %.2f"
+            % (mass, end_time - start_time)
         )
     # create df to hold output
     fovs = np.repeat(fov, len(masses))
