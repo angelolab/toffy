@@ -29,7 +29,9 @@ RUN_DIR_NAME = "run_XXX"
 SLOW_COPY_INTERVAL_S = 1
 
 
-def _slow_copy_sample_tissue_data(dest: str, delta: int = 10, one_blank: bool = False):
+def _slow_copy_sample_tissue_data(
+    dest: str, delta: int = 10, one_blank: bool = False, temp_bin: bool = False
+):
     """slowly copies files from ./data/tissue/
 
     Args:
@@ -37,21 +39,38 @@ def _slow_copy_sample_tissue_data(dest: str, delta: int = 10, one_blank: bool = 
             Where to copy tissue files to
         delta (int):
             Time (in seconds) between each file copy
+        one_blank (bool):
+            Add a blank .bin file or not
+        temp_bin (bool):
+            Use initial temp bin file paths or not
     """
 
     for tissue_file in sorted(os.listdir(COMBINED_DATA_PATH)):
         time.sleep(delta)
-        if one_blank and ".bin" in tissue_file:
+        if one_blank and ".bin" in tissue_file and tissue_file[0] != ".":
             # create blank (0 size) file
             open(os.path.join(dest, tissue_file), "w").close()
             one_blank = False
         else:
-            shutil.copy(os.path.join(COMBINED_DATA_PATH, tissue_file), dest)
+            tissue_path = os.path.join(COMBINED_DATA_PATH, tissue_file)
+            if temp_bin and ".bin" in tissue_file:
+                # copy to a temporary file with hash extension, then move to dest folder
+                new_tissue_path = os.path.join(COMBINED_DATA_PATH, "." + tissue_file + ".aBcDeF")
+                shutil.copy(tissue_path, new_tissue_path)
+                shutil.copy(new_tissue_path, dest)
+                os.remove(new_tissue_path)
+
+                # simulate a renaming event in dest
+                time.sleep(delta)
+                copied_tissue_path = os.path.join(dest, "." + tissue_file + ".aBcDeF")
+                os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
+            else:
+                shutil.copy(tissue_path, dest)
 
 
 COMBINED_RUN_JSON_SPOOF = {
     "fovs": [
-        {"runOrder": 1, "scanCount": 2, "frameSizePixels": {"width": 32, "height": 32}},
+        {"runOrder": 1, "scanCount": 1, "frameSizePixels": {"width": 32, "height": 32}},
         {"runOrder": 2, "scanCount": 1, "frameSizePixels": {"width": 32, "height": 32}},
         {
             "runOrder": 3,
@@ -59,6 +78,7 @@ COMBINED_RUN_JSON_SPOOF = {
             "frameSizePixels": {"width": 32, "height": 32},
             "standardTarget": "Molybdenum Foil",
         },
+        {"runOrder": 4, "scanCount": 1, "frameSizePixels": {"width": 32, "height": 32}},
     ],
 }
 
@@ -80,8 +100,7 @@ def test_run_structure(run_json, expected_files, recwarn):
         assert not exist and name == ""
 
         # check for invalid file format
-        with pytest.warns(Warning, match="is not a valid FOV file and will be skipped"):
-            exist, name = run_structure.check_run_condition(os.path.join(tmpdir, "fov.bin.txt"))
+        exist, name = run_structure.check_run_condition(os.path.join(tmpdir, "fov.bin.txt"))
         assert not exist and name == ""
 
         # check for fake files
@@ -93,9 +112,20 @@ def test_run_structure(run_json, expected_files, recwarn):
 @patch("toffy.watcher_callbacks.visualize_qc_metrics", side_effect=mock_visualize_qc_metrics)
 @patch("toffy.watcher_callbacks.visualize_mph", side_effect=mock_visualize_mph)
 @pytest.mark.parametrize("add_blank", [False, True])
+@pytest.mark.parametrize("temp_bin", [False, True])
+@pytest.mark.parametrize("watcher_start_lag", [4, 8, 12])
 @parametrize_with_cases("run_cbs, int_cbs, fov_cbs, kwargs, validators", cases=WatcherCases)
 def test_watcher(
-    mock_viz_qc, mock_viz_mph, run_cbs, int_cbs, fov_cbs, kwargs, validators, add_blank
+    mock_viz_qc,
+    mock_viz_mph,
+    run_cbs,
+    int_cbs,
+    fov_cbs,
+    kwargs,
+    validators,
+    add_blank,
+    temp_bin,
+    watcher_start_lag,
 ):
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -131,8 +161,10 @@ def test_watcher(
             with Pool(processes=4) as pool:
                 pool.apply_async(
                     _slow_copy_sample_tissue_data,
-                    (run_data, SLOW_COPY_INTERVAL_S, add_blank),
+                    (run_data, SLOW_COPY_INTERVAL_S, add_blank, temp_bin),
                 )
+
+                time.sleep(watcher_start_lag)
 
                 # watcher completion is checked every second
                 # zero-size files are halted for 1 second or until they have non zero-size
@@ -161,10 +193,10 @@ def test_watcher(
             ]
 
             # callbacks are not performed on moly points, remove fov-3-scan-1
-            bad_fovs = [fovs[-1]]
-            fovs = fovs[:-1]
+            bad_fovs = [fovs[-2]]
+            fovs = fovs[:-2] + [fovs[-1]]
 
-            # callbacks are not performed for skipped fovs, remove blank fov
+            # callbacks are not performed for skipped fovs, remove blank fov (fov-1-scan-1)
             if add_blank:
                 bad_fovs.append(fovs[0])
                 fovs = fovs[1:]

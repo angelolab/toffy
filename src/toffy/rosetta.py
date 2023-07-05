@@ -2,6 +2,7 @@ import copy
 import os
 import random
 import shutil
+import warnings
 
 import natsort as ns
 import numpy as np
@@ -175,6 +176,11 @@ def flat_field_correction(img, gaus_rad=100):
     Returns:
         np.ndarray: corrected image"""
 
+    # if image is empty, return empty image
+    if not np.any(img):
+        warnings.warn("Image for flatfield correction is empty")
+        return img
+
     # smooth image
     img_smooth = gaussian_filter(img, sigma=gaus_rad)
 
@@ -261,7 +267,12 @@ def compensate_image_data(
     all_masses = comp_mat.columns.values.astype("int")
 
     # convert ffc mass into ffc channel names
-    ffc_channels = [panel_info.loc[panel_info.Mass == mass].Target.values[0] for mass in ffc_masses]
+    if ffc_masses is not None:
+        ffc_channels = [
+            panel_info.loc[panel_info.Mass == mass].Target.values[0] for mass in ffc_masses
+        ]
+    else:
+        ffc_channels = None
 
     validate_inputs(
         raw_data_dir,
@@ -684,6 +695,7 @@ def generate_rosetta_test_imgs(
     panel,
     current_channel_name="Noodle",
     output_channel_names=None,
+    ffc_masses=[39],
 ):
     """Compensate example FOV images based on given multipliers
     Args:
@@ -694,6 +706,7 @@ def generate_rosetta_test_imgs(
         panel (pd.DataFrame): the panel containing the masses and channel names
         current_channel_name (str): channel being adjusted, default Noodle
         output_channel_names (list): subset of the channels to compensate for, default None is all
+        ffc_masses (list): masses that need to be flat field corrected.
 
     Returns:
         Create subdirs containing rosetta compensated images for each multiplier and stitched imgs
@@ -740,4 +753,5 @@ def generate_rosetta_test_imgs(
             batch_size=1,
             norm_const=1,
             output_masses=output_masses,
+            ffc_masses=ffc_masses,
         )
