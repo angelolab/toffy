@@ -5,7 +5,7 @@ import pathlib
 import re
 from dataclasses import dataclass, field
 from shutil import rmtree
-from typing import Callable, Dict, Generator, List, Optional, Tuple, Union
+from typing import Dict, List, Optional, Tuple, Union
 
 import natsort as ns
 import numpy as np
@@ -16,7 +16,7 @@ from pandas.core.groupby import DataFrameGroupBy
 from requests.exceptions import HTTPError
 from scipy.ndimage import gaussian_filter
 from scipy.stats import rankdata
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from toffy import settings
 from toffy.mibitracker_utils import MibiRequests, MibiTrackerError
@@ -492,22 +492,14 @@ def _channel_filtering(
     # Filter out the default ignored channels
     df = df[~df["channel"].isin(settings.QC_CHANNEL_IGNORE)]
 
-    # Verify that the excluded channels exist in the DataFrame
-    # Then remove the excluded channels
+    # Remove the excluded channels
+    # If a channel does not exist, it is ignored
     if channel_exclude is not None:
-        misc_utils.verify_in_list(
-            channels_to_exclude=channel_exclude,
-            qc_channels=df["channel"].unique(),
-        )
         df: pd.DataFrame = df[~df["channel"].isin(channel_exclude)]
 
-    # Verify that the included channels exist in the DataFrame
     # Then filter the excluded channels
+    # If a channel does not exist, it is ignored
     if channel_include is not None:
-        misc_utils.verify_in_list(
-            channels_to_include=channel_include,
-            qc_channels=df["channel"].unique(),
-        )
         df: pd.DataFrame = df[df["channel"].isin(channel_include)]
     return df
 
@@ -591,7 +583,7 @@ class QCTMA:
         """
 
         rc_array: np.ndarray = np.full(shape=(x_size, y_size), fill_value=np.nan)
-        rc_array[group["column"] - 1, group["row"] - 1] = group[qc_col]
+        rc_array[group["row"] - 1, group["column"] - 1] = group[qc_col]
 
         return pd.Series([rc_array])
 
@@ -602,39 +594,47 @@ class QCTMA:
         Args:
             tmas (List[str]): The FOVs with the TMA in the folder name to gather.
         """
-
-        with tqdm(total=len(tmas), desc="Computing QC TMA metrics", unit="TMAs") as pbar:
+        with tqdm(
+            total=len(tmas), desc="Computing QC TMA Metrics", unit="TMA", leave=True
+        ) as tma_pbar:
             for tma in tmas:
                 self._compute_qc_tma_metrics(tma=tma)
-                pbar.set_postfix(TMA=tma)
-                pbar.update()
+                tma_pbar.set_postfix(TMA=tma)
+                tma_pbar.update(n=1)
 
     def _compute_qc_tma_metrics(self, tma: str):
-        """_summary_
+        """
+        Computes the FOV QC metrics for all FOVs in a given TMA.
+        If the QC metrics have already been computed, then
 
         Args:
             tma (str): The TMA to compute the QC metrics for.
         """
-        fovs = io_utils.list_folders(dir_name=self.cohort_path, substrs=tma)
-
+        fovs: List[str] = ns.natsorted(
+            io_utils.list_folders(dir_name=self.cohort_path, substrs=tma)
+        )
         # Compute the QC metrics
-        for fov in ns.natsorted(fovs):
-            # Gather the qc tma files for the current fov if they exist
-            pre_computed_metrics = filter(
-                lambda f: "combined" not in f,
-                io_utils.list_files(
-                    dir_name=self.metrics_dir,
-                    substrs=[f"{qc_suffix}.csv" for qc_suffix in self.qc_suffixes],
-                ),
-            )
-
-            # only compute if any QC files are missing for the current fov
-            if len(list(pre_computed_metrics)) != len(self.qc_cols):
-                compute_qc_metrics(
-                    extracted_imgs_path=self.cohort_path,
-                    fov_name=fov,
-                    save_csv=self.metrics_dir,
+        with tqdm(fovs, desc="Computing QC Metrics", unit="FOV", leave=False) as pbar:
+            for fov in pbar:
+                # Gather the qc tma files for the current fov if they exist
+                pre_computed_metrics = filter(
+                    lambda f: "combined" not in f,
+                    io_utils.list_files(
+                        dir_name=self.metrics_dir,
+                        substrs=[f"{fov}_{qc_suffix}.csv" for qc_suffix in self.qc_suffixes],
+                    ),
                 )
+
+                # only compute if any QC files are missing for the current fov
+                if len(list(pre_computed_metrics)) != len(self.qc_cols):
+                    compute_qc_metrics(
+                        extracted_imgs_path=self.cohort_path,
+                        fov_name=fov,
+                        save_csv=self.metrics_dir,
+                    )
+                    pbar.set_postfix(FOV=fov, status="Computing")
+                else:
+                    pbar.set_postfix(FOV=fov, status="Already Computed")
 
         # Generate the combined metrics for each FOV
         for qc_suffix in self.qc_suffixes:
@@ -703,6 +703,8 @@ class QCTMA:
         )
 
         ranked_channels_matrix = []
+        x_size: int = None
+        y_size: int = None
 
         for cmt, qc_col in zip(combined_metric_tmas, self.qc_cols):
             # Open and filter the default ignored channels, along with the user specified channels
@@ -710,13 +712,15 @@ class QCTMA:
                 df=pd.read_csv(os.path.join(self.metrics_dir, cmt)), channel_exclude=channel_exclude
             )
 
+            cmt_df[["column", "row"]] = cmt_df["fov"].apply(self._get_r_c)
+
             # Get matrix dimensions
-            y_size: int = cmt_df["column"].max()
-            x_size: int = cmt_df["row"].max()
+            y_size = cmt_df["column"].max()
+            x_size = cmt_df["row"].max()
 
             # Create the TMA matrix / for the heatmap
             channel_tmas: pd.DataFrame = cmt_df.groupby(by="channel", sort=True).apply(
-                lambda group: self._create_r_c_tma_matrix(group, y_size, x_size, qc_col)
+                lambda group: self._create_r_c_tma_matrix(group, x_size, y_size, qc_col)
             )
             channel_matrices: np.ndarray = np.array(
                 [c_tma[0] for c_tma in channel_tmas.values],
@@ -727,7 +731,7 @@ class QCTMA:
                 method="average",
                 nan_policy="omit",
                 axis=0,
-            ).reshape(len(channel_tmas), x_size, y_size)
+            ).reshape(len(channel_tmas), y_size, x_size)
 
             # Average the rank for each channel.
             avg_ranked_tma: np.ndarray = ranked_channels.mean(axis=0)
@@ -736,8 +740,8 @@ class QCTMA:
 
         return xr.DataArray(
             data=np.stack(ranked_channels_matrix),
-            coords=[self.qc_cols, np.arange(x_size), np.arange(y_size)],
-            dims=["qc_col", "x", "y"],
+            coords=[self.qc_cols, np.arange(y_size), np.arange(x_size)],
+            dims=["qc_col", "y", "x"],
         )
 
 

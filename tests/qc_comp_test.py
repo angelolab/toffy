@@ -478,11 +478,11 @@ class TestQCTMA:
 
             r_c_tma_matrix_df[["rc_matrix"]] = self.qc_tmas_fixture.qc_df.groupby(
                 by="channel", sort=True
-            ).apply(lambda group: self.qc_tma._create_r_c_tma_matrix(group, y_size, x_size, qc_col))
+            ).apply(lambda group: self.qc_tma._create_r_c_tma_matrix(group, x_size, y_size, qc_col))
 
             # Assert that the shapes are correct.
             for rc_matrix in r_c_tma_matrix_df["rc_matrix"]:
-                assert rc_matrix.shape == (y_size, x_size)
+                assert rc_matrix.shape == (x_size, y_size)
 
     @parametrize(
         "channel_exclude",

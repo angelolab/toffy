@@ -14,7 +14,7 @@ from alpineer import io_utils, misc_utils
 from matplotlib.axes import Axes
 from matplotlib.colors import ListedColormap, Normalize
 from matplotlib.figure import Figure
-from tqdm import tqdm
+from tqdm.auto import tqdm
 
 from toffy import qc_comp, settings
 from toffy.qc_comp import QCTMA, QCBatchEffect
@@ -155,14 +155,15 @@ def qc_tmas_metrics_plot(
 
     with tqdm(total=len(tmas), desc="Plotting QC TMA Metric Ranks", unit="TMAs") as pbar:
         for tma in tmas:
-            _qc_tma_metrics_plot(qc_tmas, tma, save_figure=save_figure, dpi=dpi)
+            _qc_tma_metrics_plot(qc_tmas, tma, fig_dir=fig_dir, save_figure=save_figure, dpi=dpi)
             pbar.set_postfix(TMA=tma)
-            pbar.update()
+            pbar.update(n=1)
 
 
 def _qc_tma_metrics_plot(
     qc_tmas: QCTMA,
     tma: str,
+    fig_dir: pathlib.Path,
     save_figure: bool = False,
     dpi: int = 300,
 ) -> None:
@@ -224,7 +225,7 @@ def _qc_tma_metrics_plot(
 
         if save_figure:
             fig.savefig(
-                fname=pathlib.Path(qc_tmas.qc_tma_metrics_dir) / "figures" / f"{tma}_{suffix}.png",
+                fname=fig_dir / f"{tma}_{suffix}.png",
                 dpi=dpi,
                 bbox_inches="tight",
             )

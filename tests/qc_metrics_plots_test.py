@@ -146,21 +146,21 @@ def batch_effect_qc_data(cohort_data: BatchEffectMetricData) -> Generator[Callab
     """
 
     def _compute_qc_batch_effects(
-        tissues: List[str],
+        fovs: List[str],
         channel_include: List[str] = None,
         channel_exclude: List[str] = None,
     ) -> QCBatchEffect:
         qc_batch_effects = QCBatchEffect(
-            cohort_data_dir=cohort_data.cohort_data_dir,
-            qc_cohort_metrics_dir=cohort_data.cohort_metrics_dir,
             qc_metrics=cohort_data.qc_metrics,
+            cohort_path=cohort_data.cohort_img_dir,
+            metrics_dir=cohort_data.cohort_metrics_dir,
         )
 
-        qc_batch_effects.batch_effect_qc_metrics(tissues=tissues)
-        qc_batch_effects.batch_effect_filtering(
-            tissues=tissues,
-            channel_include=channel_include,
+        qc_batch_effects.compute_batch_effect_qc_metrics(
+            batch_name="Project_Batch1",
+            fovs=fovs,
             channel_exclude=channel_exclude,
+            channel_include=channel_include,
         )
         return qc_batch_effects
 
@@ -168,35 +168,36 @@ def batch_effect_qc_data(cohort_data: BatchEffectMetricData) -> Generator[Callab
 
 
 @pytest.mark.parametrize(
-    "_tissues,_channel_include,_channel_exclude",
+    "_fovs,_channel_include,_channel_exclude",
     [
-        (["tissue"], ["chan0"], ["chan1"]),
-        (["tissue0", "tissue1", "tissue2"], ["chan0", "chan1"], None),
-        (["tissue0"], ["chan0"], ["chan1", "chan2"]),
+        (["fov0", "fov1", "fov2"], ["chan0", "chan1"], None),
+        (["fov0"], ["chan0"], ["chan1", "chan2"]),
     ],
 )
 def test_qc_batch_effect_heatmap(
     batch_effect_qc_data: Callable,
-    _tissues: List[str],
+    _fovs: List[str],
     _channel_include: Optional[List[str]],
     _channel_exclude: Optional[List[str]],
 ) -> None:
     _save_figure: bool = True
 
-    qc_batch: QCBatchEffect = batch_effect_qc_data(_tissues, _channel_include, _channel_exclude)
+    qc_batch: QCBatchEffect = batch_effect_qc_data(_fovs, _channel_include, _channel_exclude)
+
+    _batch_name = "Project_Batch1"
 
     qc_metrics_plots.qc_batch_effect_heatmap(
         qc_batch=qc_batch,
-        tissues=_tissues,
+        batch_name=_batch_name,
         save_figure=_save_figure,
         dpi=30,
     )
 
     total_figures: List[str] = [
-        f"{tissue}_heatmap_{qc}.png"
-        for tissue, qc in itertools.product(_tissues, qc_batch.qc_suffixes)
+        f"{_batch_name}_heatmap_{qc}.png"
+        for fov, qc in itertools.product(_fovs, qc_batch.qc_suffixes)
     ]
 
     # Assert the existance of the batch effect figures
     for fig in total_figures:
-        assert os.path.exists(qc_batch.qc_cohort_metrics_dir / "figures" / fig)
+        assert os.path.exists(qc_batch.metrics_dir / "figures" / fig)
