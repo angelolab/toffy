@@ -471,7 +471,7 @@ class TestQCTMA:
                 )
 
     def test__create_r_c_tma_matrix(self) -> None:
-        x_size, y_size = np.max(self.qc_tmas_fixture.tma_n_m, axis=0)
+        y_size, x_size = np.max(self.qc_tmas_fixture.tma_n_m, axis=0)
 
         for qc_col in settings.QC_COLUMNS:
             r_c_tma_matrix_df = pd.DataFrame()

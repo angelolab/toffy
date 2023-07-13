@@ -1,8 +1,6 @@
-import itertools
-import operator
 import os
 import pathlib
-from typing import Dict, List, Optional, Union
+from typing import List, Optional, Union
 
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
@@ -10,13 +8,13 @@ import natsort as ns
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from alpineer import io_utils, misc_utils
+from matplotlib import cm
 from matplotlib.axes import Axes
 from matplotlib.colors import ListedColormap, Normalize
 from matplotlib.figure import Figure
 from tqdm.auto import tqdm
 
-from toffy import qc_comp, settings
+from toffy import settings
 from toffy.qc_comp import QCTMA, QCBatchEffect
 
 
@@ -198,8 +196,8 @@ def _qc_tma_metrics_plot(
             linecolor="black",
             cbar_kws={"shrink": 0.5},
             annot=True,
+            cmap=sns.color_palette(palette="Blues", as_cmap=True),
         )
-
         # Set ticks
         ax_heatmap.set_xticks(
             ticks=ax_heatmap.get_xticks(),

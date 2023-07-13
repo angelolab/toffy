@@ -9,9 +9,11 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import natsort as ns
 import numpy as np
+import numpy.ma as ma
 import pandas as pd
 import xarray as xr
 from alpineer import image_utils, io_utils, load_utils, misc_utils
+from numpy.ma import MaskedArray
 from pandas.core.groupby import DataFrameGroupBy
 from requests.exceptions import HTTPError
 from scipy.ndimage import gaussian_filter
@@ -566,24 +568,26 @@ class QCTMA:
         return pd.Series([r, c])
 
     def _create_r_c_tma_matrix(
-        self, group: DataFrameGroupBy, x_size: int, y_size: int, qc_col: str
+        self, group: DataFrameGroupBy, n_cols: int, n_rows: int, qc_col: str
     ) -> pd.Series:
         """
-        Creates the FOV / TMA matrix.
+        Ranks all FOVS for a given channel and creates a matrix of size `n_rows` by `n_cols`
+        as the TMA grid.
+
 
         Args:
             group (DataFrameGroupBy): Each group consists of an individual channel, and all of it's
                 associated FOVs.
-            x_size (int): The number of columns in the matrix.
-            y_size (int): The number of rows in the matrix.
+            n_cols (int): The number of columns in the matrix.
+            n_rows (int): The number of rows in the matrix.
             qc_col (str): The column to get the the QC data.
 
         Returns:
-            pd.Series[np.ndarray]: Returns the a series containing the matrix.
+            pd.Series[np.ndarray]: Returns the a series containing the ranked matrix.
         """
 
-        rc_array: np.ndarray = np.full(shape=(x_size, y_size), fill_value=np.nan)
-        rc_array[group["row"] - 1, group["column"] - 1] = group[qc_col]
+        rc_array: np.ndarray = np.full(shape=(n_cols, n_rows), fill_value=np.nan)
+        rc_array[group["column"] - 1, group["row"] - 1] = group[qc_col].rank()
 
         return pd.Series([rc_array])
 
@@ -610,9 +614,14 @@ class QCTMA:
         Args:
             tma (str): The TMA to compute the QC metrics for.
         """
+
+        # cannot use `io_utils.list_folders` because it cannot do a partial "exact match"
+        # i.e. if we want to match `tma_1_Rn_Cm` but not `tma_10_Rn_Cm`, `io_utils.list_folders`
+        # will return both for `tma_1`
         fovs: List[str] = ns.natsorted(
-            io_utils.list_folders(dir_name=self.cohort_path, substrs=tma)
+            seq=(p.name for p in pathlib.Path(self.cohort_path).glob(f"{tma}_*"))
         )
+
         # Compute the QC metrics
         with tqdm(fovs, desc="Computing QC Metrics", unit="FOV", leave=False) as pbar:
             for fov in pbar:
@@ -636,14 +645,15 @@ class QCTMA:
                 else:
                     pbar.set_postfix(FOV=fov, status="Already Computed")
 
-        # Generate the combined metrics for each FOV
+        # Generate the combined metrics for each TMA
         for qc_suffix in self.qc_suffixes:
-            metric_files = filter(
-                lambda f: "combined" not in f,
-                io_utils.list_files(
-                    dir_name=self.metrics_dir,
-                    substrs=f"{qc_suffix}.csv",
-                ),
+            metric_files: List[str] = ns.natsorted(
+                (
+                    io_utils.list_files(
+                        dir_name=self.metrics_dir,
+                        substrs=[f"{fov}_{qc_suffix}.csv" for fov in fovs],
+                    )
+                )
             )
 
             # Define an aggregated metric DataFrame
@@ -668,7 +678,7 @@ class QCTMA:
                 out. Defaults to None.
         """
 
-        with tqdm(total=len(tmas), desc="Computing QC TMA Metric Ranks", unit="TMAs") as pbar:
+        with tqdm(total=len(tmas), desc="Computing QC TMA Metric Ranks", unit="TMA") as pbar:
             for tma in tmas:
                 self.tma_avg_ranks[tma] = self._compute_qc_tma_metrics_rank(
                     tma, channel_exclude=channel_exclude
@@ -703,8 +713,8 @@ class QCTMA:
         )
 
         ranked_channels_matrix = []
-        x_size: int = None
-        y_size: int = None
+        n_cols: int = None
+        n_rows: int = None
 
         for cmt, qc_col in zip(combined_metric_tmas, self.qc_cols):
             # Open and filter the default ignored channels, along with the user specified channels
@@ -715,33 +725,25 @@ class QCTMA:
             cmt_df[["column", "row"]] = cmt_df["fov"].apply(self._get_r_c)
 
             # Get matrix dimensions
-            y_size = cmt_df["column"].max()
-            x_size = cmt_df["row"].max()
+            n_cols = cmt_df["column"].max()
+            n_rows = cmt_df["row"].max()
 
-            # Create the TMA matrix / for the heatmap
-            channel_tmas: pd.DataFrame = cmt_df.groupby(by="channel", sort=True).apply(
-                lambda group: self._create_r_c_tma_matrix(group, x_size, y_size, qc_col)
+            # Rank all FOVs per channel, and then create the heatmap matrix
+            ranked_channel_tmas: pd.DataFrame = cmt_df.groupby(by="channel", sort=True).apply(
+                lambda group: self._create_r_c_tma_matrix(group, n_cols, n_rows, qc_col)
             )
-            channel_matrices: np.ndarray = np.array(
-                [c_tma[0] for c_tma in channel_tmas.values],
+            ranked_channel_matrices: np.ndarray = np.array(
+                [c_tma[0] for c_tma in ranked_channel_tmas.values],
             )
-            # Rank all FOVs for each channel.
-            ranked_channels: np.ndarray = rankdata(
-                a=channel_matrices.reshape((x_size * y_size), -1),
-                method="average",
-                nan_policy="omit",
-                axis=0,
-            ).reshape(len(channel_tmas), y_size, x_size)
 
-            # Average the rank for each channel.
-            avg_ranked_tma: np.ndarray = ranked_channels.mean(axis=0)
+            avg_rank = np.mean(ranked_channel_matrices, axis=0)
 
-            ranked_channels_matrix.append(avg_ranked_tma)
+            ranked_channels_matrix.append(avg_rank)
 
         return xr.DataArray(
             data=np.stack(ranked_channels_matrix),
-            coords=[self.qc_cols, np.arange(y_size), np.arange(x_size)],
-            dims=["qc_col", "y", "x"],
+            coords=[self.qc_cols, np.arange(n_cols), np.arange(n_rows)],
+            dims=["qc_col", "cols", "rows"],
         )
 
 
