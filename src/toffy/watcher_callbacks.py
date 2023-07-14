@@ -19,7 +19,7 @@ from mibi_bin_tools.type_utils import any_true
 from toffy.image_stitching import stitch_images
 from toffy.mph_comp import combine_mph_metrics, compute_mph_metrics, visualize_mph
 from toffy.normalize import write_mph_per_mass
-from toffy.panel_utils import generate_prof_panel
+from toffy.panel_utils import modify_panel_ranges
 from toffy.qc_comp import combine_qc_metrics, compute_qc_metrics_direct, visualize_qc_metrics
 from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 
@@ -152,19 +152,22 @@ class FovCallbacks:
             **kwargs (dict):
                 Unused kwargs for other functions
         """
+        # NOTE: most panels will be specified from (0.3, 0), modify to (0.3, -0.06) for deficient
+        panel_def = modify_panel_ranges(panel, start_offset=0, stop_offset=-0.06)
         self.__fov_data = extract_bin_files(
             data_dir=self.run_folder,
             out_dir=None,
             include_fovs=[self.point_name],
-            panel=panel,
+            panel=panel_def,
             intensities=intensities,
             replace=replace,
             time_res=time_res,
         )
-        self.__panel = panel
+        self.__panel = panel_def
 
         if extract_prof:
-            panel_prof = generate_prof_panel(panel)
+            # modify from (0.3, 0) to (-0.06, 0.3) for proficient
+            panel_prof = modify_panel_ranges(panel, start_offset=0.24, stop_offset=0.3)
             self.__fov_data_prof = extract_bin_files(
                 data_dir=self.run_folder,
                 out_dir=None,

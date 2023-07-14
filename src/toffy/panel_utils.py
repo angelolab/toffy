@@ -105,35 +105,37 @@ necessary_masses = pd.DataFrame(
 )
 
 
-def generate_prof_panel(panel: pd.DataFrame):
-    """Adjust a panel to contain mass-proficient ranges
+def modify_panel_ranges(panel: pd.DataFrame, start_offset: float = 0, stop_offset: float = 0):
+    """Adjust the offsets of a given panel.
 
     Only applicable for masses with ranges separated by 0.3 between 'Stop' and 'Start'.
-    For these markers, 'Start' will be set to 'Stop' and 'Stop' will be set to 'Stop' + 0.3.
 
     Args:
         panel (pd.DataFrame): panel dataframe with columns Mass, Target, Start, and Stop.
 
     Returns:
         pd.DataFrame:
-            Updated panel for mass proficient extraction.
+            Updated panel with `start_offset` added to `'Start`' column,
+            likewise for `stop_offset` and `'Stop'` column.
     """
-    panel_positive = panel.copy()
+    panel_new = panel.copy()
 
     # extract only rows where 'Start' - 'End' = -0.3, round to account for floating point error
-    panel_positive_rows = panel_positive[
-        (panel_positive["Start"] - panel_positive["Stop"]).round(1) == -0.3
+    panel_rows_modify = panel_new[
+        (panel_new["Start"] - panel_new["Stop"]).round(1) == -0.3
     ].index.values
 
-    # explicitly modify the integration range to (0, 0.3)
-    panel_positive.loc[panel_positive_rows, "Start"] = panel_positive.loc[
-        panel_positive_rows, "Stop"
-    ].copy()
-    panel_positive.loc[panel_positive_rows, "Stop"] = (
-        panel_positive.loc[panel_positive_rows, "Start"].copy() + 0.3
+    # add start_offset to 'Start' column
+    panel_new.loc[panel_rows_modify, "Start"] = (
+        panel_new.loc[panel_rows_modify, "Start"].copy() + start_offset
     )
 
-    return panel_positive
+    # add stop_offset to 'Stop' column
+    panel_new.loc[panel_rows_modify, "Stop"] = (
+        panel_new.loc[panel_rows_modify, "Stop"].copy() + stop_offset
+    )
+
+    return panel_new
 
 
 def merge_duplicate_masses(panel):
