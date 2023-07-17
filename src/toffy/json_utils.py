@@ -215,14 +215,19 @@ def check_fov_resolutions(bin_file_dir, run_name):
     for fov in run_metadata.get("fovs", ()):
         # get fov names
         fov_number = fov.get("runOrder")
-        fov_names.append(f"fov-{fov_number}-scan-1")
+        name = f"fov-{fov_number}-scan-1"
+        fov_names.append(name)
 
         # retrieve pixel and micron specs
         fov_pixel_length = fov.get("frameSizePixels")["width"]
         fov_micron_length = fov.get("fovSizeMicrons")
 
         # calculate and save fov resolution
-        resolutions.append(fov_micron_length / fov_pixel_length)
+        fov_resolution = fov_micron_length / fov_pixel_length
+        resolutions.append(fov_resolution)
+
+        # output values
+        print(f"{name}: {fov_resolution}")
 
     resolution_data = pd.DataFrame({"fov": fov_names, "resolution": resolutions})
 
