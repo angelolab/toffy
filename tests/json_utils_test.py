@@ -184,3 +184,41 @@ def test_check_for_empty_files():
             empty_files = json_utils.check_for_empty_files(temp_dir)
 
         assert empty_files == ["empty_file"]
+
+
+def test_check_fov_resolutions():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        run_data = {
+            "fovs": [
+                {
+                    "runOrder": 1,
+                    "scanCount": 1,
+                    "frameSizePixels": {"width": 32, "height": 32},
+                    "fovSizeMicrons": 100,
+                },
+                {
+                    "runOrder": 2,
+                    "scanCount": 1,
+                    "frameSizePixels": {"width": 32, "height": 32},
+                    "fovSizeMicrons": 100,
+                },
+                {
+                    "runOrder": 3,
+                    "scanCount": 1,
+                    "frameSizePixels": {"width": 16, "height": 16},
+                    "fovSizeMicrons": 100,
+                },
+            ],
+        }
+
+        json_utils.write_json_file(os.path.join(temp_dir, "test_run.json"), run_data)
+
+        # test successful resolution check
+        resolution_data = json_utils.check_fov_resolutions(temp_dir, "test_run")
+
+        assert len(resolution_data) == 3
+        assert (
+            np.array(["fov-1-scan-1", "fov-2-scan-1", "fov-3-scan-1"]) == resolution_data["fov"]
+        ).all()
+        assert resolution_data["resolution"].iloc[0] == resolution_data["resolution"].iloc[1]
+        assert resolution_data["resolution"].iloc[0] != resolution_data["resolution"].iloc[2]

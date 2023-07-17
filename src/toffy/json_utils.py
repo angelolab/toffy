@@ -197,12 +197,23 @@ def check_for_empty_files(bin_file_dir):
     return empty_json_files
 
 
-def check_fov_resolutions(bin_file_dir, run_name, save_path=""):
+def check_fov_resolutions(bin_file_dir, run_name):
+    """Use the run metadata to calculate the resolution of each fov
+    Args:
+        bin_file_dir (str): directory containing the run json file
+        run_name (str): name of the run and corresponding run file
+
+    Returns:
+        pd.DataFrame: details fov names and corresponding resolution value
+    """
+    # read in run metadata
     run_file_path = os.path.join(bin_file_dir, run_name + ".json")
+    io_utils.validate_paths([run_file_path])
     run_metadata = read_json_file(run_file_path, encoding="utf-8")
 
     fov_names, resolutions = [], []
     for fov in run_metadata.get("fovs", ()):
+        # get fov names
         fov_number = fov.get("runOrder")
         fov_names.append(f"fov-{fov_number}-scan-1")
 
@@ -210,7 +221,9 @@ def check_fov_resolutions(bin_file_dir, run_name, save_path=""):
         fov_pixel_length = fov.get("frameSizePixels")["width"]
         fov_micron_length = fov.get("fovSizeMicrons")
 
+        # calculate and save fov resolution
         resolutions.append(fov_micron_length / fov_pixel_length)
 
     resolution_data = pd.DataFrame({"fov": fov_names, "resolution": resolutions})
-    resolution_data.to_csv(save_path, index=False)
+
+    return resolution_data
