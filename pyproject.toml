@@ -47,6 +47,7 @@ scikit-learn = "^1"
 watchdog = "^3"
 tqdm = "^4"
 scipy = "^1.10.1"
+pandas = "^2"
 
 [tool.poetry.group.test]
 optional = true

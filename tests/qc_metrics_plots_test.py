@@ -10,7 +10,7 @@ from alpineer import test_utils
 from traitlets import Callable
 
 from toffy import qc_metrics_plots, settings
-from toffy.qc_comp import QCTMA, QCBatchEffect
+from toffy.qc_comp import QCTMA, QCControlMetrics
 
 from .qc_comp_test import BatchEffectMetricData, QCMetricData, cohort_data, qc_tmas
 
@@ -125,7 +125,7 @@ def test_qc_tmas_metrics_plot(
         f"{tissue}_{qc}.png" for tissue, qc in itertools.product(_tmas, qc_tma.qc_suffixes)
     ]
 
-    # Assert the existance of the batch effect figures
+    # Assert the existance of the QC TMA metrics figures
     for fig in total_figures:
         assert os.path.exists(qc_tma.metrics_dir / "figures" / fig)
 
@@ -133,7 +133,7 @@ def test_qc_tmas_metrics_plot(
 @pytest.fixture(scope="function")
 def batch_effect_qc_data(cohort_data: BatchEffectMetricData) -> Generator[Callable, None, None]:
     """
-    Creates the QCBatchEffect class, and computes the metrics, and then filters out unwanted
+    Creates the QCControlMetrics class, and computes the metrics, and then filters out unwanted
         channels.
 
     Args:
@@ -141,7 +141,7 @@ def batch_effect_qc_data(cohort_data: BatchEffectMetricData) -> Generator[Callab
             class.
 
     Yields:
-        Generator[Callable, None, None]: A Function which generates the QCBatchEffect object,
+        Generator[Callable, None, None]: A Function which generates the QCControlMetrics object,
         computes the QC metricss, and filters channels..
     """
 
@@ -149,15 +149,15 @@ def batch_effect_qc_data(cohort_data: BatchEffectMetricData) -> Generator[Callab
         fovs: List[str],
         channel_include: List[str] = None,
         channel_exclude: List[str] = None,
-    ) -> QCBatchEffect:
-        qc_batch_effects = QCBatchEffect(
+    ) -> QCControlMetrics:
+        qc_batch_effects = QCControlMetrics(
             qc_metrics=cohort_data.qc_metrics,
             cohort_path=cohort_data.cohort_img_dir,
             metrics_dir=cohort_data.cohort_metrics_dir,
         )
 
-        qc_batch_effects.compute_batch_effect_qc_metrics(
-            batch_name="Project_Batch1",
+        qc_batch_effects.compute_control_qc_metrics(
+            control_sample_name="Project_Batch1",
             fovs=fovs,
             channel_exclude=channel_exclude,
             channel_include=channel_include,
@@ -174,7 +174,7 @@ def batch_effect_qc_data(cohort_data: BatchEffectMetricData) -> Generator[Callab
         (["fov0"], ["chan0"], ["chan1", "chan2"]),
     ],
 )
-def test_qc_batch_effect_heatmap(
+def test_longitudinal_control_heatmap(
     batch_effect_qc_data: Callable,
     _fovs: List[str],
     _channel_include: Optional[List[str]],
@@ -182,22 +182,22 @@ def test_qc_batch_effect_heatmap(
 ) -> None:
     _save_figure: bool = True
 
-    qc_batch: QCBatchEffect = batch_effect_qc_data(_fovs, _channel_include, _channel_exclude)
+    qc_control: QCControlMetrics = batch_effect_qc_data(_fovs, _channel_include, _channel_exclude)
 
-    _batch_name = "Project_Batch1"
+    _control_sample_name = "Project_Batch1"
 
-    qc_metrics_plots.qc_batch_effect_heatmap(
-        qc_batch=qc_batch,
-        batch_name=_batch_name,
+    qc_metrics_plots.longitudinal_control_heatmap(
+        qc_control=qc_control,
+        control_sample_name=_control_sample_name,
         save_figure=_save_figure,
         dpi=30,
     )
 
     total_figures: List[str] = [
-        f"{_batch_name}_heatmap_{qc}.png"
-        for fov, qc in itertools.product(_fovs, qc_batch.qc_suffixes)
+        f"{_control_sample_name}_heatmap_{qc}.png"
+        for fov, qc in itertools.product(_fovs, qc_control.qc_suffixes)
     ]
 
-    # Assert the existance of the batch effect figures
+    # Assert the existance of the Longitudinal Control figures
     for fig in total_figures:
-        assert os.path.exists(qc_batch.metrics_dir / "figures" / fig)
+        assert os.path.exists(qc_control.metrics_dir / "figures" / fig)

@@ -748,16 +748,16 @@ class QCTMA:
 
 
 @dataclass
-class QCBatchEffect:
+class QCControlMetrics:
     """
-    Computes QC metrics for a specified set of FOVs and saves the tissue specific QC files
-    in the `qc_cohort_metrics_dir`.
+    Computes QC Metrics for a set of control sample FOVs across various runs, and saves the QC
+    files in the `longitudinal_control_metrics_dir`.
 
     Args:
         cohort_path (Union[str,pathlib.Path]): The directory where the extracted images are
-        stored for a particular batch, or tissue of interest.
-        qc_cohort_metrics_dir (Union[str, pathlib.Path]): The directory where to place the QC TMA
-        metrics.
+        stored for the control FOVs.
+        longitudinal_control_metrics_dir (Union[str, pathlib.Path]): The directory where to save
+        the QC Control metrics.
         qc_metrics (List[str]): A list of QC metrics to use. Options include:
 
                 - `"Non-zero mean intensity"`
@@ -776,7 +776,7 @@ class QCBatchEffect:
     # Fields initialized after `__post_init__`
     qc_cols: List[str] = field(init=False)
     qc_suffixes: List[str] = field(init=False)
-    qc_batch_metrics: Dict[Tuple[str, str], pd.DataFrame] = field(init=False)
+    longitudinal_control_metrics: Dict[Tuple[str, str], pd.DataFrame] = field(init=False)
 
     def __post_init__(self):
         # Input validation: Ensure that the paths exist
@@ -784,30 +784,28 @@ class QCBatchEffect:
 
         self.qc_cols, self.qc_suffixes = qc_filtering(qc_metrics=self.qc_metrics)
 
-        self.qc_batch_metrics = {}
+        self.longitudinal_control_metrics = {}
 
-    def compute_batch_effect_qc_metrics(
+    def compute_control_qc_metrics(
         self,
-        batch_name: str,
+        control_sample_name: str,
         fovs: List[str],
         channel_exclude: List[str] = None,
         channel_include: List[str] = None,
     ) -> None:
         """
-        Computes QC metrics for a specified set of FOVs (a "batch" of them) and
-        saves their QC files in the `qc_cohort_metrics_dir`. Calculates the
-        following metrics for the specified tissues,
-        and the metrics for the invidual FOVs within that cohort:
-
+        Computes QC metrics for a set of Control Sample FOVs and saves their QC files in the
+        `longitudinal_control_metrics_dir`. Calculates the following metrics for the specified
+        control samples:
                 - `"Non-zero mean intensity"`
                 - `"Total intensity"`
                 - `"99.9% intensity value"`
 
         Args:
-            batch_name (str): An identifier to name the batch of FOVs
-            fovs (List[str]): A list of tissues to find QC metrics for.
-            channel_include (List[str], optional): A list of channels to include. Defaults to None.
+            control_sample_name (str): An identifier for naming the control sample.
+            fovs (List[str]): A list of control samples to find QC metrics for.
             channel_exclude (List[str], optional): A list of channels to exclude. Defaults to None.
+            channel_include (List[str], optional): A list of channels to include. Defaults to None.
 
 
         Raises:
@@ -818,11 +816,11 @@ class QCBatchEffect:
 
         with tqdm(
             total=len(fovs),
-            desc=f"Computing QC Batch metrics - {batch_name}",
+            desc=f"Computing QC Longitudinal Control metrics - {control_sample_name}",
             unit="FOVs",
         ) as pbar:
             for fov in ns.natsorted(fovs):
-                # Gather the qc batch files for the current fov if they exist
+                # Gather the qc files for the current fov if they exist
                 pre_computed_metrics = filter(
                     lambda f: "combined" not in f,
                     io_utils.list_files(
@@ -861,40 +859,46 @@ class QCBatchEffect:
                 channel_exclude=channel_exclude,
             )
 
-            self.qc_batch_metrics.update({(batch_name, qc_col): combined_batch_df})
+            self.longitudinal_control_metrics.update(
+                {(control_sample_name, qc_col): combined_batch_df}
+            )
 
             combined_batch_df.to_csv(
-                os.path.join(self.metrics_dir, f"{batch_name}_combined_{qc_suffix}.csv"),
+                os.path.join(self.metrics_dir, f"{control_sample_name}_combined_{qc_suffix}.csv"),
                 index=False,
             )
 
-    def transformed_batch_effects_data(self, batch_name: str, qc_metric: str) -> pd.DataFrame:
+    def transformed_control_effects_data(
+        self, control_sample_name: str, qc_metric: str
+    ) -> pd.DataFrame:
         """
-        Creates a transformed DataFrame for the batch effects data, normalizing by the mean,
+        Creates a transformed DataFrame for the Longitudinal Control effects data, normalizing by the mean,
         then taking the `log2` of each value.
 
         Args:
-            tissue (str): A tissue to tranform the batch effects for.
-            metric (str): The metric to transform.
+            control_sample_name (str): A control sample to tranform the longitudinal control effects for.
+            qc_metric (str): The metric to transform.
 
         Returns:
-            pd.DataFrame: The transformed batch effects data.
+            pd.DataFrame: The transformed QC Longitudinal Control data.
         """
         misc_utils.verify_in_list(user_metric=qc_metric, qc_metrics=self.qc_cols)
 
         try:
-            df: pd.DataFrame = self.qc_batch_metrics[batch_name, qc_metric]
+            df: pd.DataFrame = self.longitudinal_control_metrics[control_sample_name, qc_metric]
         except KeyError:
-            # A batch Effect which isn't stored in the qc_batch_metrics dictionary, try to load it
+            # A qc file which isn't stored in the longitudinal_control_metrics dictionary, try to load it
             # in if it exists as a file
             df: pd.DataFrame = pd.read_csv(
                 os.path.join(
                     self.metrics_dir,
-                    f"{batch_name}_combined_{self.qc_suffixes[self.qc_cols.index(qc_metric)]}.csv",
+                    f"{control_sample_name}_combined_{self.qc_suffixes[self.qc_cols.index(qc_metric)]}.csv",
                 )
             )
         except FileNotFoundError as e:
-            raise FileNotFoundError(f"QC Metric Not Found for batch {batch_name}") from e
+            raise FileNotFoundError(
+                f"QC Metric Not Found for the Control Sample {control_sample_name}"
+            ) from e
 
         # Apply a log2 transformation to the mean normalized data.
         log2_norm_df: pd.DataFrame = df.pivot(

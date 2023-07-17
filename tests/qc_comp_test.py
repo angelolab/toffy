@@ -557,7 +557,7 @@ def cohort_data(
         base_dir=cohort_img_dir, fov_names=fov_names, channel_names=chan_names, img_shape=(20, 20)
     )
 
-    batch_names = ["batch0", "batch1", "batch2", "batch3"]
+    control_sample_names = ["batch0", "batch1", "batch2", "batch3"]
 
     qc_df: pd.DataFrame = pd.DataFrame(
         data={
@@ -572,8 +572,8 @@ def cohort_data(
         }
     )
 
-    for batch_name, (qc_col, qc_suffix) in itertools.product(
-        batch_names, zip(settings.QC_COLUMNS, settings.QC_SUFFIXES)
+    for control_sample_name, (qc_col, qc_suffix) in itertools.product(
+        control_sample_names, zip(settings.QC_COLUMNS, settings.QC_SUFFIXES)
     ):
         qc_df[
             [
@@ -581,7 +581,9 @@ def cohort_data(
                 "channel",
                 qc_col,
             ]
-        ].to_csv(cohort_metrics_dir / f"{batch_name}_combined_{qc_suffix}.csv", index=False)
+        ].to_csv(
+            cohort_metrics_dir / f"{control_sample_name}_combined_{qc_suffix}.csv", index=False
+        )
 
     yield BatchEffectMetricData(
         qc_metrics=settings.QC_COLUMNS,
@@ -592,12 +594,12 @@ def cohort_data(
     )
 
 
-class TestQCBatchEffect:
+class TestQCControlMetrics:
     @pytest.fixture(autouse=True)
     def _setup(self, cohort_data: BatchEffectMetricData) -> None:
         self.cohort_data: BatchEffectMetricData = cohort_data
 
-        self.qc_batch_effect = qc_comp.QCBatchEffect(
+        self.qc_batch_effect = qc_comp.QCControlMetrics(
             qc_metrics=settings.QC_COLUMNS,
             cohort_path=self.cohort_data.cohort_img_dir,
             metrics_dir=self.cohort_data.cohort_metrics_dir,
@@ -607,10 +609,10 @@ class TestQCBatchEffect:
         assert self.qc_batch_effect.qc_cols == settings.QC_COLUMNS
         assert self.qc_batch_effect.qc_suffixes == settings.QC_SUFFIXES
 
-        assert self.qc_batch_effect.qc_batch_metrics == {}
+        assert self.qc_batch_effect.longitudinal_control_metrics == {}
 
     @parametrize(
-        "_batch_name,_channel_include,_channel_exclude",
+        "_control_sample_name,_channel_include,_channel_exclude",
         [
             ("batch0", None, None),
             ("batch1", ["chan0"], None),
@@ -619,14 +621,14 @@ class TestQCBatchEffect:
             pytest.param(None, None, None, marks=pytest.mark.xfail),
         ],
     )
-    def test_compute_batch_effect_qc_metrics(
+    def test_compute_control_qc_metrics(
         self,
-        _batch_name,
+        _control_sample_name,
         _channel_include,
         _channel_exclude,
     ) -> None:
-        self.qc_batch_effect.compute_batch_effect_qc_metrics(
-            batch_name=_batch_name,
+        self.qc_batch_effect.compute_control_qc_metrics(
+            control_sample_name=_control_sample_name,
             fovs=self.cohort_data.fovs,
             channel_exclude=_channel_exclude,
             channel_include=_channel_include,
@@ -634,11 +636,13 @@ class TestQCBatchEffect:
 
         for qc_suffix in settings.QC_SUFFIXES:
             assert os.path.exists(
-                self.qc_batch_effect.metrics_dir / f"{_batch_name}_combined_{qc_suffix}.csv"
+                self.qc_batch_effect.metrics_dir
+                / f"{_control_sample_name}_combined_{qc_suffix}.csv"
             )
 
             qc_df = pd.read_csv(
-                self.qc_batch_effect.metrics_dir / f"{_batch_name}_combined_{qc_suffix}.csv"
+                self.qc_batch_effect.metrics_dir
+                / f"{_control_sample_name}_combined_{qc_suffix}.csv"
             )
             assert set(qc_df["channel"]).isdisjoint(set(settings.QC_CHANNEL_IGNORE))
 
@@ -653,7 +657,7 @@ class TestQCBatchEffect:
             )
 
     @parametrize(
-        "_batch_name,_metric",
+        "_control_sample_name,_metric",
         [
             ("batch0", settings.QC_COLUMNS[0]),
             ("batch1", settings.QC_COLUMNS[1]),
@@ -664,16 +668,16 @@ class TestQCBatchEffect:
             ),  # Test reading from a file if the metric has been already computed
         ],
     )
-    def test_transformed_batch_effects_data(self, _batch_name, _metric) -> None:
-        self.qc_batch_effect.compute_batch_effect_qc_metrics(
-            batch_name=_batch_name,
+    def test_transformed_control_effects_data(self, _control_sample_name, _metric) -> None:
+        self.qc_batch_effect.compute_control_qc_metrics(
+            control_sample_name=_control_sample_name,
             fovs=self.cohort_data.fovs,
             channel_exclude=None,
             channel_include=None,
         )
 
-        transformed_df = self.qc_batch_effect.transformed_batch_effects_data(
-            batch_name=_batch_name, qc_metric=_metric
+        transformed_df = self.qc_batch_effect.transformed_control_effects_data(
+            control_sample_name=_control_sample_name, qc_metric=_metric
         )
         # self.cohort_data.qc_df
 

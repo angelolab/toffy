@@ -15,7 +15,7 @@ from matplotlib.figure import Figure
 from tqdm.auto import tqdm
 
 from toffy import settings
-from toffy.qc_comp import QCTMA, QCBatchEffect
+from toffy.qc_comp import QCTMA, QCControlMetrics
 
 
 def visualize_qc_metrics(
@@ -229,34 +229,35 @@ def _qc_tma_metrics_plot(
             plt.close(fig)
 
 
-def qc_batch_effect_heatmap(
-    qc_batch: QCBatchEffect,
-    batch_name: str,
+def longitudinal_control_heatmap(
+    qc_control: QCControlMetrics,
+    control_sample_name: str,
     save_figure: bool = False,
     dpi: int = 300,
 ) -> None:
     """
-    Generates a heatmap of the QC metrics for the batch.
+    Generates a heatmap of the QC metrics for the QC Control FOVs.
 
     Args:
-        qc_batch (QCBatchEffect): The class which contains the QC batch effect data, filepaths, and methods.
-        batch_name (List[str]): A list of tissues to plot the QC metrics for.
+        qc_control (QCControlMetrics): The class which contains the QC LC data, filepaths
+        , and methods.
+        control_sample_name (List[str]): A list of tissues to plot the QC metrics for.
         save_figure (bool, optional): If `True`, the figure is saved in a subdirectory in the
-        `qc_cohort_metrics_dir` directory. Defaults to `False`.
+        `longitudinal_control_metrics_dir` directory. Defaults to `False`.
         dpi (int, optional): Dots per inch, the resolution of the image. Defaults to 300.
 
     Raises:
         ValueError: Raised when the input tissues are not a list of strings.
     """
-    if batch_name is None or not isinstance(batch_name, str):
-        raise ValueError("The batch name must be string.")
+    if control_sample_name is None or not isinstance(control_sample_name, str):
+        raise ValueError("The control sample name must be string.")
     if save_figure:
-        fig_dir: pathlib.Path = pathlib.Path(qc_batch.metrics_dir) / "figures"
+        fig_dir: pathlib.Path = pathlib.Path(qc_control.metrics_dir) / "figures"
         fig_dir.mkdir(parents=True, exist_ok=True)
 
-    for qc_col, qc_suffix in zip(qc_batch.qc_cols, qc_batch.qc_suffixes):
-        t_df: pd.DataFrame = qc_batch.transformed_batch_effects_data(
-            batch_name=batch_name, qc_metric=qc_col
+    for qc_col, qc_suffix in zip(qc_control.qc_cols, qc_control.qc_suffixes):
+        t_df: pd.DataFrame = qc_control.transformed_control_effects_data(
+            control_sample_name=control_sample_name, qc_metric=qc_col
         )
 
         # Set up the Figure for multiple axes
@@ -268,7 +269,7 @@ def qc_batch_effect_heatmap(
         _norm = Normalize(vmin=-1, vmax=1)
         _cmap = sns.color_palette("vlag", as_cmap=True)
 
-        fig.suptitle(f"{batch_name} - {qc_col}")
+        fig.suptitle(f"{control_sample_name} - {qc_col}")
 
         # Heatmap
         ax_heatmap: Axes = fig.add_subplot(gs[0, 0])
@@ -324,9 +325,9 @@ def qc_batch_effect_heatmap(
         # Save figure
         if save_figure:
             fig.savefig(
-                fname=pathlib.Path(qc_batch.metrics_dir)
+                fname=pathlib.Path(qc_control.metrics_dir)
                 / "figures"
-                / f"{batch_name}_heatmap_{qc_suffix}.png",
+                / f"{control_sample_name}_heatmap_{qc_suffix}.png",
                 dpi=dpi,
                 bbox_inches="tight",
             )
