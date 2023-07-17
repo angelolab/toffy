@@ -512,13 +512,12 @@ def visualize_qc_metrics(
     qc_fg.set_titles(template="{col_name}")
     qc_fg.figure.supxlabel(t="fov", x=0.5, y=0, ha="center", size=axes_font_size)
     qc_fg.figure.supylabel(t=f"{metric_name}", x=0, y=0.5, va="center", size=axes_font_size)
-    qc_fg.set(xticks=[], yticks=[])
+    qc_fg.set(xticks=[])
 
     # per Erin's visualization remove the default axis title on the y-axis
     # and instead show 'fov' along x-axis and the metric name along the y-axis (overarching)
     qc_fg.set_axis_labels(x_var="", y_var="")
     qc_fg.set_xticklabels([])
-    qc_fg.set_yticklabels([])
 
     # save the figure always
     # Return the figure if specified.
