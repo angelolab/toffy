@@ -350,6 +350,22 @@ class FOV_EventHandler(FileSystemEventHandler):
             # explicitly call check_complete to start run callbacks, since all FOVs are done
             self.check_complete()
 
+    def _check_bin_updates(self):
+        for fov in self.run_structure.fov_progress:
+            fov_bin_path = os.path.join(self.run_folder, fov + ".bin")
+
+            # if .bin file creation time > modify time, not fully written when extracted
+            # need to re-extract
+            fov_bin_create = os.path.getctime(fov_bin_path)
+            fov_bin_modify = os.path.getmtime(fov_bin_path)
+            if fov_bin_modify > fov_bin_create:
+                # since reprocessing needed, set progress of .bin file back to False
+                self.run_structure.fov_progress[fov]["bin"] = False
+
+                # re-extract the .bin file
+                # NOTE: since no more FOVs are being written, last_fov_num_processed is irrelevant
+                self._fov_callback_driver(os.path.join(self.run_folder, last_fov_bin))
+
     def _fov_callback_driver(self, file_trigger: str):
         # check if what's created is in the run structure
         fov_ready, point_name = self._check_fov_status(file_trigger)
@@ -419,11 +435,14 @@ class FOV_EventHandler(FileSystemEventHandler):
     def check_complete(self):
         """Checks run structure fov_progress status
 
-        If run is complete, all calbacks in `per_run` will be run over the whole run.
+        If run is complete, all callbacks in `per_run` will be run over the whole run.
+
+        NOTE: bin files that had new data written will first need to be re-extracted.
         """
 
         if all(self.run_structure.check_fov_progress().values()) and not self.all_fovs_complete:
             self.all_fovs_complete = True
+            self._check_bin_updates()
             logging.info(f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- All FOVs finished\n')
             logging.info(
                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
