@@ -539,14 +539,22 @@ class WatcherCases:
             ["extract_tiffs", "generate_pulse_heights"],
             kwargs,
             validators,
+            1,
         )
 
     @parametrize(intensity=(False, True))
     @parametrize(replace=(False, True))
     @parametrize(extract_prof=(False, True))
     def case_inter_callback(self, intensity, replace, extract_prof):
-        rcs, _, fcs, kwargs, validators = self.case_default(intensity, replace, extract_prof)
+        rcs, _, fcs, kwargs, validators, watcher_lag = self.case_default(
+            intensity, replace, extract_prof
+        )
         ics = rcs[:2]
         rcs = rcs[2:]
 
-        return (rcs, ics, fcs, kwargs, validators)
+        return (rcs, ics, fcs, kwargs, validators, watcher_lag)
+
+    @parametrize(watcher_lag=(4, 8, 12))
+    def case_watcher_timeout(self, watcher_lag):
+        rcs, ics, fcs, kwargs, validators, _ = self.case_inter_callback(True, True, True)
+        return (rcs, ics, fcs, kwargs, validators, watcher_lag)

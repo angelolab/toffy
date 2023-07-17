@@ -113,8 +113,9 @@ def test_run_structure(run_json, expected_files, recwarn):
 @patch("toffy.watcher_callbacks.visualize_mph", side_effect=mock_visualize_mph)
 @pytest.mark.parametrize("add_blank", [False, True])
 @pytest.mark.parametrize("temp_bin", [False, True])
-@pytest.mark.parametrize("watcher_start_lag", [4, 8, 12])
-@parametrize_with_cases("run_cbs, int_cbs, fov_cbs, kwargs, validators", cases=WatcherCases)
+@parametrize_with_cases(
+    "run_cbs, int_cbs, fov_cbs, kwargs, validators, watcher_start_lag", cases=WatcherCases
+)
 def test_watcher(
     mock_viz_qc,
     mock_viz_mph,
@@ -123,10 +124,11 @@ def test_watcher(
     fov_cbs,
     kwargs,
     validators,
+    watcher_start_lag,
     add_blank,
     temp_bin,
-    watcher_start_lag,
 ):
+    print("The watcher start lag is: %d" % watcher_start_lag)
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             tiff_out_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME)
