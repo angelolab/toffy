@@ -3,6 +3,7 @@ import json
 import os
 import warnings
 
+import pandas as pd
 from alpineer import io_utils
 
 
@@ -194,3 +195,22 @@ def check_for_empty_files(bin_file_dir):
 
     # return the list of fov names
     return empty_json_files
+
+
+def check_fov_resolutions(bin_file_dir, run_name, save_path=""):
+    run_file_path = os.path.join(bin_file_dir, run_name + ".json")
+    run_metadata = read_json_file(run_file_path, encoding="utf-8")
+
+    fov_names, resolutions = [], []
+    for fov in run_metadata.get("fovs", ()):
+        fov_number = fov.get("runOrder")
+        fov_names.append(f"fov-{fov_number}-scan-1")
+
+        # retrieve pixel and micron specs
+        fov_pixel_length = fov.get("frameSizePixels")["width"]
+        fov_micron_length = fov.get("fovSizeMicrons")
+
+        resolutions.append(fov_micron_length / fov_pixel_length)
+
+    resolution_data = pd.DataFrame({"fov": fov_names, "resolution": resolutions})
+    resolution_data.to_csv(save_path, index=False)
