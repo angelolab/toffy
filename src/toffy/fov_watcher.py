@@ -205,7 +205,10 @@ class FOV_EventHandler(FileSystemEventHandler):
         if not os.path.exists(log_folder):
             os.makedirs(log_folder)
         logging.basicConfig(
-            filename=self.log_path, filemode="a", format="%(name)s - %(levelname)s - %(message)s"
+            level=logging.INFO,
+            filename=self.log_path,
+            filemode="a",
+            format="%(name)s - %(levelname)s - %(message)s",
         )
 
         # create run structure
