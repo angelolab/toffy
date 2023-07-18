@@ -214,11 +214,21 @@ def test_check_fov_resolutions():
         json_utils.write_json_file(os.path.join(temp_dir, "test_run.json"), run_data)
 
         # test successful resolution check
-        resolution_data = json_utils.check_fov_resolutions(temp_dir, "test_run")
+        resolution_data = json_utils.check_fov_resolutions(
+            temp_dir, "test_run", save_path=os.path.join(temp_dir, "resolution_data.csv")
+        )
 
         assert len(resolution_data) == 3
         assert (
             np.array(["fov-1-scan-1", "fov-2-scan-1", "fov-3-scan-1"]) == resolution_data["fov"]
         ).all()
-        assert resolution_data["resolution"].iloc[0] == resolution_data["resolution"].iloc[1]
-        assert resolution_data["resolution"].iloc[0] != resolution_data["resolution"].iloc[2]
+        assert (
+            resolution_data["pixels / 400 microns"].iloc[0]
+            == resolution_data["pixels / 400 microns"].iloc[1]
+        )
+        assert (
+            resolution_data["pixels / 400 microns"].iloc[0]
+            != resolution_data["pixels / 400 microns"].iloc[2]
+        )
+
+        assert os.path.exists(os.path.join(temp_dir, "resolution_data.csv"))
