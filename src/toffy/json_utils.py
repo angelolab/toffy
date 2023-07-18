@@ -228,7 +228,7 @@ def check_fov_resolutions(bin_file_dir, run_name, save_path=None):
         pixels_adj = int(mult * fov_pixel_length)
 
         # output values
-        print(f"{name}: {pixels_adj} x {400}")
+        print(f"{name}: {pixels_adj} pixels x {400} microns")
         resolutions.append(pixels_adj)
 
     resolution_data = pd.DataFrame({"fov": fov_names, "pixels / 400 microns": resolutions})
