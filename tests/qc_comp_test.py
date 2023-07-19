@@ -189,7 +189,7 @@ def test_combine_qc_metrics(fovs, warn_overwrite_test):
                 )
 
         # create a dummy file if testing the warn_overwrite flag
-        if warn_overwrite:
+        if warn_overwrite_test:
             Path(os.path.join(bin_file_path, "combined_%s.csv" % settings.QC_SUFFIXES[0])).touch()
 
         # run the aggregation function, testing that both warn_overwrite states work properly
