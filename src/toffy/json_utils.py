@@ -212,12 +212,14 @@ def check_fov_resolutions(bin_file_dir, run_name, save_path=None):
     io_utils.validate_paths([run_file_path])
     run_metadata = read_json_file(run_file_path, encoding="utf-8")
 
-    fov_names, resolutions = [], []
+    fov_names, custom_names, resolutions = [], [], []
     for fov in run_metadata.get("fovs", ()):
         # get fov names
         fov_number = fov.get("runOrder")
-        name = f"fov-{fov_number}-scan-1"
-        fov_names.append(name)
+        default_name = f"fov-{fov_number}-scan-1"
+        custom_name = fov.get("name")
+        fov_names.append(default_name)
+        custom_names.append(custom_name)
 
         # retrieve pixel and micron specs
         fov_pixel_length = fov.get("frameSizePixels")["width"]
@@ -228,10 +230,12 @@ def check_fov_resolutions(bin_file_dir, run_name, save_path=None):
         pixels_adj = int(mult * fov_pixel_length)
 
         # output values
-        print(f"{name}: {pixels_adj} pixels x {400} microns")
+        print(f"{default_name} ({custom_name}): {pixels_adj} pixels x {400} microns")
         resolutions.append(pixels_adj)
 
-    resolution_data = pd.DataFrame({"fov": fov_names, "pixels / 400 microns": resolutions})
+    resolution_data = pd.DataFrame(
+        {"fov": fov_names, "name": custom_names, "pixels / 400 microns": resolutions}
+    )
     if save_path:
         resolution_data.to_csv(save_path, index=False)
 

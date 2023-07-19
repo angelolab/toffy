@@ -218,7 +218,7 @@ def test_check_fov_resolutions():
             temp_dir, "test_run", save_path=os.path.join(temp_dir, "resolution_data.csv")
         )
 
-        assert len(resolution_data) == 3
+        assert resolution_data.shape == (3, 3)
         assert (
             np.array(["fov-1-scan-1", "fov-2-scan-1", "fov-3-scan-1"]) == resolution_data["fov"]
         ).all()
