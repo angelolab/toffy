@@ -175,6 +175,10 @@ class FovCallbacks:
         if not os.path.exists(tiff_out_dir):
             os.makedirs(tiff_out_dir)
 
+        if os.path.exists(os.path.join(tiff_out_dir, self.point_name)):
+            warnings.warn(f"Images already extracted for FOV {self.point_name}")
+            return
+
         if self.__fov_data is None:
             self._generate_fov_data(panel, **kwargs)
 
@@ -212,6 +216,15 @@ class FovCallbacks:
                 raise ValueError("Must provide panel if fov data is not already generated...")
             self._generate_fov_data(panel, **kwargs)
 
+        qc_metric_paths = [
+            os.path.join(qc_out_dir, self.point_name + "_nonzero_mean_stats.csv"),
+            os.path.join(qc_out_dir, self.point_name + "_total_intensity_stats.csv"),
+            os.path.join(qc_out_dir, self.point_name + "_percentile_99_9_stats.csv"),
+        ]
+        if all([os.path.exists(qc_file) for qc_file in qc_metric_paths]):
+            warnings.warn(f"All QC metrics already extracted for FOV {self.point_name}")
+            return
+
         metric_data = compute_qc_metrics_direct(
             image_data=self.__fov_data,
             fov_name=self.point_name,
@@ -238,6 +251,10 @@ class FovCallbacks:
         if not os.path.exists(mph_out_dir):
             os.makedirs(mph_out_dir)
 
+        if os.path.exists(os.path.join(mph_out_dir, f"{self.point_name}" + "-mph-pulse.csv")):
+            warnings.warn(f"MPH pulse metrics already extracted for FOV {self.point_name}")
+            return
+
         compute_mph_metrics(
             bin_file_dir=self.run_folder,
             csv_dir=mph_out_dir,
@@ -262,6 +279,10 @@ class FovCallbacks:
 
         if not os.path.exists(pulse_out_dir):
             os.makedirs(pulse_out_dir)
+
+        if os.path.exists(os.path.join(mph_out_dir, f"{self.point_name}" + "-pulse-heights.csv")):
+            warnings.warn(f"Pulse heights per mass already extracted for FOV {self.point_name}")
+            return
 
         write_mph_per_mass(
             base_dir=self.run_folder,
