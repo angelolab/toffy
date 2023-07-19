@@ -111,11 +111,12 @@ def compute_mph_metrics(bin_file_dir, csv_dir, fov, mass=98, mass_start=97.5, ma
     out_df.to_csv(os.path.join(csv_dir, pulse_height_file), index=False)
 
 
-def combine_mph_metrics(csv_dir, return_data=False):
+def combine_mph_metrics(csv_dir, return_data=False, warn_overwrite=True):
     """Combines data from individual csvs into one
     Args:
         csv_dir (str): path where FOV mph data csvs are stored
         return_data (bool): whether to return dataframe with mph metrics, default False
+        warn_overwrite (bool): whether to warn if existing `_combined.csv` file found
 
     Returns:
         combined mph data for all FOVs
@@ -125,7 +126,7 @@ def combine_mph_metrics(csv_dir, return_data=False):
     io_utils.validate_paths(csv_dir)
 
     # combine individual csv files
-    combine_run_metrics(csv_dir, "mph_pulse")
+    combine_run_metrics(csv_dir, "mph_pulse", warn_overwrite)
 
     # calculate cumulative sums of total counts and time
     combined_df = pd.read_csv(os.path.join(csv_dir, "mph_pulse_combined.csv"))

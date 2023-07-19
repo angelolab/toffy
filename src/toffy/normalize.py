@@ -214,23 +214,27 @@ def create_prediction_function(name, weights):
     return pred_func
 
 
-def combine_run_metrics(run_dir, substring):
+def combine_run_metrics(run_dir, substring, warn_overwrite=True):
     """Combines the specified metrics from different FOVs into a single file
 
     Args:
         run_dir (str): the directory containing the files
-        substring(str): the substring contained within the files to be combined"""
+        substring(str): the substring contained within the files to be combined
+        warn_overwrite (bool): whether to warn if existing `_combined.csv` file found"""
 
     files = io_utils.list_files(run_dir, substring)
+    print("The state of warn_overwrite is: %s" % warn_overwrite)
 
     # validate inputs
     if len(files) == 0:
         raise ValueError("No files found in {}".format(run_dir))
 
     if substring + "_combined.csv" in files:
-        warnings.warn(
-            "Removing previously generated combined {} file in {}".format(substring, run_dir)
-        )
+        if warn_overwrite:
+            print("Warning of overwriting!")
+            warnings.warn(
+                "Removing previously generated combined {} file in {}".format(substring, run_dir)
+            )
         os.remove(os.path.join(run_dir, substring + "_combined.csv"))
         files = [file for file in files if "combined" not in file]
 
