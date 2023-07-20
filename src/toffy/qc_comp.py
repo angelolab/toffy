@@ -851,7 +851,7 @@ class QCControlMetrics:
             )
 
             # Define an aggregated metric DataFrame, and filter channels
-            combined_batch_df: pd.DataFrame = _channel_filtering(
+            combined_lc_df: pd.DataFrame = _channel_filtering(
                 df=pd.concat(
                     (pd.read_csv(os.path.join(self.metrics_dir, mf)) for mf in metric_files),
                 ),
@@ -860,10 +860,10 @@ class QCControlMetrics:
             )
 
             self.longitudinal_control_metrics.update(
-                {(control_sample_name, qc_col): combined_batch_df}
+                {(control_sample_name, qc_col): combined_lc_df}
             )
 
-            combined_batch_df.to_csv(
+            combined_lc_df.to_csv(
                 os.path.join(self.metrics_dir, f"{control_sample_name}_combined_{qc_suffix}.csv"),
                 index=False,
             )
