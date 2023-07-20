@@ -24,7 +24,6 @@ def extract_missing_fovs(
         extract_intensities (bool): whether to extract intensities from the bin files
         replace (bool): whether to replace pulse images with intensity
     """
-
     # retrieve all fov names from base_dir and extracted fovs from extraction_dir
     fovs = io_utils.remove_file_extensions(io_utils.list_files(bin_file_dir, substrs=".bin"))
     extracted_fovs = io_utils.list_folders(extraction_dir, substrs="fov")
