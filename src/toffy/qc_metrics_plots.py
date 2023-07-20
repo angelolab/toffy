@@ -269,7 +269,7 @@ def longitudinal_control_heatmap(
         _norm = Normalize(vmin=-1, vmax=1)
         _cmap = sns.color_palette("vlag", as_cmap=True)
 
-        fig.suptitle(f"{control_sample_name} - {qc_col}")
+        fig.suptitle(f"{control_sample_name} - QC: {qc_col}")
 
         # Heatmap
         ax_heatmap: Axes = fig.add_subplot(gs[0, 0])
@@ -285,6 +285,9 @@ def longitudinal_control_heatmap(
             norm=_norm,
             cmap=_cmap,
         )
+
+        # cbar title
+        ax_heatmap.collections[0].colorbar.ax.set_title(r"$\log_2(QC)$")
 
         # Axes labels, and ticks
         ax_heatmap.set_yticks(
