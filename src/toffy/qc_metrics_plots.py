@@ -334,4 +334,5 @@ def longitudinal_control_heatmap(
                 dpi=dpi,
                 bbox_inches="tight",
             )
-            plt.close(fig)
+        plt.show()
+        plt.close(fig)
