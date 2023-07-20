@@ -364,7 +364,7 @@ class FOV_EventHandler(FileSystemEventHandler):
 
                 # re-extract the .bin file
                 # NOTE: since no more FOVs are being written, last_fov_num_processed is irrelevant
-                self._fov_callback_driver(os.path.join(self.run_folder, last_fov_bin))
+                self._fov_callback_driver(fov_bin_path)
 
     def _fov_callback_driver(self, file_trigger: str):
         # check if what's created is in the run structure
