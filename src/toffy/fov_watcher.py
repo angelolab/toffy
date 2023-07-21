@@ -358,7 +358,7 @@ class FOV_EventHandler(FileSystemEventHandler):
             # if .bin file creation time > modify time, not fully written when extracted
             # need to re-extract
             fov_bin_create = os.path.getctime(fov_bin_path)
-            fov_json_create = os.path.getmtime(fov_json_path)
+            fov_json_create = os.path.getctime(fov_json_path)
             if fov_bin_create > fov_json_create:
                 print(f"Re-extracting incompletely extracted FOV {fov}")
                 logging.info(
