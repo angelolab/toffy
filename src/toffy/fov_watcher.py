@@ -359,6 +359,15 @@ class FOV_EventHandler(FileSystemEventHandler):
             fov_bin_create = os.path.getctime(fov_bin_path)
             fov_bin_modify = os.path.getmtime(fov_bin_path)
             if fov_bin_modify > fov_bin_create:
+                print(f"Re-extracting incompletely extracted FOV {fov}")
+                logging.info(
+                    f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Re-extracting {fov}\n'
+                )
+                logging.info(
+                    f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
+                    f"Running {self.fov_func.__name__} on {point_name}\n"
+                )
+
                 # since reprocessing needed, set progress of .bin file back to False
                 self.run_structure.fov_progress[fov]["bin"] = False
 
