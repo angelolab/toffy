@@ -223,7 +223,6 @@ def combine_run_metrics(run_dir, substring, warn_overwrite=True):
         warn_overwrite (bool): whether to warn if existing `_combined.csv` file found"""
 
     files = io_utils.list_files(run_dir, substring)
-    print("The state of warn_overwrite is: %s" % warn_overwrite)
 
     # validate inputs
     if len(files) == 0:
