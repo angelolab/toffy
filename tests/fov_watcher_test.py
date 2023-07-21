@@ -1,20 +1,20 @@
 import os
 import platform
 import shutil
+import subprocess
 import tempfile
 import time
 import warnings
+from datetime import datetime
 from multiprocessing.pool import ThreadPool as Pool
 from pathlib import Path
 from random import random
+from time import mktime
 from unittest.mock import patch
 
 import pytest
 from alpineer import io_utils
 from pytest_cases import parametrize_with_cases
-
-if platform.system() == "Windows":
-    from win32_setctime import setctime
 
 from toffy.fov_watcher import start_watcher
 from toffy.json_utils import write_json_file
@@ -49,14 +49,16 @@ def _slow_copy_sample_tissue_data(
         temp_bin (bool):
             Use initial temp bin file paths or not
     """
+    # counter to keep track of .bin files
+    num_bin_files = 0
 
-    for i, tissue_file in enumerate(sorted(os.listdir(COMBINED_DATA_PATH))):
-        print("Working on tissue file %s" % tissue_file)
+    for tissue_file in sorted(os.listdir(COMBINED_DATA_PATH)):
         time.sleep(delta)
         if one_blank and ".bin" in tissue_file and tissue_file[0] != ".":
             # create blank (0 size) file
             open(os.path.join(dest, tissue_file), "w").close()
             one_blank = False
+            num_bin_files += 1
         else:
             tissue_path = os.path.join(COMBINED_DATA_PATH, tissue_file)
             if temp_bin and ".bin" in tissue_file:
@@ -70,25 +72,21 @@ def _slow_copy_sample_tissue_data(
                 time.sleep(delta)
                 copied_tissue_path = os.path.join(dest, "." + tissue_file + ".aBcDeF")
                 os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
+                num_bin_files += 1
             else:
                 shutil.copy(tissue_path, dest)
 
-        # to mimic the CAC functionality, test Windows updates
-        if platform.system() == "Windows":
-            # update the created time for every third file
-            print("To update or not to update: %.2f" % (i % 3 == 0))
-            if i % 3 == 0:
-                print("Updating created time of .bin file %s" % os.path.join(dest, tissue_file))
-                print(
-                    "The old created time of the file is %.2f"
-                    % os.path.getctime(os.path.join(dest, tissue_file))
-                )
-                # NOTE: update if this repo and world is still alive in January 23, 2065!
-                setctime(os.path.join(dest, tissue_file), 3000000000.0, follow_symlinks=True)
-                print(
-                    "The new created time of the file is %.2f"
-                    % os.path.getctime(os.path.join(dest, tissue_file))
-                )
+    # get all .bin files
+    bin_files = [bfile for bfile in sorted(os.listdir(COMBINED_DATA_PATH)) if ".bin" in bfile]
+
+    # simulate updating the creation time for some .bin files, this tests _check_bin_updates
+    for i, bfile in enumerate(bin_files):
+        if i % 2 == 0:
+            shutil.copy(
+                os.path.join(COMBINED_DATA_PATH, bfile), os.path.join(dest, bfile + ".temp")
+            )
+            os.remove(os.path.join(dest, bfile))
+            os.rename(os.path.join(dest, bfile + ".temp"), os.path.join(dest, bfile))
 
 
 COMBINED_RUN_JSON_SPOOF = {
