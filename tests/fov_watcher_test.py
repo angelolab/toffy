@@ -5,11 +5,13 @@ import time
 import warnings
 from multiprocessing.pool import ThreadPool as Pool
 from pathlib import Path
+from random import random
 from unittest.mock import patch
 
 import pytest
 from alpineer import io_utils
 from pytest_cases import parametrize_with_cases
+from win32_setctime import setctime
 
 from toffy.fov_watcher import start_watcher
 from toffy.json_utils import write_json_file
@@ -64,6 +66,12 @@ def _slow_copy_sample_tissue_data(
                 time.sleep(delta)
                 copied_tissue_path = os.path.join(dest, "." + tissue_file + ".aBcDeF")
                 os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
+
+                # update the created time randomly
+                update_status = random()
+                if update_status < 0.5:
+                    # NOTE: update if this repo and world is still alive in January 23, 2065!
+                    setctime(os.path.join(dest, tissue_file), 3000000000.0, follow_symlinks=True)
             else:
                 shutil.copy(tissue_path, dest)
 
