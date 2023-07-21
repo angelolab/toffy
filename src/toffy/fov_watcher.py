@@ -359,7 +359,7 @@ class FOV_EventHandler(FileSystemEventHandler):
             fov_bin_path = os.path.join(self.run_folder, fov + ".bin")
             fov_json_path = os.path.join(self.run_folder, fov + ".json")
 
-            # if .bin file creation time > modify time, not fully written when extracted
+            # if .bin file creation time > .json file creation time, incomplete extraction
             # need to re-extract
             fov_bin_create = os.path.getctime(fov_bin_path)
             fov_json_create = os.path.getctime(fov_json_path)
