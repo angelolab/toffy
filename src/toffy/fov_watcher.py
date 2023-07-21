@@ -352,6 +352,10 @@ class FOV_EventHandler(FileSystemEventHandler):
 
     def _check_bin_updates(self):
         for fov in self.run_structure.fov_progress:
+            # skip moly points
+            if fov in self.run_structure.moly_points:
+                continue
+
             fov_bin_path = os.path.join(self.run_folder, fov + ".bin")
             fov_json_path = os.path.join(self.run_folder, fov + ".json")
 
