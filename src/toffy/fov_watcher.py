@@ -366,8 +366,8 @@ class FOV_EventHandler(FileSystemEventHandler):
             if platform.system() in ["Windows", "Linux"]:
                 fov_bin_create = Pathlib.path(fov_bin_path).stat().get_ctime
                 fov_json_create = Pathlib.path(fov_json_path).stat().get_ctime
-                print("The creation time of .bin create: %.2d" % fov_bin_create)
-                print("The creation time of .json create: %.2d" % fov_json_create)
+                print("The creation time of .bin create: %.2f" % fov_bin_create)
+                print("The creation time of .json create: %.2f" % fov_json_create)
             else:
                 fov_bin_create = os.stat(fov_bin_path).st_ctime
                 fov_json_create = os.stat(fov_json_path).st_ctime
