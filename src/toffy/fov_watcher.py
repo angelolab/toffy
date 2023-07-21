@@ -366,8 +366,8 @@ class FOV_EventHandler(FileSystemEventHandler):
                 fov_bin_create = os.path.getctime(fov_bin_path)
                 fov_json_create = os.path.getctime(fov_json_path)
             else:
-                fov_bin_create = os.stat(fov_bin_path).st_birthtime
-                fov_json_create = os.stat(fov_json_path).st_birthtime
+                fov_bin_create = os.stat(fov_bin_path).st_ctime
+                fov_json_create = os.stat(fov_json_path).st_ctime
 
             if fov_bin_create > fov_json_create:
                 print(f"Re-extracting incompletely extracted FOV {fov}")
