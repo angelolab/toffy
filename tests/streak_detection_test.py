@@ -12,7 +12,7 @@ from toffy import streak_detection as sd
 
 
 @pytest.fixture(scope="function")
-def streak_dataset() -> Callable:
+def streak_dataset(rng: np.random.Generator) -> Callable:
     """A wrapper for creating a StreakData DataClass for testing purposes.
 
     Returns:
@@ -27,9 +27,9 @@ def streak_dataset() -> Callable:
             corrected_dir=corrected_dir,
             streak_channel=chan,
             streak_mask=np.zeros(shape=shape),
-            streak_df=pd.util.testing.makeDataFrame(),
+            streak_df=pd.DataFrame({"A": rng.random(10), "B": rng.random(10)}),
             filtered_streak_mask=np.zeros(shape=shape),
-            filtered_streak_df=pd.util.testing.makeDataFrame(),
+            filtered_streak_df=pd.DataFrame({"A": rng.random(10), "B": rng.random(10)}),
             boxed_streaks=np.zeros(shape=shape),
             corrected_streak_mask=np.zeros(shape=shape),
         )
