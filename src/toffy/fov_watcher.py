@@ -353,12 +353,13 @@ class FOV_EventHandler(FileSystemEventHandler):
     def _check_bin_updates(self):
         for fov in self.run_structure.fov_progress:
             fov_bin_path = os.path.join(self.run_folder, fov + ".bin")
+            fov_json_path = os.path.join(self.run_folder, fov + ".json")
 
             # if .bin file creation time > modify time, not fully written when extracted
             # need to re-extract
             fov_bin_create = os.path.getctime(fov_bin_path)
-            fov_bin_modify = os.path.getmtime(fov_bin_path)
-            if fov_bin_modify > fov_bin_create:
+            fov_json_create = os.path.getmtime(fov_json_path)
+            if fov_bin_create > fov_json_create:
                 print(f"Re-extracting incompletely extracted FOV {fov}")
                 logging.info(
                     f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Re-extracting {fov}\n'
