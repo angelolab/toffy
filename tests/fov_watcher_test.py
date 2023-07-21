@@ -47,7 +47,7 @@ def _slow_copy_sample_tissue_data(
             Use initial temp bin file paths or not
     """
 
-    for tissue_file in sorted(os.listdir(COMBINED_DATA_PATH)):
+    for i, tissue_file in enumerate(sorted(os.listdir(COMBINED_DATA_PATH))):
         time.sleep(delta)
         if one_blank and ".bin" in tissue_file and tissue_file[0] != ".":
             # create blank (0 size) file
@@ -66,14 +66,23 @@ def _slow_copy_sample_tissue_data(
                 time.sleep(delta)
                 copied_tissue_path = os.path.join(dest, "." + tissue_file + ".aBcDeF")
                 os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
-
-                # update the created time randomly
-                update_status = random()
-                if update_status < 0.5:
-                    # NOTE: update if this repo and world is still alive in January 23, 2065!
-                    setctime(os.path.join(dest, tissue_file), 3000000000.0, follow_symlinks=True)
             else:
                 shutil.copy(tissue_path, dest)
+
+            # update the created time for every third file
+            print("To update or not to update: %.2f" % i % 3)
+            if i % 3 == 0:
+                print("Updating created time of .bin file %s" % os.path.join(dest, tissue_file))
+                print(
+                    "The old created time of the file is %.2f"
+                    % os.path.getctime(os.path.join(dest, tissue_file))
+                )
+                # NOTE: update if this repo and world is still alive in January 23, 2065!
+                setctime(os.path.join(dest, tissue_file), 3000000000.0, follow_symlinks=True)
+                print(
+                    "The new created time of the file is %.2f"
+                    % os.path.getctime(os.path.join(dest, tissue_file))
+                )
 
 
 COMBINED_RUN_JSON_SPOOF = {
