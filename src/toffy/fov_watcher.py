@@ -351,18 +351,22 @@ class FOV_EventHandler(FileSystemEventHandler):
             self.check_complete()
 
     def _check_bin_updates(self):
+        print("Making one last pass through all FOVs")
         for fov in self.run_structure.fov_progress:
             # skip moly points
             if fov in self.run_structure.moly_points:
+                print(f"{fov} is a Moly point, skipping")
                 continue
 
             fov_bin_path = os.path.join(self.run_folder, fov + ".bin")
             fov_json_path = os.path.join(self.run_folder, fov + ".json")
+            print("The paths in question, bin = %s, json = %s" % (fov_bin_path, fov_json_path))
 
             # if .bin file creation time > .json file creation time, incomplete extraction
             # need to re-extract
             fov_bin_create = os.path.getctime(fov_bin_path)
             fov_json_create = os.path.getctime(fov_json_path)
+            print("Creation times, bin = %.2f, json = %.2f" % (fov_bin_create, fov_json_create))
             if fov_bin_create > fov_json_create:
                 print(f"Re-extracting incompletely extracted FOV {fov}")
                 logging.info(

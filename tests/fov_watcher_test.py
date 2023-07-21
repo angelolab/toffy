@@ -1,4 +1,5 @@
 import os
+import platform
 import shutil
 import tempfile
 import time
@@ -11,7 +12,9 @@ from unittest.mock import patch
 import pytest
 from alpineer import io_utils
 from pytest_cases import parametrize_with_cases
-from win32_setctime import setctime
+
+if platform.system() == "Windows":
+    from win32_setctime import setctime
 
 from toffy.fov_watcher import start_watcher
 from toffy.json_utils import write_json_file
@@ -48,6 +51,7 @@ def _slow_copy_sample_tissue_data(
     """
 
     for i, tissue_file in enumerate(sorted(os.listdir(COMBINED_DATA_PATH))):
+        print("Working on tissue file %s" % tissue_file)
         time.sleep(delta)
         if one_blank and ".bin" in tissue_file and tissue_file[0] != ".":
             # create blank (0 size) file
@@ -69,8 +73,10 @@ def _slow_copy_sample_tissue_data(
             else:
                 shutil.copy(tissue_path, dest)
 
+        # to mimic the CAC functionality, test Windows updates
+        if platform.system() == "Windows":
             # update the created time for every third file
-            print("To update or not to update: %.2f" % i % 3)
+            print("To update or not to update: %.2f" % (i % 3 == 0))
             if i % 3 == 0:
                 print("Updating created time of .bin file %s" % os.path.join(dest, tissue_file))
                 print(
