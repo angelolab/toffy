@@ -364,8 +364,8 @@ class FOV_EventHandler(FileSystemEventHandler):
             # NOTE: creation time access is different on Windows/Linux vs MacOS
             print("Testing the extraction process on the following OS: %s" % platform.system())
             if platform.system() in ["Windows", "Linux"]:
-                fov_bin_create = Pathlib.path(fov_bin_path).stat().st_ctime
-                fov_json_create = Pathlib.path(fov_json_path).stat().st_ctime
+                fov_bin_create = Path(fov_bin_path).stat().st_ctime
+                fov_json_create = Path(fov_json_path).stat().st_ctime
                 print("The creation time of .bin create: %.2f" % fov_bin_create)
                 print("The creation time of .json create: %.2f" % fov_json_create)
             else:
