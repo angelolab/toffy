@@ -8,6 +8,8 @@ import pytest
 
 from toffy import mph_comp as mph
 
+parametrize = pytest.mark.parametrize
+
 
 def create_sample_mph_data(fov, mph_value, total_count, time):
     data = pd.DataFrame(
@@ -89,7 +91,8 @@ def test_compute_mph_metrics():
         assert csv_data.equals(mph_data)
 
 
-def test_combine_mph_metrics():
+@parametrize("warn_overwrite_test", [True, False])
+def test_combine_mph_metrics(warn_overwrite_test):
     bad_path = os.path.join(Path(__file__).parents[1], "data", "not-a-folder")
 
     # bad directory path should raise an error
@@ -115,6 +118,15 @@ def test_combine_mph_metrics():
         csv_data = pd.read_csv(combined_csv_path)
         assert os.path.exists(combined_csv_path)
         assert csv_data.equals(combined_data)
+
+        # test warn_overwrite flag
+        if warn_overwrite_test:
+            with pytest.warns(
+                UserWarning, match="Removing previously generated combined mph_pulse"
+            ):
+                mph.combine_mph_metrics(csv_path, warn_overwrite_test)
+        else:
+            mph.combine_mph_metrics(csv_path, warn_overwrite_test)
 
 
 def test_visualize_mph():

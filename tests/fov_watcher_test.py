@@ -164,6 +164,9 @@ def test_watcher(
             kwargs["pulse_out_dir"] = pulse_out_dir
             kwargs["plot_dir"] = plot_dir
 
+            # ensure warn_overwrite set to False if intermediate callbacks set, otherwise True
+            kwargs["warn_overwrite"] = True if int_cbs else False
+
             run_data = os.path.join(tmpdir, "test_run")
             log_out = os.path.join(tmpdir, "log_output")
             os.makedirs(run_data)
