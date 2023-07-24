@@ -361,13 +361,13 @@ class FOV_EventHandler(FileSystemEventHandler):
             fov_json_path = os.path.join(self.run_folder, fov + ".json")
 
             # if .bin file ctime > .json file ctime, incomplete extraction, need to re-extract
-            # NOTE: creation time access is different on Windows/Linux vs MacOS
+            # NOTE: this will be removed prior to merging
             print("Testing the extraction process on the following OS: %s" % platform.system())
             fov_bin_create = Path(fov_bin_path).stat().st_ctime
             fov_json_create = Path(fov_json_path).stat().st_ctime
 
             if fov_bin_create > fov_json_create:
-                print(f"Re-extracting incompletely extracted FOV {fov}")
+                warnings.warn(f"Re-extracting incompletely extracted FOV {fov}")
                 logging.info(
                     f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Re-extracting {fov}\n'
                 )

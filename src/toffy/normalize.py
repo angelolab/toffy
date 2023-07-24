@@ -230,7 +230,6 @@ def combine_run_metrics(run_dir, substring, warn_overwrite=True):
 
     if substring + "_combined.csv" in files:
         if warn_overwrite:
-            print("Warning of overwriting!")
             warnings.warn(
                 "Removing previously generated combined {} file in {}".format(substring, run_dir)
             )
