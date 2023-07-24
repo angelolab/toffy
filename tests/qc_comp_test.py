@@ -149,7 +149,8 @@ def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
 
 
 @parametrize("fovs", [["fov-1-scan-1"], ["fov-1-scan-1", "fov-2-scan-1"]])
-def test_combine_qc_metrics(fovs):
+@parametrize("warn_overwrite_test", [True, False])
+def test_combine_qc_metrics(fovs, warn_overwrite_test):
     with tempfile.TemporaryDirectory() as temp_dir:
         # bin folder error check
         with pytest.raises(FileNotFoundError):
@@ -192,8 +193,19 @@ def test_combine_qc_metrics(fovs):
                     os.path.join(bin_file_path, "%s_%s.csv" % (fov, ms)), index=False
                 )
 
-        # run the aggregation function
-        qc_comp.combine_qc_metrics(bin_file_path)
+        # create a dummy file if testing the warn_overwrite flag
+        if warn_overwrite_test:
+            Path(os.path.join(bin_file_path, "combined_%s.csv" % settings.QC_SUFFIXES[0])).touch()
+
+        # run the aggregation function, testing that both warn_overwrite states work properly
+        if warn_overwrite_test:
+            with pytest.warns(
+                UserWarning,
+                match="Removing previously generated combined %s" % settings.QC_SUFFIXES[0],
+            ):
+                qc_comp.combine_qc_metrics(bin_file_path, warn_overwrite_test)
+        else:
+            qc_comp.combine_qc_metrics(bin_file_path, warn_overwrite_test)
 
         for ms, mv, mc in zip(settings.QC_SUFFIXES, metric_start_vals, settings.QC_COLUMNS):
             # assert the combined QC metric file was created

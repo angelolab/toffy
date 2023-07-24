@@ -3,6 +3,7 @@ import itertools
 import os
 import pathlib
 import re
+import warnings
 from dataclasses import dataclass, field
 from shutil import rmtree
 from typing import Dict, List, Optional, Tuple, Union
@@ -386,12 +387,14 @@ def compute_qc_metrics_direct(image_data, fov_name, gaussian_blur=False, blur_fa
     return metric_csvs
 
 
-def combine_qc_metrics(qc_metrics_dir):
+def combine_qc_metrics(qc_metrics_dir, warn_overwrite=True):
     """Aggregates the QC results of each FOV into one `.csv`
 
     Args:
         qc_metrics_dir (str):
             the name of the folder containing the QC metric files
+        warn_overwrite (bool):
+            whether to warn if existing combined CSV found for each metric
     """
 
     # path validation check
@@ -417,6 +420,10 @@ def combine_qc_metrics(qc_metrics_dir):
 
         # write the aggregated metric data
         # NOTE: if this combined metric file already exists, it will be overwritten
+        if os.path.exists(os.path.join(qc_metrics_dir, "combined_%s.csv" % ms)) and warn_overwrite:
+            warnings.warn(
+                "Removing previously generated combined %s file in %s" % (ms, qc_metrics_dir)
+            )
         metric_df.to_csv(os.path.join(qc_metrics_dir, "combined_%s.csv" % ms), index=False)
 
 
