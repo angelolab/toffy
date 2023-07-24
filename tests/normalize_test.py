@@ -154,7 +154,8 @@ def test_create_prediction_function(obj_func, num_params):
 
 
 @parametrize_with_cases("metrics", cases=test_cases.CombineRunMetricFiles)
-def test_combine_run_metrics(metrics):
+@parametrize("warn_overwrite_test", [True, False])
+def test_combine_run_metrics(metrics, warn_overwrite_test):
     with tempfile.TemporaryDirectory() as temp_dir:
         for metric in metrics["deficient"]:
             name, values_df = metric[0], pd.DataFrame(metric[1])
@@ -172,8 +173,12 @@ def test_combine_run_metrics(metrics):
         assert len(combined_data) == len(metrics["deficient"]) * 10
 
         # check that previously generated combined file is removed with warning
-        with pytest.warns(UserWarning, match="previously generated"):
-            normalize.combine_run_metrics(temp_dir, "pulse_height")
+        # NOTE: only if warn_overwrite turned on
+        if warn_overwrite_test:
+            with pytest.warns(UserWarning, match="previously generated"):
+                normalize.combine_run_metrics(temp_dir, "pulse_height", warn_overwrite_test)
+        else:
+            normalize.combine_run_metrics(temp_dir, "pulse_height", warn_overwrite_test)
 
         # check that files with different lengths raises error
         name, bad_vals = metrics["deficient"][0][0], pd.DataFrame(metrics["deficient"][0][1])

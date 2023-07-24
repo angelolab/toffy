@@ -3,6 +3,7 @@ import json
 import os
 import warnings
 
+import pandas as pd
 from alpineer import io_utils
 
 
@@ -194,3 +195,48 @@ def check_for_empty_files(bin_file_dir):
 
     # return the list of fov names
     return empty_json_files
+
+
+def check_fov_resolutions(bin_file_dir, run_name, save_path=None):
+    """Use the run metadata to calculate the resolution of each fov
+    Args:
+        bin_file_dir (str): directory containing the run json file
+        run_name (str): name of the run and corresponding run file
+        save_path (str): path to save data to, default None doesn't write data out
+
+    Returns:
+        pd.DataFrame: details fov names and corresponding resolution value
+    """
+    # read in run metadata
+    run_file_path = os.path.join(bin_file_dir, run_name + ".json")
+    io_utils.validate_paths([run_file_path])
+    run_metadata = read_json_file(run_file_path, encoding="utf-8")
+
+    fov_names, custom_names, resolutions = [], [], []
+    for fov in run_metadata.get("fovs", ()):
+        # get fov names
+        fov_number = fov.get("runOrder")
+        default_name = f"fov-{fov_number}-scan-1"
+        custom_name = fov.get("name")
+        fov_names.append(default_name)
+        custom_names.append(custom_name)
+
+        # retrieve pixel and micron specs
+        fov_pixel_length = fov.get("frameSizePixels")["width"]
+        fov_micron_length = fov.get("fovSizeMicrons")
+
+        # calculate and save fov resolution per 400 microns
+        mult = 400 / fov_micron_length
+        pixels_adj = int(mult * fov_pixel_length)
+
+        # output values
+        print(f"{default_name} ({custom_name}): {pixels_adj} pixels x {400} microns")
+        resolutions.append(pixels_adj)
+
+    resolution_data = pd.DataFrame(
+        {"fov": fov_names, "name": custom_names, "pixels / 400 microns": resolutions}
+    )
+    if save_path:
+        resolution_data.to_csv(save_path, index=False)
+
+    return resolution_data
