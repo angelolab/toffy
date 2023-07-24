@@ -179,7 +179,8 @@ class FovCallbacks:
         if not os.path.exists(tiff_out_dir):
             os.makedirs(tiff_out_dir)
 
-        if os.path.exists(os.path.join(tiff_out_dir, self.point_name)):
+        extracted_img_dir = os.path.join(tiff_out_dir, self.point_name)
+        if os.path.exists(extracted_img_dir):
             warnings.warn(f"Images already extracted for FOV {self.point_name}")
             return
 
@@ -255,7 +256,8 @@ class FovCallbacks:
         if not os.path.exists(mph_out_dir):
             os.makedirs(mph_out_dir)
 
-        if os.path.exists(os.path.join(mph_out_dir, f"{self.point_name}" + "-mph-pulse.csv")):
+        mph_pulse_file = os.path.join(mph_out_dir, f"{self.point_name}" + "-mph-pulse.csv")
+        if os.path.exists(mph_pulse_file):
             warnings.warn(f"MPH pulse metrics already extracted for FOV {self.point_name}")
             return
 
@@ -284,7 +286,8 @@ class FovCallbacks:
         if not os.path.exists(pulse_out_dir):
             os.makedirs(pulse_out_dir)
 
-        if os.path.exists(os.path.join(mph_out_dir, f"{self.point_name}" + "-pulse-heights.csv")):
+        pulse_height_file = os.path.join(pulse_out_dir, f"{self.point_name}" + "-pulse-heights.csv")
+        if os.path.exists(pulse_height_file):
             warnings.warn(f"Pulse heights per mass already extracted for FOV {self.point_name}")
             return
 
