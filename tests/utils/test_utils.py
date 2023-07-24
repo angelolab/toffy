@@ -18,6 +18,48 @@ from toffy.fov_watcher import RunStructure
 from toffy.json_utils import write_json_file
 from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 
+TEST_CHANNELS = [
+    "Calprotectin",
+    "Chymase",
+    "SMA",
+    "Vimentin",
+    "LAG3",
+    "CD4",
+    "CD69",
+    "FAP",
+    "FOXP3",
+    "PD1",
+    "CD31",
+    "Biotin",
+    "Ecadherin",
+    "CD56",
+    "CD38",
+    "TCF1 TCF7",
+    "TBET",
+    "CD45RB",
+    "CD68",
+    "CD11c",
+    "CD8",
+    "CD3e",
+    "IDO1",
+    "CD45RO",
+    "TIM-3",
+    "CD163",
+    "CD20",
+    "FN1",
+    "Glut1",
+    "HLADR",
+    "CD14",
+    "CD45",
+    "Cytokeratin17",
+    "COL1A1",
+    "H3K27me3",
+    "CD57",
+    "H3K9ac",
+    "Ki67",
+    "HLA1 class ABC",
+]
+
 
 def make_run_file(tmp_dir, prefixes=[], include_nontiled=False):
     """Create a run subir and run json in the provided dir and return the path to this new dir."""

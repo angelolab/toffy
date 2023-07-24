@@ -7,15 +7,19 @@ from multiprocessing.pool import ThreadPool as Pool
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
+import pandas as pd
 import pytest
 from alpineer import io_utils
 from pytest_cases import parametrize_with_cases
 
 from toffy.fov_watcher import start_watcher
 from toffy.json_utils import write_json_file
+from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 from toffy.watcher_callbacks import build_callbacks
 
 from .utils.test_utils import (
+    TEST_CHANNELS,
     RunStructureCases,
     RunStructureTestContext,
     WatcherCases,
@@ -161,12 +165,30 @@ def test_watcher(
 
             # if existing_data set to True, test case where a FOV has already been extracted
             if existing_data:
-                os.makedirs(os.path.join(tiff_out_dir, RUN_DIR_NAME, "fov-1-scan-1"))
-                Path(os.path.join(qc_out_dir, "fov-1-scan-1_nonzero_mean_stats.csv")).touch()
-                Path(os.path.join(qc_out_dir, "fov-1-scan-1_total_intensity_stats.csv")).touch()
-                Path(os.path.join(qc_out_dir, "fov-1-scan-1_percentile_99_9_stats.csv")).touch()
-                Path(os.path.join(mph_out_dir, "fov-1-scan-1-mph_pulse.csv")).touch()
-                Path(os.path.join(pulse_out_dir, "fov-1-scan-1-pulse_heights.csv")).touch()
+                os.makedirs(os.path.join(tiff_out_dir, "fov-2-scan-1"))
+
+                os.makedirs(qc_out_dir)
+                for qcs, qcc in zip(QC_SUFFIXES, QC_COLUMNS):
+                    df_qc = pd.DataFrame(
+                        np.random.rand(len(TEST_CHANNELS), 3), columns=["fov", "channel", qcc]
+                    )
+                    df_qc["fov"] = "fov-2-scan-1"
+                    df_qc["channel"] = TEST_CHANNELS
+                    df_qc.to_csv(os.path.join(qc_out_dir, f"fov-2-scan-1_{qcs}.csv"), index=False)
+
+                os.makedirs(mph_out_dir)
+                df_mph = pd.DataFrame(
+                    np.random.rand(1, 4), columns=["fov", "MPH", "total_count", "time"]
+                )
+                df_mph["fov"] = "fov-2-scan-1"
+                df_mph.to_csv(os.path.join(mph_out_dir, "fov-2-scan-1-mph_pulse.csv"), index=False)
+
+                os.makedirs(pulse_out_dir)
+                df_ph = pd.DataFrame(np.random.rand(10, 3), columns=["mass", "fov", "pulse_height"])
+                df_ph["fov"] = "fov-2-scan-1"
+                df_ph.to_csv(
+                    os.path.join(pulse_out_dir, "fov-2-scan-1-pulse_heights.csv"), index=False
+                )
 
             # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
             # client access computer.  `start_watcher` is made async here since these processes
@@ -183,7 +205,7 @@ def test_watcher(
                 # watcher completion is checked every second
                 # zero-size files are halted for 1 second or until they have non zero-size
                 if existing_data:
-                    with pytest.warns(UserWarning, match="already extracted for FOV fov-1-scan-1"):
+                    with pytest.warns(UserWarning, match="already extracted for FOV fov-2-scan-1"):
                         res_scan = pool.apply_async(
                             start_watcher,
                             (
