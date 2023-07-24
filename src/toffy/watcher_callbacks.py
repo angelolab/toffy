@@ -246,7 +246,7 @@ class FovCallbacks:
         Args:
             mph_out_dir (str): where to output mph csvs to
             **kwargs (dict):
-                Additional arguments for `toffy.qc_comp.compute_mph_metrics`. Accepted kwargs are:
+                Additional arguments for `toffy.mph_comp.compute_mph_metrics`. Accepted kwargs are:
 
              - mass
              - mass_start
@@ -256,7 +256,7 @@ class FovCallbacks:
         if not os.path.exists(mph_out_dir):
             os.makedirs(mph_out_dir)
 
-        mph_pulse_file = os.path.join(mph_out_dir, f"{self.point_name}" + "-mph-pulse.csv")
+        mph_pulse_file = os.path.join(mph_out_dir, f"{self.point_name}" + "-mph_pulse.csv")
         if os.path.exists(mph_pulse_file):
             warnings.warn(f"MPH pulse metrics already extracted for FOV {self.point_name}")
             return
@@ -286,7 +286,7 @@ class FovCallbacks:
         if not os.path.exists(pulse_out_dir):
             os.makedirs(pulse_out_dir)
 
-        pulse_height_file = os.path.join(pulse_out_dir, f"{self.point_name}" + "-pulse-heights.csv")
+        pulse_height_file = os.path.join(pulse_out_dir, f"{self.point_name}" + "-pulse_heights.csv")
         if os.path.exists(pulse_height_file):
             warnings.warn(f"Pulse heights per mass already extracted for FOV {self.point_name}")
             return

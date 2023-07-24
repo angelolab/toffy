@@ -113,8 +113,9 @@ def test_run_structure(run_json, expected_files, recwarn):
 @patch("toffy.watcher_callbacks.visualize_mph", side_effect=mock_visualize_mph)
 @pytest.mark.parametrize("add_blank", [False, True])
 @pytest.mark.parametrize("temp_bin", [False, True])
-@pytest.mark.parametrize("watcher_start_lag", [4, 8, 12])
-@parametrize_with_cases("run_cbs, int_cbs, fov_cbs, kwargs, validators", cases=WatcherCases)
+@parametrize_with_cases(
+    "run_cbs,int_cbs,fov_cbs,kwargs,validators,watcher_start_lag,existing_data", cases=WatcherCases
+)
 def test_watcher(
     mock_viz_qc,
     mock_viz_mph,
@@ -123,9 +124,10 @@ def test_watcher(
     fov_cbs,
     kwargs,
     validators,
+    watcher_start_lag,
+    existing_data,
     add_blank,
     temp_bin,
-    watcher_start_lag,
 ):
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -157,6 +159,15 @@ def test_watcher(
                 json_object=COMBINED_RUN_JSON_SPOOF,
             )
 
+            # if existing_data set to True, test case where a FOV has already been extracted
+            if existing_data:
+                os.makedirs(os.path.join(tiff_out_dir, RUN_DIR_NAME, "fov-1-scan-1"))
+                Path(os.path.join(qc_out_dir, "fov-1-scan-1_nonzero_mean_stats.csv")).touch()
+                Path(os.path.join(qc_out_dir, "fov-1-scan-1_total_intensity_stats.csv")).touch()
+                Path(os.path.join(qc_out_dir, "fov-1-scan-1_percentile_99_9_stats.csv")).touch()
+                Path(os.path.join(mph_out_dir, "fov-1-scan-1-mph_pulse.csv")).touch()
+                Path(os.path.join(pulse_out_dir, "fov-1-scan-1-pulse_heights.csv")).touch()
+
             # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
             # client access computer.  `start_watcher` is made async here since these processes
             # wouldn't block each other in normal use
@@ -171,20 +182,37 @@ def test_watcher(
 
                 # watcher completion is checked every second
                 # zero-size files are halted for 1 second or until they have non zero-size
-                res_scan = pool.apply_async(
-                    start_watcher,
-                    (
-                        run_data,
-                        log_out,
-                        fov_callback,
-                        run_callback,
-                        intermediate_callback,
-                        1,
-                        SLOW_COPY_INTERVAL_S,
-                    ),
-                )
+                if existing_data:
+                    with pytest.warns(UserWarning, match="already extracted for FOV fov-1-scan-1"):
+                        res_scan = pool.apply_async(
+                            start_watcher,
+                            (
+                                run_data,
+                                log_out,
+                                fov_callback,
+                                run_callback,
+                                intermediate_callback,
+                                1,
+                                SLOW_COPY_INTERVAL_S,
+                            ),
+                        )
 
-                res_scan.get()
+                        res_scan.get()
+                else:
+                    res_scan = pool.apply_async(
+                        start_watcher,
+                        (
+                            run_data,
+                            log_out,
+                            fov_callback,
+                            run_callback,
+                            intermediate_callback,
+                            1,
+                            SLOW_COPY_INTERVAL_S,
+                        ),
+                    )
+
+                    res_scan.get()
 
             with open(os.path.join(log_out, "test_run_log.txt")) as f:
                 logtxt = f.read()
