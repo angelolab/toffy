@@ -112,6 +112,8 @@ def modify_panel_ranges(panel: pd.DataFrame, start_offset: float = 0, stop_offse
 
     Args:
         panel (pd.DataFrame): panel dataframe with columns Mass, Target, Start, and Stop.
+        start_offset (float): the value to add to the `'Start'` column.
+        stop_offset (float): the value to add to the `'Stop'` column.
 
     Returns:
         pd.DataFrame:
