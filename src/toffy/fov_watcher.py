@@ -391,8 +391,6 @@ class FOV_EventHandler(FileSystemEventHandler):
             fov_json_path = os.path.join(self.run_folder, fov + ".json")
 
             # if .bin file ctime > .json file ctime, incomplete extraction, need to re-extract
-            # NOTE: this will be removed prior to merging
-            print("Testing the extraction process on the following OS: %s" % platform.system())
             fov_bin_create = Path(fov_bin_path).stat().st_ctime
             fov_json_create = Path(fov_json_path).stat().st_ctime
 

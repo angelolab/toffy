@@ -49,8 +49,6 @@ def _slow_copy_sample_tissue_data(
         temp_bin (bool):
             Use initial temp bin file paths or not
     """
-    # counter to keep track of .bin files
-    num_bin_files = 0
 
     for tissue_file in sorted(os.listdir(COMBINED_DATA_PATH)):
         time.sleep(delta)
@@ -58,7 +56,6 @@ def _slow_copy_sample_tissue_data(
             # create blank (0 size) file
             open(os.path.join(dest, tissue_file), "w").close()
             one_blank = False
-            num_bin_files += 1
         else:
             tissue_path = os.path.join(COMBINED_DATA_PATH, tissue_file)
             if temp_bin and ".bin" in tissue_file:
@@ -72,7 +69,6 @@ def _slow_copy_sample_tissue_data(
                 time.sleep(delta)
                 copied_tissue_path = os.path.join(dest, "." + tissue_file + ".aBcDeF")
                 os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
-                num_bin_files += 1
             else:
                 shutil.copy(tissue_path, dest)
 
