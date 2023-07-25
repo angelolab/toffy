@@ -554,7 +554,7 @@ def start_watcher(
 
     if run_folder_wait == run_folder_timeout:
         raise FileNotFoundError(
-            f"run_folder {run_folder} does not exist. First double check that the data doesn't "
+            f"Timed out waiting for {run_folder}. First double check that the data doesn't "
             "already exist in D:\\\\Data (sometimes, the CACs will change capitalization or add "
             "extra characters to the run name). If that isn't the case, then wait 15-30 minutes "
             "before trying again."
