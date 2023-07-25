@@ -1,11 +1,12 @@
 import logging
 import os
+import platform
 import time
 import warnings
 from datetime import datetime
 from multiprocessing import Lock
 from pathlib import Path
-from typing import Callable, Tuple, Union
+from typing import Callable, Optional, Tuple, Union
 
 import natsort as ns
 import numpy as np
@@ -234,6 +235,15 @@ class FOV_EventHandler(FileSystemEventHandler):
         )
 
     def _check_fov_status(self, path: str):
+        """Verifies the status of the file written at `path`
+
+        Args:
+            path (str):
+                The path to check the status of
+        Returns:
+            Tuple[Optional[str], Optional[str]]:
+                The status of `path`, as well as the corresponding FOV name
+        """
         try:
             fov_ready, point_name = self.run_structure.check_run_condition(path)
             return fov_ready, point_name
@@ -254,6 +264,12 @@ class FOV_EventHandler(FileSystemEventHandler):
             return None, None
 
     def _generate_callback_data(self, point_name: str):
+        """Runs the `fov_func` and `inter_func` if applicable for a FOV
+
+        Args:
+            point_name (str):
+                The name of the FOV to run FOV (and intermediate if applicable) callbacks on
+        """
         print(f"Discovered {point_name}, beginning per-fov callbacks...")
         logging.info(f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Extracting {point_name}\n')
         logging.info(
@@ -280,6 +296,12 @@ class FOV_EventHandler(FileSystemEventHandler):
         self.check_complete()
 
     def _process_missed_fovs(self, path: str):
+        """Given a `path`, check if there are any missing FOVs to process before it
+
+        Args:
+            path (str):
+                The path to check for missing FOVs prior
+        """
         # verify the path provided is correct .bin type, if not skip
         filename = Path(path).parts[-1]
         name_ext = filename.split(".")
@@ -316,6 +338,14 @@ class FOV_EventHandler(FileSystemEventHandler):
             self._fov_callback_driver(os.path.join(self.run_folder, fov_name + ".json"))
 
     def _check_last_fov(self, path: str):
+        """Checks if the last FOV's data has been written.
+
+        Needed because there won't be any more file triggers after this happens.
+
+        Args:
+            path (str):
+                The path that triggers this call. Used only for formatting purposes.
+        """
         # define the name of the last FOV
         last_fov = f"fov-{self.run_structure.highest_fov}-scan-1"
         last_fov_bin = f"{last_fov}.bin"
@@ -350,7 +380,44 @@ class FOV_EventHandler(FileSystemEventHandler):
             # explicitly call check_complete to start run callbacks, since all FOVs are done
             self.check_complete()
 
+    def _check_bin_updates(self):
+        """Checks for, and re-runs if necessary, any incompletely extracted FOVs."""
+        for fov in self.run_structure.fov_progress:
+            # skip moly points
+            if fov in self.run_structure.moly_points:
+                continue
+
+            fov_bin_path = os.path.join(self.run_folder, fov + ".bin")
+            fov_json_path = os.path.join(self.run_folder, fov + ".json")
+
+            # if .bin file ctime > .json file ctime, incomplete extraction, need to re-extract
+            fov_bin_create = Path(fov_bin_path).stat().st_ctime
+            fov_json_create = Path(fov_json_path).stat().st_ctime
+
+            if fov_bin_create > fov_json_create:
+                warnings.warn(f"Re-extracting incompletely extracted FOV {fov}")
+                logging.info(
+                    f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Re-extracting {fov}\n'
+                )
+                logging.info(
+                    f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
+                    f"Running {self.fov_func.__name__} on {fov}\n"
+                )
+
+                # since reprocessing needed, remove from self.processed_fovs
+                self.run_structure.processed_fovs.remove(fov)
+
+                # re-extract the .bin file
+                # NOTE: since no more FOVs are being written, last_fov_num_processed is irrelevant
+                self._fov_callback_driver(fov_bin_path)
+
     def _fov_callback_driver(self, file_trigger: str):
+        """The FOV and intermediate-level callback motherbase for a single .bin file
+
+        Args:
+            file_trigger (str):
+                The file that gets caught by the watcher to throw into the pipeline
+        """
         # check if what's created is in the run structure
         fov_ready, point_name = self._check_fov_status(file_trigger)
 
@@ -366,6 +433,14 @@ class FOV_EventHandler(FileSystemEventHandler):
     def _run_callbacks(
         self, event: Union[DirCreatedEvent, FileCreatedEvent, FileMovedEvent], check_last_fov: bool
     ):
+        """The pipeline runner, invoked when a new event is seen
+
+        Args:
+            event (Union[DirCreatedEvent, FileCreatedEvent, FileMovedEvent]):
+                The type of event seen. File/directory creation and file renaming are supported.
+            check_last_fov (bool):
+                Whether to invoke `_check_last_fov` on the event
+        """
         if type(event) in [DirCreatedEvent, FileCreatedEvent]:
             file_trigger = event.src_path
         else:
@@ -419,11 +494,14 @@ class FOV_EventHandler(FileSystemEventHandler):
     def check_complete(self):
         """Checks run structure fov_progress status
 
-        If run is complete, all calbacks in `per_run` will be run over the whole run.
+        If run is complete, all callbacks in `per_run` will be run over the whole run.
+
+        NOTE: bin files that had new data written will first need to be re-extracted.
         """
 
         if all(self.run_structure.check_fov_progress().values()) and not self.all_fovs_complete:
             self.all_fovs_complete = True
+            self._check_bin_updates()
             logging.info(f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- All FOVs finished\n')
             logging.info(
                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '

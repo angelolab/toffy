@@ -3,6 +3,7 @@ import shutil
 import tempfile
 import time
 import warnings
+from datetime import datetime
 from multiprocessing.pool import ThreadPool as Pool
 from pathlib import Path
 from unittest.mock import patch
@@ -71,6 +72,18 @@ def _slow_copy_sample_tissue_data(
                 os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
             else:
                 shutil.copy(tissue_path, dest)
+
+    # get all .bin files
+    bin_files = [bfile for bfile in sorted(os.listdir(COMBINED_DATA_PATH)) if ".bin" in bfile]
+
+    # simulate updating the creation time for some .bin files, this tests _check_bin_updates
+    for i, bfile in enumerate(bin_files):
+        if i % 2 == 0:
+            shutil.copy(
+                os.path.join(COMBINED_DATA_PATH, bfile), os.path.join(dest, bfile + ".temp")
+            )
+            os.remove(os.path.join(dest, bfile))
+            os.rename(os.path.join(dest, bfile + ".temp"), os.path.join(dest, bfile))
 
 
 COMBINED_RUN_JSON_SPOOF = {
@@ -199,19 +212,23 @@ def test_watcher(
             # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
             # client access computer.  `start_watcher` is made async here since these processes
             # wouldn't block each other in normal use
-
             with Pool(processes=4) as pool:
                 pool.apply_async(
                     _slow_copy_sample_tissue_data,
                     (run_data, SLOW_COPY_INTERVAL_S, add_blank, temp_bin),
                 )
-
                 time.sleep(watcher_start_lag)
 
-                # watcher completion is checked every second
-                # zero-size files are halted for 1 second or until they have non zero-size
+                watcher_warnings = []
+                if not add_blank:
+                    watcher_warnings.append(
+                        r"Re-extracting incompletely extracted FOV fov-1-scan-1"
+                    )
                 if existing_data:
-                    with pytest.warns(UserWarning, match="already extracted for FOV fov-2-scan-1"):
+                    watcher_warnings.append(r"already extracted for FOV fov-2-scan-1")
+
+                if len(watcher_warnings) > 0:
+                    with pytest.warns(UserWarning, match="|".join(watcher_warnings)):
                         res_scan = pool.apply_async(
                             start_watcher,
                             (
