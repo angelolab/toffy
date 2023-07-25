@@ -546,6 +546,12 @@ def start_watcher(
         zero_size_timeout (int):
             number of seconds to wait for non-zero file size
     """
+    confirm = input(
+        f"Move forward with specified run folder {run_folder}? Double check spelling and "
+        "capitalization, sometimes the CACs will add additional characters or add "
+        "weird casing changes"
+    )
+
     # allow the watcher to
     run_folder_wait_time = 0
     while not os.path.exists(run_folder) and run_folder_wait_time < run_folder_timeout:

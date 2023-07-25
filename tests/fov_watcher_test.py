@@ -124,6 +124,26 @@ def test_run_structure(run_json, expected_files, recwarn):
         assert not exist and name == ""
 
 
+def _slow_create_run_folder(run_folder_path: str, lag_time: int):
+    time.sleep(lag_time)
+    os.makedirs(run_folder_path)
+
+
+@pytest.mark.parametrize("lag_time", [0, 2, 6])
+def test_watcher_run_timeout(tempfile, lag_time):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        run_folder_path = os.path.join(tmpdir, "sample_run_folder")
+
+        with Pool(processes=1) as run_folder_wait:
+            pool.apply_async(_slow_create_run_folder, (run_folder_path, lag_time))
+
+            if lag_time > 3:
+                with pytest.raises(
+                    FileNotFoundError, match=f"Timed out waiting for {run_folder_path}"
+                ):
+                    start_watcher()
+
+
 @patch("toffy.watcher_callbacks.visualize_qc_metrics", side_effect=mock_visualize_qc_metrics)
 @patch("toffy.watcher_callbacks.visualize_mph", side_effect=mock_visualize_mph)
 @pytest.mark.parametrize("add_blank", [False, True])
