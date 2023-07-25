@@ -8,8 +8,6 @@ import warnings
 from datetime import datetime
 from multiprocessing.pool import ThreadPool as Pool
 from pathlib import Path
-from random import random
-from time import mktime
 from unittest.mock import patch
 
 import pytest
