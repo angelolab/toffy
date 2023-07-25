@@ -12,6 +12,7 @@ import pandas as pd
 import pytest
 from alpineer import io_utils
 from pytest_cases import parametrize_with_cases
+from skimage.io import imsave
 
 from toffy.fov_watcher import start_watcher
 from toffy.json_utils import write_json_file
@@ -168,7 +169,7 @@ def test_watcher(
                 os.makedirs(os.path.join(tiff_out_dir, "fov-2-scan-1"))
                 for channel in TEST_CHANNELS:
                     random_img = np.random.rand(512, 512)
-                    io.imsave(
+                    imsave(
                         os.path.join(tiff_out_dir, "fov-2-scan-1", f"{channel}.tiff"), random_img
                     )
 
