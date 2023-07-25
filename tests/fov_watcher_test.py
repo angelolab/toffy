@@ -166,6 +166,11 @@ def test_watcher(
             # if existing_data set to True, test case where a FOV has already been extracted
             if existing_data:
                 os.makedirs(os.path.join(tiff_out_dir, "fov-2-scan-1"))
+                for channel in TEST_CHANNELS:
+                    random_img = np.random.rand(512, 512)
+                    io.imsave(
+                        os.path.join(tiff_out_dir, "fov-2-scan-1", f"{channel}.tiff"), random_img
+                    )
 
                 os.makedirs(qc_out_dir)
                 for qcs, qcc in zip(QC_SUFFIXES, QC_COLUMNS):
