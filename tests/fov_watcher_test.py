@@ -1,8 +1,11 @@
 import os
+import platform
 import shutil
+import subprocess
 import tempfile
 import time
 import warnings
+from datetime import datetime
 from multiprocessing.pool import ThreadPool as Pool
 from pathlib import Path
 from unittest.mock import patch
@@ -66,6 +69,18 @@ def _slow_copy_sample_tissue_data(
                 os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
             else:
                 shutil.copy(tissue_path, dest)
+
+    # get all .bin files
+    bin_files = [bfile for bfile in sorted(os.listdir(COMBINED_DATA_PATH)) if ".bin" in bfile]
+
+    # simulate updating the creation time for some .bin files, this tests _check_bin_updates
+    for i, bfile in enumerate(bin_files):
+        if i % 2 == 0:
+            shutil.copy(
+                os.path.join(COMBINED_DATA_PATH, bfile), os.path.join(dest, bfile + ".temp")
+            )
+            os.remove(os.path.join(dest, bfile))
+            os.rename(os.path.join(dest, bfile + ".temp"), os.path.join(dest, bfile))
 
 
 COMBINED_RUN_JSON_SPOOF = {
@@ -171,20 +186,39 @@ def test_watcher(
 
                 # watcher completion is checked every second
                 # zero-size files are halted for 1 second or until they have non zero-size
-                res_scan = pool.apply_async(
-                    start_watcher,
-                    (
-                        run_data,
-                        log_out,
-                        fov_callback,
-                        run_callback,
-                        intermediate_callback,
-                        1,
-                        SLOW_COPY_INTERVAL_S,
-                    ),
-                )
+                if not add_blank:
+                    with pytest.warns(
+                        UserWarning, match="Re-extracting incompletely extracted FOV fov-1-scan-1"
+                    ):
+                        res_scan = pool.apply_async(
+                            start_watcher,
+                            (
+                                run_data,
+                                log_out,
+                                fov_callback,
+                                run_callback,
+                                intermediate_callback,
+                                1,
+                                SLOW_COPY_INTERVAL_S,
+                            ),
+                        )
 
-                res_scan.get()
+                        res_scan.get()
+                else:
+                    res_scan = pool.apply_async(
+                        start_watcher,
+                        (
+                            run_data,
+                            log_out,
+                            fov_callback,
+                            run_callback,
+                            intermediate_callback,
+                            1,
+                            SLOW_COPY_INTERVAL_S,
+                        ),
+                    )
+
+                    res_scan.get()
 
             with open(os.path.join(log_out, "test_run_log.txt")) as f:
                 logtxt = f.read()
