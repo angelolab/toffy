@@ -517,6 +517,7 @@ def start_watcher(
     fov_callback: Callable[[str, str], None],
     run_callback: Callable[[None], None],
     intermediate_callback: Callable[[str, str], None] = None,
+    run_folder_timeout: int = 2700,
     completion_check_time: int = 30,
     zero_size_timeout: int = 7800,
 ):
@@ -536,12 +537,29 @@ def start_watcher(
         intermediate_callback (Callable[[None], None]):
             function defined as run callback overriden as fov callback. assemble this using
             `watcher_callbacks.build_callbacks`
+        run_folder_timeout (int):
+            how long to wait for the run folder to appear before timing out, in seconds.
+            note that the watcher cannot begin until this run folder appears.
         completion_check_time (int):
             how long to wait before checking watcher completion, in seconds.
             note, this doesn't effect the watcher itself, just when this wrapper function exits.
         zero_size_timeout (int):
             number of seconds to wait for non-zero file size
     """
+    # allow the watcher to
+    run_folder_wait = 0
+    while not os.path.exists(run_folder) and run_folder_wait < run_folder_timeout:
+        time.sleep(run_folder_timeout / 10)
+        run_folder_wait += run_folder_timeout / 10
+
+    if run_folder_wait == run_folder_timeout:
+        raise FileNotFoundError(
+            f"run_folder {run_folder} does not exist. First double check that the data doesn't "
+            "already exist in D:\\\\Data (sometimes, the CACs will change capitalization or add "
+            "extra characters to the run name). If that isn't the case, then wait 15-30 minutes "
+            "before trying again."
+        )
+
     observer = Observer()
     event_handler = FOV_EventHandler(
         run_folder, log_folder, fov_callback, run_callback, intermediate_callback, zero_size_timeout
