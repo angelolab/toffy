@@ -547,12 +547,12 @@ def start_watcher(
             number of seconds to wait for non-zero file size
     """
     # allow the watcher to
-    run_folder_wait = 0
-    while not os.path.exists(run_folder) and run_folder_wait < run_folder_timeout:
+    run_folder_wait_time = 0
+    while not os.path.exists(run_folder) and run_folder_wait_time < run_folder_timeout:
         time.sleep(run_folder_timeout / 10)
-        run_folder_wait += run_folder_timeout / 10
+        run_folder_wait_time += run_folder_timeout / 10
 
-    if run_folder_wait == run_folder_timeout:
+    if run_folder_wait_time == run_folder_timeout:
         raise FileNotFoundError(
             f"Timed out waiting for {run_folder}. First double check that the data doesn't "
             "already exist in D:\\\\Data (sometimes, the CACs will change capitalization or add "
