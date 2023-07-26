@@ -122,6 +122,7 @@ class RunCallbacks:
 class FovCallbacks:
     run_folder: str
     point_name: str
+    overwrite: bool
     __panel: pd.DataFrame = field(default=None, init=False)
     __fov_data: xr.DataArray = field(default=None, init=False)
 
@@ -184,7 +185,7 @@ class FovCallbacks:
         unextracted_chan_tiffs = []
 
         # in the case all images have been extracted, simply return
-        if os.path.exists(extracted_img_dir):
+        if os.path.exists(extracted_img_dir) and not self.overwrite:
             all_chan_tiffs = [f"{ct}.tiff" for ct in panel["Target"]]
             extracted_chan_tiffs = io_utils.list_files(extracted_img_dir, substrs=".tiff")
             unextracted_chan_tiffs = set(all_chan_tiffs).difference(extracted_chan_tiffs)
@@ -194,7 +195,7 @@ class FovCallbacks:
                 return
 
         # ensure we don't re-extract channels that have already been extracted
-        if unextracted_chan_tiffs:
+        if unextracted_chan_tiffs and not self.overwrite:
             unextracted_chans = io_utils.remove_file_extensions(unextracted_chan_tiffs)
             panel = panel[panel["Target"].isin(unextracted_chans)]
 
@@ -240,7 +241,7 @@ class FovCallbacks:
             os.path.join(qc_out_dir, f"{self.point_name}_total_intensity_stats.csv"),
             os.path.join(qc_out_dir, f"{self.point_name}_percentile_99_9_stats.csv"),
         ]
-        if all([os.path.exists(qc_file) for qc_file in qc_metric_paths]):
+        if all([os.path.exists(qc_file) for qc_file in qc_metric_paths]) and not self.overwrite:
             warnings.warn(f"All QC metrics already extracted for FOV {self.point_name}")
             return
 
@@ -271,7 +272,7 @@ class FovCallbacks:
             os.makedirs(mph_out_dir)
 
         mph_pulse_file = os.path.join(mph_out_dir, f"{self.point_name}-mph_pulse.csv")
-        if os.path.exists(mph_pulse_file):
+        if os.path.exists(mph_pulse_file) and not self.overwrite:
             warnings.warn(f"MPH pulse metrics already extracted for FOV {self.point_name}")
             return
 
@@ -301,7 +302,7 @@ class FovCallbacks:
             os.makedirs(pulse_out_dir)
 
         pulse_height_file = os.path.join(pulse_out_dir, f"{self.point_name}-pulse_heights.csv")
-        if os.path.exists(pulse_height_file):
+        if os.path.exists(pulse_height_file) and not self.overwrite:
             warnings.warn(f"Pulse heights per mass already extracted for FOV {self.point_name}")
             return
 
@@ -344,9 +345,9 @@ def build_fov_callback(*args, **kwargs):
         misc_utils.verify_in_list(required_arguments=argnames, passed_arguments=list(kwargs.keys()))
 
     # construct actual callback
-    def fov_callback(run_folder: str, point_name: str):
+    def fov_callback(run_folder: str, point_name: str, overwrite: bool = False):
         # construct FovCallback object for given FoV
-        callback_obj = FovCallbacks(run_folder, point_name)
+        callback_obj = FovCallbacks(run_folder, point_name, overwrite)
 
         # for each member, retrieve the member function and run it
         for arg in args:
