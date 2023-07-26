@@ -156,7 +156,7 @@ class FovCallbacks:
             **kwargs (dict):
                 Unused kwargs for other functions
         """
-        # NOTE: most panels will be specified from (0.3, 0), modify to (0.3, -0.06) for deficient
+        # NOTE: most panels will be specified from (-0.3, 0), modify to (-0.3, -0.06) for deficient
         panel_def = modify_panel_ranges(panel, start_offset=0, stop_offset=-0.06)
         self.__fov_data = extract_bin_files(
             data_dir=self.run_folder,
