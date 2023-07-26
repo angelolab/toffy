@@ -677,14 +677,16 @@ def rescale_raw_imgs(img_out_dir, scale=200):
         fov_dir = os.path.join(img_out_dir, fov)
         # create subdirectory for the new images
         sub_dir = os.path.join(fov_dir, "rescaled")
-        os.makedirs(sub_dir)
+        if not os.path.exists(sub_dir):
+            os.makedirs(sub_dir)
         chans = io_utils.list_files(fov_dir)
         # rescale each channel image
         for chan in chans:
-            img = io.imread(os.path.join(fov_dir, chan))
-            img = (img / scale).astype("float32")
             fname = os.path.join(sub_dir, chan)
-            image_utils.save_image(fname, img)
+            if not os.path.exists(fname):
+                img = io.imread(os.path.join(fov_dir, chan))
+                img = (img / scale).astype("float32")
+                image_utils.save_image(fname, img)
 
 
 def generate_rosetta_test_imgs(
