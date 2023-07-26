@@ -521,6 +521,7 @@ class WatcherCases:
             ["extract_tiffs", "generate_pulse_heights"],
             kwargs,
             validators,
+            0,
         )
 
     @parametrize(intensity=(False, True))
@@ -530,4 +531,10 @@ class WatcherCases:
         ics = rcs[:2]
         rcs = rcs[2:]
 
-        return (rcs, ics, fcs, kwargs, validators)
+        return (rcs, ics, fcs, kwargs, validators, 0)
+
+    @parametrize(folder_lag_time=(0, 2, 6))
+    def case_folder_lag(self, folder_lag_time):
+        rcs, ics, fcs, kwargs, validators = self.case_default(False, False)
+
+        return (rcs, ics, fc, kwargs, validators, folder_lag_time)

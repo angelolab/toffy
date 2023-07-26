@@ -140,6 +140,7 @@ def test_watcher_run_timeout(lag_time):
         run_folder_timeout = 3
 
         run_folder = os.path.join(tmpdir, "sample_run_folder")
+        os.mkdir(run_folder)
         log_folder = os.path.join(tmpdir, "sample_log_folder")
         run_cbs = ["plot_qc_metrics", "plot_mph_metrics", "image_stitching"]
         fov_cbs = ["extract_tiffs", "generate_pulse_heights"]
@@ -187,7 +188,9 @@ def test_watcher_run_timeout(lag_time):
 @pytest.mark.parametrize("add_blank", [False, True])
 @pytest.mark.parametrize("temp_bin", [False, True])
 @pytest.mark.parametrize("watcher_start_lag", [4, 8, 12])
-@parametrize_with_cases("run_cbs, int_cbs, fov_cbs, kwargs, validators", cases=WatcherCases)
+@parametrize_with_cases(
+    "run_cbs, int_cbs, fov_cbs, kwargs, validators, folder_lag_time", cases=WatcherCases
+)
 def test_watcher(
     mock_viz_qc,
     mock_viz_mph,
@@ -196,6 +199,7 @@ def test_watcher(
     fov_cbs,
     kwargs,
     validators,
+    folder_lag_time,
     add_blank,
     temp_bin,
     watcher_start_lag,
