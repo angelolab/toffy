@@ -170,7 +170,7 @@ class FovCallbacks:
         self.__panel = panel_def
 
         if extract_prof:
-            # modify from (0.3, 0) to (-0.06, 0.3) for proficient
+            # modify from (-0.3, 0) to (-0.06, 0.3) for proficient
             panel_prof = modify_panel_ranges(panel, start_offset=0.24, stop_offset=0.3)
             self.__fov_data_prof = extract_bin_files(
                 data_dir=self.run_folder,
