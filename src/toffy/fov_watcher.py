@@ -546,10 +546,13 @@ def start_watcher(
         zero_size_timeout (int):
             number of seconds to wait for non-zero file size
     """
-    confirm = input(
-        f"Move forward with specified run folder {run_folder}? Double check spelling and "
-        "capitalization, sometimes the CACs will add additional characters or add "
-        "weird casing changes"
+    # warn the user to explicitly confirm the run folder
+    warnings.warn(
+        f"Listening at D:\\\\Data\\{run_folder}. Please first double check that your run data "
+        "doesn't already exist under a slightly different name in D:\\\\Data. "
+        "Sometimes, the CACs will change capitalization or add extra characters to the run folder. "
+        f"If this is the case, stop the watcher and update {run_name} in the notebook "
+        "before trying again."
     )
 
     # allow the watcher to
@@ -560,10 +563,9 @@ def start_watcher(
 
     if run_folder_wait_time == run_folder_timeout:
         raise FileNotFoundError(
-            f"Timed out waiting for {run_folder}. First double check that the data doesn't "
-            "already exist in D:\\\\Data (sometimes, the CACs will change capitalization or add "
-            "extra characters to the run name). If that isn't the case, then wait 15-30 minutes "
-            "before trying again."
+            f"Timed out waiting for {run_folder}. Make sure {run_name} in the notebook matches up "
+            "with the run folder name in D:\\\\Data, or try again later if the run folder still "
+            "hasn't shown up."
         )
 
     observer = Observer()

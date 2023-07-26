@@ -127,21 +127,59 @@ def test_run_structure(run_json, expected_files, recwarn):
 def _slow_create_run_folder(run_folder_path: str, lag_time: int):
     time.sleep(lag_time)
     os.makedirs(run_folder_path)
+    for tissue_file in sorted([f for f in os.listdir(COMBINED_DATA_PATH) if ".bin" in f]):
+        shutil.copy(
+            os.path.join(COMBINED_DATA_PATH, tissue_file),
+            os.path.join(run_folder_path, tissue_file),
+        )
 
 
 @pytest.mark.parametrize("lag_time", [0, 2, 6])
-def test_watcher_run_timeout(tempfile, lag_time):
+def test_watcher_run_timeout(lag_time):
     with tempfile.TemporaryDirectory() as tmpdir:
-        run_folder_path = os.path.join(tmpdir, "sample_run_folder")
+        run_folder_timeout = 3
+
+        run_folder = os.path.join(tmpdir, "sample_run_folder")
+        log_folder = os.path.join(tmpdir, "sample_log_folder")
+        run_cbs = ["plot_qc_metrics", "plot_mph_metrics", "image_stitching"]
+        fov_cbs = ["extract_tiffs", "generate_pulse_heights"]
+
+        kwargs = {}
+        kwargs["tiff_out_dir"] = os.path.join(tmpdir, "cb_0", run_folder)
+        kwargs["qc_out_dir"] = os.path.join(tmpdir, "cb_1", run_folder)
+        kwargs["mph_out_dir"] = os.path.join(tmpdir, "cb_2", run_folder)
+        kwargs["pulse_out_dir"] = os.path.join(tmpdir, "cb_3", RUN_DIR_NAME)
+        kwargs["plot_dir"] = os.path.join(tmpdir, "cb_2_plot", RUN_DIR_NAME)
+        kwargs["warn_overwrite"] = False
+
+        fov_callback, run_callback, _ = build_callbacks(run_cbs, None, fov_cbs, **kwargs)
 
         with Pool(processes=1) as run_folder_wait:
-            pool.apply_async(_slow_create_run_folder, (run_folder_path, lag_time))
+            pool.apply_async(_slow_create_run_folder, (run_folder, lag_time))
 
-            if lag_time > 3:
-                with pytest.raises(
-                    FileNotFoundError, match=f"Timed out waiting for {run_folder_path}"
-                ):
-                    start_watcher()
+            if lag_time > run_folder_timeout:
+                with pytest.raises(FileNotFoundError, match=f"Timed out waiting for {run_folder}"):
+                    start_watcher(
+                        run_folder_path,
+                        log_folder_path,
+                        fov_callback,
+                        run_callback,
+                        None,
+                        run_folder_timeout,
+                        1,
+                        SLOW_COPY_INTERVAL_S,
+                    )
+            else:
+                start_watcher(
+                    run_folder_path,
+                    log_folder_path,
+                    fov_callback,
+                    run_callback,
+                    None,
+                    run_folder_timeout,
+                    1,
+                    SLOW_COPY_INTERVAL_S,
+                )
 
 
 @patch("toffy.watcher_callbacks.visualize_qc_metrics", side_effect=mock_visualize_qc_metrics)
@@ -218,6 +256,7 @@ def test_watcher(
                                 fov_callback,
                                 run_callback,
                                 intermediate_callback,
+                                2700,
                                 1,
                                 SLOW_COPY_INTERVAL_S,
                             ),
@@ -233,6 +272,7 @@ def test_watcher(
                             fov_callback,
                             run_callback,
                             intermediate_callback,
+                            2700,
                             1,
                             SLOW_COPY_INTERVAL_S,
                         ),
