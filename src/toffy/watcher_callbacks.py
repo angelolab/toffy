@@ -190,13 +190,11 @@ class FovCallbacks:
             unextracted_chan_tiffs = set(all_chan_tiffs).difference(extracted_chan_tiffs)
 
             if len(unextracted_chan_tiffs) == 0:
-                print("Case where all images extracted")
                 warnings.warn(f"Images already extracted for FOV {self.point_name}")
                 return
 
         # ensure we don't re-extract channels that have already been extracted
         if unextracted_chan_tiffs:
-            print("Case where not all images extracted")
             unextracted_chans = io_utils.remove_file_extensions(unextracted_chan_tiffs)
             panel = panel[panel["Target"].isin(unextracted_chans)]
 
