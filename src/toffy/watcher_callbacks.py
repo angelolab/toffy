@@ -11,7 +11,7 @@ matplotlib.use("Agg")
 
 import pandas as pd
 import xarray as xr
-from alpineer import misc_utils
+from alpineer import io_utils, misc_utils
 from mibi_bin_tools.bin_files import _write_out, extract_bin_files
 from mibi_bin_tools.type_utils import any_true
 
@@ -181,9 +181,24 @@ class FovCallbacks:
             os.makedirs(tiff_out_dir)
 
         extracted_img_dir = os.path.join(tiff_out_dir, self.point_name)
+        unextracted_chan_tiffs = []
+
+        # in the case all images have been extracted, simply return
         if os.path.exists(extracted_img_dir):
-            warnings.warn(f"Images already extracted for FOV {self.point_name}")
-            return
+            all_chan_tiffs = [f"{ct}.tiff" for ct in panel["Target"]]
+            extracted_chan_tiffs = io_utils.list_files(extracted_img_dir, substrs=".tiff")
+            unextracted_chan_tiffs = set(all_chan_tiffs).difference(extracted_chan_tiffs)
+
+            if len(unextracted_chan_tiffs) == 0:
+                print("Case where all images extracted")
+                warnings.warn(f"Images already extracted for FOV {self.point_name}")
+                return
+
+        # ensure we don't re-extract channels that have already been extracted
+        if unextracted_chan_tiffs:
+            print("Case where not all images extracted")
+            unextracted_chans = io_utils.remove_file_extensions(unextracted_chan_tiffs)
+            panel = panel[panel["Target"].isin(unextracted_chans)]
 
         if self.__fov_data is None:
             self._generate_fov_data(panel, **kwargs)

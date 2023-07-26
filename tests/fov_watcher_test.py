@@ -178,9 +178,10 @@ def test_watcher(
             )
 
             # if existing_data set to True, test case where a FOV has already been extracted
-            if existing_data:
+            if existing_data[0]:
                 os.makedirs(os.path.join(tiff_out_dir, "fov-2-scan-1"))
-                for channel in TEST_CHANNELS:
+                channels_write = TEST_CHANNELS if existing_data[1] == "Full" else [TEST_CHANNELS[1]]
+                for channel in channels_write:
                     random_img = np.random.rand(32, 32)
                     imsave(
                         os.path.join(tiff_out_dir, "fov-2-scan-1", f"{channel}.tiff"), random_img
@@ -224,7 +225,7 @@ def test_watcher(
                     watcher_warnings.append(
                         r"Re-extracting incompletely extracted FOV fov-1-scan-1"
                     )
-                if existing_data:
+                if existing_data[0] and existing_data[1] == "Full":
                     watcher_warnings.append(r"already extracted for FOV fov-2-scan-1")
 
                 if len(watcher_warnings) > 0:

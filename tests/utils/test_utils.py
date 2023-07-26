@@ -564,7 +564,7 @@ class WatcherCases:
             kwargs,
             validators,
             1,
-            False,
+            (False, None),
         )
 
     @parametrize(intensity=(False, True))
@@ -581,7 +581,7 @@ class WatcherCases:
         rcs, ics, fcs, kwargs, validators, _, ed = self.case_default(True, True)
         return (rcs, ics, fcs, kwargs, validators, watcher_start_lag, ed)
 
-    @parametrize(existing_data=(True, False))
+    @parametrize(existing_data=((True, "Full"), (True, "Partial"), (False, None)))
     def case_existing_data(self, existing_data):
         rcs, ics, fcs, kwargs, validators, wsl, _ = self.case_default(False, False)
         return (rcs, ics, fcs, kwargs, validators, wsl, existing_data)
