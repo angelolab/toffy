@@ -223,9 +223,9 @@ class FovCallbacks:
             self._generate_fov_data(panel, **kwargs)
 
         qc_metric_paths = [
-            os.path.join(qc_out_dir, self.point_name + "_nonzero_mean_stats.csv"),
-            os.path.join(qc_out_dir, self.point_name + "_total_intensity_stats.csv"),
-            os.path.join(qc_out_dir, self.point_name + "_percentile_99_9_stats.csv"),
+            os.path.join(qc_out_dir, f"{self.point_name}_nonzero_mean_stats.csv"),
+            os.path.join(qc_out_dir, f"{self.point_name}_total_intensity_stats.csv"),
+            os.path.join(qc_out_dir, f"{self.point_name}_percentile_99_9_stats.csv"),
         ]
         if all([os.path.exists(qc_file) for qc_file in qc_metric_paths]):
             warnings.warn(f"All QC metrics already extracted for FOV {self.point_name}")
