@@ -1,7 +1,5 @@
 import os
-import platform
 import shutil
-import subprocess
 import tempfile
 import time
 import warnings
@@ -10,15 +8,20 @@ from multiprocessing.pool import ThreadPool as Pool
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
+import pandas as pd
 import pytest
 from alpineer import io_utils
 from pytest_cases import parametrize_with_cases
+from skimage.io import imsave
 
 from toffy.fov_watcher import start_watcher
 from toffy.json_utils import write_json_file
+from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 from toffy.watcher_callbacks import build_callbacks
 
 from .utils.test_utils import (
+    TEST_CHANNELS,
     RunStructureCases,
     RunStructureTestContext,
     WatcherCases,
@@ -128,8 +131,9 @@ def test_run_structure(run_json, expected_files, recwarn):
 @patch("toffy.watcher_callbacks.visualize_mph", side_effect=mock_visualize_mph)
 @pytest.mark.parametrize("add_blank", [False, True])
 @pytest.mark.parametrize("temp_bin", [False, True])
-@pytest.mark.parametrize("watcher_start_lag", [4, 8, 12])
-@parametrize_with_cases("run_cbs, int_cbs, fov_cbs, kwargs, validators", cases=WatcherCases)
+@parametrize_with_cases(
+    "run_cbs,int_cbs,fov_cbs,kwargs,validators,watcher_start_lag,existing_data", cases=WatcherCases
+)
 def test_watcher(
     mock_viz_qc,
     mock_viz_mph,
@@ -138,9 +142,10 @@ def test_watcher(
     fov_cbs,
     kwargs,
     validators,
+    watcher_start_lag,
+    existing_data,
     add_blank,
     temp_bin,
-    watcher_start_lag,
 ):
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -172,24 +177,59 @@ def test_watcher(
                 json_object=COMBINED_RUN_JSON_SPOOF,
             )
 
+            # if existing_data set to True, test case where a FOV has already been extracted
+            if existing_data[0]:
+                os.makedirs(os.path.join(tiff_out_dir, "fov-2-scan-1"))
+                channels_write = TEST_CHANNELS if existing_data[1] == "Full" else [TEST_CHANNELS[1]]
+                for channel in channels_write:
+                    random_img = np.random.rand(32, 32)
+                    imsave(
+                        os.path.join(tiff_out_dir, "fov-2-scan-1", f"{channel}.tiff"), random_img
+                    )
+
+                os.makedirs(qc_out_dir)
+                for qcs, qcc in zip(QC_SUFFIXES, QC_COLUMNS):
+                    df_qc = pd.DataFrame(
+                        np.random.rand(len(TEST_CHANNELS), 3), columns=["fov", "channel", qcc]
+                    )
+                    df_qc["fov"] = "fov-2-scan-1"
+                    df_qc["channel"] = TEST_CHANNELS
+                    df_qc.to_csv(os.path.join(qc_out_dir, f"fov-2-scan-1_{qcs}.csv"), index=False)
+
+                os.makedirs(mph_out_dir)
+                df_mph = pd.DataFrame(
+                    np.random.rand(1, 4), columns=["fov", "MPH", "total_count", "time"]
+                )
+                df_mph["fov"] = "fov-2-scan-1"
+                df_mph.to_csv(os.path.join(mph_out_dir, "fov-2-scan-1-mph_pulse.csv"), index=False)
+
+                os.makedirs(pulse_out_dir)
+                df_ph = pd.DataFrame(np.random.rand(10, 3), columns=["mass", "fov", "pulse_height"])
+                df_ph["fov"] = "fov-2-scan-1"
+                df_ph.to_csv(
+                    os.path.join(pulse_out_dir, "fov-2-scan-1-pulse_heights.csv"), index=False
+                )
+
             # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
             # client access computer.  `start_watcher` is made async here since these processes
             # wouldn't block each other in normal use
-
             with Pool(processes=4) as pool:
                 pool.apply_async(
                     _slow_copy_sample_tissue_data,
                     (run_data, SLOW_COPY_INTERVAL_S, add_blank, temp_bin),
                 )
-
                 time.sleep(watcher_start_lag)
 
-                # watcher completion is checked every second
-                # zero-size files are halted for 1 second or until they have non zero-size
+                watcher_warnings = []
                 if not add_blank:
-                    with pytest.warns(
-                        UserWarning, match="Re-extracting incompletely extracted FOV fov-1-scan-1"
-                    ):
+                    watcher_warnings.append(
+                        r"Re-extracting incompletely extracted FOV fov-1-scan-1"
+                    )
+                if existing_data[0] and existing_data[1] == "Full":
+                    watcher_warnings.append(r"already extracted for FOV fov-2-scan-1")
+
+                if len(watcher_warnings) > 0:
+                    with pytest.warns(UserWarning, match="|".join(watcher_warnings)):
                         res_scan = pool.apply_async(
                             start_watcher,
                             (

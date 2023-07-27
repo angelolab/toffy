@@ -263,12 +263,14 @@ class FOV_EventHandler(FileSystemEventHandler):
 
             return None, None
 
-    def _generate_callback_data(self, point_name: str):
+    def _generate_callback_data(self, point_name: str, overwrite: bool):
         """Runs the `fov_func` and `inter_func` if applicable for a FOV
 
         Args:
             point_name (str):
                 The name of the FOV to run FOV (and intermediate if applicable) callbacks on
+            overwrite (bool):
+                Forces an overwrite of already existing data, needed if a FOV needs re-extraction
         """
         print(f"Discovered {point_name}, beginning per-fov callbacks...")
         logging.info(f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Extracting {point_name}\n')
@@ -277,7 +279,7 @@ class FOV_EventHandler(FileSystemEventHandler):
             f"Running {self.fov_func.__name__} on {point_name}\n"
         )
 
-        self.fov_func(self.run_folder, point_name)
+        self.fov_func(self.run_folder, point_name, overwrite)
         self.run_structure.processed(point_name)
 
         if self.inter_func:
@@ -409,20 +411,22 @@ class FOV_EventHandler(FileSystemEventHandler):
 
                 # re-extract the .bin file
                 # NOTE: since no more FOVs are being written, last_fov_num_processed is irrelevant
-                self._fov_callback_driver(fov_bin_path)
+                self._fov_callback_driver(fov_bin_path, overwrite=True)
 
-    def _fov_callback_driver(self, file_trigger: str):
+    def _fov_callback_driver(self, file_trigger: str, overwrite: bool = False):
         """The FOV and intermediate-level callback motherbase for a single .bin file
 
         Args:
             file_trigger (str):
                 The file that gets caught by the watcher to throw into the pipeline
+            overwrite (bool):
+                Forces an overwrite of already existing data, needed if a FOV needs re-extraction
         """
         # check if what's created is in the run structure
         fov_ready, point_name = self._check_fov_status(file_trigger)
 
         if fov_ready:
-            self._generate_callback_data(point_name)
+            self._generate_callback_data(point_name, overwrite=overwrite)
 
         # needs to update if .bin file processed OR new moly point detected
         is_moly = point_name in self.run_structure.moly_points
