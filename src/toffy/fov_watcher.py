@@ -553,8 +553,8 @@ def start_watcher(
     # warn the user to explicitly confirm the run folder
     if not os.path.exists(run_folder):
         warnings.warn(
-            f"Waiting for D:\\\\Data\\{run_folder}. Please first double check that your run data "
-            "doesn't already exist under a slightly different name in D:\\\\Data. "
+            f"Waiting for {run_folder}. Please first double check that your run data "
+            "doesn't already exist under a slightly different name in D:\\Data. "
             "Sometimes, the CACs change capitalization or add extra characters to the run folder. "
             "If this happens, stop the watcher and update the run_name variable in the notebook "
             "before trying again."
@@ -569,7 +569,7 @@ def start_watcher(
     if run_folder_wait_time == run_folder_timeout:
         raise FileNotFoundError(
             f"Timed out waiting for {run_folder}. Make sure the run_name variable in the notebook "
-            "matches up with the run folder name in D:\\\\Data, or try again a few minutes later "
+            "matches up with the run folder name in D:\\Data, or try again a few minutes later "
             "if the run folder still hasn't shown up."
         )
 
