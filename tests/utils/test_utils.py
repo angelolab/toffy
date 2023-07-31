@@ -18,6 +18,48 @@ from toffy.fov_watcher import RunStructure
 from toffy.json_utils import write_json_file
 from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 
+TEST_CHANNELS = [
+    "Calprotectin",
+    "Chymase",
+    "SMA",
+    "Vimentin",
+    "LAG3",
+    "CD4",
+    "CD69",
+    "FAP",
+    "FOXP3",
+    "PD1",
+    "CD31",
+    "Biotin",
+    "Ecadherin",
+    "CD56",
+    "CD38",
+    "TCF1 TCF7",
+    "TBET",
+    "CD45RB",
+    "CD68",
+    "CD11c",
+    "CD8",
+    "CD3e",
+    "IDO1",
+    "CD45RO",
+    "TIM-3",
+    "CD163",
+    "CD20",
+    "FN1",
+    "Glut1",
+    "HLADR",
+    "CD14",
+    "CD45",
+    "Cytokeratin17",
+    "COL1A1",
+    "H3K27me3",
+    "CD57",
+    "H3K9ac",
+    "Ki67",
+    "HLA1 class ABC",
+]
+
 
 def make_run_file(tmp_dir, prefixes=[], include_nontiled=False):
     """Create a run subir and run json in the provided dir and return the path to this new dir."""
@@ -522,19 +564,25 @@ class WatcherCases:
             kwargs,
             validators,
             0,
+            1,
+            (False, None),
         )
 
     @parametrize(intensity=(False, True))
     @parametrize(replace=(False, True))
     def case_inter_callback(self, intensity, replace):
-        rcs, _, fcs, kwargs, validators = self.case_default(intensity, replace)
+        rcs, _, fcs, kwargs, validators, fl, wsl, ed = self.case_default(intensity, replace)
         ics = rcs[:2]
         rcs = rcs[2:]
 
-        return (rcs, ics, fcs, kwargs, validators, 0)
+        return (rcs, ics, fcs, kwargs, validators, fl, wsl, ed)
 
-    @parametrize(folder_lag_time=(0, 2, 6))
-    def case_folder_lag(self, folder_lag_time):
-        rcs, ics, fcs, kwargs, validators = self.case_default(False, False)
+    @parametrize(watcher_start_lag=(4, 8, 12))
+    def case_watcher_lag(self, watcher_start_lag):
+        rcs, ics, fcs, kwargs, validators, fl, _, ed = self.case_default(True, True)
+        return (rcs, ics, fcs, kwargs, validators, fl, watcher_start_lag, ed)
 
-        return (rcs, ics, fc, kwargs, validators, folder_lag_time)
+    @parametrize(existing_data=((True, "Full"), (True, "Partial"), (False, None)))
+    def case_existing_data(self, existing_data):
+        rcs, ics, fcs, kwargs, validators, fl, wsl, _ = self.case_default(False, False)
+        return (rcs, ics, fcs, kwargs, validators, fl, wsl, existing_data)

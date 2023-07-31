@@ -1,6 +1,7 @@
 import copy
 import os
 import tempfile
+import time
 from pathlib import Path
 
 import numpy as np
@@ -639,9 +640,16 @@ def test_rescale_raw_imgs():
 
         # test successful rescale of data
         rescaled_img_data = load_utils.load_imgs_from_tree(temp_dir, "rescaled")
+        create_time = Path(os.path.join(temp_dir, fovs[0], "rescaled")).stat().st_ctime
         assert rescaled_img_data.all() == (img_data / 200).all()
 
         assert rescaled_img_data.dtype == "float32"
+
+        # re-run function and check the files are not re-written
+        time.sleep(3)
+        rosetta.rescale_raw_imgs(temp_dir)
+        modify_time = Path(os.path.join(temp_dir, fovs[0], "rescaled")).stat().st_mtime
+        assert np.isclose(modify_time, create_time)
 
 
 def create_rosetta_comp_structure(

@@ -1,7 +1,5 @@
 import os
-import platform
 import shutil
-import subprocess
 import tempfile
 import time
 import warnings
@@ -10,15 +8,20 @@ from multiprocessing.pool import ThreadPool as Pool
 from pathlib import Path
 from unittest.mock import patch
 
+import numpy as np
+import pandas as pd
 import pytest
 from alpineer import io_utils
 from pytest_cases import parametrize_with_cases
+from skimage.io import imsave
 
 from toffy.fov_watcher import start_watcher
 from toffy.json_utils import write_json_file
+from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 from toffy.watcher_callbacks import build_callbacks
 
 from .utils.test_utils import (
+    TEST_CHANNELS,
     RunStructureCases,
     RunStructureTestContext,
     WatcherCases,
@@ -127,69 +130,106 @@ def test_run_structure(run_json, expected_files, recwarn):
 def _slow_create_run_folder(run_folder_path: str, lag_time: int):
     time.sleep(lag_time)
     os.makedirs(run_folder_path)
-    for tissue_file in sorted([f for f in os.listdir(COMBINED_DATA_PATH) if ".bin" in f]):
+    write_json_file(
+        json_path=os.path.join(run_folder_path, "test_run.json"),
+        json_object=COMBINED_RUN_JSON_SPOOF,
+    )
+    for tissue_file in sorted(
+        [f for f in os.listdir(COMBINED_DATA_PATH) if ".bin" in f or ".json" in f]
+    ):
         shutil.copy(
             os.path.join(COMBINED_DATA_PATH, tissue_file),
             os.path.join(run_folder_path, tissue_file),
         )
 
 
-@pytest.mark.parametrize("lag_time", [0, 2, 6])
-def test_watcher_run_timeout(lag_time):
+@patch("toffy.watcher_callbacks.visualize_qc_metrics", side_effect=mock_visualize_qc_metrics)
+@patch("toffy.watcher_callbacks.visualize_mph", side_effect=mock_visualize_mph)
+@pytest.mark.parametrize("run_folder_lag", [0, 5, 15])
+@parametrize_with_cases(
+    "run_cbs,int_cbs,fov_cbs,kwargs,validators,watcher_start_lag,existing_data",
+    cases=WatcherCases.case_default,
+)
+def test_watcher_run_timeout(
+    mock_viz_qc,
+    mock_viz_mph,
+    run_cbs,
+    int_cbs,
+    fov_cbs,
+    kwargs,
+    validators,
+    watcher_start_lag,
+    existing_data,
+    run_folder_lag,
+):
     with tempfile.TemporaryDirectory() as tmpdir:
-        run_folder_timeout = 3
+        tiff_out_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME)
+        qc_out_dir = os.path.join(tmpdir, "cb_1", RUN_DIR_NAME)
+        mph_out_dir = os.path.join(tmpdir, "cb_2", RUN_DIR_NAME)
+        plot_dir = os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME)
+        pulse_out_dir = os.path.join(tmpdir, "cb_3", RUN_DIR_NAME)
+        stitched_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, f"{RUN_DIR_NAME}_stitched")
 
-        run_folder = os.path.join(tmpdir, "sample_run_folder")
-        os.mkdir(run_folder)
-        log_folder = os.path.join(tmpdir, "sample_log_folder")
-        run_cbs = ["plot_qc_metrics", "plot_mph_metrics", "image_stitching"]
-        fov_cbs = ["extract_tiffs", "generate_pulse_heights"]
+        # add directories to kwargs
+        kwargs["tiff_out_dir"] = tiff_out_dir
+        kwargs["qc_out_dir"] = qc_out_dir
+        kwargs["mph_out_dir"] = mph_out_dir
+        kwargs["pulse_out_dir"] = pulse_out_dir
+        kwargs["plot_dir"] = plot_dir
 
-        kwargs = {}
-        kwargs["tiff_out_dir"] = os.path.join(tmpdir, "cb_0", run_folder)
-        kwargs["qc_out_dir"] = os.path.join(tmpdir, "cb_1", run_folder)
-        kwargs["mph_out_dir"] = os.path.join(tmpdir, "cb_2", run_folder)
-        kwargs["pulse_out_dir"] = os.path.join(tmpdir, "cb_3", RUN_DIR_NAME)
-        kwargs["plot_dir"] = os.path.join(tmpdir, "cb_2_plot", RUN_DIR_NAME)
-        kwargs["warn_overwrite"] = False
+        # ensure warn_overwrite set to False if intermediate callbacks set, otherwise True
+        kwargs["warn_overwrite"] = True if int_cbs else False
 
-        fov_callback, run_callback, _ = build_callbacks(run_cbs, None, fov_cbs, **kwargs)
+        run_folder = os.path.join(tmpdir, "test_run")
+        log_out = os.path.join(tmpdir, "log_output")
+        fov_callback, run_callback, intermediate_callback = build_callbacks(
+            run_cbs, int_cbs, fov_cbs, **kwargs
+        )
 
-        with Pool(processes=1) as run_folder_wait:
-            pool.apply_async(_slow_create_run_folder, (run_folder, lag_time))
+        with Pool(processes=4) as pool:
+            pool.apply_async(_slow_create_run_folder, (run_folder, run_folder_lag))
 
-            if lag_time > run_folder_timeout:
+            if run_folder_lag > 10:
                 with pytest.raises(FileNotFoundError, match=f"Timed out waiting for {run_folder}"):
-                    start_watcher(
-                        run_folder_path,
-                        log_folder_path,
+                    res_scan = pool.apply_async(
+                        start_watcher,
+                        (
+                            run_folder,
+                            log_out,
+                            fov_callback,
+                            run_callback,
+                            intermediate_callback,
+                            10,
+                            1,
+                            SLOW_COPY_INTERVAL_S,
+                        ),
+                    )
+
+                    res_scan.get()
+            else:
+                res_scan = pool.apply_async(
+                    start_watcher,
+                    (
+                        run_folder,
+                        log_out,
                         fov_callback,
                         run_callback,
-                        None,
-                        run_folder_timeout,
+                        intermediate_callback,
+                        10,
                         1,
                         SLOW_COPY_INTERVAL_S,
-                    )
-            else:
-                start_watcher(
-                    run_folder_path,
-                    log_folder_path,
-                    fov_callback,
-                    run_callback,
-                    None,
-                    run_folder_timeout,
-                    1,
-                    SLOW_COPY_INTERVAL_S,
+                    ),
                 )
+
+                res_scan.get()
 
 
 @patch("toffy.watcher_callbacks.visualize_qc_metrics", side_effect=mock_visualize_qc_metrics)
 @patch("toffy.watcher_callbacks.visualize_mph", side_effect=mock_visualize_mph)
 @pytest.mark.parametrize("add_blank", [False, True])
 @pytest.mark.parametrize("temp_bin", [False, True])
-@pytest.mark.parametrize("watcher_start_lag", [4, 8, 12])
 @parametrize_with_cases(
-    "run_cbs, int_cbs, fov_cbs, kwargs, validators, folder_lag_time", cases=WatcherCases
+    "run_cbs,int_cbs,fov_cbs,kwargs,validators,watcher_start_lag,existing_data", cases=WatcherCases
 )
 def test_watcher(
     mock_viz_qc,
@@ -199,10 +239,10 @@ def test_watcher(
     fov_cbs,
     kwargs,
     validators,
-    folder_lag_time,
+    watcher_start_lag,
+    existing_data,
     add_blank,
     temp_bin,
-    watcher_start_lag,
 ):
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -234,24 +274,59 @@ def test_watcher(
                 json_object=COMBINED_RUN_JSON_SPOOF,
             )
 
+            # if existing_data set to True, test case where a FOV has already been extracted
+            if existing_data[0]:
+                os.makedirs(os.path.join(tiff_out_dir, "fov-2-scan-1"))
+                channels_write = TEST_CHANNELS if existing_data[1] == "Full" else [TEST_CHANNELS[1]]
+                for channel in channels_write:
+                    random_img = np.random.rand(32, 32)
+                    imsave(
+                        os.path.join(tiff_out_dir, "fov-2-scan-1", f"{channel}.tiff"), random_img
+                    )
+
+                os.makedirs(qc_out_dir)
+                for qcs, qcc in zip(QC_SUFFIXES, QC_COLUMNS):
+                    df_qc = pd.DataFrame(
+                        np.random.rand(len(TEST_CHANNELS), 3), columns=["fov", "channel", qcc]
+                    )
+                    df_qc["fov"] = "fov-2-scan-1"
+                    df_qc["channel"] = TEST_CHANNELS
+                    df_qc.to_csv(os.path.join(qc_out_dir, f"fov-2-scan-1_{qcs}.csv"), index=False)
+
+                os.makedirs(mph_out_dir)
+                df_mph = pd.DataFrame(
+                    np.random.rand(1, 4), columns=["fov", "MPH", "total_count", "time"]
+                )
+                df_mph["fov"] = "fov-2-scan-1"
+                df_mph.to_csv(os.path.join(mph_out_dir, "fov-2-scan-1-mph_pulse.csv"), index=False)
+
+                os.makedirs(pulse_out_dir)
+                df_ph = pd.DataFrame(np.random.rand(10, 3), columns=["mass", "fov", "pulse_height"])
+                df_ph["fov"] = "fov-2-scan-1"
+                df_ph.to_csv(
+                    os.path.join(pulse_out_dir, "fov-2-scan-1-pulse_heights.csv"), index=False
+                )
+
             # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
             # client access computer.  `start_watcher` is made async here since these processes
             # wouldn't block each other in normal use
-
             with Pool(processes=4) as pool:
                 pool.apply_async(
                     _slow_copy_sample_tissue_data,
                     (run_data, SLOW_COPY_INTERVAL_S, add_blank, temp_bin),
                 )
-
                 time.sleep(watcher_start_lag)
 
-                # watcher completion is checked every second
-                # zero-size files are halted for 1 second or until they have non zero-size
+                watcher_warnings = []
                 if not add_blank:
-                    with pytest.warns(
-                        UserWarning, match="Re-extracting incompletely extracted FOV fov-1-scan-1"
-                    ):
+                    watcher_warnings.append(
+                        r"Re-extracting incompletely extracted FOV fov-1-scan-1"
+                    )
+                if existing_data[0] and existing_data[1] == "Full":
+                    watcher_warnings.append(r"already extracted for FOV fov-2-scan-1")
+
+                if len(watcher_warnings) > 0:
+                    with pytest.warns(UserWarning, match="|".join(watcher_warnings)):
                         res_scan = pool.apply_async(
                             start_watcher,
                             (

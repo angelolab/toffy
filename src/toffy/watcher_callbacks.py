@@ -1,5 +1,6 @@
 import inspect
 import os
+import warnings
 from dataclasses import dataclass, field
 from typing import Iterable
 
@@ -10,7 +11,7 @@ matplotlib.use("Agg")
 
 import pandas as pd
 import xarray as xr
-from alpineer import misc_utils
+from alpineer import io_utils, misc_utils
 from mibi_bin_tools.bin_files import _write_out, extract_bin_files
 from mibi_bin_tools.type_utils import any_true
 
@@ -121,6 +122,7 @@ class RunCallbacks:
 class FovCallbacks:
     run_folder: str
     point_name: str
+    overwrite: bool
     __panel: pd.DataFrame = field(default=None, init=False)
     __fov_data: xr.DataArray = field(default=None, init=False)
 
@@ -179,6 +181,24 @@ class FovCallbacks:
         if not os.path.exists(tiff_out_dir):
             os.makedirs(tiff_out_dir)
 
+        extracted_img_dir = os.path.join(tiff_out_dir, self.point_name)
+        unextracted_chan_tiffs = []
+
+        # in the case all images have been extracted, simply return
+        if os.path.exists(extracted_img_dir) and not self.overwrite:
+            all_chan_tiffs = [f"{ct}.tiff" for ct in panel["Target"]]
+            extracted_chan_tiffs = io_utils.list_files(extracted_img_dir, substrs=".tiff")
+            unextracted_chan_tiffs = set(all_chan_tiffs).difference(extracted_chan_tiffs)
+
+            if len(unextracted_chan_tiffs) == 0:
+                warnings.warn(f"Images already extracted for FOV {self.point_name}")
+                return
+
+        # ensure we don't re-extract channels that have already been extracted
+        if unextracted_chan_tiffs and not self.overwrite:
+            unextracted_chans = io_utils.remove_file_extensions(unextracted_chan_tiffs)
+            panel = panel[panel["Target"].isin(unextracted_chans)]
+
         if self.__fov_data is None:
             self._generate_fov_data(panel, **kwargs)
 
@@ -216,6 +236,15 @@ class FovCallbacks:
                 raise ValueError("Must provide panel if fov data is not already generated...")
             self._generate_fov_data(panel, **kwargs)
 
+        qc_metric_paths = [
+            os.path.join(qc_out_dir, f"{self.point_name}_nonzero_mean_stats.csv"),
+            os.path.join(qc_out_dir, f"{self.point_name}_total_intensity_stats.csv"),
+            os.path.join(qc_out_dir, f"{self.point_name}_percentile_99_9_stats.csv"),
+        ]
+        if all([os.path.exists(qc_file) for qc_file in qc_metric_paths]) and not self.overwrite:
+            warnings.warn(f"All QC metrics already extracted for FOV {self.point_name}")
+            return
+
         metric_data = compute_qc_metrics_direct(
             image_data=self.__fov_data,
             fov_name=self.point_name,
@@ -232,7 +261,7 @@ class FovCallbacks:
         Args:
             mph_out_dir (str): where to output mph csvs to
             **kwargs (dict):
-                Additional arguments for `toffy.qc_comp.compute_mph_metrics`. Accepted kwargs are:
+                Additional arguments for `toffy.mph_comp.compute_mph_metrics`. Accepted kwargs are:
 
              - mass
              - mass_start
@@ -241,6 +270,11 @@ class FovCallbacks:
 
         if not os.path.exists(mph_out_dir):
             os.makedirs(mph_out_dir)
+
+        mph_pulse_file = os.path.join(mph_out_dir, f"{self.point_name}-mph_pulse.csv")
+        if os.path.exists(mph_pulse_file) and not self.overwrite:
+            warnings.warn(f"MPH pulse metrics already extracted for FOV {self.point_name}")
+            return
 
         compute_mph_metrics(
             bin_file_dir=self.run_folder,
@@ -266,6 +300,11 @@ class FovCallbacks:
 
         if not os.path.exists(pulse_out_dir):
             os.makedirs(pulse_out_dir)
+
+        pulse_height_file = os.path.join(pulse_out_dir, f"{self.point_name}-pulse_heights.csv")
+        if os.path.exists(pulse_height_file) and not self.overwrite:
+            warnings.warn(f"Pulse heights per mass already extracted for FOV {self.point_name}")
+            return
 
         write_mph_per_mass(
             base_dir=self.run_folder,
@@ -306,9 +345,9 @@ def build_fov_callback(*args, **kwargs):
         misc_utils.verify_in_list(required_arguments=argnames, passed_arguments=list(kwargs.keys()))
 
     # construct actual callback
-    def fov_callback(run_folder: str, point_name: str):
+    def fov_callback(run_folder: str, point_name: str, overwrite: bool = False):
         # construct FovCallback object for given FoV
-        callback_obj = FovCallbacks(run_folder, point_name)
+        callback_obj = FovCallbacks(run_folder, point_name, overwrite)
 
         # for each member, retrieve the member function and run it
         for arg in args:
