@@ -551,13 +551,14 @@ def start_watcher(
             number of seconds to wait for non-zero file size
     """
     # warn the user to explicitly confirm the run folder
-    warnings.warn(
-        f"Listening at D:\\\\Data\\{run_folder}. Please first double check that your run data "
-        "doesn't already exist under a slightly different name in D:\\\\Data. "
-        "Sometimes, the CACs will change capitalization or add extra characters to the run folder. "
-        "If this is the case, stop the watcher and update the run_name variable in the notebook "
-        "before trying again."
-    )
+    if not os.path.exists(run_folder):
+        warnings.warn(
+            f"Waiting for D:\\\\Data\\{run_folder}. Please first double check that your run data "
+            "doesn't already exist under a slightly different name in D:\\\\Data. "
+            "Sometimes, the CACs change capitalization or add extra characters to the run folder. "
+            "If this happens, stop the watcher and update the run_name variable in the notebook "
+            "before trying again."
+        )
 
     # allow the watcher to
     run_folder_wait_time = 0
