@@ -563,7 +563,6 @@ class WatcherCases:
             ["extract_tiffs", "generate_pulse_heights"],
             kwargs,
             validators,
-            0,
             1,
             (False, None),
         )
@@ -571,18 +570,18 @@ class WatcherCases:
     @parametrize(intensity=(False, True))
     @parametrize(replace=(False, True))
     def case_inter_callback(self, intensity, replace):
-        rcs, _, fcs, kwargs, validators, fl, wsl, ed = self.case_default(intensity, replace)
+        rcs, _, fcs, kwargs, validators, wsl, ed = self.case_default(intensity, replace)
         ics = rcs[:2]
         rcs = rcs[2:]
 
-        return (rcs, ics, fcs, kwargs, validators, fl, wsl, ed)
+        return (rcs, ics, fcs, kwargs, validators, wsl, ed)
 
     @parametrize(watcher_start_lag=(4, 8, 12))
     def case_watcher_lag(self, watcher_start_lag):
-        rcs, ics, fcs, kwargs, validators, fl, _, ed = self.case_default(True, True)
-        return (rcs, ics, fcs, kwargs, validators, fl, watcher_start_lag, ed)
+        rcs, ics, fcs, kwargs, validators, _, ed = self.case_default(True, True)
+        return (rcs, ics, fcs, kwargs, validators, watcher_start_lag, ed)
 
     @parametrize(existing_data=((True, "Full"), (True, "Partial"), (False, None)))
     def case_existing_data(self, existing_data):
-        rcs, ics, fcs, kwargs, validators, fl, wsl, _ = self.case_default(False, False)
-        return (rcs, ics, fcs, kwargs, validators, fl, wsl, existing_data)
+        rcs, ics, fcs, kwargs, validators, wsl, _ = self.case_default(False, False)
+        return (rcs, ics, fcs, kwargs, validators, wsl, existing_data)
