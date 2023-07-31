@@ -521,7 +521,7 @@ def start_watcher(
     fov_callback: Callable[[str, str], None],
     run_callback: Callable[[None], None],
     intermediate_callback: Callable[[str, str], None] = None,
-    run_folder_timeout: int = 2700,
+    run_folder_timeout: int = 5400,
     completion_check_time: int = 30,
     zero_size_timeout: int = 7800,
 ):
