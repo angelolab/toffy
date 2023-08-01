@@ -560,7 +560,7 @@ def start_watcher(
             "before trying again."
         )
 
-    # allow the watcher to
+    # allow the watcher to poll the run folder until it appears or times out
     run_folder_wait_time = 0
     while not os.path.exists(run_folder) and run_folder_wait_time < run_folder_timeout:
         time.sleep(run_folder_timeout / 10)
