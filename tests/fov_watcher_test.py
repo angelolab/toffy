@@ -134,6 +134,7 @@ def _slow_create_run_folder(run_folder_path: str, lag_time: int):
     write_json_file(
         json_path=os.path.join(run_folder_path, "test_run.json"),
         json_object=COMBINED_RUN_JSON_SPOOF,
+        encoding="utf-8",
     )
 
 
@@ -269,6 +270,7 @@ def test_watcher(
             write_json_file(
                 json_path=os.path.join(run_data, "test_run.json"),
                 json_object=COMBINED_RUN_JSON_SPOOF,
+                encoding="utf-8",
             )
 
             # if existing_data set to True, test case where a FOV has already been extracted

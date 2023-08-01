@@ -45,7 +45,9 @@ class RunStructure:
 
         # find run .json and get parameters
         run_name = Path(run_folder).parts[-1]
-        run_metadata = read_json_file(os.path.join(run_folder, f"{run_name}.json"))
+        run_metadata = read_json_file(
+            os.path.join(run_folder, f"{run_name}.json"), encoding="utf-8"
+        )
 
         # parse run_metadata and populate expected structure
         for fov in run_metadata.get("fovs", ()):
