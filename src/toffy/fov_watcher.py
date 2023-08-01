@@ -550,7 +550,7 @@ def start_watcher(
         zero_size_timeout (int):
             number of seconds to wait for non-zero file size
     """
-    # warn the user to explicitly confirm the run folder
+    # if the run folder specified isn't already there, ask the user to explicitly confirm the name
     if not os.path.exists(run_folder):
         warnings.warn(
             f"Waiting for {run_folder}. Please first double check that your run data "
