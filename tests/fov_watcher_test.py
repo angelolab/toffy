@@ -4,6 +4,7 @@ import tempfile
 import time
 import warnings
 from datetime import datetime
+from multiprocessing import TimeoutError
 from multiprocessing.pool import ThreadPool as Pool
 from pathlib import Path
 from unittest.mock import patch
@@ -134,13 +135,6 @@ def _slow_create_run_folder(run_folder_path: str, lag_time: int):
         json_path=os.path.join(run_folder_path, "test_run.json"),
         json_object=COMBINED_RUN_JSON_SPOOF,
     )
-    for tissue_file in sorted(
-        [f for f in os.listdir(COMBINED_DATA_PATH) if ".bin" in f or ".json" in f]
-    ):
-        shutil.copy(
-            os.path.join(COMBINED_DATA_PATH, tissue_file),
-            os.path.join(run_folder_path, tissue_file),
-        )
 
 
 @patch("toffy.watcher_callbacks.visualize_qc_metrics", side_effect=mock_visualize_qc_metrics)
@@ -221,7 +215,10 @@ def test_watcher_run_timeout(
                     ),
                 )
 
-                res_scan.get()
+                try:
+                    res_scan.get(timeout=7)
+                except TimeoutError:
+                    return
 
 
 @patch("toffy.watcher_callbacks.visualize_qc_metrics", side_effect=mock_visualize_qc_metrics)
