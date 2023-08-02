@@ -301,7 +301,7 @@ def compensate_image_data(
 
     # loop over each set of FOVs in the batch
     for i in range(0, len(fovs), batch_size):
-        print(f"Processing FOV {fovs[i]}")
+        print(f"Processing {fovs[i]}")
 
         # load batch of fovs
         batch_fovs = fovs[i : i + batch_size]
