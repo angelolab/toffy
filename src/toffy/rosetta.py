@@ -634,18 +634,30 @@ def copy_image_files(
         # check number of fovs in each run
         if len(fovs_in_run) < fovs_per_run:
             small_runs.append(run)
+
+    run_names_process = run_names[:]
     if len(small_runs) > 0:
-        raise ValueError(
-            f"The run folders {small_runs} do not contain the minimum amount of FOVs "
-            f"({fovs_per_run}) defined by the fovs_per_run given."
+        # edge case if none of the runs in run_names have length equal to fovs_per_run
+        if len(small_runs) == len(run_names_process):
+            raise ValueError(
+                f"None of the runs specified contain the minimum amount of FOVs ({fovs_per_run}) "
+                "defined by the fovs_per_run given"
+            )
+
+        # warn user that runs below fovs_per_run threshold will be skipped
+        warnings.warn(
+            "The following runs will be skipped because they do not contain the minimum amount "
+            f"of FOVs ({fovs_per_run}) defined by the fovs_per_run given: {small_runs}."
         )
+
+        run_names_process = list(set(run_names_process).difference(small_runs))
 
     # make rosetta testing dir and extracted images subdir
     cohort_rosetta_dir = os.path.join(rosetta_testing_dir, cohort_name)
     os.makedirs(os.path.join(cohort_rosetta_dir, "extracted_images"))
 
     # randomly choose fovs from a run and copy them to the img subdir in rosetta testing dir
-    for i, run in enumerate(ns.natsorted(run_names)):
+    for i, run in enumerate(ns.natsorted(run_names_process)):
         run_path = os.path.join(extracted_imgs_dir, run)
 
         fovs_in_run = io_utils.list_folders(run_path, substrs="fov")
