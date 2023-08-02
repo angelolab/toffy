@@ -4,6 +4,7 @@ import tempfile
 import time
 import warnings
 from datetime import datetime
+from multiprocessing import TimeoutError
 from multiprocessing.pool import ThreadPool as Pool
 from pathlib import Path
 from unittest.mock import patch
@@ -127,6 +128,100 @@ def test_run_structure(run_json, expected_files, recwarn):
         assert not exist and name == ""
 
 
+def _slow_create_run_folder(run_folder_path: str, lag_time: int):
+    time.sleep(lag_time)
+    os.makedirs(run_folder_path)
+    write_json_file(
+        json_path=os.path.join(run_folder_path, "test_run.json"),
+        json_object=COMBINED_RUN_JSON_SPOOF,
+        encoding="utf-8",
+    )
+
+
+@patch("toffy.watcher_callbacks.visualize_qc_metrics", side_effect=mock_visualize_qc_metrics)
+@patch("toffy.watcher_callbacks.visualize_mph", side_effect=mock_visualize_mph)
+@pytest.mark.parametrize("run_folder_lag", [0, 5, 15])
+@parametrize_with_cases(
+    "run_cbs,int_cbs,fov_cbs,kwargs,validators,watcher_start_lag,existing_data",
+    cases=WatcherCases.case_default,
+)
+def test_watcher_run_timeout(
+    mock_viz_qc,
+    mock_viz_mph,
+    run_cbs,
+    int_cbs,
+    fov_cbs,
+    kwargs,
+    validators,
+    watcher_start_lag,
+    existing_data,
+    run_folder_lag,
+):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tiff_out_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME)
+        qc_out_dir = os.path.join(tmpdir, "cb_1", RUN_DIR_NAME)
+        mph_out_dir = os.path.join(tmpdir, "cb_2", RUN_DIR_NAME)
+        plot_dir = os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME)
+        pulse_out_dir = os.path.join(tmpdir, "cb_3", RUN_DIR_NAME)
+        stitched_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, f"{RUN_DIR_NAME}_stitched")
+
+        # add directories to kwargs
+        kwargs["tiff_out_dir"] = tiff_out_dir
+        kwargs["qc_out_dir"] = qc_out_dir
+        kwargs["mph_out_dir"] = mph_out_dir
+        kwargs["pulse_out_dir"] = pulse_out_dir
+        kwargs["plot_dir"] = plot_dir
+
+        # ensure warn_overwrite set to False if intermediate callbacks set, otherwise True
+        kwargs["warn_overwrite"] = True if int_cbs else False
+
+        run_folder = os.path.join(tmpdir, "test_run")
+        log_out = os.path.join(tmpdir, "log_output")
+        fov_callback, run_callback, intermediate_callback = build_callbacks(
+            run_cbs, int_cbs, fov_cbs, **kwargs
+        )
+
+        with Pool(processes=4) as pool:
+            pool.apply_async(_slow_create_run_folder, (run_folder, run_folder_lag))
+
+            if run_folder_lag > 10:
+                with pytest.raises(FileNotFoundError, match=f"Timed out waiting for {run_folder}"):
+                    res_scan = pool.apply_async(
+                        start_watcher,
+                        (
+                            run_folder,
+                            log_out,
+                            fov_callback,
+                            run_callback,
+                            intermediate_callback,
+                            10,
+                            1,
+                            SLOW_COPY_INTERVAL_S,
+                        ),
+                    )
+
+                    res_scan.get()
+            else:
+                res_scan = pool.apply_async(
+                    start_watcher,
+                    (
+                        run_folder,
+                        log_out,
+                        fov_callback,
+                        run_callback,
+                        intermediate_callback,
+                        10,
+                        1,
+                        SLOW_COPY_INTERVAL_S,
+                    ),
+                )
+
+                try:
+                    res_scan.get(timeout=7)
+                except TimeoutError:
+                    return
+
+
 @patch("toffy.watcher_callbacks.visualize_qc_metrics", side_effect=mock_visualize_qc_metrics)
 @patch("toffy.watcher_callbacks.visualize_mph", side_effect=mock_visualize_mph)
 @pytest.mark.parametrize("add_blank", [False, True])
@@ -175,6 +270,7 @@ def test_watcher(
             write_json_file(
                 json_path=os.path.join(run_data, "test_run.json"),
                 json_object=COMBINED_RUN_JSON_SPOOF,
+                encoding="utf-8",
             )
 
             # if existing_data set to True, test case where a FOV has already been extracted
@@ -238,6 +334,7 @@ def test_watcher(
                                 fov_callback,
                                 run_callback,
                                 intermediate_callback,
+                                2700,
                                 1,
                                 SLOW_COPY_INTERVAL_S,
                             ),
@@ -253,6 +350,7 @@ def test_watcher(
                             fov_callback,
                             run_callback,
                             intermediate_callback,
+                            2700,
                             1,
                             SLOW_COPY_INTERVAL_S,
                         ),
