@@ -45,7 +45,9 @@ class RunStructure:
 
         # find run .json and get parameters
         run_name = Path(run_folder).parts[-1]
-        run_metadata = read_json_file(os.path.join(run_folder, f"{run_name}.json"))
+        run_metadata = read_json_file(
+            os.path.join(run_folder, f"{run_name}.json"), encoding="utf-8"
+        )
 
         # parse run_metadata and populate expected structure
         for fov in run_metadata.get("fovs", ()):
@@ -521,6 +523,7 @@ def start_watcher(
     fov_callback: Callable[[str, str], None],
     run_callback: Callable[[None], None],
     intermediate_callback: Callable[[str, str], None] = None,
+    run_folder_timeout: int = 5400,
     completion_check_time: int = 30,
     zero_size_timeout: int = 7800,
 ):
@@ -540,12 +543,38 @@ def start_watcher(
         intermediate_callback (Callable[[None], None]):
             function defined as run callback overriden as fov callback. assemble this using
             `watcher_callbacks.build_callbacks`
+        run_folder_timeout (int):
+            how long to wait for the run folder to appear before timing out, in seconds.
+            note that the watcher cannot begin until this run folder appears.
         completion_check_time (int):
             how long to wait before checking watcher completion, in seconds.
             note, this doesn't effect the watcher itself, just when this wrapper function exits.
         zero_size_timeout (int):
             number of seconds to wait for non-zero file size
     """
+    # if the run folder specified isn't already there, ask the user to explicitly confirm the name
+    if not os.path.exists(run_folder):
+        warnings.warn(
+            f"Waiting for {run_folder}. Please first double check that your run data "
+            "doesn't already exist under a slightly different name in D:\\Data. "
+            "Sometimes, the CACs change capitalization or add extra characters to the run folder. "
+            "If this happens, stop the watcher and update the run_name variable in the notebook "
+            "before trying again."
+        )
+
+    # allow the watcher to poll the run folder until it appears or times out
+    run_folder_wait_time = 0
+    while not os.path.exists(run_folder) and run_folder_wait_time < run_folder_timeout:
+        time.sleep(run_folder_timeout / 10)
+        run_folder_wait_time += run_folder_timeout / 10
+
+    if run_folder_wait_time == run_folder_timeout:
+        raise FileNotFoundError(
+            f"Timed out waiting for {run_folder}. Make sure the run_name variable in the notebook "
+            "matches up with the run folder name in D:\\Data, or try again a few minutes later "
+            "if the run folder still hasn't shown up."
+        )
+
     observer = Observer()
     event_handler = FOV_EventHandler(
         run_folder, log_folder, fov_callback, run_callback, intermediate_callback, zero_size_timeout
