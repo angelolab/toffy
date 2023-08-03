@@ -909,7 +909,7 @@ class QCControlMetrics:
             ) from e
 
         # Apply a log2 transformation to the mean normalized data.
-        log2_norm_df: pd.DataFrame = df.pivot_table(
+        log2_norm_df: pd.DataFrame = df.pivot(
             index="channel", columns="fov", values=qc_metric
         ).transform(func=lambda row: np.log2(row / row.mean()), axis=1)
 
@@ -924,6 +924,10 @@ class QCControlMetrics:
             objs=[log2_norm_df, mean_log2_norm_df]
         ).sort_values(by="mean", axis=1, inplace=False)
 
+        transformed_df.rename_axis("channel", axis=0, inplace=True)
+        transformed_df.rename_axis("fov", axis=1, inplace=True)
+
+        # Save the pivoted dataframe to a csv
         if to_csv:
             qc_suffix: str = self.qc_suffixes[self.qc_cols.index(qc_metric)]
             transformed_df.to_csv(
@@ -931,7 +935,7 @@ class QCControlMetrics:
                     self.metrics_dir,
                     f"{control_sample_name}_transformed_{qc_suffix}.csv",
                 ),
-                index=False,
+                index=True,
             )
 
         return transformed_df

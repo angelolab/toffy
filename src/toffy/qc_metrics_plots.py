@@ -271,6 +271,7 @@ def longitudinal_control_heatmap(
                     qc_control.metrics_dir, f"{control_sample_name}_transformed_{qc_suffix}.csv"
                 )
             )
+            t_df.rename_axis("fov", axis=1, inplace=True)
         # If it doesn't exist, transform the data and save it.
         except FileNotFoundError:
             t_df: pd.DataFrame = qc_control.transformed_control_effects_data(
@@ -288,6 +289,13 @@ def longitudinal_control_heatmap(
 
         fig.suptitle(f"{control_sample_name} - QC: {qc_col}")
 
+        # Annontation kwargs
+        annotation_kws = {
+            "horizontalalignment": "center",
+            "verticalalignment": "center",
+            "fontsize": 8,
+        }
+
         # Heatmap
         ax_heatmap: Axes = fig.add_subplot(gs[0, 0])
 
@@ -298,11 +306,7 @@ def longitudinal_control_heatmap(
             linecolor="black",
             cbar_kws={"shrink": 0.5},
             annot=True,
-            annot_kws={
-                "horizontalalignment": "center",
-                "verticalalignment": "center",
-                "fontsize": 8,
-            },
+            annot_kws=annotation_kws,
             xticklabels=False,
             norm=_norm,
             cmap=_cmap,
@@ -328,6 +332,7 @@ def longitudinal_control_heatmap(
             linewidths=1,
             linecolor="black",
             annot=True,
+            annot_kws=annotation_kws,
             fmt=".2f",
             cmap=ListedColormap(["white"]),
             cbar=False,

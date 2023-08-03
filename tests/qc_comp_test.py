@@ -704,7 +704,8 @@ class TestQCControlMetrics:
         assert os.path.exists(transformed_df_path)
         # Assert that the transformed csv is the same as the one returned by the function
 
-        saved_transformed_df = pd.read_csv(transformed_df_path)
+        saved_transformed_df = pd.read_csv(transformed_df_path, index_col=["channel"])
+        saved_transformed_df.rename_axis("fov", axis=1, inplace=True)
 
         pd.testing.assert_frame_equal(left=transformed_df, right=saved_transformed_df)
 
