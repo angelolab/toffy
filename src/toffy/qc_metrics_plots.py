@@ -1,5 +1,6 @@
 import os
 import pathlib
+from math import e
 from typing import List, Optional, Union
 
 import matplotlib.gridspec as gridspec
@@ -232,7 +233,10 @@ def _qc_tma_metrics_plot(
 def longitudinal_control_heatmap(
     qc_control: QCControlMetrics,
     control_sample_name: str,
+    save_lc_df: bool = False,
     save_figure: bool = False,
+    display_figure: bool = False,
+    figsize: tuple[int, int] = (12, 12),
     dpi: int = 300,
 ) -> None:
     """
@@ -242,8 +246,12 @@ def longitudinal_control_heatmap(
         qc_control (QCControlMetrics): The class which contains the QC LC data, filepaths
         , and methods.
         control_sample_name (List[str]): A list of tissues to plot the QC metrics for.
+        save_lc_df: (bool, optional): If `True`, the longitudinal control data is saved as a `csv` in
+        `qc_control.metrics_dir`. Defaults to `False`.
         save_figure (bool, optional): If `True`, the figure is saved in a subdirectory in the
         `longitudinal_control_metrics_dir` directory. Defaults to `False`.
+        display_figure (bool, optional): If `True`, the figure is displayed. Defaults to `False`.
+        figsize: (tuple[int, int], optional): The size of the figure. Defaults to (12, 12).
         dpi (int, optional): Dots per inch, the resolution of the image. Defaults to 300.
 
     Raises:
@@ -256,12 +264,21 @@ def longitudinal_control_heatmap(
         fig_dir.mkdir(parents=True, exist_ok=True)
 
     for qc_col, qc_suffix in zip(qc_control.qc_cols, qc_control.qc_suffixes):
-        t_df: pd.DataFrame = qc_control.transformed_control_effects_data(
-            control_sample_name=control_sample_name, qc_metric=qc_col
-        )
+        # Try to read the transformed df if it exists
+        try:
+            t_df: pd.DataFrame = pd.read_csv(
+                os.path.join(
+                    qc_control.metrics_dir, f"{control_sample_name}_transformed_{qc_suffix}.csv"
+                )
+            )
+        # If it doesn't exist, transform the data and save it.
+        except FileNotFoundError:
+            t_df: pd.DataFrame = qc_control.transformed_control_effects_data(
+                control_sample_name=control_sample_name, qc_metric=qc_col, to_csv=save_lc_df
+            )
 
         # Set up the Figure for multiple axes
-        fig: Figure = plt.figure(figsize=(12, 12), dpi=dpi)
+        fig: Figure = plt.figure(figsize=figsize, dpi=dpi)
         fig.set_layout_engine(layout="constrained")
         gs = gridspec.GridSpec(nrows=2, ncols=1, figure=fig, height_ratios=[len(t_df.index) - 1, 1])
 
@@ -281,6 +298,11 @@ def longitudinal_control_heatmap(
             linecolor="black",
             cbar_kws={"shrink": 0.5},
             annot=True,
+            annot_kws={
+                "horizontalalignment": "center",
+                "verticalalignment": "center",
+                "fontsize": 8,
+            },
             xticklabels=False,
             norm=_norm,
             cmap=_cmap,
@@ -334,5 +356,7 @@ def longitudinal_control_heatmap(
                 dpi=dpi,
                 bbox_inches="tight",
             )
-        plt.show()
-        plt.close(fig)
+        if display_figure:
+            fig.show()
+        else:
+            plt.close(fig)
