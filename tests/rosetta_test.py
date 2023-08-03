@@ -3,6 +3,7 @@ import os
 import tempfile
 import time
 from pathlib import Path
+from shutil import rmtree
 
 import numpy as np
 import pandas as pd
@@ -578,8 +579,11 @@ def test_copy_image_files(mocker):
             run_folder = os.path.join(temp_dir, run_names[i])
             os.makedirs(run_folder)
             for j in range(1, 6):
-                os.makedirs(os.path.join(run_folder, f"fov-{j}"))
-                test_utils._make_blank_file(os.path.join(run_folder, f"fov-{j}"), "test_image.tif")
+                if (j < 5) or (j == 5 and i < 2):
+                    os.makedirs(os.path.join(run_folder, f"fov-{j}"))
+                    test_utils._make_blank_file(
+                        os.path.join(run_folder, f"fov-{j}"), "test_image.tif"
+                    )
             os.makedirs(os.path.join(run_folder, "stitched_images"))
 
         with tempfile.TemporaryDirectory() as temp_dir2:
@@ -593,20 +597,37 @@ def test_copy_image_files(mocker):
                 rosetta.copy_image_files("cohort_name", run_names, temp_dir2, "bad_path")
 
             # not enough fov files for provided arg
-            with pytest.raises(ValueError, match="do not contain the minimum amount of FOVs"):
+            with pytest.raises(ValueError, match="contain the minimum amount of FOVs"):
                 rosetta.copy_image_files(
                     "cohort_name", run_names, temp_dir2, temp_dir, fovs_per_run=10
                 )
 
             # test successful folder copy
-            rosetta.copy_image_files("cohort_name", run_names, temp_dir2, temp_dir, fovs_per_run=5)
+            rosetta.copy_image_files("cohort_name", run_names, temp_dir2, temp_dir, fovs_per_run=4)
 
             # check that correct total and per run fovs are copied
             extracted_fov_dir = os.path.join(temp_dir2, "cohort_name", "extracted_images")
-            assert len(io_utils.list_folders(extracted_fov_dir)) == 15
+            assert len(io_utils.list_folders(extracted_fov_dir)) == 12
             for i in range(1, 4):
-                assert len(list(io_utils.list_folders(extracted_fov_dir, f"run_{i}"))) == 5
+                assert len(list(io_utils.list_folders(extracted_fov_dir, f"run_{i}"))) == 4
             assert len(list(io_utils.list_folders(extracted_fov_dir, "stitched_images"))) == 0
+
+            # check that files in fov folders are copied
+            for folder in io_utils.list_folders(extracted_fov_dir):
+                assert os.path.exists(os.path.join(extracted_fov_dir, folder, "test_image.tif"))
+
+            # test successful folder copy with some runs skipped
+            rmtree(os.path.join(temp_dir2, "cohort_name"))
+            with pytest.warns(UserWarning, match="The following runs will be skipped"):
+                rosetta.copy_image_files(
+                    "cohort_name", run_names, temp_dir2, temp_dir, fovs_per_run=5
+                )
+
+            # check that correct total and per run fovs are copied, assert run 3 didn't get copied
+            assert len(io_utils.list_folders(extracted_fov_dir)) == 10
+            for i in range(1, 3):
+                assert len(io_utils.list_folders(extracted_fov_dir, f"run_{i}")) == 5
+            assert len(io_utils.list_folders(extracted_fov_dir, f"run_3")) == 0
 
             # check that files in fov folders are copied
             for folder in io_utils.list_folders(extracted_fov_dir):
