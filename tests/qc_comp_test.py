@@ -611,17 +611,17 @@ class TestQCControlMetrics:
     def _setup(self, cohort_data: BatchEffectMetricData) -> None:
         self.cohort_data: BatchEffectMetricData = cohort_data
 
-        self.qc_batch_effect = qc_comp.QCControlMetrics(
+        self.qc_control_metrics = qc_comp.QCControlMetrics(
             qc_metrics=settings.QC_COLUMNS,
             cohort_path=self.cohort_data.cohort_img_dir,
             metrics_dir=self.cohort_data.cohort_metrics_dir,
         )
 
     def test__post_init__(self) -> None:
-        assert self.qc_batch_effect.qc_cols == settings.QC_COLUMNS
-        assert self.qc_batch_effect.qc_suffixes == settings.QC_SUFFIXES
+        assert self.qc_control_metrics.qc_cols == settings.QC_COLUMNS
+        assert self.qc_control_metrics.qc_suffixes == settings.QC_SUFFIXES
 
-        assert self.qc_batch_effect.longitudinal_control_metrics == {}
+        assert self.qc_control_metrics.longitudinal_control_metrics == {}
 
     @parametrize(
         "_control_sample_name,_channel_include,_channel_exclude",
@@ -639,7 +639,7 @@ class TestQCControlMetrics:
         _channel_include,
         _channel_exclude,
     ) -> None:
-        self.qc_batch_effect.compute_control_qc_metrics(
+        self.qc_control_metrics.compute_control_qc_metrics(
             control_sample_name=_control_sample_name,
             fovs=self.cohort_data.fovs,
             channel_exclude=_channel_exclude,
@@ -648,12 +648,12 @@ class TestQCControlMetrics:
 
         for qc_suffix in settings.QC_SUFFIXES:
             assert os.path.exists(
-                self.qc_batch_effect.metrics_dir
+                self.qc_control_metrics.metrics_dir
                 / f"{_control_sample_name}_combined_{qc_suffix}.csv"
             )
 
             qc_df = pd.read_csv(
-                self.qc_batch_effect.metrics_dir
+                self.qc_control_metrics.metrics_dir
                 / f"{_control_sample_name}_combined_{qc_suffix}.csv"
             )
             assert set(qc_df["channel"]).isdisjoint(set(settings.QC_CHANNEL_IGNORE))
@@ -681,17 +681,33 @@ class TestQCControlMetrics:
         ],
     )
     def test_transformed_control_effects_data(self, _control_sample_name, _metric) -> None:
-        self.qc_batch_effect.compute_control_qc_metrics(
+        self.qc_control_metrics.compute_control_qc_metrics(
             control_sample_name=_control_sample_name,
             fovs=self.cohort_data.fovs,
             channel_exclude=None,
             channel_include=None,
         )
 
-        transformed_df = self.qc_batch_effect.transformed_control_effects_data(
-            control_sample_name=_control_sample_name, qc_metric=_metric
+        transformed_df = self.qc_control_metrics.transformed_control_effects_data(
+            control_sample_name=_control_sample_name, qc_metric=_metric, to_csv=True
         )
-        # self.cohort_data.qc_df
+
+        # Asser that the transformed control effects file is created.
+        _qc_suffix = self.qc_control_metrics.qc_suffixes[
+            self.qc_control_metrics.qc_cols.index(_metric)
+        ]
+        transformed_df_path = os.path.join(
+            self.qc_control_metrics.metrics_dir,
+            f"{_control_sample_name}_transformed_{_qc_suffix}.csv",
+        )
+
+        assert os.path.exists(transformed_df_path)
+        # Assert that the transformed csv is the same as the one returned by the function
+
+        saved_transformed_df = pd.read_csv(transformed_df_path, index_col=["channel"])
+        saved_transformed_df.rename_axis("fov", axis=1, inplace=True)
+
+        pd.testing.assert_frame_equal(left=transformed_df, right=saved_transformed_df)
 
         # All FOVs exist
         assert set(transformed_df.axes[1]) == set(self.cohort_data.qc_df["fov"])
