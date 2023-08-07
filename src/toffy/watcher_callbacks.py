@@ -16,6 +16,7 @@ from mibi_bin_tools.bin_files import _write_out, extract_bin_files
 from mibi_bin_tools.type_utils import any_true
 
 from toffy.image_stitching import stitch_images
+from toffy.json_utils import missing_fov_check
 from toffy.mph_comp import combine_mph_metrics, compute_mph_metrics, visualize_mph
 from toffy.normalize import write_mph_per_mass
 from toffy.qc_comp import combine_qc_metrics, compute_qc_metrics_direct
@@ -116,6 +117,13 @@ class RunCallbacks:
         viz_kwargs = {k: v for k, v in kwargs.items() if k in valid_kwargs}
 
         stitch_images(tiff_out_dir, self.run_folder, **viz_kwargs)
+
+    def check_missing_fovs(self):
+        """Checks for associated bin/json files per FOV
+        Raises:
+            FileNotFound error if any fov data is missing
+        """
+        missing_fov_check(self.run_folder, os.path.basename(self))
 
 
 @dataclass
