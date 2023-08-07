@@ -123,7 +123,7 @@ class RunCallbacks:
         Raises:
             FileNotFound error if any fov data is missing
         """
-        missing_fov_check(self.run_folder, os.path.basename(self))
+        missing_fov_check(self.run_folder, os.path.basename(self.run_folder))
 
 
 @dataclass
