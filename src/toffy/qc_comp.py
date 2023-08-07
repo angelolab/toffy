@@ -876,7 +876,7 @@ class QCControlMetrics:
             )
 
     def transformed_control_effects_data(
-        self, control_sample_name: str, qc_metric: str
+        self, control_sample_name: str, qc_metric: str, to_csv: bool = False
     ) -> pd.DataFrame:
         """
         Creates a transformed DataFrame for the Longitudinal Control effects data, normalizing by the mean,
@@ -885,6 +885,7 @@ class QCControlMetrics:
         Args:
             control_sample_name (str): A control sample to tranform the longitudinal control effects for.
             qc_metric (str): The metric to transform.
+            to_csv (bool, optional): Whether to save the transformed data to a csv. Defaults to False.
 
         Returns:
             pd.DataFrame: The transformed QC Longitudinal Control data.
@@ -922,5 +923,19 @@ class QCControlMetrics:
         transformed_df: pd.DataFrame = pd.concat(
             objs=[log2_norm_df, mean_log2_norm_df]
         ).sort_values(by="mean", axis=1, inplace=False)
+
+        transformed_df.rename_axis("channel", axis=0, inplace=True)
+        transformed_df.rename_axis("fov", axis=1, inplace=True)
+
+        # Save the pivoted dataframe to a csv
+        if to_csv:
+            qc_suffix: str = self.qc_suffixes[self.qc_cols.index(qc_metric)]
+            transformed_df.to_csv(
+                os.path.join(
+                    self.metrics_dir,
+                    f"{control_sample_name}_transformed_{qc_suffix}.csv",
+                ),
+                index=True,
+            )
 
         return transformed_df
