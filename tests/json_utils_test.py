@@ -232,3 +232,40 @@ def test_check_fov_resolutions():
         )
 
         assert os.path.exists(os.path.join(temp_dir, "resolution_data.csv"))
+
+
+def test_missing_fov_check():
+    with tempfile.TemporaryDirectory() as temp_dir:
+        run_file_name = "test"
+        run_data = {
+            "fovs": [
+                {"runOrder": 1, "name": "image_1"},
+                {"runOrder": 2, "name": "image_2"},
+                {
+                    "runOrder": 3,
+                    "name": "image_3",
+                },
+            ]
+        }
+        json_utils.write_json_file(
+            os.path.join(temp_dir, run_file_name + ".json"), run_data, "utf-8"
+        )
+
+        for fov in ["fov-1-scan-1", "fov-2-scan-1", "fov-3-scan-1"]:
+            json_utils.write_json_file(os.path.join(temp_dir, fov + ".json"), ["test_data"])
+            _make_blank_file(temp_dir, fov + ".bin")
+
+        # test success
+        json_utils.missing_fov_check(temp_dir, run_file_name)
+
+        # check missing bin file raises warning
+        os.remove(os.path.join(temp_dir, "fov-1-scan-1.bin"))
+        with pytest.raises(FileNotFoundError):
+            json_utils.missing_fov_check(temp_dir, run_file_name)
+        _make_blank_file(temp_dir, "fov-1-scan-1.bin")
+
+        # check empty json file raises warning
+        os.remove(os.path.join(temp_dir, "fov-2-scan-1.json"))
+        _make_blank_file(temp_dir, "fov-2-scan-1.json")
+        with pytest.raises(FileNotFoundError):
+            json_utils.missing_fov_check(temp_dir, run_file_name)
