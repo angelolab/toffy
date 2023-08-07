@@ -118,7 +118,7 @@ class RunCallbacks:
 
         stitch_images(tiff_out_dir, self.run_folder, **viz_kwargs)
 
-    def check_missing_fovs(self):
+    def check_missing_fovs(self, **kwargs):
         """Checks for associated bin/json files per FOV
         Raises:
             FileNotFound error if any fov data is missing
