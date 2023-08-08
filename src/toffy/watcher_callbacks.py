@@ -121,7 +121,7 @@ class RunCallbacks:
     def check_missing_fovs(self, **kwargs):
         """Checks for associated bin/json files per FOV
         Raises:
-            FileNotFound error if any fov data is missing
+            Warning if any fov data is missing
         """
         missing_fov_check(self.run_folder, os.path.basename(self.run_folder))
 

@@ -249,7 +249,7 @@ def missing_fov_check(bin_file_dir, run_name):
         run_name (str): name of the run and corresponding run file
 
     Raises:
-        FileNotFoundError: FOV specified in the run file doesn't have associated bin/json file
+        Warning if any FOVs specified in the run file doesn't have associated bin/json files
     """
 
     # read in run file
@@ -275,4 +275,7 @@ def missing_fov_check(bin_file_dir, run_name):
 
     if missing_fovs:
         missing_fovs = pd.DataFrame(missing_fovs).to_string(index=False)
-        raise FileNotFoundError(f"The following data was not generated:\n {missing_fovs}")
+        warnings.warn(
+            "The following FOVs were not processed due to missing/empty/late files: \n"
+            f" {missing_fovs}"
+        )
