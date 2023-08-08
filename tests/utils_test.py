@@ -30,6 +30,7 @@ def create_readonly_file(tmp_path: pathlib.Path) -> pathlib.Path:
 
 
 def test_remove_readonly(create_readonly_file: pathlib.Path):
-    shutil.rmtree(create_readonly_file, onerror=remove_readonly)
+    assert not os.access(create_readonly_file / "ro_file.txt", os.W_OK)
 
+    shutil.rmtree(create_readonly_file, onerror=remove_readonly)
     assert not (create_readonly_file / "ro_file.txt").exists()

@@ -1,5 +1,7 @@
+import errno
 import os
 import pathlib
+import shutil
 import stat
 from typing import TYPE_CHECKING, Callable
 
@@ -9,8 +11,10 @@ if TYPE_CHECKING:
 
 def remove_readonly(func: Callable, path: pathlib.Path | str, excinfo: "_OnErrorCallback"):
     """
-    Removes readonly files, mainly useful for CI/CD pipelines.
-    Reference: https://stackoverflow.com/questions/1889597/deleting-read-only-directory-in-python
+    Removes readonly files, mainly useful for Windows CI/CD pipelines.
+    References:
+        - https://stackoverflow.com/questions/1889597/deleting-read-only-directory-in-python
+        - https://stackoverflow.com/questions/2656322/shutil-rmtree-fails-on-windows-with-access-is-denied
 
     Example usage:
     shutil.rmtree(my_path, onerror=remove_readonly)
@@ -20,5 +24,10 @@ def remove_readonly(func: Callable, path: pathlib.Path | str, excinfo: "_OnError
         path (pathlib.Path | str): The path to the file / directory.
         excinfo (shutil._OnErrorCallback): The exception callabck.
     """
-    os.chmod(path, stat.S_IWRITE)
-    func(path)
+
+    excvalue = excinfo[1]
+    if func in (os.rmdir, os.remove, shutil.rmtree) and excvalue.errno == errno.EACCES:
+        os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # 0777
+        func(path)
+    else:
+        raise
