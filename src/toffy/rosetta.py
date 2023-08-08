@@ -13,6 +13,7 @@ from scipy.ndimage import gaussian_filter
 
 from toffy.json_utils import read_json_file
 from toffy.streak_detection import streak_correction
+from toffy.utils import remove_readonly
 
 
 def transform_compensation_json(json_path, comp_mat_path):
@@ -160,10 +161,10 @@ def clean_rosetta_test_dir(folder_path):
     # remove the compensated data folders
     comp_folders = io_utils.list_folders(folder_path, substrs="compensated_data_")
     for cf in comp_folders:
-        shutil.rmtree(os.path.join(folder_path, cf))
+        shutil.rmtree(os.path.join(folder_path, cf), onerror=remove_readonly)
 
     # remove the stitched image folder
-    shutil.rmtree(os.path.join(folder_path, "stitched_images"))
+    shutil.rmtree(os.path.join(folder_path, "stitched_images"), onerror=remove_readonly)
 
 
 def flat_field_correction(img, gaus_rad=100):
@@ -551,7 +552,7 @@ def remove_sub_dirs(run_dir, sub_dirs, fovs=None):
 
     for fov in all_fovs:
         for sub_dir in sub_dirs:
-            shutil.rmtree(os.path.join(run_dir, fov, sub_dir))
+            shutil.rmtree(os.path.join(run_dir, fov, sub_dir), onerror=remove_readonly)
 
 
 def create_rosetta_matrices(

@@ -17,6 +17,7 @@ from pytest_cases import parametrize
 from toffy.fov_watcher import RunStructure
 from toffy.json_utils import write_json_file
 from toffy.settings import QC_COLUMNS, QC_SUFFIXES
+from toffy.utils import remove_readonly
 
 TEST_CHANNELS = [
     "Calprotectin",
@@ -504,7 +505,7 @@ class RunStructureTestContext:
         return self.tmpdir, self.run_structure
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
-        shutil.rmtree(self.tmpdir)
+        shutil.rmtree(self.tmpdir, onerror=remove_readonly)
 
 
 class RunStructureCases:

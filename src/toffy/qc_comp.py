@@ -23,6 +23,7 @@ from tqdm.auto import tqdm
 
 from toffy import settings
 from toffy.mibitracker_utils import MibiRequests, MibiTrackerError
+from toffy.utils import remove_readonly
 
 
 def create_mibitracker_request_helper(email, password):
@@ -135,7 +136,7 @@ def download_mibitracker_data(
     if os.path.exists(os.path.join(base_dir, tiff_dir)):
         if overwrite_tiff_dir:
             print("Overwriting existing data in tiff_dir %s" % tiff_dir)
-            rmtree(os.path.join(base_dir, tiff_dir))
+            rmtree(os.path.join(base_dir, tiff_dir), onerror=remove_readonly)
         else:
             raise ValueError("tiff_dir %s already exists in %s" % (tiff_dir, base_dir))
 
@@ -179,7 +180,7 @@ def download_mibitracker_data(
                 )
 
                 # clean the FOV: we will not have a folder for it (in case of Moly point)
-                rmtree(os.path.join(base_dir, tiff_dir, img["number"]))
+                rmtree(os.path.join(base_dir, tiff_dir, img["number"]), onerror=remove_readonly)
 
                 # do not attempt to download any more channels
                 break

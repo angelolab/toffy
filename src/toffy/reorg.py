@@ -4,6 +4,7 @@ import shutil
 from alpineer import io_utils, misc_utils
 
 from toffy.json_utils import read_json_file, rename_duplicate_fovs, rename_missing_fovs
+from toffy.utils import remove_readonly
 
 
 def merge_partial_runs(cohort_dir, run_string):
@@ -41,7 +42,7 @@ def merge_partial_runs(cohort_dir, run_string):
             shutil.move(os.path.join(cohort_dir, partial, fov), new_path)
 
         # remove partial folder
-        shutil.rmtree(os.path.join(cohort_dir, partial))
+        shutil.rmtree(os.path.join(cohort_dir, partial), onerror=remove_readonly)
 
 
 def combine_runs(cohort_dir):
@@ -65,7 +66,7 @@ def combine_runs(cohort_dir):
         for fov in fovs:
             shutil.move(os.path.join(run_path, fov), os.path.join(output_dir, run + "_" + fov))
 
-        shutil.rmtree(run_path)
+        shutil.rmtree(run_path, onerror=remove_readonly)
 
 
 def rename_fov_dirs(json_run_path, default_run_dir, output_run_dir=None):
