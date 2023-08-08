@@ -24,10 +24,10 @@ def remove_readonly(func: Callable, path: pathlib.Path | str, excinfo: "_OnError
         path (pathlib.Path | str): The path to the file / directory.
         excinfo (shutil._OnErrorCallback): The exception callabck.
     """
-
+    # os.chmod(path, stat.S_IWRITE)
     excvalue = excinfo[1]
     if func in (os.rmdir, os.remove, shutil.rmtree) and excvalue.errno == errno.EACCES:
-        os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO)  # 0777
+        os.chmod(path, stat.S_IRWXU | stat.S_IRWXG | stat.S_IRWXO | stat.S_IWRITE)  # 0777
         func(path)
     else:
         raise
