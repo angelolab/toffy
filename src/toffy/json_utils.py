@@ -277,5 +277,5 @@ def missing_fov_check(bin_file_dir, run_name):
         missing_fovs = pd.DataFrame(missing_fovs).to_string(index=False)
         warnings.warn(
             "The following FOVs were not processed due to missing/empty/late files: \n"
-            f" {missing_fovs}"
+            f"{missing_fovs}"
         )
