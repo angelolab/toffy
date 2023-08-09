@@ -301,7 +301,7 @@ class FovCallbacks:
         if not os.path.exists(pulse_out_dir):
             os.makedirs(pulse_out_dir)
 
-        pulse_height_file = os.path.join(pulse_out_dir, f"{self.point_name}-pulse_heights.csv")
+        pulse_height_file = os.path.join(pulse_out_dir, f"{self.point_name}_pulse_heights.csv")
         if os.path.exists(pulse_height_file) and not self.overwrite:
             warnings.warn(f"Pulse heights per mass already extracted for FOV {self.point_name}")
             return
