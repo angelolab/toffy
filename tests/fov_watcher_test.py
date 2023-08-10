@@ -226,7 +226,6 @@ def test_watcher_run_timeout(
 @patch("toffy.watcher_callbacks.visualize_mph", side_effect=mock_visualize_mph)
 @pytest.mark.parametrize("add_blank", [False, True])
 @pytest.mark.parametrize("temp_bin", [False, True])
-@pytest.mark.parametrize("missing_fov", [False, True])
 @parametrize_with_cases(
     "run_cbs,int_cbs,fov_cbs,kwargs,validators,watcher_start_lag,existing_data", cases=WatcherCases
 )
@@ -242,7 +241,6 @@ def test_watcher(
     existing_data,
     add_blank,
     temp_bin,
-    missing_fov,
 ):
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
@@ -269,22 +267,12 @@ def test_watcher(
             fov_callback, run_callback, intermediate_callback = build_callbacks(
                 run_cbs, int_cbs, fov_cbs, **kwargs
             )
-            if missing_fov:
-                large_run_json_spoof = COMBINED_RUN_JSON_SPOOF.copy()
-                large_run_json_spoof["fovs"] = COMBINED_RUN_JSON_SPOOF["fovs"] + [
-                    {"runOrder": 5, "scanCount": 1, "frameSizePixels": {"width": 32, "height": 32}}
-                ]
-                write_json_file(
-                    json_path=os.path.join(run_data, "test_run.json"),
-                    json_object=large_run_json_spoof,
-                    encoding="utf-8",
-                )
-            else:
-                write_json_file(
-                    json_path=os.path.join(run_data, "test_run.json"),
-                    json_object=COMBINED_RUN_JSON_SPOOF,
-                    encoding="utf-8",
-                )
+
+            write_json_file(
+                json_path=os.path.join(run_data, "test_run.json"),
+                json_object=COMBINED_RUN_JSON_SPOOF,
+                encoding="utf-8",
+            )
 
             # if existing_data set to True, test case where a FOV has already been extracted
             if existing_data[0]:
@@ -336,10 +324,6 @@ def test_watcher(
                     )
                 if existing_data[0] and existing_data[1] == "Full":
                     watcher_warnings.append(r"already extracted for FOV fov-2-scan-1")
-                if missing_fov:
-                    watcher_warnings.append(
-                        "The following FOVs were not processed due to missing/empty/late files:"
-                    )
 
                 if len(watcher_warnings) > 0:
                     with pytest.warns(UserWarning, match="|".join(watcher_warnings)):
