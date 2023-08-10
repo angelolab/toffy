@@ -399,3 +399,55 @@ def test_watcher(
 
     except OSError:
         warnings.warn("Temporary file cleanup was incomplete.")
+
+
+def test_watcher_missing_fovs():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # add extra fov to run file
+        large_run_json_spoof = COMBINED_RUN_JSON_SPOOF.copy()
+        large_run_json_spoof["fovs"] = COMBINED_RUN_JSON_SPOOF["fovs"] + [
+            {"runOrder": 5, "scanCount": 1, "frameSizePixels": {"width": 32, "height": 32}}
+        ]
+
+        run_data = os.path.join(tmpdir, "test_run")
+        log_out = os.path.join(tmpdir, "log_output")
+        os.makedirs(run_data)
+        fov_callback, run_callback, intermediate_callback = build_callbacks(
+            run_callbacks=["check_missing_fovs"],
+            intermediate_callbacks=[],
+            fov_callbacks=[],
+        )
+
+        write_json_file(
+            json_path=os.path.join(run_data, "test_run.json"),
+            json_object=large_run_json_spoof,
+            encoding="utf-8",
+        )
+
+        # start watcher
+        with Pool(processes=4) as pool:
+            pool.apply_async(
+                _slow_copy_sample_tissue_data,
+                (run_data, SLOW_COPY_INTERVAL_S, False, False),
+            )
+
+            # should raise warning for missing fov data
+            with pytest.warns(
+                UserWarning,
+                match="The following FOVs were not processed due to missing/empty/late files:",
+            ):
+                res_scan = pool.apply_async(
+                    start_watcher,
+                    (
+                        run_data,
+                        log_out,
+                        fov_callback,
+                        run_callback,
+                        intermediate_callback,
+                        2700,
+                        1,
+                        SLOW_COPY_INTERVAL_S,
+                    ),
+                )
+
+                res_scan.get()
