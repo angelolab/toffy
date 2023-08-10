@@ -304,7 +304,7 @@ def test_watcher(
                 df_ph = pd.DataFrame(np.random.rand(10, 3), columns=["mass", "fov", "pulse_height"])
                 df_ph["fov"] = "fov-2-scan-1"
                 df_ph.to_csv(
-                    os.path.join(pulse_out_dir, "fov-2-scan-1-pulse_heights.csv"), index=False
+                    os.path.join(pulse_out_dir, "fov-2-scan-1_pulse_heights.csv"), index=False
                 )
 
             # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
