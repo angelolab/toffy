@@ -44,6 +44,7 @@ def test_build_fov_callback(callbacks, kwargs, data_path):
         kwargs["mph_out_dir"] = file_dir
         kwargs["pulse_out_dir"] = file_dir
         kwargs["plot_dir"] = plot_dir
+        kwargs["warn_overwrite"] = False
 
         run_data = os.path.join(tmp_dir, "tissue")
         os.makedirs(run_data)
@@ -97,6 +98,8 @@ def test_build_callbacks(viz_mock, run_callbacks, inter_callbacks, kwargs, data_
 
         if kwargs.get("save_dir", False):
             kwargs["save_dir"] = qc_dir
+
+        kwargs["warn_overwrite"] = True if inter_callbacks else False
 
         fcb, rcb, icb = watcher_callbacks.build_callbacks(
             run_callbacks=run_callbacks, intermediate_callbacks=inter_callbacks, **kwargs

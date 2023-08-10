@@ -1,9 +1,9 @@
 import copy
-import json
 import os
 import random
 import shutil
 import subprocess
+import warnings
 
 import natsort as ns
 import numpy as np
@@ -208,6 +208,11 @@ def flat_field_correction(img, gaus_rad=100):
     Returns:
         np.ndarray: corrected image"""
 
+    # if image is empty, return empty image
+    if not np.any(img):
+        warnings.warn("Image for flatfield correction is empty")
+        return img
+
     # smooth image
     img_smooth = gaussian_filter(img, sigma=gaus_rad)
 
@@ -293,7 +298,12 @@ def compensate_image_data(
     all_masses = comp_mat.columns.values.astype("int")
 
     # convert ffc mass into ffc channel names
-    ffc_channels = [panel_info.loc[panel_info.Mass == mass].Target.values[0] for mass in ffc_masses]
+    if ffc_masses is not None:
+        ffc_channels = [
+            panel_info.loc[panel_info.Mass == mass].Target.values[0] for mass in ffc_masses
+        ]
+    else:
+        ffc_channels = None
 
     validate_inputs(
         raw_data_dir,
@@ -322,7 +332,7 @@ def compensate_image_data(
 
     # loop over each set of FOVs in the batch
     for i in range(0, len(fovs), batch_size):
-        print("Processing image {}".format(i + 1))
+        print(f"Processing {fovs[i]}")
 
         # load batch of fovs
         batch_fovs = fovs[i : i + batch_size]
@@ -704,18 +714,30 @@ def copy_image_files(
         # check number of fovs in each run
         if len(fovs_in_run) < fovs_per_run:
             small_runs.append(run)
+
+    run_names_process = run_names[:]
     if len(small_runs) > 0:
-        raise ValueError(
-            f"The run folders {small_runs} do not contain the minimum amount of FOVs "
-            f"({fovs_per_run}) defined by the fovs_per_run given."
+        # edge case if none of the runs in run_names have length equal to fovs_per_run
+        if len(small_runs) == len(run_names_process):
+            raise ValueError(
+                f"None of the runs specified contain the minimum amount of FOVs ({fovs_per_run}) "
+                "defined by the fovs_per_run given"
+            )
+
+        # warn user that runs below fovs_per_run threshold will be skipped
+        warnings.warn(
+            "The following runs will be skipped because they do not contain the minimum amount "
+            f"of FOVs ({fovs_per_run}) defined by the fovs_per_run given: {small_runs}."
         )
+
+        run_names_process = list(set(run_names_process).difference(small_runs))
 
     # make rosetta testing dir and extracted images subdir
     cohort_rosetta_dir = os.path.join(rosetta_testing_dir, cohort_name)
     os.makedirs(os.path.join(cohort_rosetta_dir, "extracted_images"))
 
     # randomly choose fovs from a run and copy them to the img subdir in rosetta testing dir
-    for i, run in enumerate(ns.natsorted(run_names)):
+    for i, run in enumerate(ns.natsorted(run_names_process)):
         run_path = os.path.join(extracted_imgs_dir, run)
 
         fovs_in_run = io_utils.list_folders(run_path, substrs="fov")
@@ -747,14 +769,16 @@ def rescale_raw_imgs(img_out_dir, scale=200):
         fov_dir = os.path.join(img_out_dir, fov)
         # create subdirectory for the new images
         sub_dir = os.path.join(fov_dir, "rescaled")
-        os.makedirs(sub_dir)
+        if not os.path.exists(sub_dir):
+            os.makedirs(sub_dir)
         chans = io_utils.list_files(fov_dir)
         # rescale each channel image
         for chan in chans:
-            img = io.imread(os.path.join(fov_dir, chan))
-            img = (img / scale).astype("float32")
             fname = os.path.join(sub_dir, chan)
-            image_utils.save_image(fname, img)
+            if not os.path.exists(fname):
+                img = io.imread(os.path.join(fov_dir, chan))
+                img = (img / scale).astype("float32")
+                image_utils.save_image(fname, img)
 
 
 def generate_rosetta_test_imgs(
@@ -767,6 +791,7 @@ def generate_rosetta_test_imgs(
     output_channel_names=None,
     gaus_rad=1,
     norm_const=1,
+    ffc_masses=[39],
 ):
     """Compensate example FOV images based on given multipliers
 
@@ -780,6 +805,7 @@ def generate_rosetta_test_imgs(
         output_channel_names (list): subset of the channels to compensate for, default None is all
         gaus_rad: radius for blurring image data. Passing 0 will result in no blurring
         norm_const: constant used for rescaling
+        ffc_masses (list): masses that need to be flat field corrected.
 
     Returns:
         Create subdirs containing rosetta compensated images for each multiplier and stitched imgs
@@ -827,4 +853,5 @@ def generate_rosetta_test_imgs(
             gaus_rad=gaus_rad,
             norm_const=norm_const,
             output_masses=output_masses,
+            ffc_masses=ffc_masses,
         )
