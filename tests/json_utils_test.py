@@ -241,10 +241,8 @@ def test_missing_fov_check():
             "fovs": [
                 {"runOrder": 1, "name": "image_1"},
                 {"runOrder": 2, "name": "image_2"},
-                {
-                    "runOrder": 3,
-                    "name": "image_3",
-                },
+                {"runOrder": 3, "name": "image_3"},
+                {"runOrder": 4, "name": "image_3", "StandardTarget": "Molybdenum Foil"},
             ]
         }
         json_utils.write_json_file(
@@ -255,7 +253,7 @@ def test_missing_fov_check():
             json_utils.write_json_file(os.path.join(temp_dir, fov + ".json"), ["test_data"])
             _make_blank_file(temp_dir, fov + ".bin")
 
-        # test success
+        # test success (ignore missing moly)
         json_utils.missing_fov_check(temp_dir, run_file_name)
 
         # check missing bin file raises warning

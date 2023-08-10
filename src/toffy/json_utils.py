@@ -259,6 +259,9 @@ def missing_fov_check(bin_file_dir, run_name):
 
     missing_fovs = {}
     for fov in run_metadata.get("fovs", ()):
+        if fov.get("StandardTarget" == "Molybdenum Foil"):
+            continue
+
         # get fov names
         fov_number = fov.get("runOrder")
         default_name = f"fov-{fov_number}-scan-1"
@@ -274,7 +277,8 @@ def missing_fov_check(bin_file_dir, run_name):
             missing_fovs[default_name] = [custom_name]
 
     if missing_fovs:
-        missing_fovs = pd.DataFrame(missing_fovs).to_string(index=False)
+        missing_fovs = pd.DataFrame(missing_fovs, index=[0]).T
+        missing_fovs.columns = ["fov_name"]
         warnings.warn(
             "The following FOVs were not processed due to missing/empty/late files: \n"
             f"{missing_fovs}"
