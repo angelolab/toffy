@@ -260,12 +260,12 @@ def test_missing_fov_check():
 
         # check missing bin file raises warning
         os.remove(os.path.join(temp_dir, "fov-1-scan-1.bin"))
-        with pytest.raises(FileNotFoundError):
+        with pytest.warns():
             json_utils.missing_fov_check(temp_dir, run_file_name)
         _make_blank_file(temp_dir, "fov-1-scan-1.bin")
 
         # check empty json file raises warning
         os.remove(os.path.join(temp_dir, "fov-2-scan-1.json"))
         _make_blank_file(temp_dir, "fov-2-scan-1.json")
-        with pytest.raises(FileNotFoundError):
+        with pytest.warns():
             json_utils.missing_fov_check(temp_dir, run_file_name)
