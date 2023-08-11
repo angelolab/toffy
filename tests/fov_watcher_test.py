@@ -410,6 +410,8 @@ def test_watcher_missing_fovs():
         ]
 
         run_data = os.path.join(tmpdir, "test_run")
+        for file in os.listdir(COMBINED_DATA_PATH):
+            shutil.copy(os.path.join(COMBINED_DATA_PATH, file), os.path.join(run_data, file))
         log_out = os.path.join(tmpdir, "log_output")
         os.makedirs(run_data)
         fov_callback, run_callback, intermediate_callback = build_callbacks(
@@ -424,30 +426,18 @@ def test_watcher_missing_fovs():
             encoding="utf-8",
         )
 
-        # start watcher
-        with Pool(processes=4) as pool:
-            pool.apply_async(
-                _slow_copy_sample_tissue_data,
-                (run_data, SLOW_COPY_INTERVAL_S, False, False),
+        # watcher should raise warning for missing fov data
+        with pytest.warns(
+            UserWarning,
+            match="The following FOVs were not processed due to missing/empty/late files:",
+        ):
+            res_scan = start_watcher(
+                run_data,
+                log_out,
+                fov_callback,
+                run_callback,
+                intermediate_callback,
+                2700,
+                1,
+                SLOW_COPY_INTERVAL_S,
             )
-
-            # should raise warning for missing fov data
-            with pytest.warns(
-                UserWarning,
-                match="The following FOVs were not processed due to missing/empty/late files:",
-            ):
-                res_scan = pool.apply_async(
-                    start_watcher,
-                    (
-                        run_data,
-                        log_out,
-                        fov_callback,
-                        run_callback,
-                        intermediate_callback,
-                        2700,
-                        1,
-                        SLOW_COPY_INTERVAL_S,
-                    ),
-                )
-
-                res_scan.get()
