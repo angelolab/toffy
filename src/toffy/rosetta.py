@@ -2,6 +2,7 @@ import copy
 import os
 import random
 import shutil
+import subprocess
 import warnings
 
 import natsort as ns
@@ -157,6 +158,9 @@ def clean_rosetta_test_dir(folder_path):
         folder_path (str): base dir for testing, image subdirs will be stored here
     """
 
+    # remove any files beginning with ._, needed to ensure external drive hidden files clear
+    _ = subprocess.call(["find", folder_path, "-type", "f", "-name", "._*", "-delete"])
+
     # remove the compensated data folders
     comp_folders = io_utils.list_folders(folder_path, substrs="compensated_data_")
     for cf in comp_folders:
@@ -164,6 +168,34 @@ def clean_rosetta_test_dir(folder_path):
 
     # remove the stitched image folder
     shutil.rmtree(os.path.join(folder_path, "stitched_images"))
+
+
+def combine_compensation_files(comp_matrix_path, compensation_matrix_names, final_matrix_name):
+    """Combine a list of round two compensation matrix files in a given cohort folder.
+    This is done additively since round two compensation files are mutually exclusive w.r.t.
+    output channels.
+    Args:
+        cohort_folder_path (str):
+            Path to the compensation matrix files to combine
+        compensation_matrix_names (list):
+            List of files inside `cohort_folder_path` to combine
+        final_matrix_name (str):
+            Where to write the combined compensation matrix to
+    """
+
+    # load in the first matrix inside compensation_matrix_names
+    final_compensation_matrix = pd.read_csv(
+        os.path.join(comp_matrix_path, compensation_matrix_names[0])
+    )
+
+    # loop over the rest and add them in
+    for matrix in compensation_matrix_names[1:]:
+        final_compensation_matrix = final_compensation_matrix.add(
+            pd.read_csv(os.path.join(comp_matrix_path, matrix))
+        )
+
+    # save the final compensation matrix to final_matrix_name
+    final_compensation_matrix.to_csv(os.path.join(comp_matrix_path, final_matrix_name), index=False)
 
 
 def flat_field_correction(img, gaus_rad=100):
@@ -254,7 +286,6 @@ def compensate_image_data(
         correct_streaks (bool): whether to correct streaks in the image
         streak_chan (str): the channel to use for streak correction
     """
-
     io_utils.validate_paths([raw_data_dir, comp_data_dir, comp_mat_path])
 
     # get list of all fovs
@@ -369,6 +400,42 @@ def compensate_image_data(
                     image_utils.save_image(save_path, comp_data[j, :, :, idx])
 
 
+def copy_round_one_compensated_images(
+    round_one_comp_folder, round_two_comp_folder, channels_to_copy
+):
+    """Copies channels that don't need round two compensation to the round two comp folder
+
+    Args:
+        round_one_comp_folder (str):
+            path to the round one Rosetta compensated images
+        round_two_comp_folder (str):
+            path to the round two Rosetta compensated images
+        channels_to_copy (list):
+            channels to copy from round_one_comp_folder to round_two_comp_folder
+    """
+    io_utils.validate_paths([round_one_comp_folder, round_two_comp_folder])
+
+    # verify runs found in round two Rosetta folder also found in round one Rosetta folders
+    r1_runs = io_utils.list_folders(round_one_comp_folder)
+    r2_runs = io_utils.list_folders(round_two_comp_folder)
+    misc_utils.verify_in_list(round_one_comp_fovs=r1_runs, round_two_comp_fovs=r2_runs)
+
+    # for each FOV, copy the channel from their r1_runs folder to r2_runs folder
+    for run in r2_runs:
+        fovs = io_utils.list_folders(os.path.join(round_one_comp_folder, run), substrs="fov")
+
+        for fov in fovs:
+            channel_files = io_utils.list_files(
+                os.path.join(round_one_comp_folder, run, fov, "rescaled"), substrs=channels_to_copy
+            )
+
+            for cf in channel_files:
+                shutil.copy(
+                    os.path.join(round_one_comp_folder, run, fov, "rescaled", cf),
+                    os.path.join(round_two_comp_folder, run, fov, "rescaled", cf),
+                )
+
+
 def create_tiled_comparison(
     input_dir_list, output_dir, max_img_size, img_sub_folder="rescaled", channels=None
 ):
@@ -390,8 +457,14 @@ def create_tiled_comparison(
         channels=channels,
     )
 
-    channels = test_data.channels.values
-    chanel_num = len(channels)
+    if not channels:
+        channels = test_data.channels.values
+
+    misc_utils.verify_in_list(
+        provided_channels=channels, test_data_channels=test_data.channels.values
+    )
+
+    channel_num = len(channels)
 
     # check that all dirs have the same number of fovs and correct subset of channels
     fov_names = io_utils.list_folders(input_dir_list[0])
@@ -406,7 +479,7 @@ def create_tiled_comparison(
     fov_num = len(fov_names)
 
     # loop over each channel
-    for j in range(chanel_num):
+    for j in range(channel_num):
         # create tiled array of dirs x fovs
         tiled_image = np.zeros(
             (max_img_size * len(input_dir_list), max_img_size * fov_num),
@@ -451,7 +524,8 @@ def add_source_channel_to_tiled_image(
         img_sub_folder (str): subfolder within raw_img_dir to load images from
         max_img_size (int): largest fov image size
         source_channel (str): the channel which will be prepended to the tiled images
-        percent_norm (int): percentile normalization param to enable easy visualization
+        percent_norm (int): percentile normalization param to enable easy visualization, set to
+            None to skip this step
     """
 
     # load source images
@@ -465,7 +539,9 @@ def add_source_channel_to_tiled_image(
     # convert stacked images to concatenated row
     source_list = [source_imgs.values[fov, :, :, 0] for fov in range(source_imgs.shape[0])]
     source_row = np.concatenate(source_list, axis=1)
-    perc_source = np.percentile(source_row, percent_norm)
+
+    # get percentile of source row if percent_norm set, otherwise leave unset
+    perc_source = np.percentile(source_row, percent_norm) if percent_norm else None
 
     # confirm tiled images have expected shape
     tiled_images = io_utils.list_files(tiled_img_dir)
@@ -481,9 +557,13 @@ def add_source_channel_to_tiled_image(
     for tile_name in tiled_images:
         current_tile = io.imread(os.path.join(tiled_img_dir, tile_name))
 
-        # normalize the source row to be in the same range as the current tile
-        perc_tile = np.percentile(current_tile, percent_norm)
-        perc_ratio = perc_source / perc_tile
+        # if percent_norm set, normalize the source row to be in the same range as the current tile
+        # otherwise, just leave as is (divide by 1)
+        perc_ratio = 1
+        if percent_norm:
+            perc_tile = np.percentile(current_tile, percent_norm)
+            perc_ratio = perc_source / perc_tile
+
         rescaled_source = source_row / perc_ratio
 
         # combine together and save
@@ -709,9 +789,12 @@ def generate_rosetta_test_imgs(
     panel,
     current_channel_name="Noodle",
     output_channel_names=None,
+    gaus_rad=1,
+    norm_const=1,
     ffc_masses=[39],
 ):
     """Compensate example FOV images based on given multipliers
+
     Args:
         rosetta_mat_path (str): path to rosetta compensation matrix
         img_out_dir (str): directory where extracted images are stored
@@ -720,6 +803,8 @@ def generate_rosetta_test_imgs(
         panel (pd.DataFrame): the panel containing the masses and channel names
         current_channel_name (str): channel being adjusted, default Noodle
         output_channel_names (list): subset of the channels to compensate for, default None is all
+        gaus_rad: radius for blurring image data. Passing 0 will result in no blurring
+        norm_const: constant used for rescaling
         ffc_masses (list): masses that need to be flat field corrected.
 
     Returns:
@@ -765,7 +850,8 @@ def generate_rosetta_test_imgs(
             raw_data_sub_folder="rescaled",
             panel_info=panel,
             batch_size=1,
-            norm_const=1,
+            gaus_rad=gaus_rad,
+            norm_const=norm_const,
             output_masses=output_masses,
             ffc_masses=ffc_masses,
         )
