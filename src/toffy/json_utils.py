@@ -259,7 +259,7 @@ def missing_fov_check(bin_file_dir, run_name):
 
     missing_fovs = {}
     for fov in run_metadata.get("fovs", ()):
-        if fov.get("StandardTarget" == "Molybdenum Foil"):
+        if fov.get("standardTarget") == "Molybdenum Foil":
             continue
 
         # get fov names

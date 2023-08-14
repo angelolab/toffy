@@ -410,10 +410,10 @@ def test_watcher_missing_fovs():
         ]
 
         run_data = os.path.join(tmpdir, "test_run")
+        os.makedirs(run_data)
         for file in io_utils.list_files(COMBINED_DATA_PATH, substrs=[".bin", ".json"]):
             shutil.copy(os.path.join(COMBINED_DATA_PATH, file), os.path.join(run_data, file))
         log_out = os.path.join(tmpdir, "log_output")
-        os.makedirs(run_data)
         fov_callback, run_callback, intermediate_callback = build_callbacks(
             run_callbacks=["check_missing_fovs"],
             intermediate_callbacks=[],

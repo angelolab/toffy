@@ -242,7 +242,7 @@ def test_missing_fov_check():
                 {"runOrder": 1, "name": "image_1"},
                 {"runOrder": 2, "name": "image_2"},
                 {"runOrder": 3, "name": "image_3"},
-                {"runOrder": 4, "name": "image_3", "StandardTarget": "Molybdenum Foil"},
+                {"runOrder": 4, "name": "image_3", "standardTarget": "Molybdenum Foil"},
             ]
         }
         json_utils.write_json_file(
