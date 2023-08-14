@@ -1,6 +1,7 @@
 import json
 import os
 import tempfile
+from unittest.mock import call, patch
 
 import numpy as np
 import pytest
@@ -186,7 +187,8 @@ def test_check_for_empty_files():
         assert empty_files == ["empty_file"]
 
 
-def test_check_fov_resolutions():
+@patch("builtins.print")
+def test_check_fov_resolutions(mocked_print):
     with tempfile.TemporaryDirectory() as temp_dir:
         run_data = {
             "fovs": [
@@ -208,16 +210,28 @@ def test_check_fov_resolutions():
                     "frameSizePixels": {"width": 16, "height": 16},
                     "fovSizeMicrons": 100,
                 },
+                {
+                    "runOrder": 4,
+                    "scanCount": 1,
+                    "frameSizePixels": {"width": 8, "height": 8},
+                    "fovSizeMicrons": 100,
+                    "standardTarget": "Molybdenum Foil",
+                },
             ],
         }
 
         json_utils.write_json_file(os.path.join(temp_dir, "test_run.json"), run_data)
 
-        # test successful resolution check
+        # test successful resolution check and print statements
         resolution_data = json_utils.check_fov_resolutions(
             temp_dir, "test_run", save_path=os.path.join(temp_dir, "resolution_data.csv")
         )
+        assert mocked_print.mock_calls[0] == call("Resolutions are not consistent among all FOVs.")
+        assert mocked_print.mock_calls[1] == call(
+            "         fov name  pixels / 400 microns\nfov-3-scan-1 None                    64"
+        )
 
+        # moly fov is ignored
         assert resolution_data.shape == (3, 3)
         assert (
             np.array(["fov-1-scan-1", "fov-2-scan-1", "fov-3-scan-1"]) == resolution_data["fov"]
