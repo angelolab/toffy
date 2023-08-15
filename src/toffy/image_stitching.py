@@ -4,6 +4,7 @@ import re
 from collections import Counter
 
 import natsort as ns
+import numpy as np
 import skimage.io as io
 from alpineer import data_utils, image_utils, io_utils, load_utils, misc_utils
 from skimage import transform
@@ -236,8 +237,8 @@ def rescale_image(img_data, scale, save_path=None):
         numpy.array: data reshaped to new shape
     """
     # check for 2d data
-    if img_data.shape != 2:
-        raise (ValueError, "Image data must only have 2 dimensions.")
+    if len(img_data.shape) != 2:
+        raise ValueError("Image data must only have 2 dimensions.")
 
     # rescale data while preserving values
     data_type = img_data.dtype
@@ -260,10 +261,17 @@ def fix_image_resolutions(resolution_data, extraction_dir):
         resolution_data (pd.DataFrame): details the fov names and resolutions
         extraction_dir (str): path to the extracted images dir for the specific run
     """
+    # only check extracted fovs
+    extracted_fovs = io_utils.list_folders(extraction_dir, substrs="fov")
+    resolution_data = resolution_data[np.isin(resolution_data.fov, extracted_fovs)]
+
     # identify majority value, subset data for other resolutions
     resolutions = resolution_data["pixels / 400 microns"]
     correct_res = Counter(resolutions).most_common(1)[0][0]
     res_change = resolution_data[resolution_data["pixels / 400 microns"] != correct_res]
+
+    if len(res_change) == 0:
+        print("No resolution scaling needed for any FOVs in this run.")
 
     # loop through problematic fovs
     for fov in res_change.fov:
@@ -273,7 +281,7 @@ def fix_image_resolutions(resolution_data, extraction_dir):
         tiff_data = load_utils.load_imgs_from_tree(extraction_dir, fovs=[fov])
 
         # scale and save every channel image
-        for channel in tiff_data.channels:
+        for channel in tiff_data.channels.values:
             channel_data = tiff_data.loc[fov, :, :, channel]
             rescale = rescale_image(
                 channel_data, scale, save_path=os.path.join(extraction_dir, fov, f"{channel}.tiff")

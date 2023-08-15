@@ -1,9 +1,11 @@
 import os
 import shutil
 import tempfile
+from unittest.mock import call, patch
 
 import natsort as ns
 import numpy as np
+import pandas as pd
 import pytest
 from alpineer import io_utils, load_utils, test_utils
 
@@ -277,3 +279,60 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
                     img_sub_folder=subdir,
                     tiled=tiled,
                 )
+
+
+@pytest.mark.parametrize("scale", [0.5, 2])
+def test_rescale_image(scale):
+    # test 3d array raises error
+    img_data = np.ones((2, 10, 10))
+    with pytest.raises(ValueError, match="Image data must only have 2 dimensions."):
+        _ = image_stitching.rescale_image(img_data, scale)
+
+    img_data = img_data[0, :, :]
+    rescaled_data = image_stitching.rescale_image(img_data, scale)
+
+    # check shape is altered correctly
+    assert rescaled_data.shape == (img_data.shape[0] * scale, img_data.shape[1] * scale)
+
+    # check values were not changed
+    assert (rescaled_data == 1).all()
+
+
+@patch("builtins.print")
+def test_fix_image_resolutions(mocked_print):
+    with tempfile.TemporaryDirectory() as tmpdir:
+        channel_list = ["Au", "CD3", "CD4", "CD8", "CD11c"]
+        fov_list = ["fov-1-scan-1", "fov-2-scan-1", "fov-3-scan-1", "fov-4-scan-1"]
+        test_utils._write_tifs(tmpdir, fov_list, channel_list, (10, 10), "", False, int)
+
+        # test no fovs changes
+        resolution_data = pd.DataFrame(
+            {"fov": fov_list, "pixels / 400 microns": [512, 512, 512, 512]}
+        )
+        image_stitching.fix_image_resolutions(resolution_data, tmpdir)
+        mocked_print.mock_calls == [call("No resolution scaling needed for any FOVs in this run.")]
+        mocked_print.reset_mock()
+
+        # test extra fov in run file doesn't get checked
+        extra_data = pd.concat(
+            [
+                resolution_data,
+                pd.DataFrame({"fov": ["not_extracted_fov"], "pixels / 400 microns": [1024]}),
+            ]
+        )
+        image_stitching.fix_image_resolutions(extra_data, tmpdir)
+        mocked_print.mock_calls == [call("No resolution scaling needed for any FOVs in this run.")]
+
+        # test image resolution change
+        resolution_data = pd.DataFrame(
+            {"fov": fov_list, "pixels / 400 microns": [512, 1024, 512, 256]}
+        )
+        image_stitching.fix_image_resolutions(resolution_data, tmpdir)
+
+        # check downscale for fov 2
+        tiff_data = load_utils.load_imgs_from_tree(tmpdir, fovs=["fov-2-scan-1"])
+        assert tiff_data.shape[1] == tiff_data.shape[2] == 5
+
+        # check upscale for fov 4
+        tiff_data = load_utils.load_imgs_from_tree(tmpdir, fovs=["fov-4-scan-1"])
+        assert tiff_data.shape[1] == tiff_data.shape[2] == 20
