@@ -1,10 +1,12 @@
 import math
 import os
 import re
+from collections import Counter
 
 import natsort as ns
 import skimage.io as io
 from alpineer import data_utils, image_utils, io_utils, load_utils, misc_utils
+from skimage import transform
 
 from toffy import json_utils
 
@@ -222,3 +224,57 @@ def stitch_images(
             stitched = data_utils.stitch_images(image_data, num_cols)
             current_img = stitched.loc["stitched_image", :, :, chan].values / scale
             image_utils.save_image(fname, current_img)
+
+
+def rescale_image(img_data, scale, save_path=None):
+    """Rescale image data to a desired shape
+    Args:
+        img_data (np.array): data to be reshaped, expected to only be 2 dimensions
+        scale (int): amount to scale the data up or down
+        save_path (str): the location to save the tiff file
+    Returns:
+        numpy.array: data reshaped to new shape
+    """
+    # check for 2d data
+    if img_data.shape != 2:
+        raise (ValueError, "Image data must only have 2 dimensions.")
+
+    # rescale data while preserving values
+    data_type = img_data.dtype
+    rescaled_data = transform.rescale(
+        img_data, scale, mode="constant", preserve_range=True, order=0, anti_aliasing=False
+    )
+    rescaled_data = rescaled_data.astype(data_type)
+
+    # overwrite image tiff
+    if save_path:
+        io_utils.validate_paths(save_path)
+        image_utils.save_image(save_path, rescaled_data)
+
+    return rescaled_data
+
+
+def fix_image_resolutions(resolution_data, extraction_dir):
+    """Rescales any images that are a different resolution than the majority in the run
+    Args:
+        resolution_data (pd.DataFrame): details the fov names and resolutions
+        extraction_dir (str): path to the extracted images dir for the specific run
+    """
+    # identify majority value, subset data for other resolutions
+    resolutions = resolution_data["pixels / 400 microns"]
+    correct_res = Counter(resolutions).most_common(1)[0][0]
+    res_change = resolution_data[resolution_data["pixels / 400 microns"] != correct_res]
+
+    # loop through problematic fovs
+    for fov in res_change.fov:
+        fov_res = res_change[res_change.fov == fov]["pixels / 400 microns"]
+        scale = correct_res / fov_res
+
+        tiff_data = load_utils.load_imgs_from_tree(extraction_dir, fovs=[fov])
+
+        # scale and save every channel image
+        for channel in tiff_data.channels:
+            channel_data = tiff_data.loc[fov, :, :, channel]
+            rescale = rescale_image(
+                channel_data, scale, save_path=os.path.join(extraction_dir, fov, f"{channel}.tiff")
+            )
