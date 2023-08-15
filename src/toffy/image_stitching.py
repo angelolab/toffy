@@ -283,6 +283,7 @@ def fix_image_resolutions(resolution_data, extraction_dir):
         tiff_data = load_utils.load_imgs_from_tree(extraction_dir, fovs=[fov])
 
         # scale and save every channel image
+        print(f"Changing {fov} from {tiff_data.shape[1]} to {tiff_data.shape[1]*scale}.")
         for channel in tiff_data.channels.values:
             channel_data = tiff_data.loc[fov, :, :, channel]
             rescale = rescale_image(

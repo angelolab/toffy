@@ -322,12 +322,15 @@ def test_fix_image_resolutions(mocked_print):
         )
         image_stitching.fix_image_resolutions(extra_data, tmpdir)
         mocked_print.mock_calls == [call("No resolution scaling needed for any FOVs in this run.")]
+        mocked_print.reset_mock()
 
         # test image resolution change
         resolution_data = pd.DataFrame(
-            {"fov": fov_list, "pixels / 400 microns": [512, 1024, 512, 256]}
+            {"fov": fov_list, "pixels / 400 microns": [1024, 2048, 1024, 512]}
         )
         image_stitching.fix_image_resolutions(resolution_data, tmpdir)
+        mocked_print.mock_calls[0] == call("Changing fov-2-scan-1 from 10 to 5.")
+        mocked_print.mock_calls[1] == call("Changing fov-4-scan-1 from 10 to 20.")
 
         # check downscale for fov 2
         tiff_data = load_utils.load_imgs_from_tree(tmpdir, fovs=["fov-2-scan-1"])
