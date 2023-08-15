@@ -261,6 +261,8 @@ def fix_image_resolutions(resolution_data, extraction_dir):
         resolution_data (pd.DataFrame): details the fov names and resolutions
         extraction_dir (str): path to the extracted images dir for the specific run
     """
+    io_utils.validate_paths(extraction_dir)
+
     # only check extracted fovs
     extracted_fovs = io_utils.list_folders(extraction_dir, substrs="fov")
     resolution_data = resolution_data[np.isin(resolution_data.fov, extracted_fovs)]
