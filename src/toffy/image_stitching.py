@@ -248,7 +248,6 @@ def rescale_image(img_data, scale, save_path=None):
         mode="constant",
         preserve_range=True,
         order=0,
-        anti_aliasing=False,
     )
     rescaled_data = rescaled_data.astype(data_type)
 
