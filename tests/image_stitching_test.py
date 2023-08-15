@@ -303,7 +303,7 @@ def test_fix_image_resolutions(mocked_print):
     with tempfile.TemporaryDirectory() as tmpdir:
         channel_list = ["Au", "CD3", "CD4", "CD8", "CD11c"]
         fov_list = ["fov-1-scan-1", "fov-2-scan-1", "fov-3-scan-1", "fov-4-scan-1"]
-        test_utils._write_tifs(tmpdir, fov_list, channel_list, (10, 10), "", False, int)
+        test_utils._write_tifs(tmpdir, fov_list, channel_list, (10, 10), "", False, "uint32")
 
         # test no fovs changes
         resolution_data = pd.DataFrame(

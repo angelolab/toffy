@@ -243,7 +243,12 @@ def rescale_image(img_data, scale, save_path=None):
     # rescale data while preserving values
     data_type = img_data.dtype
     rescaled_data = transform.rescale(
-        img_data, scale, mode="constant", preserve_range=True, order=0, anti_aliasing=False
+        np.array(img_data),
+        scale,
+        mode="constant",
+        preserve_range=True,
+        order=0,
+        anti_aliasing=False,
     )
     rescaled_data = rescaled_data.astype(data_type)
 
