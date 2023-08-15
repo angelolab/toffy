@@ -158,22 +158,20 @@ class FovCallbacks:
             **kwargs (dict):
                 Unused kwargs for other functions
         """
-        # NOTE: most panels will be specified from (-0.3, 0), modify to (-0.3, -0.06) for deficient
-        panel_def = modify_panel_ranges(panel, start_offset=0, stop_offset=-0.06)
         self.__fov_data = extract_bin_files(
             data_dir=self.run_folder,
             out_dir=None,
             include_fovs=[self.point_name],
-            panel=panel_def,
+            panel=panel,
             intensities=intensities,
             replace=replace,
             time_res=time_res,
         )
-        self.__panel = panel_def
+        self.__panel = panel
 
         if extract_prof:
-            # modify from (-0.3, 0) to (-0.06, 0.3) for proficient
-            panel_prof = modify_panel_ranges(panel, start_offset=0.24, stop_offset=0.3)
+            # modify from (-0.3, 0) to (0, 0.3) for proficient
+            panel_prof = modify_panel_ranges(panel, start_offset=0.3, stop_offset=0.3)
             self.__fov_data_prof = extract_bin_files(
                 data_dir=self.run_folder,
                 out_dir=None,
