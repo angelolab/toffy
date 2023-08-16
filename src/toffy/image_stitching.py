@@ -6,6 +6,7 @@ from collections import Counter
 import natsort as ns
 import numpy as np
 import skimage.io as io
+import xarray as xr
 from alpineer import data_utils, image_utils, io_utils, load_utils, misc_utils
 from skimage import transform
 
@@ -96,8 +97,46 @@ def get_tiled_names(fov_list, run_dir):
     return fov_names
 
 
+def rescale_stitched_array(img_data, scale):
+    """Take an array of stitched image data and rescale the rows and cols dims
+    Args:
+        img_data (xarray.DataArray): data array with 4 dimensions (fov, rows, cols, channels)
+        scale (int): amount to scale the data up or down
+    Returns:
+        xarray.DataArray: data reshaped according to scale value while keeping fov/channel info
+    """
+
+    # extract dimension info from xarray
+    fov_num, rows, cols, chan_num = img_data.shape
+    fovs = img_data.fovs.values
+    channels = img_data.channels.values
+
+    # create empty array
+    rescaled_data = np.zeros((fov_num, int(rows * scale), int(cols * scale), chan_num))
+
+    # scale the data for each img individually
+    for i in range(fov_num):
+        for j in range(chan_num):
+            current_img = img_data[i, :, :, j]
+            rescaled_data[i, :, :, j] = rescale_image(current_img, scale)
+
+    # fill in the metadata
+    rescaled_xr = xr.DataArray(
+        rescaled_data,
+        coords=[fovs, range(int(rows * scale)), range(int(cols * scale)), channels],
+        dims=["fovs", "rows", "cols", "channels"],
+    )
+    return rescaled_xr
+
+
 def stitch_images(
-    tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None, tiled=False, scale=200
+    tiff_out_dir,
+    run_dir=None,
+    channels=None,
+    img_sub_folder=None,
+    tiled=False,
+    intensity_scale=200,
+    img_size_scale=0.25,
 ):
     """Creates a new directory containing stitched channel images for the run
     Args:
@@ -106,7 +145,9 @@ def stitch_images(
         channels (list): list of channels to produce stitched images for, None will do all
         img_sub_folder (str): optional name of image sub-folder within each fov
         tiled (bool): whether to stitch images back into original tiled shape
-        scale (int): how much to rescale the stitched image by, needed for Photoshop compatibility
+        intensity_scale (int): how much to rescale the image values by,
+            needed for Photoshop compatibility
+        img_size_scale (int/float): amount to scale down image, set to None for no scaling
     """
 
     io_utils.validate_paths(tiff_out_dir)
@@ -196,9 +237,12 @@ def stitch_images(
                     single_dir=False,
                     img_sub_folder=img_sub_folder,
                 )
+                if img_size_scale:
+                    image_data = rescale_stitched_array(image_data, img_size_scale)
+
                 fname = os.path.join(tile_stitched_dir, chan + "_stitched.tiff")
                 stitched = data_utils.stitch_images(image_data, num_cols)
-                current_img = stitched.loc["stitched_image", :, :, chan].values / scale
+                current_img = stitched.loc["stitched_image", :, :, chan].values / intensity_scale
                 image_utils.save_image(fname, current_img)
 
         if tma_folders or not tiled:
@@ -221,9 +265,12 @@ def stitch_images(
                 channels=[chan],
                 max_image_size=max_img_size,
             )
+            if img_size_scale:
+                image_data = rescale_stitched_array(image_data, img_size_scale)
+
             fname = os.path.join(stitched_subdir, chan + "_stitched.tiff")
             stitched = data_utils.stitch_images(image_data, num_cols)
-            current_img = stitched.loc["stitched_image", :, :, chan].values / scale
+            current_img = stitched.loc["stitched_image", :, :, chan].values / intensity_scale
             image_utils.save_image(fname, current_img)
 
 
@@ -234,11 +281,14 @@ def rescale_image(img_data, scale, save_path=None):
         scale (int): amount to scale the data up or down
         save_path (str): the location to save the tiff file
     Returns:
-        numpy.array: data reshaped to new shape
+        numpy.array: data reshaped according to scale value
     """
     # check for 2d data
     if len(img_data.shape) != 2:
         raise ValueError("Image data must only have 2 dimensions.")
+
+    if scale < 1 and img_data.shape[0] % scale != 0:
+        raise ValueError("Scale value less than 1 must be a factor of the image size.")
 
     # rescale data while preserving values
     data_type = img_data.dtype

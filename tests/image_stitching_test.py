@@ -7,6 +7,7 @@ import natsort as ns
 import numpy as np
 import pandas as pd
 import pytest
+import xarray as xr
 from alpineer import io_utils, load_utils, test_utils
 
 from tests.utils.test_utils import make_run_file
@@ -121,6 +122,29 @@ def _tiled_image_check(data_tiled, data_base, num_img_row, num_img_col):
         row_i += 1
 
 
+def test_rescale_stitched_array():
+    stitched_data = np.ones((3, 10, 10, 5))
+    fovs = ["fov-1", "fov-2", "fov-2"]
+    channels = ["chan1", "chan2", "chan3", "chan4", "chan5"]
+    stitched_arr = xr.DataArray(
+        stitched_data,
+        coords=[fovs, range(10), range(10), channels],
+        dims=["fovs", "rows", "cols", "channels"],
+    )
+
+    # test success
+    rescaled_arr = image_stitching.rescale_stitched_array(stitched_arr, 1 / 2)
+
+    # check data scaling while maintaining fov and channel info
+    assert rescaled_arr.shape == (3, 5, 5, 5)
+    assert (stitched_arr.fovs.values == rescaled_arr.fovs.values).all()
+    assert (stitched_arr.channels.values == rescaled_arr.channels.values).all()
+
+    # invalid scale value should raise an error
+    with pytest.raises(ValueError):
+        rescaled_arr = image_stitching.rescale_stitched_array(stitched_arr, 1 / 3)
+
+
 @pytest.mark.parametrize(
     "tiled, tile_names",
     [
@@ -133,9 +157,11 @@ def _tiled_image_check(data_tiled, data_base, num_img_row, num_img_col):
 )
 @pytest.mark.parametrize("nontiled_fov", [False, True])
 @pytest.mark.parametrize("subdir", ["", "sub_name"])
-def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
+@pytest.mark.parametrize("img_size_scale", [None, 0.5])
+def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir, img_size_scale):
     mocker.patch("toffy.image_stitching.get_max_img_size", return_value=10)
 
+    img_scale = img_size_scale if img_size_scale else 1
     channel_list = ["Au", "CD3", "CD4", "CD8", "CD11c"]
     stitched_tifs = [
         "Au_stitched.tiff",
@@ -171,7 +197,9 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
             )
 
         # test successful stitching for all channels and division happens by 200
-        image_stitching.stitch_images(tmpdir, test_dir, img_sub_folder=subdir, tiled=tiled)
+        image_stitching.stitch_images(
+            tmpdir, test_dir, img_sub_folder=subdir, tiled=tiled, img_size_scale=img_scale
+        )
         if tiled:
             if "" in tile_names:
                 tile_names = ["unnamed_tile_" if x == "" else x for x in tile_names]
@@ -187,9 +215,9 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
                 assert sorted(io_utils.list_files(save_dir)) == sorted(stitched_tifs)
                 tiled_data = load_utils.load_imgs_from_dir(save_dir, files=["Au_stitched.tiff"])
                 if i == 0:
-                    assert tiled_data.shape == (1, 20, 30, 1)
+                    assert tiled_data.shape == (1, 20 * img_scale, 30 * img_scale, 1)
                 else:
-                    assert tiled_data.shape == (1, 20, 20, 1)
+                    assert tiled_data.shape == (1, 20 * img_scale, 20 * img_scale, 1)
 
                 _, expected_fovs, num_rows, num_cols = expected_tiles[i]
 
@@ -201,13 +229,14 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
                     single_dir=False,
                     img_sub_folder=subdir,
                 )
-                _tiled_image_check(tiled_data, base_data, num_rows, num_cols)
+                base_data_rescaled = image_stitching.rescale_stitched_array(base_data, img_scale)
+                _tiled_image_check(tiled_data, base_data_rescaled, num_rows, num_cols)
             # check for 2 tma stitched files
             if nontiled_fov:
                 save_dir = os.path.join(tmpdir, stitched_dir, "TMA")
                 assert sorted(io_utils.list_files(save_dir)) == sorted(stitched_tifs)
                 tma_data = load_utils.load_imgs_from_dir(save_dir, files=["Au_stitched.tiff"])
-                assert tma_data.shape == (1, 20, 10, 1)
+                assert tma_data.shape == (1, 20 * img_scale, 10 * img_scale, 1)
 
         # max img size 10 with 3 or 5 acquired fovs
         else:
@@ -215,9 +244,9 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
             assert sorted(io_utils.list_files(save_dir)) == sorted(stitched_tifs)
             data = load_utils.load_imgs_from_dir(save_dir, files=["Au_stitched.tiff"])
             if nontiled_fov:
-                assert data.shape == (1, 30, 20, 1)
+                assert data.shape == (1, 30 * img_scale, 20 * img_scale, 1)
             else:
-                assert data.shape == (1, 30, 10, 1)
+                assert data.shape == (1, 30 * img_scale, 10 * img_scale, 1)
 
             # data_trim = data[0, ..., ..., 0].values
             base_data = load_utils.load_imgs_from_tree(
@@ -227,9 +256,10 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
                 channels=["Au"],
                 max_image_size=image_stitching.get_max_img_size(tmpdir, subdir, test_dir),
             )
+            base_data_rescaled = image_stitching.rescale_stitched_array(base_data, img_scale)
             num_rows = int(data.shape[1] / base_data.shape[1])
             num_cols = int(data.shape[2] / base_data.shape[2])
-            _tiled_image_check(data, base_data, num_rows, num_cols)
+            _tiled_image_check(data, base_data_rescaled, num_rows, num_cols)
 
         # test previous stitching raises an error
         with pytest.raises(ValueError, match="The stitch_images subdirectory already exists"):
@@ -238,7 +268,12 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
 
         # test stitching for specific channels
         image_stitching.stitch_images(
-            tmpdir, test_dir, channels=["Au", "CD3"], img_sub_folder=subdir, tiled=tiled
+            tmpdir,
+            test_dir,
+            channels=["Au", "CD3"],
+            img_sub_folder=subdir,
+            tiled=tiled,
+            img_size_scale=img_scale,
         )
         if tiled and len(tile_names) > 1:
             # check each tile subfolder
@@ -281,21 +316,28 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir):
                 )
 
 
-@pytest.mark.parametrize("scale", [0.5, 2])
+@pytest.mark.parametrize("scale", [0.5, 2, 0.3])
 def test_rescale_image(scale):
     # test 3d array raises error
     img_data = np.ones((2, 10, 10))
     with pytest.raises(ValueError, match="Image data must only have 2 dimensions."):
         _ = image_stitching.rescale_image(img_data, scale)
-
     img_data = img_data[0, :, :]
-    rescaled_data = image_stitching.rescale_image(img_data, scale)
 
-    # check shape is altered correctly
-    assert rescaled_data.shape == (img_data.shape[0] * scale, img_data.shape[1] * scale)
+    # test non-factor scale raises error
+    if scale == 0.3:
+        with pytest.raises(ValueError, match="Scale value less than 1 must be a factor"):
+            _ = image_stitching.rescale_image(img_data, scale)
 
-    # check values were not changed
-    assert (rescaled_data == 1).all()
+    # test success
+    else:
+        rescaled_data = image_stitching.rescale_image(img_data, scale)
+
+        # check shape is altered correctly
+        assert rescaled_data.shape == (img_data.shape[0] * scale, img_data.shape[1] * scale)
+
+        # check values were not changed
+        assert (rescaled_data == 1).all()
 
 
 @patch("builtins.print")
