@@ -419,8 +419,10 @@ def test_copy_round_one_compensated_images():
 
 @parametrize("dir_num", [2, 3])
 @parametrize("channel_subset", [False, True])
-def test_create_tiled_comparison(dir_num, channel_subset):
+@pytest.mark.parametrize("img_size_scale", [None, 0.5])
+def test_create_tiled_comparison(dir_num, channel_subset, img_size_scale):
     with tempfile.TemporaryDirectory() as top_level_dir:
+        img_scale = img_size_scale if img_size_scale else 1
         num_chans = 3
         num_fovs = 4
 
@@ -448,15 +450,19 @@ def test_create_tiled_comparison(dir_num, channel_subset):
         paths = [os.path.join(top_level_dir, img_dir) for img_dir in dir_names]
         chan_list = chans[:-1] if channel_subset else chans[:]
         rosetta.create_tiled_comparison(
-            paths, output_dir, max_img_size=10, channels=chan_list if channel_subset else None
+            paths,
+            output_dir,
+            max_img_size=10,
+            channels=chan_list if channel_subset else None,
+            img_size_scale=img_scale,
         )
 
         # check that each tiled image was created
         for i in range(len(chan_list)):
             chan_name = "chan{}_comparison.tiff".format(i)
             chan_img = io.imread(os.path.join(output_dir, chan_name))
-            row_len = num_fovs * 10
-            col_len = dir_num * 10
+            row_len = num_fovs * 10 * img_scale
+            col_len = dir_num * 10 * img_scale
             assert chan_img.shape == (col_len, row_len)
 
         # check that directories with different images are okay if overlapping channels specified
@@ -472,7 +478,11 @@ def test_create_tiled_comparison(dir_num, channel_subset):
 
         # no error raised if subset directory is specified
         rosetta.create_tiled_comparison(
-            paths, output_dir, channels=["chan1", "chan2"], max_img_size=10
+            paths,
+            output_dir,
+            channels=["chan1", "chan2"],
+            max_img_size=10,
+            img_size_scale=img_scale,
         )
 
         # but one is raised if no subset directory is specified
