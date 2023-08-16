@@ -331,7 +331,7 @@ def fix_image_resolutions(resolution_data, extraction_dir):
 
     # loop through problematic fovs
     for fov in res_change.fov:
-        fov_res = res_change[res_change.fov == fov]["pixels / 400 microns"]
+        fov_res = res_change[res_change.fov == fov]["pixels / 400 microns"].values
         scale = correct_res / fov_res
 
         tiff_data = load_utils.load_imgs_from_tree(extraction_dir, fovs=[fov])
