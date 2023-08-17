@@ -173,7 +173,7 @@ FOV_CALLBACKS = (
     "generate_mph",
     "generate_pulse_heights",
 )
-RUN_CALLBACKS = ("plot_qc_metrics", "plot_mph_metrics", "image_stitching")
+RUN_CALLBACKS = ("plot_qc_metrics", "plot_mph_metrics", "image_stitching", "check_incomplete_fovs")
 
 
 def mock_visualize_qc_metrics(
@@ -558,7 +558,7 @@ class WatcherCases:
         kwargs = {"panel": panel, "intensities": intensity, "replace": replace}
 
         return (
-            ["plot_qc_metrics", "plot_mph_metrics", "image_stitching"],
+            ["plot_qc_metrics", "plot_mph_metrics", "image_stitching", "check_incomplete_fovs"],
             None,
             ["extract_tiffs", "generate_pulse_heights"],
             kwargs,

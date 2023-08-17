@@ -15,6 +15,7 @@ from alpineer import io_utils, misc_utils
 from mibi_bin_tools.bin_files import _write_out, extract_bin_files
 from mibi_bin_tools.type_utils import any_true
 
+from toffy.bin_extraction import incomplete_fov_check
 from toffy.image_stitching import stitch_images
 from toffy.mph_comp import combine_mph_metrics, compute_mph_metrics, visualize_mph
 from toffy.normalize import write_mph_per_mass
@@ -116,6 +117,13 @@ class RunCallbacks:
         viz_kwargs = {k: v for k, v in kwargs.items() if k in valid_kwargs}
 
         stitch_images(tiff_out_dir, self.run_folder, **viz_kwargs)
+
+    def check_incomplete_fovs(self, **kwargs):
+        """Checks for partial images (even when fully extracted)
+        Raises:
+            Warning if any  FOVs have partially generated images
+        """
+        incomplete_fov_check(self.run_folder, os.path.basename(self.run_folder))
 
 
 @dataclass
