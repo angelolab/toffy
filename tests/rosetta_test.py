@@ -9,7 +9,7 @@ import numpy as np
 import pandas as pd
 import pytest
 import skimage.io as io
-from alpineer import image_utils, io_utils, load_utils, test_utils
+from alpineer import image_utils, io_utils, load_utils, misc_utils, test_utils
 from pytest_cases import parametrize_with_cases
 
 from toffy import rosetta
@@ -206,6 +206,10 @@ def test_clean_rosetta_test_dir():
             rosetta_matrix_names.append(mat_path)
             pd.DataFrame().to_csv(mat_path)
 
+        # make example ._ files to simulate external drives
+        Path(os.path.join(rosetta_test_dir, "compensated_data_%s" % mults[0], "._random")).touch()
+        Path(os.path.join(rosetta_test_dir, "stitched_images", "._random")).touch()
+
         # run the cleaning process
         rosetta.clean_rosetta_test_dir(rosetta_test_dir)
 
@@ -219,6 +223,49 @@ def test_clean_rosetta_test_dir():
         # assert the rosetta matrices still exist
         for rmn in rosetta_matrix_names:
             assert os.path.exists(rmn)
+
+        # ensure no ._ files remain
+        rosetta_test_files = Path(rosetta_test_dir)
+        rosetta_test_files = [str(f) for f in list(Path(rosetta_test_files).rglob("*"))]
+        assert not any(["._" in f for f in rosetta_test_files])
+
+
+def test_combine_compensation_files():
+    with tempfile.TemporaryDirectory() as rosetta_test_dir:
+        # make a few dummy matrix files for different multipliers and channels
+        mults = [0.5, 1, 2]
+        channels = ["chan1", "chan2", "chan3"]
+        channel_pairs = [("chan1", "chan2"), ("chan2", "chan3"), ("chan3", "chan1")]
+
+        for m in mults:
+            for cp in channel_pairs:
+                df = pd.DataFrame(
+                    np.zeros((3, 3)),
+                    index=["chan1", "chan2", "chan3"],
+                    columns=["chan1", "chan2", "chan3"],
+                )
+                df.loc[cp[0], cp[1]] = m
+                df.to_csv(
+                    os.path.join(rosetta_test_dir, f"{cp[0]}_{cp[1]}_compensation_matrix_{m}.csv"),
+                    index=False,
+                )
+
+        # combine the chan1-chan2 x0.5, chan2-chan3 x1, and chan3-chan1 x2 matrix
+        compensation_matrices = [
+            "chan1_chan2_compensation_matrix_0.5.csv",
+            "chan2_chan3_compensation_matrix_1.csv",
+            "chan3_chan1_compensation_matrix_2.csv",
+        ]
+        rosetta.combine_compensation_files(
+            rosetta_test_dir, compensation_matrices, "final_rosetta_matrix.csv"
+        )
+
+        # assert final_rosetta_matrix.csv created and generated correctly
+        final_rosetta_matrix_path = os.path.join(rosetta_test_dir, "final_rosetta_matrix.csv")
+        assert os.path.exists(final_rosetta_matrix_path)
+        final_rosetta_matrix = pd.read_csv(final_rosetta_matrix_path)
+        actual_final_values = np.array([[0, 0.5, 0], [0, 0, 1], [2, 0, 0]])
+        assert np.all(final_rosetta_matrix.values == actual_final_values)
 
 
 def test_flat_field_correction():
@@ -325,8 +372,54 @@ def test_compensate_image_data(
                     )
 
 
+def test_copy_round_one_compensated_images():
+    with tempfile.TemporaryDirectory() as top_level_dir:
+        round_one_folder = os.path.join(top_level_dir, "round_one")
+        round_two_folder = os.path.join(top_level_dir, "round_two")
+        runs = ["run1", "run2"]
+        fovs = ["fov-1-scan-1", "fov-2-scan-2"]
+        channel_list = ["chan1", "chan2", "chan3"]
+
+        for run in runs:
+            os.makedirs(os.path.join(round_one_folder, run))
+            os.makedirs(os.path.join(round_two_folder, run))
+
+            for fov in fovs:
+                # create sample FOV folders
+                os.makedirs(os.path.join(round_one_folder, run, fov, "rescaled"))
+                os.makedirs(os.path.join(round_two_folder, run, fov, "rescaled"))
+
+                # create sample channel files, include one that has already been written to round 2
+                channel_list = ["chan1", "chan2", "chan3"]
+                for chan in channel_list:
+                    Path(
+                        os.path.join(round_one_folder, run, fov, "rescaled", chan + ".tiff")
+                    ).touch()
+
+                Path(
+                    os.path.join(round_two_folder, run, fov, "rescaled", channel_list[-1] + ".tiff")
+                ).touch()
+
+        # copy the images and assert all channels exist in round two folder
+        rosetta.copy_round_one_compensated_images(
+            round_one_folder, round_two_folder, channel_list[:2]
+        )
+
+        for run in runs:
+            for fov in fovs:
+                chans_in_folder = io_utils.list_files(
+                    os.path.join(round_two_folder, run, fov, "rescaled"), substrs=".tiff"
+                )
+                chans_in_folder = [c.replace(".tiff", "") for c in chans_in_folder]
+
+                misc_utils.verify_same_elements(
+                    all_channels=channel_list, channels_in_folder=chans_in_folder
+                )
+
+
 @parametrize("dir_num", [2, 3])
-def test_create_tiled_comparison(dir_num):
+@parametrize("channel_subset", [False, True])
+def test_create_tiled_comparison(dir_num, channel_subset):
     with tempfile.TemporaryDirectory() as top_level_dir:
         num_chans = 3
         num_fovs = 4
@@ -351,11 +444,15 @@ def test_create_tiled_comparison(dir_num):
             )
 
         # pass full paths to function
+        # NOTE: channel_subset tests for some and all channels provided
         paths = [os.path.join(top_level_dir, img_dir) for img_dir in dir_names]
-        rosetta.create_tiled_comparison(paths, output_dir, max_img_size=10)
+        chan_list = chans[:-1] if channel_subset else chans[:]
+        rosetta.create_tiled_comparison(
+            paths, output_dir, max_img_size=10, channels=chan_list if channel_subset else None
+        )
 
         # check that each tiled image was created
-        for i in range(num_chans):
+        for i in range(len(chan_list)):
             chan_name = "chan{}_comparison.tiff".format(i)
             chan_img = io.imread(os.path.join(output_dir, chan_name))
             row_len = num_fovs * 10
@@ -383,7 +480,8 @@ def test_create_tiled_comparison(dir_num):
             rosetta.create_tiled_comparison(paths, output_dir, max_img_size=10)
 
 
-def test_add_source_channel_to_tiled_image():
+@parametrize("percent_norm", [98, None])
+def test_add_source_channel_to_tiled_image(percent_norm):
     with tempfile.TemporaryDirectory() as top_level_dir:
         num_fovs = 5
         num_chans = 4
@@ -415,6 +513,7 @@ def test_add_source_channel_to_tiled_image():
             output_dir=output_dir,
             source_channel="chan1",
             max_img_size=10,
+            percent_norm=percent_norm,
         )
 
         # each image should now have an extra row added on top
