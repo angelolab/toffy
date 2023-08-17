@@ -118,12 +118,15 @@ class RunCallbacks:
 
         stitch_images(tiff_out_dir, self.run_folder, **viz_kwargs)
 
-    def check_incomplete_fovs(self, **kwargs):
+    def check_incomplete_fovs(self, tiff_out_dir, **kwargs):
         """Checks for partial images (even when fully extracted)
+
+        Args:
+            tiff_out_dir (str): directory containing extracted images
         Raises:
             Warning if any  FOVs have partially generated images
         """
-        incomplete_fov_check(self.run_folder, os.path.basename(self.run_folder))
+        incomplete_fov_check(self.run_folder, tiff_out_dir)
 
 
 @dataclass
