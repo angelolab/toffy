@@ -242,10 +242,13 @@ def check_fov_resolutions(bin_file_dir, run_name, save_path=None):
     )
 
     if len(set(resolution_data["pixels / 400 microns"])) > 1:
-        # print resolutions that are in the minority
-        print("Resolutions are not consistent among all FOVs.")
-
         val = Counter(resolutions).most_common(1)[0][0]
+        print(
+            "Inconsistent resolutions.\n"
+            f"All FOVs are {val} pixels per 400 microns except the following:"
+        )
+
+        # print resolutions that are in the minority
         subset = resolution_data[resolution_data["pixels / 400 microns"] != val]
         print(subset.to_string(index=False))
     else:

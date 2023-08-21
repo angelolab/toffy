@@ -1,7 +1,6 @@
 import os
 import shutil
 import tempfile
-from unittest.mock import call, patch
 
 import natsort as ns
 import numpy as np
@@ -124,7 +123,7 @@ def _tiled_image_check(data_tiled, data_base, num_img_row, num_img_col):
 
 def test_rescale_stitched_array():
     stitched_data = np.ones((3, 10, 10, 5))
-    fovs = ["fov-1", "fov-2", "fov-2"]
+    fovs = ["fov-1", "fov-2", "fov-3"]
     channels = ["chan1", "chan2", "chan3", "chan4", "chan5"]
     stitched_arr = xr.DataArray(
         stitched_data,
@@ -340,8 +339,7 @@ def test_rescale_image(scale):
         assert (rescaled_data == 1).all()
 
 
-@patch("builtins.print")
-def test_fix_image_resolutions(mocked_print):
+def test_fix_image_resolutions(capsys):
     with tempfile.TemporaryDirectory() as tmpdir:
         channel_list = ["Au", "CD3", "CD4", "CD8", "CD11c"]
         fov_list = ["fov-1-scan-1", "fov-2-scan-1", "fov-3-scan-1", "fov-4-scan-1"]
@@ -352,8 +350,8 @@ def test_fix_image_resolutions(mocked_print):
             {"fov": fov_list, "pixels / 400 microns": [512, 512, 512, 512]}
         )
         image_stitching.fix_image_resolutions(resolution_data, tmpdir)
-        mocked_print.mock_calls == [call("No resolution scaling needed for any FOVs in this run.")]
-        mocked_print.reset_mock()
+        out, err = capsys.readouterr()
+        assert out == "No resolution scaling needed for any FOVs in this run.\n"
 
         # test extra fov in run file doesn't get checked
         extra_data = pd.concat(
@@ -363,16 +361,16 @@ def test_fix_image_resolutions(mocked_print):
             ]
         )
         image_stitching.fix_image_resolutions(extra_data, tmpdir)
-        mocked_print.mock_calls == [call("No resolution scaling needed for any FOVs in this run.")]
-        mocked_print.reset_mock()
+        out, err = capsys.readouterr()
+        assert out == "No resolution scaling needed for any FOVs in this run.\n"
 
         # test image resolution change
         resolution_data = pd.DataFrame(
             {"fov": fov_list, "pixels / 400 microns": [1024, 2048, 1024, 512]}
         )
         image_stitching.fix_image_resolutions(resolution_data, tmpdir)
-        mocked_print.mock_calls[0] == call("Changing fov-2-scan-1 from 10 to 5.")
-        mocked_print.mock_calls[1] == call("Changing fov-4-scan-1 from 10 to 20.")
+        out, err = capsys.readouterr()
+        assert out == "Changing fov-2-scan-1 from 10 to 5.\nChanging fov-4-scan-1 from 10 to 20.\n"
 
         # check downscale for fov 2
         tiff_data = load_utils.load_imgs_from_tree(tmpdir, fovs=["fov-2-scan-1"])

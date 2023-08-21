@@ -117,7 +117,7 @@ def rescale_stitched_array(img_data, scale):
     # scale the data for each img individually
     for i in range(fov_num):
         for j in range(chan_num):
-            current_img = img_data[i, :, :, j]
+            current_img = np.array(img_data[i, :, :, j])
             rescaled_data[i, :, :, j] = rescale_image(current_img, scale)
 
     # fill in the metadata
@@ -242,7 +242,7 @@ def stitch_images(
 
                 fname = os.path.join(tile_stitched_dir, chan + "_stitched.tiff")
                 stitched = data_utils.stitch_images(image_data, num_cols)
-                current_img = stitched.loc["stitched_image", :, :, chan].values / intensity_scale
+                current_img = stitched.loc["stitched_image", :, :, chan] / intensity_scale
                 image_utils.save_image(fname, current_img)
 
         if tma_folders or not tiled:
@@ -270,7 +270,7 @@ def stitch_images(
 
             fname = os.path.join(stitched_subdir, chan + "_stitched.tiff")
             stitched = data_utils.stitch_images(image_data, num_cols)
-            current_img = stitched.loc["stitched_image", :, :, chan].values / intensity_scale
+            current_img = stitched.loc["stitched_image", :, :, chan] / intensity_scale
             image_utils.save_image(fname, current_img)
 
 
@@ -293,7 +293,7 @@ def rescale_image(img_data, scale, save_path=None):
     # rescale data while preserving values
     data_type = img_data.dtype
     rescaled_data = transform.rescale(
-        np.array(img_data),
+        img_data,
         scale,
         mode="constant",
         preserve_range=True,
@@ -337,9 +337,9 @@ def fix_image_resolutions(resolution_data, extraction_dir):
         tiff_data = load_utils.load_imgs_from_tree(extraction_dir, fovs=[fov])
 
         # scale and save every channel image
-        print(f"Changing {fov} from {tiff_data.shape[1]} to {tiff_data.shape[1]*scale}.")
+        print(f"Changing {fov} from {int(tiff_data.shape[1])} to {int(tiff_data.shape[1]*scale)}.")
         for channel in tiff_data.channels.values:
-            channel_data = tiff_data.loc[fov, :, :, channel]
+            channel_data = np.array(tiff_data.loc[fov, :, :, channel])
             rescale = rescale_image(
                 channel_data, scale, save_path=os.path.join(extraction_dir, fov, f"{channel}.tiff")
             )
