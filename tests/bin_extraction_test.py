@@ -1,14 +1,16 @@
 import os
 import shutil
 import tempfile
+import warnings
 from pathlib import Path
 from unittest.mock import call, patch
 
 import natsort as ns
 import pandas as pd
 import pytest
-from alpineer import io_utils, test_utils
+from alpineer import image_utils, io_utils, load_utils, test_utils
 
+from tests.utils.test_utils import make_run_file
 from toffy import bin_extraction
 
 
@@ -129,4 +131,50 @@ def test_extract_missing_fovs(mocked_print):
         with pytest.warns(Warning, match="No viable bin files were found"):
             bin_extraction.extract_missing_fovs(
                 bin_file_dir, extraction_dir, panel, extract_intensities=False
+            )
+
+
+def test_incomplete_fov_check():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        bin_dir = make_run_file(tmpdir, prefixes=[""])
+        extraction_dir = os.path.join(tmpdir, "extracted_images", "test_run")
+        test_utils._write_tifs(
+            extraction_dir,
+            ["fov-1-scan-1", "fov-2-scan-1", "fov-4-scan-1"],
+            ["chan1", "chan2"],
+            (20, 20),
+            None,
+            False,
+            "uint32",
+        )
+
+        # test no partial FOVs, no warning
+        bin_extraction.incomplete_fov_check(bin_dir, extraction_dir, num_rows=10)
+
+        # change fov-2 to have zero values in the bottom of image
+        fov2_data = load_utils.load_imgs_from_tree(extraction_dir, fovs=["fov-2-scan-1"])
+        fov2_data[:, 10:, :, 0] = 0
+        image_utils.save_image(
+            os.path.join(extraction_dir, "fov-2-scan-1", f"chan1.tiff"),
+            fov2_data.loc["fov-2-scan-1", :, :, "chan1"],
+        )
+
+        # test warning for partial fovs (checking 1 channel img)
+        with pytest.warns():
+            bin_extraction.incomplete_fov_check(
+                bin_dir, extraction_dir, num_rows=10, num_channels=1
+            )
+
+        # test that increasing the number of rows to check causes no warning
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            bin_extraction.incomplete_fov_check(
+                bin_dir, extraction_dir, num_rows=20, num_channels=1
+            )
+
+        # test that increasing the number of channels to check causes no warning
+        with warnings.catch_warnings():
+            warnings.simplefilter("error")
+            bin_extraction.incomplete_fov_check(
+                bin_dir, extraction_dir, num_rows=10, num_channels=2
             )

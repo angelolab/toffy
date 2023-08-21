@@ -3,7 +3,6 @@ import shutil
 import tempfile
 import time
 import warnings
-from datetime import datetime
 from multiprocessing import TimeoutError
 from multiprocessing.pool import ThreadPool as Pool
 from pathlib import Path
@@ -98,20 +97,20 @@ COMBINED_RUN_JSON_SPOOF = {
         {
             "runOrder": 2,
             "scanCount": 1,
-            "name": "R1C1",
+            "name": "R2C1",
             "frameSizePixels": {"width": 32, "height": 32},
         },
         {
             "runOrder": 3,
             "scanCount": 1,
-            "name": "R1C1",
+            "name": "R1C2",
             "frameSizePixels": {"width": 32, "height": 32},
             "standardTarget": "Molybdenum Foil",
         },
         {
             "runOrder": 4,
             "scanCount": 1,
-            "name": "R1C1",
+            "name": "R2C2",
             "frameSizePixels": {"width": 32, "height": 32},
         },
     ],
