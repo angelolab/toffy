@@ -170,7 +170,8 @@ class FovCallbacks:
         self.__panel = panel
 
         if extract_prof:
-            # modify from (-0.3, 0) to (0, 0.3) for proficient
+            # adds an offset of 0.3 to 'Start' and 'Stop' columns, modifying extraction range
+            # from (-0.3, 0) to (0, 0.3) for proficient extraction
             panel_prof = modify_panel_ranges(panel, start_offset=0.3, stop_offset=0.3)
             self.__fov_data_prof = extract_bin_files(
                 data_dir=self.run_folder,
