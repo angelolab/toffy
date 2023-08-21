@@ -77,13 +77,16 @@ def extract_missing_fovs(
         warnings.warn(f"No viable bin files were found in {bin_file_dir}", Warning)
 
 
-def incomplete_fov_check(bin_file_dir, extraction_dir, num_rows=10, num_channels=5):
+def incomplete_fov_check(
+    bin_file_dir, extraction_dir, num_rows=10, num_channels=5, signal_percent=0.02
+):
     """Read in the supplied number tiff files for each FOV to check for incomplete images
     Args:
         bin_file_dir (str): directory containing the run json file
         extraction_dir (str): directory containing the extracted tifs
         num_rows (int): number of bottom rows of the images to check for zero values
         num_channels (int): number of channel images to check per FOV
+        signal_percent (float): min amount of non-zero signal required for complete FOVs
 
     Raises:
         Warning if any FOVs have only partially generated images
@@ -96,7 +99,7 @@ def incomplete_fov_check(bin_file_dir, extraction_dir, num_rows=10, num_channels
     run_file_path = os.path.join(bin_file_dir, run_name + ".json")
     run_metadata = read_json_file(run_file_path, encoding="utf-8")
 
-    # read in run file
+    # get fov and channel info
     fovs = io_utils.list_folders(extraction_dir, "fov")
     channels = io_utils.list_files(os.path.join(extraction_dir, fovs[0]), ".tiff")
     channels_subset = channels[:num_channels]
@@ -112,7 +115,7 @@ def incomplete_fov_check(bin_file_dir, extraction_dir, num_rows=10, num_channels
 
         # check percentage of non-zero pixels in the bottom of the image
         total_pixels = img_data.shape[1] * num_rows * num_channels
-        if np.count_nonzero(img_bottoms) / total_pixels < 0.02:
+        if np.count_nonzero(img_bottoms) / total_pixels < signal_percent:
             i = re.findall(r"\d+", fov)[0]
             custom_name = run_metadata["fovs"][int(i) - 1]["name"]
             incomplete_fovs[fov] = custom_name
