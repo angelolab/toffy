@@ -316,10 +316,11 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir, img_size
 
 
 @pytest.mark.parametrize("scale", [0.5, 2, 0.3])
-def test_rescale_images(scale):
+@pytest.mark.parametrize("dims", [(2, 10, 10, 5, 1), (1, 10, 10)])
+def test_rescale_images(scale, dims):
     # test 3d array raises error
-    img_data = np.ones((2, 10, 10, 5, 1))
-    with pytest.raises(ValueError, match="Image data must only have 4 dimensions."):
+    img_data = np.ones(dims)
+    with pytest.raises(ValueError, match="Image data must have either 2 or 4 dimensions."):
         _ = image_stitching.rescale_images(img_data, scale)
     img_data = np.squeeze(img_data)
 
@@ -332,13 +333,18 @@ def test_rescale_images(scale):
     else:
         rescaled_data = image_stitching.rescale_images(img_data, scale)
 
+        if len(dims) > 3:
+            correct_shape = (
+                img_data.shape[0],
+                img_data.shape[1] * scale,
+                img_data.shape[2] * scale,
+                img_data.shape[3],
+            )
+        else:
+            correct_shape = (img_data.shape[0] * scale, img_data.shape[1] * scale)
+
         # check shape is altered correctly
-        assert rescaled_data.shape == (
-            img_data.shape[0],
-            img_data.shape[1] * scale,
-            img_data.shape[2] * scale,
-            img_data.shape[3],
-        )
+        assert rescaled_data.shape == correct_shape
 
         # check values were not changed
         assert (rescaled_data == 1).all()

@@ -12,7 +12,7 @@ import skimage.io as io
 from alpineer import image_utils, io_utils, load_utils, misc_utils
 from scipy.ndimage import gaussian_filter
 
-from toffy.image_stitching import rescale_image
+from toffy.image_stitching import rescale_images
 from toffy.json_utils import read_json_file
 from toffy.streak_detection import streak_correction
 
@@ -512,7 +512,7 @@ def create_tiled_comparison(
                 )
         # scale image size
         if img_size_scale:
-            tiled_image = rescale_image(tiled_image, img_size_scale)
+            tiled_image = rescale_images(tiled_image, img_size_scale)
         fname = os.path.join(output_dir, channels[j] + "_comparison.tiff")
         image_utils.save_image(fname, tiled_image)
 

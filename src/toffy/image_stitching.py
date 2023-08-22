@@ -270,24 +270,28 @@ def stitch_images(
 def rescale_images(img_data, scale, save_path=None):
     """Rescale image data to a desired shape
     Args:
-        img_data (np.array): data to be reshaped, expected to be 4 dimensions (fov, x, y, channel)
+        img_data (np.array): data to be reshaped, expected to be either 2 or 4 dimensions
         scale (int): amount to scale the data up or down
         save_path (str): the location to save the tiff file
     Returns:
         numpy.array: data reshaped according to scale value
     """
-    # check for 4d data
-    if len(img_data.shape) != 4:
-        raise ValueError("Image data must only have 4 dimensions.")
+    # check data dimensions
+    if len(img_data.shape) != 2 and len(img_data.shape) != 4:
+        raise ValueError("Image data must have either 2 or 4 dimensions.")
 
     if scale < 1 and img_data.shape[1] % scale != 0:
         raise ValueError("Scale value less than 1 must be a factor of the image size.")
 
-    # rescale 2nd and 3rd dimension data while preserving values
+    # preserve fov and channel dimensions if needed
+    if len(img_data.shape) == 4:
+        scale = (1, scale, scale, 1)
+
+    # rescale dimension data while preserving values
     data_type = img_data.dtype
     rescaled_data = transform.rescale(
         img_data,
-        (1, scale, scale, 1),
+        scale,
         mode="constant",
         preserve_range=True,
         order=0,
