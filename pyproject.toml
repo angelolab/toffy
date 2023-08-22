@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "Toffy"
-version = "0.0.0"
+version = "0.2.1"
 description = "Scripts for interacting with and generating data from the commercial MIBIScope."
 authors = [
     "Noah Frey Greenwald <nfgreen@stanford.edu>",
