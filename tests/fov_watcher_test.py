@@ -242,6 +242,7 @@ def test_watcher(
     add_blank,
     temp_bin,
 ):
+    print("The watcher start lag is: %d" % watcher_start_lag)
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             tiff_out_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME)
@@ -378,6 +379,14 @@ def test_watcher(
 
             # extract tiffs check
             validators[0](os.path.join(tmpdir, "cb_0", RUN_DIR_NAME), fovs, bad_fovs)
+            if kwargs["extract_prof"]:
+                validators[0](
+                    os.path.join(tmpdir, "cb_0", RUN_DIR_NAME + "_proficient"), fovs, bad_fovs
+                )
+            else:
+                assert not os.path.exists(
+                    os.path.join(tmpdir, "cb_0", RUN_DIR_NAME) + "_proficient"
+                )
 
             # qc check
             validators[1](os.path.join(tmpdir, "cb_1", RUN_DIR_NAME), fovs, bad_fovs)

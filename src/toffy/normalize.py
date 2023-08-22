@@ -47,7 +47,9 @@ def write_counts_per_mass(base_dir, output_dir, fov, masses, start_offset=0.5, s
     out_df.to_csv(os.path.join(output_dir, fov + "_channel_counts.csv"), index=False)
 
 
-def write_mph_per_mass(base_dir, output_dir, fov, masses, start_offset=0.5, stop_offset=0.5):
+def write_mph_per_mass(
+    base_dir, output_dir, fov, masses, start_offset=0.5, stop_offset=0.5, proficient=False
+):
     """Records the median pulse height (MPH) per mass for the specified FOV
 
     Args:
@@ -57,6 +59,7 @@ def write_mph_per_mass(base_dir, output_dir, fov, masses, start_offset=0.5, stop
         masses (list): the list of masses to extract MPH from
         start_offset (float): beginning value for calculating mph values
         stop_offset (float): ending value for calculating mph values
+        proficient (bool): whether proficient MPH data is written or not
     """
     # hold computed values
     mph_vals = []
@@ -72,7 +75,10 @@ def write_mph_per_mass(base_dir, output_dir, fov, masses, start_offset=0.5, stop
     # create df to hold output
     fovs = np.repeat(fov, len(masses))
     out_df = pd.DataFrame({"mass": masses, "fov": fovs, "pulse_height": mph_vals})
-    out_df.to_csv(os.path.join(output_dir, fov + "_pulse_heights.csv"), index=False)
+    pulse_heights_file = (
+        fov + "_pulse_heights_proficient.csv" if proficient else fov + "_pulse_heights.csv"
+    )
+    out_df.to_csv(os.path.join(output_dir, pulse_heights_file), index=False)
 
 
 def create_objective_function(obj_func):
@@ -222,7 +228,9 @@ def combine_run_metrics(run_dir, substring, warn_overwrite=True):
         substring(str): the substring contained within the files to be combined
         warn_overwrite (bool): whether to warn if existing `_combined.csv` file found"""
 
+    # retrieve all pulse height files, but ignore anything mass proficient
     files = io_utils.list_files(run_dir, substring)
+    files = [file for file in files if "_proficient" not in file]
 
     # validate inputs
     if len(files) == 0:
