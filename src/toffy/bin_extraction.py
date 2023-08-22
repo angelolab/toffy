@@ -124,6 +124,6 @@ def incomplete_fov_check(
         incomplete_fovs = pd.DataFrame(incomplete_fovs, index=[0]).T
         incomplete_fovs.columns = ["fov_name"]
         warnings.warn(
-            "The following FOVs were only partially generated and need to be re-ran: \n"
+            "\nThe following FOVs were only partially generated and need to be re-ran: \n"
             f"{incomplete_fovs}"
         )
