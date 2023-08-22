@@ -9,6 +9,37 @@ from alpineer import test_utils
 from toffy import panel_utils
 
 
+def test_modify_panel_ranges():
+    # only Calprotectin's range should be adjusted
+    toffy_panel = pd.DataFrame(
+        {
+            "Mass": [69, 71, 89],
+            "Target": ["Calprotectin", "Chymase", "Mast Cell Tryptase"],
+            "Start": [68.7, 70.6, 89.3],
+            "Stop": [69, 71, 89],
+        }
+    )
+
+    toffy_panel_pos_offset = panel_utils.modify_panel_ranges(
+        toffy_panel, start_offset=0.3, stop_offset=0.3
+    )
+
+    assert list(toffy_panel_pos_offset["Start"]) == [69, 70.6, 89.3]
+    assert list(toffy_panel_pos_offset["Stop"]) == [69.3, 71, 89]
+
+    toffy_panel_neg_offset = panel_utils.modify_panel_ranges(
+        toffy_panel, start_offset=-0.3, stop_offset=-0.3
+    )
+
+    assert list(toffy_panel_neg_offset["Start"]) == [68.4, 70.6, 89.3]
+    assert list(toffy_panel_neg_offset["Stop"]) == [68.7, 71, 89]
+
+    toffy_panel_one_offset = panel_utils.modify_panel_ranges(toffy_panel, stop_offset=-0.3)
+
+    assert list(toffy_panel_one_offset["Start"]) == [68.7, 70.6, 89.3]
+    assert list(toffy_panel_one_offset["Stop"]) == [68.7, 71, 89]
+
+
 def test_merge_duplicate_masses():
     duplicate_panel = pd.DataFrame(
         {
