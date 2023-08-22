@@ -111,14 +111,7 @@ def rescale_stitched_array(img_data, scale):
     fovs = img_data.fovs.values
     channels = img_data.channels.values
 
-    # create empty array
-    rescaled_data = np.zeros((fov_num, int(rows * scale), int(cols * scale), chan_num))
-
-    # scale the data for each img individually
-    for i in range(fov_num):
-        for j in range(chan_num):
-            current_img = np.array(img_data[i, :, :, j])
-            rescaled_data[i, :, :, j] = rescale_image(current_img, scale)
+    rescaled_data = rescale_images(np.array(img_data), scale)
 
     # fill in the metadata
     rescaled_xr = xr.DataArray(
@@ -274,27 +267,27 @@ def stitch_images(
             image_utils.save_image(fname, current_img)
 
 
-def rescale_image(img_data, scale, save_path=None):
+def rescale_images(img_data, scale, save_path=None):
     """Rescale image data to a desired shape
     Args:
-        img_data (np.array): data to be reshaped, expected to only be 2 dimensions
+        img_data (np.array): data to be reshaped, expected to be 4 dimensions (fov, x, y, channel)
         scale (int): amount to scale the data up or down
         save_path (str): the location to save the tiff file
     Returns:
         numpy.array: data reshaped according to scale value
     """
-    # check for 2d data
-    if len(img_data.shape) != 2:
-        raise ValueError("Image data must only have 2 dimensions.")
+    # check for 4d data
+    if len(img_data.shape) != 4:
+        raise ValueError("Image data must only have 4 dimensions.")
 
-    if scale < 1 and img_data.shape[0] % scale != 0:
+    if scale < 1 and img_data.shape[1] % scale != 0:
         raise ValueError("Scale value less than 1 must be a factor of the image size.")
 
-    # rescale data while preserving values
+    # rescale 2nd and 3rd dimension data while preserving values
     data_type = img_data.dtype
     rescaled_data = transform.rescale(
         img_data,
-        scale,
+        (1, scale, scale, 1),
         mode="constant",
         preserve_range=True,
         order=0,
@@ -333,13 +326,15 @@ def fix_image_resolutions(resolution_data, extraction_dir):
     for fov in res_change.fov:
         fov_res = res_change[res_change.fov == fov]["pixels / 400 microns"].values
         scale = correct_res / fov_res
-
         tiff_data = load_utils.load_imgs_from_tree(extraction_dir, fovs=[fov])
 
-        # scale and save every channel image
+        # scale data
         print(f"Changing {fov} from {int(tiff_data.shape[1])} to {int(tiff_data.shape[1]*scale)}.")
-        for channel in tiff_data.channels.values:
-            channel_data = np.array(tiff_data.loc[fov, :, :, channel])
-            rescale = rescale_image(
-                channel_data, scale, save_path=os.path.join(extraction_dir, fov, f"{channel}.tiff")
+        rescaled_data = rescale_images(np.array(tiff_data), float(scale))
+
+        # save every channel image
+        for i, channel in enumerate(tiff_data.channels.values):
+            channel_data = rescaled_data[0, :, :, i]
+            image_utils.save_image(
+                os.path.join(extraction_dir, fov, f"{channel}.tiff"), channel_data
             )
