@@ -102,7 +102,9 @@ def incomplete_fov_check(
     # get fov and channel info
     fovs = io_utils.list_folders(extraction_dir, "fov")
     channels = io_utils.list_files(os.path.join(extraction_dir, fovs[0]), ".tiff")
-    channels_subset = channels[: num_channels - 1] + ["Au.tiff"]
+    channels_subset = channels[:num_channels]
+    if "Au.tiff" not in channels_subset:
+        channels_subset = channels_subset[:-1] + "Au.tiff"
 
     incomplete_fovs = {}
     for fov in fovs:

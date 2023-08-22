@@ -141,7 +141,7 @@ def test_incomplete_fov_check():
         test_utils._write_tifs(
             extraction_dir,
             ["fov-1-scan-1", "fov-2-scan-1", "fov-4-scan-1"],
-            ["chan1", "chan2"],
+            ["Au", "chan2"],
             (20, 20),
             None,
             False,
@@ -155,8 +155,8 @@ def test_incomplete_fov_check():
         fov2_data = load_utils.load_imgs_from_tree(extraction_dir, fovs=["fov-2-scan-1"])
         fov2_data[:, 10:, :, 0] = 0
         image_utils.save_image(
-            os.path.join(extraction_dir, "fov-2-scan-1", f"chan1.tiff"),
-            fov2_data.loc["fov-2-scan-1", :, :, "chan1"],
+            os.path.join(extraction_dir, "fov-2-scan-1", f"Au.tiff"),
+            fov2_data.loc["fov-2-scan-1", :, :, "Au"],
         )
 
         # test warning for partial fovs (checking 1 channel img)
