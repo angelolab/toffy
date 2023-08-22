@@ -83,6 +83,11 @@ def test_write_mph_per_mass(mocker):
         assert set(output["mass"].values) == set(masses)
         assert np.all(output["pulse_height"].values == output["mass"].values * 2)
 
+        normalize.write_mph_per_mass(
+            base_dir=temp_dir, output_dir=out_dir, fov="fov1", masses=masses, proficient=True
+        )
+        assert os.path.exists(os.path.join(out_dir, "fov1_pulse_heights_proficient.csv"))
+
 
 @parametrize(
     "obj_func_name, num_params",
@@ -152,16 +157,20 @@ def test_create_prediction_function(obj_func, num_params):
 @parametrize("warn_overwrite_test", [True, False])
 def test_combine_run_metrics(metrics, warn_overwrite_test):
     with tempfile.TemporaryDirectory() as temp_dir:
-        for metric in metrics:
+        for metric in metrics["deficient"]:
             name, values_df = metric[0], pd.DataFrame(metric[1])
             values_df.to_csv(os.path.join(temp_dir, name), index=False)
+
+        for metric in metrics["proficient"]:
+            name_prof, values_df_prof = metric[0], pd.DataFrame(metric[1])
+            values_df_prof.to_csv(os.path.join(temp_dir, name_prof), index=False)
 
         normalize.combine_run_metrics(temp_dir, "pulse_height")
 
         combined_data = pd.read_csv(os.path.join(temp_dir, "pulse_height_combined.csv"))
 
         assert np.array_equal(combined_data.columns, ["pulse_height", "mass", "fov"])
-        assert len(combined_data) == len(metrics) * 10
+        assert len(combined_data) == len(metrics["deficient"]) * 10
 
         # check that previously generated combined file is removed with warning
         # NOTE: only if warn_overwrite turned on
@@ -172,7 +181,7 @@ def test_combine_run_metrics(metrics, warn_overwrite_test):
             normalize.combine_run_metrics(temp_dir, "pulse_height", warn_overwrite_test)
 
         # check that files with different lengths raises error
-        name, bad_vals = metrics[0][0], pd.DataFrame(metrics[0][1])
+        name, bad_vals = metrics["deficient"][0][0], pd.DataFrame(metrics["deficient"][0][1])
         bad_vals = bad_vals.loc[0:5, :]
         bad_vals.to_csv(os.path.join(temp_dir, name), index=False)
 
@@ -491,7 +500,7 @@ def test_create_fitted_pulse_heights_file(tmpdir, test_zeros, metrics):
     # create metric files
     pulse_dir = os.path.join(tmpdir, "pulse_heights")
     os.makedirs(pulse_dir)
-    for metric in metrics:
+    for metric in metrics["deficient"]:
         name, values_df = metric[0], pd.DataFrame(metric[1])
 
         # if test_zeros, set first mass pulse height to 0 for every FOV
@@ -499,6 +508,10 @@ def test_create_fitted_pulse_heights_file(tmpdir, test_zeros, metrics):
             values_df.iloc[0, 0] = 0
 
         values_df.to_csv(os.path.join(pulse_dir, name), index=False)
+
+    for metric in metrics["proficient"]:
+        name_prof, values_df_prof = metric[0], pd.DataFrame(metric[1])
+        values_df_prof.to_csv(os.path.join(pulse_dir, name_prof), index=False)
 
     panel = test_cases.panel
     fovs = natsort.natsorted(test_cases.fovs)
@@ -633,9 +646,13 @@ def test_normalize_image_data(tmpdir, metrics):
     pulse_height_dir = os.path.join(tmpdir, "pulse_height_dir")
     os.makedirs(pulse_height_dir)
 
-    for metric in metrics:
+    for metric in metrics["deficient"]:
         name, values_df = metric[0], pd.DataFrame(metric[1])
         values_df.to_csv(os.path.join(pulse_height_dir, name), index=False)
+
+    for metric in metrics["proficient"]:
+        name_prof, values_df_prof = metric[0], pd.DataFrame(metric[1])
+        values_df_prof.to_csv(os.path.join(pulse_height_dir, name_prof), index=False)
 
     # create directory with image data
     img_dir = os.path.join(tmpdir, "img_dir")
