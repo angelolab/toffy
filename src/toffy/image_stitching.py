@@ -325,6 +325,7 @@ def fix_image_resolutions(resolution_data, extraction_dir):
 
     if len(res_change) == 0:
         print("No resolution scaling needed for any FOVs in this run.")
+        return
 
     # loop through problematic fovs
     for fov in res_change.fov:
