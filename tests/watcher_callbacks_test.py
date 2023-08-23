@@ -140,6 +140,10 @@ def test_build_callbacks(viz_mock, run_callbacks, inter_callbacks, kwargs, data_
             icb(run_data)
 
         check_extraction_dir_structure(extracted_dir, point_names, [], ["SMA"])
+        if kwargs["extract_prof"]:
+            check_extraction_dir_structure(extracted_dir + "_proficient", point_names, [], ["SMA"])
+        else:
+            assert not os.path.exists(extracted_dir + "_proficient")
         check_qc_dir_structure(qc_dir, point_names, [], "save_dir" in kwargs)
         check_mph_dir_structure(qc_dir, plot_dir, point_names, [], combined=True)
         check_stitched_dir_structure(stitched_dir, ["SMA"])

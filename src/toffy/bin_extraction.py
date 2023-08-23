@@ -87,6 +87,7 @@ def incomplete_fov_check(
         num_rows (int): number of bottom rows of the images to check for zero values
         num_channels (int): number of channel images to check per FOV
         signal_percent (float): min amount of non-zero signal required for complete FOVs
+
     Raises:
         Warning if any FOVs have only partially generated images
     """

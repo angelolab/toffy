@@ -112,5 +112,6 @@ class CombineRunMetricFiles:
                 "mass": masses,
                 "fov": [fovs[i]] * 10,
             }
+            metrics.append([metric_name, metric_values])
             metrics_prof.append([metric_prof_name, metric_prof_values])
         return {"deficient": metrics, "proficient": metrics_prof}

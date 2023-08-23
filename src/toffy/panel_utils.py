@@ -107,11 +107,14 @@ necessary_masses = pd.DataFrame(
 
 def modify_panel_ranges(panel: pd.DataFrame, start_offset: float = 0, stop_offset: float = 0):
     """Adjust the offsets of a given panel.
+
     Only applicable for masses with ranges separated by 0.3 between 'Stop' and 'Start'.
+
     Args:
         panel (pd.DataFrame): panel dataframe with columns Mass, Target, Start, and Stop.
         start_offset (float): the value to add to the `'Start'` column.
         stop_offset (float): the value to add to the `'Stop'` column.
+
     Returns:
         pd.DataFrame:
             Updated panel with `start_offset` added to `'Start`' column,
