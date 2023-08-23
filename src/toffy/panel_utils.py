@@ -105,6 +105,38 @@ necessary_masses = pd.DataFrame(
 )
 
 
+def modify_panel_ranges(panel: pd.DataFrame, start_offset: float = 0, stop_offset: float = 0):
+    """Adjust the offsets of a given panel.
+    Only applicable for masses with ranges separated by 0.3 between 'Stop' and 'Start'.
+    Args:
+        panel (pd.DataFrame): panel dataframe with columns Mass, Target, Start, and Stop.
+        start_offset (float): the value to add to the `'Start'` column.
+        stop_offset (float): the value to add to the `'Stop'` column.
+    Returns:
+        pd.DataFrame:
+            Updated panel with `start_offset` added to `'Start`' column,
+            likewise for `stop_offset` and `'Stop'` column.
+    """
+    panel_new = panel.copy()
+
+    # extract only rows where 'Start' - 'End' = -0.3, round to account for floating point error
+    panel_rows_modify = panel_new[
+        (panel_new["Start"] - panel_new["Stop"]).round(1) == -0.3
+    ].index.values
+
+    # add start_offset to 'Start' column
+    panel_new.loc[panel_rows_modify, "Start"] = (
+        panel_new.loc[panel_rows_modify, "Start"].copy() + start_offset
+    )
+
+    # add stop_offset to 'Stop' column
+    panel_new.loc[panel_rows_modify, "Stop"] = (
+        panel_new.loc[panel_rows_modify, "Stop"].copy() + stop_offset
+    )
+
+    return panel_new
+
+
 def merge_duplicate_masses(panel):
     """Check a panel df for duplicate mass values and return a unique mass panel with the
         target names combined

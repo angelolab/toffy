@@ -89,15 +89,31 @@ def _slow_copy_sample_tissue_data(
 
 COMBINED_RUN_JSON_SPOOF = {
     "fovs": [
-        {"runOrder": 1, "scanCount": 1, "frameSizePixels": {"width": 32, "height": 32}},
-        {"runOrder": 2, "scanCount": 1, "frameSizePixels": {"width": 32, "height": 32}},
+        {
+            "runOrder": 1,
+            "scanCount": 1,
+            "name": "R1C1",
+            "frameSizePixels": {"width": 32, "height": 32},
+        },
+        {
+            "runOrder": 2,
+            "scanCount": 1,
+            "name": "R2C1",
+            "frameSizePixels": {"width": 32, "height": 32},
+        },
         {
             "runOrder": 3,
             "scanCount": 1,
+            "name": "R1C2",
             "frameSizePixels": {"width": 32, "height": 32},
             "standardTarget": "Molybdenum Foil",
         },
-        {"runOrder": 4, "scanCount": 1, "frameSizePixels": {"width": 32, "height": 32}},
+        {
+            "runOrder": 4,
+            "scanCount": 1,
+            "name": "R2C2",
+            "frameSizePixels": {"width": 32, "height": 32},
+        },
     ],
 }
 
@@ -242,6 +258,7 @@ def test_watcher(
     add_blank,
     temp_bin,
 ):
+    print("The watcher start lag is: %d" % watcher_start_lag)
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             tiff_out_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME)
@@ -267,7 +284,6 @@ def test_watcher(
             fov_callback, run_callback, intermediate_callback = build_callbacks(
                 run_cbs, int_cbs, fov_cbs, **kwargs
             )
-
             write_json_file(
                 json_path=os.path.join(run_data, "test_run.json"),
                 json_object=COMBINED_RUN_JSON_SPOOF,
@@ -379,6 +395,14 @@ def test_watcher(
 
             # extract tiffs check
             validators[0](os.path.join(tmpdir, "cb_0", RUN_DIR_NAME), fovs, bad_fovs)
+            if kwargs["extract_prof"]:
+                validators[0](
+                    os.path.join(tmpdir, "cb_0", RUN_DIR_NAME + "_proficient"), fovs, bad_fovs
+                )
+            else:
+                assert not os.path.exists(
+                    os.path.join(tmpdir, "cb_0", RUN_DIR_NAME) + "_proficient"
+                )
 
             # qc check
             validators[1](os.path.join(tmpdir, "cb_1", RUN_DIR_NAME), fovs, bad_fovs)

@@ -96,14 +96,21 @@ class TuningCurveFiles:
 
 class CombineRunMetricFiles:
     def case_default_metrics(self):
-        # create full directory of files
+        # create full directory of files, include proficient data which should be ignored
         metrics = []
+        metrics_prof = []
         for i in range(0, 4):
             metric_name = "pulse_heights_{}.csv".format(i)
+            metric_prof_name = "pulse_heights_{}_proficient.csv".format(i)
             metric_values = {
                 "pulse_height": np.random.rand(10),
                 "mass": masses,
                 "fov": [fovs[i]] * 10,
             }
-            metrics.append([metric_name, metric_values])
-        return metrics
+            metric_prof_values = {
+                "pulse_height": np.random.rand(10),
+                "mass": masses,
+                "fov": [fovs[i]] * 10,
+            }
+            metrics_prof.append([metric_prof_name, metric_prof_values])
+        return {"deficient": metrics, "proficient": metrics_prof}
