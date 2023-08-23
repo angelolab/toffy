@@ -15,10 +15,12 @@ from alpineer import io_utils, misc_utils
 from mibi_bin_tools.bin_files import _write_out, extract_bin_files
 from mibi_bin_tools.type_utils import any_true
 
+from toffy.bin_extraction import incomplete_fov_check
 from toffy.image_stitching import stitch_images
 from toffy.json_utils import missing_fov_check
 from toffy.mph_comp import combine_mph_metrics, compute_mph_metrics, visualize_mph
 from toffy.normalize import write_mph_per_mass
+from toffy.panel_utils import modify_panel_ranges
 from toffy.qc_comp import combine_qc_metrics, compute_qc_metrics_direct
 from toffy.qc_metrics_plots import visualize_qc_metrics
 from toffy.settings import QC_COLUMNS
@@ -118,6 +120,16 @@ class RunCallbacks:
 
         stitch_images(tiff_out_dir, self.run_folder, **viz_kwargs)
 
+    def check_incomplete_fovs(self, tiff_out_dir, **kwargs):
+        """Checks for partial images (even when fully extracted)
+
+        Args:
+            tiff_out_dir (str): directory containing extracted images
+        Raises:
+            Warning if any  FOVs have partially generated images
+        """
+        incomplete_fov_check(self.run_folder, tiff_out_dir)
+
     def check_missing_fovs(self, **kwargs):
         """Checks for associated bin/json files per FOV
         Raises:
@@ -132,11 +144,14 @@ class FovCallbacks:
     point_name: str
     overwrite: bool
     __panel: pd.DataFrame = field(default=None, init=False)
+    __panel_prof: pd.DataFrame = field(default=None, init=False)
     __fov_data: xr.DataArray = field(default=None, init=False)
+    __fov_data_prof: xr.DataArray = field(default=None, init=False)
 
     def _generate_fov_data(
         self,
         panel: pd.DataFrame,
+        extract_prof: bool,
         intensities=["Au", "chan_39"],
         replace=True,
         time_res=0.0005,
@@ -146,9 +161,13 @@ class FovCallbacks:
 
         The data and the panel are then cached members of the FovCallbacks object
 
+        Both the deficient and proficient extracted data and panel are computed and cached
+
         Args:
             panel (pd.DataFrame):
                 Panel used for extraction
+            extract_prof (bool):
+                If set, extract proficient data
             intensities (bool | List[str]):
                 Intensities argument for `mibi_bin_tools.bin_files.extract_bin_files`
             replace (bool):
@@ -167,17 +186,37 @@ class FovCallbacks:
             replace=replace,
             time_res=time_res,
         )
-
         self.__panel = panel
 
-    def extract_tiffs(self, tiff_out_dir: str, panel: pd.DataFrame, **kwargs):
+        if extract_prof:
+            # adds an offset of 0.3 to 'Start' and 'Stop' columns, modifying extraction range
+            # from (-0.3, 0) to (0, 0.3) for proficient extraction
+            panel_prof = modify_panel_ranges(panel, start_offset=0.3, stop_offset=0.3)
+            self.__fov_data_prof = extract_bin_files(
+                data_dir=self.run_folder,
+                out_dir=None,
+                include_fovs=[self.point_name],
+                panel=panel_prof,
+                intensities=intensities,
+                replace=replace,
+                time_res=time_res,
+            )
+            self.__panel_prof = panel_prof
+
+    def extract_tiffs(
+        self, tiff_out_dir: str, panel: pd.DataFrame, extract_prof: bool = True, **kwargs
+    ):
         """Extract tiffs into provided directory, using given panel
+
+        Done for both the extracted deficient and proficient data
 
         Args:
             tiff_out_dir (str):
                 Path where tiffs are written
             panel (pd.DataFrame):
                 Target mass integration ranges
+            extract_prof (bool):
+                If set, extract mass proficient data
             **kwargs (dict):
                 Additional arguments for `mibi_bin_tools.bin_files.extract_bin_files`.
                 Accepted kwargs are
@@ -207,8 +246,8 @@ class FovCallbacks:
             unextracted_chans = io_utils.remove_file_extensions(unextracted_chan_tiffs)
             panel = panel[panel["Target"].isin(unextracted_chans)]
 
-        if self.__fov_data is None:
-            self._generate_fov_data(panel, **kwargs)
+        if self.__fov_data is None or self.__fov_data_prof is None:
+            self._generate_fov_data(panel, extract_prof, **kwargs)
 
         intensities = kwargs.get("intensities", ["Au", "chan_39"])
         if any_true(intensities) and type(intensities) is not list:
@@ -222,7 +261,18 @@ class FovCallbacks:
             intensities=intensities,
         )
 
-    def generate_qc(self, qc_out_dir: str, panel: pd.DataFrame = None, **kwargs):
+        if extract_prof:
+            _write_out(
+                img_data=self.__fov_data_prof[0, :, :, :, :].values,
+                out_dir=tiff_out_dir + "_proficient",
+                fov_name=self.point_name,
+                targets=list(self.__fov_data.channel.values),
+                intensities=intensities,
+            )
+
+    def generate_qc(
+        self, qc_out_dir: str, panel: pd.DataFrame = None, extract_prof: bool = True, **kwargs
+    ):
         """Generates qc metrics from given panel, and saves output to provided directory
 
         Args:
@@ -230,6 +280,8 @@ class FovCallbacks:
                 Path where qc_metrics are written
             panel (pd.DataFrame):
                 Target mass integration ranges
+            extract_prof (bool):
+                If set, extract mass proficient data
             **kwargs (dict):
                 Additional arguments for `toffy.qc_comp.compute_qc_metrics`. Accepted kwargs are:
 
@@ -242,7 +294,7 @@ class FovCallbacks:
         if self.__fov_data is None:
             if panel is None:
                 raise ValueError("Must provide panel if fov data is not already generated...")
-            self._generate_fov_data(panel, **kwargs)
+            self._generate_fov_data(panel, extract_prof, **kwargs)
 
         qc_metric_paths = [
             os.path.join(qc_out_dir, f"{self.point_name}_nonzero_mean_stats.csv"),
@@ -275,7 +327,6 @@ class FovCallbacks:
              - mass_start
              - mass_stop
         """
-
         if not os.path.exists(mph_out_dir):
             os.makedirs(mph_out_dir)
 
@@ -305,7 +356,6 @@ class FovCallbacks:
              - start_offset
              - stop_offset
         """
-
         if not os.path.exists(pulse_out_dir):
             os.makedirs(pulse_out_dir)
 
@@ -430,7 +480,6 @@ def build_callbacks(
                 # unreachable...
                 raise ValueError(f"Could not locate attribute {run_cb} in RunCallbacks object")
 
-    intermediate_callback = None
     intermediate_callback = None
     if intermediate_callbacks:
 
