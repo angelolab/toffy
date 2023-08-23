@@ -1,10 +1,14 @@
+import os
+import re
 import warnings
 
 import natsort as ns
-from alpineer import io_utils
+import numpy as np
+import pandas as pd
+from alpineer import io_utils, load_utils
 from mibi_bin_tools import bin_files
 
-from toffy.json_utils import check_for_empty_files, list_moly_fovs
+from toffy.json_utils import check_for_empty_files, list_moly_fovs, read_json_file
 
 
 def extract_missing_fovs(
@@ -71,3 +75,57 @@ def extract_missing_fovs(
         print("Extraction completed!")
     else:
         warnings.warn(f"No viable bin files were found in {bin_file_dir}", Warning)
+
+
+def incomplete_fov_check(
+    bin_file_dir, extraction_dir, num_rows=10, num_channels=5, signal_percent=0.02
+):
+    """Read in the supplied number tiff files for each FOV to check for incomplete images
+    Args:
+        bin_file_dir (str): directory containing the run json file
+        extraction_dir (str): directory containing the extracted tifs
+        num_rows (int): number of bottom rows of the images to check for zero values
+        num_channels (int): number of channel images to check per FOV
+        signal_percent (float): min amount of non-zero signal required for complete FOVs
+
+    Raises:
+        Warning if any FOVs have only partially generated images
+    """
+
+    io_utils.validate_paths([bin_file_dir, extraction_dir])
+
+    # read in json file to get custom fov names
+    run_name = os.path.basename(bin_file_dir)
+    run_file_path = os.path.join(bin_file_dir, run_name + ".json")
+    run_metadata = read_json_file(run_file_path, encoding="utf-8")
+
+    # get fov and channel info
+    fovs = io_utils.list_folders(extraction_dir, "fov")
+    channels = io_utils.list_files(os.path.join(extraction_dir, fovs[0]), ".tiff")
+    channels_subset = channels[:num_channels]
+    if "Au.tiff" not in channels_subset:
+        channels_subset = channels_subset[:-1] + ["Au.tiff"]
+
+    incomplete_fovs = {}
+    for fov in fovs:
+        # load in channel images
+        img_data = load_utils.load_imgs_from_tree(
+            extraction_dir, fovs=[fov], channels=channels_subset
+        )
+        row_index = img_data.shape[1] - num_rows
+        img_bottoms = img_data[0, row_index:, :, :]
+
+        # check percentage of non-zero pixels in the bottom of the image
+        total_pixels = img_data.shape[1] * num_rows * num_channels
+        if np.count_nonzero(img_bottoms) / total_pixels < signal_percent:
+            i = re.findall(r"\d+", fov)[0]
+            custom_name = run_metadata["fovs"][int(i) - 1]["name"]
+            incomplete_fovs[fov] = custom_name
+
+    if incomplete_fovs:
+        incomplete_fovs = pd.DataFrame(incomplete_fovs, index=[0]).T
+        incomplete_fovs.columns = ["fov_name"]
+        warnings.warn(
+            "\nThe following FOVs were only partially generated and need to be re-ran: \n"
+            f"{incomplete_fovs}"
+        )
