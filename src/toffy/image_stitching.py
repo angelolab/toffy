@@ -280,8 +280,8 @@ def rescale_images(img_data, scale, save_path=None):
     if len(img_data.shape) != 2 and len(img_data.shape) != 4:
         raise ValueError("Image data must have either 2 or 4 dimensions.")
 
-    if scale < 1 and img_data.shape[1] % scale != 0:
-        raise ValueError("Scale value less than 1 must be a factor of the image size.")
+    if scale < 1 and (img_data.shape[1] * scale) % 1 != 0:
+        raise ValueError("Scale value less than 1 must result in integer dimensions.")
 
     # preserve fov and channel dimensions if needed
     if len(img_data.shape) == 4:

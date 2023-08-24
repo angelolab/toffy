@@ -300,7 +300,11 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir, img_size
         # test stitching for no run_dir
         if not tiled:
             image_stitching.stitch_images(
-                tmpdir, channels=["Au", "CD3"], img_sub_folder=subdir, tiled=tiled
+                tmpdir,
+                channels=["Au", "CD3"],
+                img_sub_folder=subdir,
+                tiled=tiled,
+                img_size_scale=img_scale,
             )
             assert sorted(io_utils.list_files(os.path.join(tmpdir, stitched_dir))) == sorted(
                 ["Au_stitched.tiff", "CD3_stitched.tiff"]
@@ -312,11 +316,12 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir, img_size
                     channels=["Au", "CD3"],
                     img_sub_folder=subdir,
                     tiled=tiled,
+                    img_size_scale=img_scale,
                 )
 
 
 @pytest.mark.parametrize("scale", [0.5, 2, 0.3])
-@pytest.mark.parametrize("dims", [(2, 10, 10, 5, 1), (1, 10, 10)])
+@pytest.mark.parametrize("dims", [(2, 8, 8, 5, 1), (1, 8, 8)])
 def test_rescale_images(scale, dims):
     # test 3d array raises error
     img_data = np.ones(dims)
@@ -326,7 +331,7 @@ def test_rescale_images(scale, dims):
 
     # test non-factor scale raises error
     if scale == 0.3:
-        with pytest.raises(ValueError, match="Scale value less than 1 must be a factor"):
+        with pytest.raises(ValueError, match="Scale value less than 1 must result in integer"):
             _ = image_stitching.rescale_images(img_data, scale)
 
     # test success
