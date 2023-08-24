@@ -294,7 +294,6 @@ def rescale_images(img_data, scale, save_path=None):
         scale,
         mode="constant",
         preserve_range=True,
-        order=0,
     )
     rescaled_data = rescaled_data.astype(data_type)
 
