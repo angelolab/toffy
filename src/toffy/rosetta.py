@@ -12,6 +12,7 @@ import skimage.io as io
 from alpineer import image_utils, io_utils, load_utils, misc_utils
 from scipy.ndimage import gaussian_filter
 
+from toffy.image_stitching import rescale_images
 from toffy.json_utils import read_json_file
 from toffy.streak_detection import streak_correction
 
@@ -437,7 +438,12 @@ def copy_round_one_compensated_images(
 
 
 def create_tiled_comparison(
-    input_dir_list, output_dir, max_img_size, img_sub_folder="rescaled", channels=None
+    input_dir_list,
+    output_dir,
+    max_img_size,
+    img_sub_folder="rescaled",
+    channels=None,
+    img_size_scale=0.25,
 ):
     """Creates a tiled image comparing FOVs from all supplied runs for each channel.
 
@@ -446,7 +452,9 @@ def create_tiled_comparison(
         output_dir: directory where tifs will be saved
         max_img_size (int): largest fov image size
         img_sub_folder: subfolder within each input directory to load images from
-        channels: list of channels to compare."""
+        channels: list of channels to compare.
+        img_size_scale (int/float): amount to scale down image, set to None for no scaling
+    """
 
     test_dir = input_dir_list[0]
     test_fov = io_utils.list_folders(test_dir)[0]
@@ -502,6 +510,9 @@ def create_tiled_comparison(
                 tiled_image[(max_img_size * idx) : (max_img_size * (idx + 1)), start:end] = (
                     dir_data.values[i, :, :, 0]
                 )
+        # scale image size
+        if img_size_scale:
+            tiled_image = rescale_images(tiled_image, img_size_scale)
         fname = os.path.join(output_dir, channels[j] + "_comparison.tiff")
         image_utils.save_image(fname, tiled_image)
 

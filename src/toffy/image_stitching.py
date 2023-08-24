@@ -1,10 +1,14 @@
 import math
 import os
 import re
+from collections import Counter
 
 import natsort as ns
+import numpy as np
 import skimage.io as io
+import xarray as xr
 from alpineer import data_utils, image_utils, io_utils, load_utils, misc_utils
+from skimage import transform
 
 from toffy import json_utils
 
@@ -93,8 +97,39 @@ def get_tiled_names(fov_list, run_dir):
     return fov_names
 
 
+def rescale_stitched_array(img_data, scale):
+    """Take an array of stitched image data and rescale the rows and cols dims
+    Args:
+        img_data (xarray.DataArray): data array with 4 dimensions (fov, rows, cols, channels)
+        scale (int): amount to scale the data up or down
+    Returns:
+        xarray.DataArray: data reshaped according to scale value while keeping fov/channel info
+    """
+
+    # extract dimension info from xarray
+    fov_num, rows, cols, chan_num = img_data.shape
+    fovs = img_data.fovs.values
+    channels = img_data.channels.values
+
+    rescaled_data = rescale_images(np.array(img_data), scale)
+
+    # fill in the metadata
+    rescaled_xr = xr.DataArray(
+        rescaled_data,
+        coords=[fovs, range(int(rows * scale)), range(int(cols * scale)), channels],
+        dims=["fovs", "rows", "cols", "channels"],
+    )
+    return rescaled_xr
+
+
 def stitch_images(
-    tiff_out_dir, run_dir=None, channels=None, img_sub_folder=None, tiled=False, scale=200
+    tiff_out_dir,
+    run_dir=None,
+    channels=None,
+    img_sub_folder=None,
+    tiled=False,
+    intensity_scale=200,
+    img_size_scale=0.25,
 ):
     """Creates a new directory containing stitched channel images for the run
     Args:
@@ -103,7 +138,9 @@ def stitch_images(
         channels (list): list of channels to produce stitched images for, None will do all
         img_sub_folder (str): optional name of image sub-folder within each fov
         tiled (bool): whether to stitch images back into original tiled shape
-        scale (int): how much to rescale the stitched image by, needed for Photoshop compatibility
+        intensity_scale (int): how much to rescale the image values by,
+            needed for Photoshop compatibility
+        img_size_scale (int/float): amount to scale down image, set to None for no scaling
     """
 
     io_utils.validate_paths(tiff_out_dir)
@@ -193,9 +230,12 @@ def stitch_images(
                     single_dir=False,
                     img_sub_folder=img_sub_folder,
                 )
+                if img_size_scale:
+                    image_data = rescale_stitched_array(image_data, img_size_scale)
+
                 fname = os.path.join(tile_stitched_dir, chan + "_stitched.tiff")
                 stitched = data_utils.stitch_images(image_data, num_cols)
-                current_img = stitched.loc["stitched_image", :, :, chan].values / scale
+                current_img = stitched.loc["stitched_image", :, :, chan] / intensity_scale
                 image_utils.save_image(fname, current_img)
 
         if tma_folders or not tiled:
@@ -218,7 +258,87 @@ def stitch_images(
                 channels=[chan],
                 max_image_size=max_img_size,
             )
+            if img_size_scale:
+                image_data = rescale_stitched_array(image_data, img_size_scale)
+
             fname = os.path.join(stitched_subdir, chan + "_stitched.tiff")
             stitched = data_utils.stitch_images(image_data, num_cols)
-            current_img = stitched.loc["stitched_image", :, :, chan].values / scale
+            current_img = stitched.loc["stitched_image", :, :, chan] / intensity_scale
             image_utils.save_image(fname, current_img)
+
+
+def rescale_images(img_data, scale, save_path=None):
+    """Rescale image data to a desired shape
+    Args:
+        img_data (np.array): data to be reshaped, expected to be either 2 or 4 dimensions
+        scale (int): amount to scale the data up or down
+        save_path (str): the location to save the tiff file
+    Returns:
+        numpy.array: data reshaped according to scale value
+    """
+    # check data dimensions
+    if len(img_data.shape) != 2 and len(img_data.shape) != 4:
+        raise ValueError("Image data must have either 2 or 4 dimensions.")
+
+    if scale < 1 and (img_data.shape[1] * scale) % 1 != 0:
+        raise ValueError("Scale value less than 1 must result in integer dimensions.")
+
+    # preserve fov and channel dimensions if needed
+    if len(img_data.shape) == 4:
+        scale = (1, scale, scale, 1)
+
+    # rescale dimension data while preserving values
+    data_type = img_data.dtype
+    rescaled_data = transform.rescale(
+        img_data,
+        scale,
+        mode="constant",
+        preserve_range=True,
+    )
+    rescaled_data = rescaled_data.astype(data_type)
+
+    # overwrite image tiff
+    if save_path:
+        io_utils.validate_paths(save_path)
+        image_utils.save_image(save_path, rescaled_data)
+
+    return rescaled_data
+
+
+def fix_image_resolutions(resolution_data, extraction_dir):
+    """Rescales any images that are a different resolution than the majority in the run
+    Args:
+        resolution_data (pd.DataFrame): details the fov names and resolutions
+        extraction_dir (str): path to the extracted images dir for the specific run
+    """
+    io_utils.validate_paths(extraction_dir)
+
+    # only check extracted fovs
+    extracted_fovs = io_utils.list_folders(extraction_dir, substrs="fov")
+    resolution_data = resolution_data[np.isin(resolution_data.fov, extracted_fovs)]
+
+    # identify majority value, subset data for other resolutions
+    resolutions = resolution_data["pixels / 400 microns"]
+    correct_res = Counter(resolutions).most_common(1)[0][0]
+    res_change = resolution_data[resolution_data["pixels / 400 microns"] != correct_res]
+
+    if len(res_change) == 0:
+        print("No resolution scaling needed for any FOVs in this run.")
+        return
+
+    # loop through problematic fovs
+    for fov in res_change.fov:
+        fov_res = res_change[res_change.fov == fov]["pixels / 400 microns"].values
+        scale = correct_res / fov_res
+        tiff_data = load_utils.load_imgs_from_tree(extraction_dir, fovs=[fov])
+
+        # scale data
+        print(f"Changing {fov} from {int(tiff_data.shape[1])} to {int(tiff_data.shape[1]*scale)}.")
+        rescaled_data = rescale_images(np.array(tiff_data), float(scale))
+
+        # save every channel image
+        for i, channel in enumerate(tiff_data.channels.values):
+            channel_data = rescaled_data[0, :, :, i]
+            image_utils.save_image(
+                os.path.join(extraction_dir, fov, f"{channel}.tiff"), channel_data
+            )

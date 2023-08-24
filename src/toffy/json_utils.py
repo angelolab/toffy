@@ -2,6 +2,7 @@ import copy
 import json
 import os
 import warnings
+from collections import Counter
 
 import pandas as pd
 from alpineer import io_utils
@@ -214,6 +215,10 @@ def check_fov_resolutions(bin_file_dir, run_name, save_path=None):
 
     fov_names, custom_names, resolutions = [], [], []
     for fov in run_metadata.get("fovs", ()):
+        # ignore moly resolutions
+        if fov.get("standardTarget") == "Molybdenum Foil":
+            continue
+
         # get fov names
         fov_number = fov.get("runOrder")
         default_name = f"fov-{fov_number}-scan-1"
@@ -229,13 +234,26 @@ def check_fov_resolutions(bin_file_dir, run_name, save_path=None):
         mult = 400 / fov_micron_length
         pixels_adj = int(mult * fov_pixel_length)
 
-        # output values
-        print(f"{default_name} ({custom_name}): {pixels_adj} pixels x {400} microns")
+        # save values
         resolutions.append(pixels_adj)
 
     resolution_data = pd.DataFrame(
         {"fov": fov_names, "name": custom_names, "pixels / 400 microns": resolutions}
     )
+
+    if len(set(resolution_data["pixels / 400 microns"])) > 1:
+        val = Counter(resolutions).most_common(1)[0][0]
+        print(
+            "Inconsistent resolutions.\n"
+            f"All FOVs are {val} pixels per 400 microns except the following:"
+        )
+
+        # print resolutions that are in the minority
+        subset = resolution_data[resolution_data["pixels / 400 microns"] != val]
+        print(subset.to_string(index=False))
+    else:
+        print(f"FOV resolutions are all {pixels_adj} pixels / 400 microns")
+
     if save_path:
         resolution_data.to_csv(save_path, index=False)
 
