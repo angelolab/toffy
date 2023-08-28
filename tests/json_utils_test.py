@@ -186,38 +186,55 @@ def test_check_for_empty_files():
         assert empty_files == ["empty_file"]
 
 
-def test_check_fov_resolutions():
+def test_check_fov_resolutions(capsys):
     with tempfile.TemporaryDirectory() as temp_dir:
         run_data = {
             "fovs": [
                 {
                     "runOrder": 1,
                     "scanCount": 1,
-                    "frameSizePixels": {"width": 32, "height": 32},
+                    "frameSizePixels": {"width": 10, "height": 10},
                     "fovSizeMicrons": 100,
                 },
                 {
                     "runOrder": 2,
                     "scanCount": 1,
-                    "frameSizePixels": {"width": 32, "height": 32},
+                    "frameSizePixels": {"width": 10, "height": 10},
                     "fovSizeMicrons": 100,
                 },
                 {
                     "runOrder": 3,
                     "scanCount": 1,
-                    "frameSizePixels": {"width": 16, "height": 16},
+                    "frameSizePixels": {"width": 5, "height": 5},
                     "fovSizeMicrons": 100,
+                    "name": "wrong_resolution",
+                },
+                {
+                    "runOrder": 4,
+                    "scanCount": 1,
+                    "frameSizePixels": {"width": 2, "height": 2},
+                    "fovSizeMicrons": 100,
+                    "standardTarget": "Molybdenum Foil",
                 },
             ],
         }
 
         json_utils.write_json_file(os.path.join(temp_dir, "test_run.json"), run_data)
 
-        # test successful resolution check
+        # test successful resolution check and print statements
         resolution_data = json_utils.check_fov_resolutions(
             temp_dir, "test_run", save_path=os.path.join(temp_dir, "resolution_data.csv")
         )
+        out, err = capsys.readouterr()
+        assert (
+            out
+            == "Inconsistent resolutions.\n"
+            "All FOVs are 40 pixels per 400 microns except the following:\n"
+            "         fov             name  pixels / 400 microns\n"
+            "fov-3-scan-1 wrong_resolution                    20\n"
+        )
 
+        # moly fov is ignored
         assert resolution_data.shape == (3, 3)
         assert (
             np.array(["fov-1-scan-1", "fov-2-scan-1", "fov-3-scan-1"]) == resolution_data["fov"]
