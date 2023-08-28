@@ -465,6 +465,7 @@ def test_watcher_missing_fovs():
                 fov_callback,
                 run_callback,
                 intermediate_callback,
-                completion_check_time=5,
-                zero_size_timeout=5,
+                completion_check_time=1,
+                zero_size_timeout=1,
+                watcher_timeout=1,
             )

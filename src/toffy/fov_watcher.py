@@ -29,7 +29,7 @@ class RunStructure:
         fov_progress (dict): Whether or not an expected file has been created
     """
 
-    def __init__(self, run_folder: str, fov_timeout: int = 10 * 60):
+    def __init__(self, run_folder: str, fov_timeout: int = 7800):
         """initializes RunStructure by parsing run json within provided run folder
 
         Args:
@@ -183,7 +183,8 @@ class FOV_EventHandler(FileSystemEventHandler):
         fov_callback: Callable[[str, str], None],
         run_callback: Callable[[str], None],
         intermediate_callback: Callable[[str], None] = None,
-        fov_timeout: int = 1.03 * 60 * 60,
+        fov_timeout: int = 7800,
+        watcher_timeout: int = 3 * 7800,
     ):
         """Initializes FOV_EventHandler
 
@@ -200,12 +201,16 @@ class FOV_EventHandler(FileSystemEventHandler):
                 run callback overriden to run on each fov
             fov_timeout (int):
                 number of seconds to wait for non-null filesize before raising an error
+            watcher_timeout (int):
+                length to wait for new file generation before timing out
         """
         super().__init__()
         self.run_folder = run_folder
 
         self.last_event_time = datetime.now()
-        self.timer_thread = threading.Thread(target=self.file_timer, args=(fov_timeout,))
+        self.timer_thread = threading.Thread(
+            target=self.file_timer, args=(fov_timeout, watcher_timeout)
+        )
         self.timer_thread.daemon = True
         self.timer_thread.start()
 
@@ -488,19 +493,21 @@ class FOV_EventHandler(FileSystemEventHandler):
             super().on_created(event)
             self._run_callbacks(event, check_last_fov)
 
-    def file_timer(self, fov_timeout):
+    def file_timer(self, fov_timeout, watcher_timeout):
         """Checks time since last file was generated
         Args:
 
             fov_timeout (int):
                 how long to wait for fov data to be generated once file detected
+            watcher_timeout (int):
+                length to wait for new file generation before timing out
         """
         while True:
             current_time = datetime.now()
             time_elapsed = (current_time - self.last_event_time).total_seconds()
 
             # 3 fov cycles and no new files --> timeout
-            if time_elapsed > 3 * fov_timeout:
+            if time_elapsed > watcher_timeout:
                 print("Timed out waiting for new file to be generated.")
                 logging.info(
                     f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Timed out'
@@ -567,6 +574,7 @@ def start_watcher(
     run_folder_timeout: int = 5400,
     completion_check_time: int = 30,
     zero_size_timeout: int = 7800,
+    watcher_timeout: int = 3 * 7800,
 ):
     """Passes bin files to provided callback functions as they're created
 
@@ -618,7 +626,13 @@ def start_watcher(
 
     observer = Observer()
     event_handler = FOV_EventHandler(
-        run_folder, log_folder, fov_callback, run_callback, intermediate_callback, zero_size_timeout
+        run_folder,
+        log_folder,
+        fov_callback,
+        run_callback,
+        intermediate_callback,
+        zero_size_timeout,
+        watcher_timeout,
     )
     observer.schedule(event_handler, run_folder, recursive=True)
     observer.start()
