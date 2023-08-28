@@ -430,7 +430,12 @@ def test_watcher_missing_fovs():
         # add extra fov to run file
         large_run_json_spoof = COMBINED_RUN_JSON_SPOOF.copy()
         large_run_json_spoof["fovs"] = COMBINED_RUN_JSON_SPOOF["fovs"] + [
-            {"runOrder": 5, "scanCount": 1, "frameSizePixels": {"width": 32, "height": 32}}
+            {
+                "runOrder": 5,
+                "scanCount": 1,
+                "frameSizePixels": {"width": 32, "height": 32},
+                "name": "missing_fov",
+            }
         ]
 
         run_data = os.path.join(tmpdir, "test_run")
@@ -450,10 +455,9 @@ def test_watcher_missing_fovs():
             encoding="utf-8",
         )
 
-        # watcher should raise warning for missing fov data
+        # watcher should raise warning for missing fov data (and not hang waiting for new file)
         with pytest.warns(
-            UserWarning,
-            match="The following FOVs were not processed due to missing/empty/late files:",
+            warnings.warn("The following FOVs were not processed due to missing/empty/late files:"),
         ):
             start_watcher(
                 run_data,
@@ -461,4 +465,6 @@ def test_watcher_missing_fovs():
                 fov_callback,
                 run_callback,
                 intermediate_callback,
+                completion_check_time=5,
+                zero_size_timeout=5,
             )

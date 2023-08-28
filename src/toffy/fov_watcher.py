@@ -1,6 +1,6 @@
 import logging
 import os
-import platform
+import threading
 import time
 import warnings
 from datetime import datetime
@@ -29,16 +29,16 @@ class RunStructure:
         fov_progress (dict): Whether or not an expected file has been created
     """
 
-    def __init__(self, run_folder: str, timeout: int = 10 * 60):
+    def __init__(self, run_folder: str, fov_timeout: int = 10 * 60):
         """initializes RunStructure by parsing run json within provided run folder
 
         Args:
             run_folder (str):
                 path to run folder
-            timeout (int):
+            fov_timeout (int):
                 number of seconds to wait for non-null filesize before raising an error
         """
-        self.timeout = timeout
+        self.timeout = fov_timeout
         self.fov_progress = {}
         self.processed_fovs = []
         self.moly_points = []
@@ -183,7 +183,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         fov_callback: Callable[[str, str], None],
         run_callback: Callable[[str], None],
         intermediate_callback: Callable[[str], None] = None,
-        timeout: int = 1.03 * 60 * 60,
+        fov_timeout: int = 1.03 * 60 * 60,
     ):
         """Initializes FOV_EventHandler
 
@@ -198,11 +198,16 @@ class FOV_EventHandler(FileSystemEventHandler):
                 callback to run over the entire run
             intermediate_callback (Callable[[None], None]):
                 run callback overriden to run on each fov
-            timeout (int):
+            fov_timeout (int):
                 number of seconds to wait for non-null filesize before raising an error
         """
         super().__init__()
         self.run_folder = run_folder
+
+        self.last_event_time = datetime.now()
+        self.timer_thread = threading.Thread(target=self.file_timer, args=(fov_timeout,))
+        self.timer_thread.daemon = True
+        self.timer_thread.start()
 
         self.log_path = os.path.join(log_folder, f"{Path(run_folder).parts[-1]}_log.txt")
         if not os.path.exists(log_folder):
@@ -215,7 +220,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         )
 
         # create run structure
-        self.run_structure = RunStructure(run_folder, timeout=timeout)
+        self.run_structure = RunStructure(run_folder, fov_timeout=fov_timeout)
 
         self.fov_func = fov_callback
         self.run_func = run_callback
@@ -471,6 +476,10 @@ class FOV_EventHandler(FileSystemEventHandler):
             event (FileCreatedEvent):
                 file creation event
         """
+        # reset event creation time
+        current_time = datetime.now()
+        self.last_event_time = current_time
+
         # this happens if _check_last_fov gets called by a prior FOV, no need to reprocess
         if self.last_fov_num_processed == self.run_structure.highest_fov:
             return
@@ -478,6 +487,38 @@ class FOV_EventHandler(FileSystemEventHandler):
         with self.lock:
             super().on_created(event)
             self._run_callbacks(event, check_last_fov)
+
+    def file_timer(self, fov_timeout):
+        """Checks time since last file was generated
+        Args:
+
+            fov_timeout (int):
+                how long to wait for fov data to be generated once file detected
+        """
+        while True:
+            current_time = datetime.now()
+            time_elapsed = (current_time - self.last_event_time).total_seconds()
+
+            # 3 fov cycles and no new files --> timeout
+            if time_elapsed > 3 * fov_timeout:
+                print("Timed out waiting for new file to be generated.")
+                logging.info(
+                    f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Timed out'
+                    "waiting for new file generation.\n"
+                )
+                logging.info(
+                    f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
+                    f"Running {self.run_func.__name__} on FOVs\n"
+                )
+
+                # mark remaining fovs as completed to exit watcher
+                for fov_name in list(self.run_structure.fov_progress.keys()):
+                    self.run_structure.fov_progress[fov_name] = {"json": True, "bin": True}
+
+                # trigger run callbacks
+                self.run_func(self.run_folder)
+                break
+            time.sleep(fov_timeout)
 
     def on_moved(self, event: FileMovedEvent, check_last_fov: bool = True):
         """Handles file renaming events
