@@ -508,10 +508,12 @@ class FOV_EventHandler(FileSystemEventHandler):
 
             # 3 fov cycles and no new files --> timeout
             if time_elapsed > watcher_timeout:
-                print("Timed out waiting for new file to be generated.")
+                fov_num = self.last_fov_num_processed
+                fov_name = list(self.run_structure.fov_progress.keys())[fov_num]
+                print(f"Timed out waiting for {fov_name} files to be generated.")
                 logging.info(
                     f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Timed out'
-                    "waiting for new file generation.\n"
+                    f"waiting for {fov_name} files to be generated.\n"
                 )
                 logging.info(
                     f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
