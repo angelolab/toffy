@@ -17,6 +17,7 @@ from mibi_bin_tools.type_utils import any_true
 
 from toffy.bin_extraction import incomplete_fov_check
 from toffy.image_stitching import stitch_images
+from toffy.json_utils import missing_fov_check
 from toffy.mph_comp import combine_mph_metrics, compute_mph_metrics, visualize_mph
 from toffy.normalize import write_mph_per_mass
 from toffy.panel_utils import modify_panel_ranges
@@ -128,6 +129,13 @@ class RunCallbacks:
             Warning if any  FOVs have partially generated images
         """
         incomplete_fov_check(self.run_folder, tiff_out_dir)
+
+    def check_missing_fovs(self, **kwargs):
+        """Checks for associated bin/json files per FOV
+        Raises:
+            Warning if any fov data is missing
+        """
+        missing_fov_check(self.run_folder, os.path.basename(self.run_folder))
 
 
 @dataclass

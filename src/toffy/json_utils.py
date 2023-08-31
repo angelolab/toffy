@@ -258,3 +258,46 @@ def check_fov_resolutions(bin_file_dir, run_name, save_path=None):
         resolution_data.to_csv(save_path, index=False)
 
     return resolution_data
+
+
+def missing_fov_check(bin_file_dir, run_name):
+    """Use the run metadata to check if all FOV data was generated
+    Args:
+        bin_file_dir (str): directory containing the run json file
+        run_name (str): name of the run and corresponding run file
+
+    Raises:
+        Warning if any FOVs specified in the run file doesn't have associated bin/json files
+    """
+
+    # read in run file
+    run_file_path = os.path.join(bin_file_dir, run_name + ".json")
+    io_utils.validate_paths([run_file_path])
+    run_metadata = read_json_file(run_file_path, encoding="utf-8")
+
+    missing_fovs = {}
+    for fov in run_metadata.get("fovs", ()):
+        if fov.get("standardTarget") == "Molybdenum Foil":
+            continue
+
+        # get fov names
+        fov_number = fov.get("runOrder")
+        default_name = f"fov-{fov_number}-scan-1"
+        custom_name = fov.get("name")
+
+        # add default name and custom name for missing data
+        if not os.path.exists(
+            os.path.join(bin_file_dir, default_name + ".bin")
+        ) or not os.path.exists(os.path.join(bin_file_dir, default_name + ".json")):
+            missing_fovs[default_name] = [custom_name]
+
+        elif os.path.getsize(os.path.join(bin_file_dir, default_name + ".json")) == 0:
+            missing_fovs[default_name] = [custom_name]
+
+    if missing_fovs:
+        missing_fovs = pd.DataFrame(missing_fovs, index=[0]).T
+        missing_fovs.columns = ["fov_name"]
+        warnings.warn(
+            "The following FOVs were not processed due to missing/empty/late files: \n"
+            f"{missing_fovs}"
+        )
