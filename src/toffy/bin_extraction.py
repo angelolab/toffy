@@ -126,6 +126,7 @@ def incomplete_fov_check(
         incomplete_fovs = pd.DataFrame(incomplete_fovs, index=[0]).T
         incomplete_fovs.columns = ["fov_name"]
         warnings.warn(
-            "\nThe following FOVs were only partially generated and need to be re-ran: \n"
-            f"{incomplete_fovs}"
+            f"\nThe following FOVs have less than {signal_percent*100}% positive signal on average"
+            " at the bottom of the tiff and may have been only partially imaged: \n"
+            f"{incomplete_fovs}\n"
         )
