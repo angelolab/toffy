@@ -1,4 +1,5 @@
 import os
+import re
 import shutil
 import tempfile
 
@@ -11,6 +12,7 @@ from alpineer import io_utils, load_utils, test_utils
 
 from tests.utils.test_utils import make_run_file
 from toffy import image_stitching
+from toffy.utils import remove_readonly
 
 
 def test_get_max_img_size():
@@ -263,7 +265,7 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir, img_size
         # test previous stitching raises an error
         with pytest.raises(ValueError, match="The stitch_images subdirectory already exists"):
             image_stitching.stitch_images(tmpdir, test_dir, img_sub_folder=subdir, tiled=tiled)
-        shutil.rmtree(os.path.join(tmpdir, stitched_dir))
+        shutil.rmtree(os.path.join(tmpdir, stitched_dir), onerror=remove_readonly)
 
         # test stitching for specific channels
         image_stitching.stitch_images(
@@ -290,7 +292,7 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir, img_size
             assert sorted(io_utils.list_files(os.path.join(tmpdir, stitched_dir))) == sorted(
                 ["Au_stitched.tiff", "CD3_stitched.tiff"]
             )
-        shutil.rmtree(os.path.join(tmpdir, stitched_dir))
+        shutil.rmtree(os.path.join(tmpdir, stitched_dir), onerror=remove_readonly)
 
     with tempfile.TemporaryDirectory() as tmpdir:
         run_name = os.path.basename(tmpdir)

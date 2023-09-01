@@ -14,6 +14,7 @@ from pytest_cases import parametrize_with_cases
 
 from toffy import rosetta
 from toffy.rosetta import create_rosetta_matrices
+from toffy.utils import remove_readonly
 
 from .utils import rosetta_test_cases as test_cases
 
@@ -726,7 +727,7 @@ def test_copy_image_files(mocker):
                 assert os.path.exists(os.path.join(extracted_fov_dir, folder, "test_image.tif"))
 
             # test successful folder copy with some runs skipped
-            rmtree(os.path.join(temp_dir2, "cohort_name"))
+            rmtree(os.path.join(temp_dir2, "cohort_name"), onerror=remove_readonly)
             with pytest.warns(UserWarning, match="The following runs will be skipped"):
                 rosetta.copy_image_files(
                     "cohort_name", run_names, temp_dir2, temp_dir, fovs_per_run=5

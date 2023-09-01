@@ -7,6 +7,7 @@ import pytest
 from alpineer.image_utils import save_image
 
 from toffy import file_hash
+from toffy.utils import remove_readonly
 
 
 def test_get_hash():
@@ -54,7 +55,7 @@ def test_compare_directories():
             file_hash.compare_directories(dir_1, dir_2)
 
         # check that warning is raised when sub-folder is present in second directory
-        shutil.rmtree(sub_folder_1)
+        shutil.rmtree(sub_folder_1, onerror=remove_readonly)
         sub_folder_2 = os.path.join(dir_2, "sub_folder")
         os.makedirs(sub_folder_2)
 

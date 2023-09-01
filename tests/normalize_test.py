@@ -14,6 +14,7 @@ from pytest_cases import parametrize_with_cases
 
 from toffy import normalize
 from toffy.json_utils import read_json_file, write_json_file
+from toffy.utils import remove_readonly
 
 from .utils import normalize_test_cases as test_cases
 
@@ -699,8 +700,8 @@ def test_normalize_image_data(tmpdir, metrics):
         )
 
     # mismatch between FOVs
-    shutil.rmtree(os.path.join(img_dir, fovs[0]))
-    shutil.rmtree(norm_dir)
+    shutil.rmtree(os.path.join(img_dir, fovs[0]), onerror=remove_readonly)
+    shutil.rmtree(norm_dir, onerror=remove_readonly)
     os.makedirs(norm_dir)
     with pytest.raises(ValueError, match="image data fovs"):
         normalize.normalize_image_data(
