@@ -3,6 +3,7 @@ import shutil
 import tempfile
 import time
 import warnings
+from datetime import datetime
 from multiprocessing import TimeoutError
 from multiprocessing.pool import ThreadPool as Pool
 from pathlib import Path
@@ -422,3 +423,49 @@ def test_watcher(
 
     except OSError:
         warnings.warn("Temporary file cleanup was incomplete.")
+
+
+def test_watcher_missing_fovs():
+    with tempfile.TemporaryDirectory() as tmpdir:
+        # add extra fov to run file
+        large_run_json_spoof = COMBINED_RUN_JSON_SPOOF.copy()
+        large_run_json_spoof["fovs"] = COMBINED_RUN_JSON_SPOOF["fovs"] + [
+            {
+                "runOrder": 5,
+                "scanCount": 1,
+                "frameSizePixels": {"width": 32, "height": 32},
+                "name": "missing_fov",
+            }
+        ]
+
+        run_data = os.path.join(tmpdir, "test_run")
+        os.makedirs(run_data)
+        for file in io_utils.list_files(COMBINED_DATA_PATH, substrs=[".bin", ".json"]):
+            shutil.copy(os.path.join(COMBINED_DATA_PATH, file), os.path.join(run_data, file))
+        log_out = os.path.join(tmpdir, "log_output")
+        fov_callback, run_callback, intermediate_callback = build_callbacks(
+            run_callbacks=["check_missing_fovs"],
+            intermediate_callbacks=[],
+            fov_callbacks=[],
+        )
+
+        write_json_file(
+            json_path=os.path.join(run_data, "test_run.json"),
+            json_object=large_run_json_spoof,
+            encoding="utf-8",
+        )
+
+        # watcher should raise warning for missing fov data (and not hang waiting for new file)
+        with pytest.warns(
+            warnings.warn("The following FOVs were not processed due to missing/empty/late files:"),
+        ):
+            start_watcher(
+                run_data,
+                log_out,
+                fov_callback,
+                run_callback,
+                intermediate_callback,
+                completion_check_time=1,
+                zero_size_timeout=1,
+                watcher_timeout=1,
+            )

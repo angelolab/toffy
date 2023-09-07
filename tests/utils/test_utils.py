@@ -173,7 +173,13 @@ FOV_CALLBACKS = (
     "generate_mph",
     "generate_pulse_heights",
 )
-RUN_CALLBACKS = ("plot_qc_metrics", "plot_mph_metrics", "image_stitching", "check_incomplete_fovs")
+RUN_CALLBACKS = (
+    "plot_qc_metrics",
+    "plot_mph_metrics",
+    "image_stitching",
+    "check_incomplete_fovs",
+    "check_missing_fovs",
+)
 
 
 def mock_visualize_qc_metrics(
@@ -576,7 +582,13 @@ class WatcherCases:
         }
 
         return (
-            ["plot_qc_metrics", "plot_mph_metrics", "image_stitching", "check_incomplete_fovs"],
+            [
+                "plot_qc_metrics",
+                "plot_mph_metrics",
+                "image_stitching",
+                "check_incomplete_fovs",
+                "check_missing_fovs",
+            ],
             None,
             ["extract_tiffs", "generate_pulse_heights"],
             kwargs,
