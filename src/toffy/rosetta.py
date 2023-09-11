@@ -514,7 +514,7 @@ def create_tiled_comparison(
         if img_size_scale:
             tiled_image = rescale_images(tiled_image, img_size_scale)
         fname = os.path.join(output_dir, channels[j] + "_comparison.tiff")
-        image_utils.save_image(fname, tiled_image)
+        image_utils.save_image(fname, np.round(tiled_image, 3))
 
 
 def add_source_channel_to_tiled_image(
@@ -580,7 +580,7 @@ def add_source_channel_to_tiled_image(
         # combine together and save
         combined_tile = np.concatenate([rescaled_source, current_tile])
         save_name = tile_name.split(".tiff")[0] + "_source_" + source_channel + ".tiff"
-        image_utils.save_image(os.path.join(output_dir, save_name), combined_tile)
+        image_utils.save_image(os.path.join(output_dir, save_name), np.round(combined_tile, 3))
 
 
 def replace_with_intensity_image(run_dir, channel="Au", replace=True, fovs=None):
