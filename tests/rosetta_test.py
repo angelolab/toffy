@@ -402,7 +402,7 @@ def test_copy_round_one_compensated_images():
 
         # copy the images and assert all channels exist in round two folder
         rosetta.copy_round_one_compensated_images(
-            round_one_folder, round_two_folder, channel_list[:2]
+            runs, round_one_folder, round_two_folder, channel_list[:2]
         )
 
         for run in runs:
