@@ -422,7 +422,7 @@ def copy_round_one_compensated_images(
     r1_runs = io_utils.list_folders(round_one_comp_folder)
     r2_runs = io_utils.list_folders(round_two_comp_folder)
     misc_utils.verify_in_list(provided_runs=runs, round_one_comp_runs=r1_runs)
-    misc_utils.verify_in_list(provided_runs=runs, round_two_comp_runs=r1_runs)
+    misc_utils.verify_in_list(provided_runs=runs, round_two_comp_runs=r2_runs)
 
     # for each FOV, copy the channel from their r1_runs folder to r2_runs folder
     for run in runs:
