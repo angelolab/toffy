@@ -8,10 +8,10 @@ dependencies:
   - seaborn
   - scikit-learn
   - jupyterlab
-  - jupyter_contrib_nbextensions
   - pip:
     - natsort
     - watchdog
     - alpineer==0.1.7
     - mibi-bin-tools==0.2.9
     - toffy==0.2.0
+    - jupyter_contrib_nbextensions
