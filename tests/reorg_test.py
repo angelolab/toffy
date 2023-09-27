@@ -64,7 +64,12 @@ def test_merge_partial_runs(tmpdir):
 
     # check that duplicate FOVs raises error
     os.makedirs(os.path.join(tmpdir, "run1_start", "fov2"))
-    with pytest.raises(ValueError, match="folder fov2 already exists"):
+    with pytest.raises(ValueError, match="['fov2']"):
+        reorg.merge_partial_runs(cohort_dir=tmpdir, run_string="run1")
+
+    # check multiple duplicate FOVs works
+    os.makedirs(os.path.join(tmpdir, "run1_start", "fov3"))
+    with pytest.raises(ValueError, match="['fov3', 'fov2']"):
         reorg.merge_partial_runs(cohort_dir=tmpdir, run_string="run1")
 
 

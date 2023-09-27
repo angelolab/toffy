@@ -26,6 +26,7 @@ def merge_partial_runs(cohort_dir, run_string):
         raise ValueError("No matching folders found for {}".format(run_string))
 
     # loop through each partial folder
+    duplicates = []
     for partial in partial_folders:
         fov_folders = io_utils.list_folders(os.path.join(cohort_dir, partial))
 
@@ -33,12 +34,16 @@ def merge_partial_runs(cohort_dir, run_string):
         for fov in fov_folders:
             new_path = os.path.join(output_folder, fov)
             if os.path.exists(new_path):
-                raise ValueError(
-                    "The following folder {} already exists in {}. If there are "
-                    "duplicates in your partial run folders, you'll need to determine"
-                    " which to keep before merging".format(fov, output_folder)
-                )
-            shutil.move(os.path.join(cohort_dir, partial, fov), new_path)
+                duplicates.append(fov)
+            else:
+                shutil.move(os.path.join(cohort_dir, partial, fov), new_path)
+
+        if duplicates:
+            raise ValueError(
+                "The following folders already exist in {}: {}. If there are "
+                "duplicates in your partial run folders, you'll need to determine"
+                " which to keep before merging".format(output_folder, duplicates)
+            )
 
         # remove partial folder
         shutil.rmtree(os.path.join(cohort_dir, partial))
