@@ -1,4 +1,4 @@
-name: toffy_env
+name: toffy_dev
 channels:
   - conda-forge
 dependencies:
@@ -14,4 +14,4 @@ dependencies:
     - alpineer==0.1.7
     - mibi-bin-tools==0.2.9
     - jupyter_contrib_nbextensions
-    - toffy==0.2.1
+    - -e .[test]
