@@ -2,8 +2,6 @@ import os
 import shutil
 from collections import Counter
 
-import numpy as np
-import pandas as pd
 from alpineer import io_utils, misc_utils
 
 from toffy.json_utils import read_json_file, rename_duplicate_fovs, rename_missing_fovs
