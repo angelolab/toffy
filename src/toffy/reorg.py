@@ -39,15 +39,12 @@ def merge_partial_runs(cohort_dir, run_string):
 
     # raise error to report any duplicate fovs
     if duplicate_fovs:
-        duplicate_info = {}
         for fov in duplicate_fovs:
-            duplicate_info[fov] = [
-                run_name for run_name, run_fovs in fovs_by_folder.items() if fov in run_fovs
-            ]
+            runs = [run_name for run_name, run_fovs in fovs_by_folder.items() if fov in run_fovs]
+            print(f"{fov}: {runs}")
         raise ValueError(
-            f'There are duplicate folders among runs containing the name "{run_string}".\n'
-            "You'll need to determine which folder to keep and which to delete before merging.\n"
-            f"{pd.DataFrame(duplicate_info).to_string(index=False)}"
+            f"The following FOV folders exist in multiple partial runs: {duplicate_fovs}\n"
+            "You need to determine which folders to keep and which to delete before merging."
         )
 
     # loop through each partial run folder and move the fov folders

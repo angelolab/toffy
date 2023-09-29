@@ -71,6 +71,7 @@ def test_merge_partial_runs(tmpdir):
 
     # check multiple duplicate FOVs (in different runs) works
     os.makedirs(os.path.join(tmpdir, "run_dup3", "fov2"))
+    os.makedirs(os.path.join(tmpdir, "run_dup4", "fov2"))
     with pytest.raises(ValueError, match="fov2"):
         reorg.merge_partial_runs(cohort_dir=tmpdir, run_string="dup")
 
