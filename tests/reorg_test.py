@@ -63,14 +63,16 @@ def test_merge_partial_runs(tmpdir):
         reorg.merge_partial_runs(cohort_dir=tmpdir, run_string="run4")
 
     # check that duplicate FOVs raises error
-    os.makedirs(os.path.join(tmpdir, "run1_start", "fov2"))
-    with pytest.raises(ValueError, match="['fov2']"):
-        reorg.merge_partial_runs(cohort_dir=tmpdir, run_string="run1")
+    for run, fovs in zip(["run_dup", "run_dup2"], [["fov1"], ["fov1", "fov2"]]):
+        for fov in fovs:
+            os.makedirs(os.path.join(tmpdir, run, fov))
+    with pytest.raises(ValueError, match="fov1"):
+        reorg.merge_partial_runs(cohort_dir=tmpdir, run_string="dup")
 
-    # check multiple duplicate FOVs works
-    os.makedirs(os.path.join(tmpdir, "run1_start", "fov3"))
-    with pytest.raises(ValueError, match="['fov3', 'fov2']"):
-        reorg.merge_partial_runs(cohort_dir=tmpdir, run_string="run1")
+    # check multiple duplicate FOVs (in different runs) works
+    os.makedirs(os.path.join(tmpdir, "run_dup3", "fov2"))
+    with pytest.raises(ValueError, match="fov2"):
+        reorg.merge_partial_runs(cohort_dir=tmpdir, run_string="dup")
 
 
 def test_combine_runs(tmpdir):

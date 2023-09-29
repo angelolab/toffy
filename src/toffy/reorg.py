@@ -1,6 +1,9 @@
 import os
 import shutil
+from collections import Counter
 
+import numpy as np
+import pandas as pd
 from alpineer import io_utils, misc_utils
 
 from toffy.json_utils import read_json_file, rename_duplicate_fovs, rename_missing_fovs
@@ -25,25 +28,36 @@ def merge_partial_runs(cohort_dir, run_string):
     if len(partial_folders) == 0:
         raise ValueError("No matching folders found for {}".format(run_string))
 
-    # loop through each partial folder
-    duplicates = []
+    # duplicate fovs check
+    fovs_by_folder = {}
+    for partial in partial_folders:
+        fovs_by_folder[partial] = io_utils.list_folders(os.path.join(cohort_dir, partial))
+    fov_names = [
+        fov for partial_folder_fovs in fovs_by_folder.values() for fov in partial_folder_fovs
+    ]
+    duplicate_fovs = [fov for fov, count in Counter(fov_names).items() if count > 1]
+
+    # raise error to report any duplicate fovs
+    if duplicate_fovs:
+        duplicate_info = {}
+        for fov in duplicate_fovs:
+            duplicate_info[fov] = [
+                run_name for run_name, run_fovs in fovs_by_folder.items() if fov in run_fovs
+            ]
+        raise ValueError(
+            f'There are duplicate folders among runs containing the name "{run_string}".\n'
+            "You'll need to determine which folder to keep and which to delete before merging.\n"
+            f"{pd.DataFrame(duplicate_info).to_string(index=False)}"
+        )
+
+    # loop through each partial run folder and move the fov folders
     for partial in partial_folders:
         fov_folders = io_utils.list_folders(os.path.join(cohort_dir, partial))
 
         # copy each fov from partial folder into output folder
         for fov in fov_folders:
             new_path = os.path.join(output_folder, fov)
-            if os.path.exists(new_path):
-                duplicates.append(fov)
-            else:
-                shutil.move(os.path.join(cohort_dir, partial, fov), new_path)
-
-        if duplicates:
-            raise ValueError(
-                "The following folders already exist in {}: {}. If there are "
-                "duplicates in your partial run folders, you'll need to determine"
-                " which to keep before merging".format(output_folder, duplicates)
-            )
+            shutil.move(os.path.join(cohort_dir, partial, fov), new_path)
 
         # remove partial folder
         shutil.rmtree(os.path.join(cohort_dir, partial))
