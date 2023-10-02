@@ -27,9 +27,10 @@ def merge_partial_runs(cohort_dir, run_string):
         raise ValueError("No matching folders found for {}".format(run_string))
 
     # duplicate fovs check
-    fovs_by_folder = {}
-    for partial in partial_folders:
-        fovs_by_folder[partial] = io_utils.list_folders(os.path.join(cohort_dir, partial))
+    fovs_by_folder = {
+        partial: io_utils.list_folders(os.path.join(cohort_dir, partial))
+        for partial in partial_folders
+    }
     fov_names = [
         fov for partial_folder_fovs in fovs_by_folder.values() for fov in partial_folder_fovs
     ]
