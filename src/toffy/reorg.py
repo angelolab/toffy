@@ -1,5 +1,6 @@
 import os
 import shutil
+from collections import Counter
 
 from alpineer import io_utils, misc_utils
 
@@ -25,19 +26,33 @@ def merge_partial_runs(cohort_dir, run_string):
     if len(partial_folders) == 0:
         raise ValueError("No matching folders found for {}".format(run_string))
 
-    # loop through each partial folder
+    # duplicate fovs check
+    fovs_by_folder = {
+        partial: io_utils.list_folders(os.path.join(cohort_dir, partial))
+        for partial in partial_folders
+    }
+    fov_names = [
+        fov for partial_folder_fovs in fovs_by_folder.values() for fov in partial_folder_fovs
+    ]
+    duplicate_fovs = [fov for fov, count in Counter(fov_names).items() if count > 1]
+
+    # raise error to report any duplicate fovs
+    if duplicate_fovs:
+        for fov in duplicate_fovs:
+            runs = [run_name for run_name, run_fovs in fovs_by_folder.items() if fov in run_fovs]
+            print(f"{fov}: {runs}")
+        raise ValueError(
+            f"The following FOV folders exist in multiple partial runs: {duplicate_fovs}\n"
+            "You need to determine which folders to keep and which to delete before merging."
+        )
+
+    # loop through each partial run folder and move the fov folders
     for partial in partial_folders:
         fov_folders = io_utils.list_folders(os.path.join(cohort_dir, partial))
 
         # copy each fov from partial folder into output folder
         for fov in fov_folders:
             new_path = os.path.join(output_folder, fov)
-            if os.path.exists(new_path):
-                raise ValueError(
-                    "The following folder {} already exists in {}. If there are "
-                    "duplicates in your partial run folders, you'll need to determine"
-                    " which to keep before merging".format(fov, output_folder)
-                )
             shutil.move(os.path.join(cohort_dir, partial, fov), new_path)
 
         # remove partial folder
