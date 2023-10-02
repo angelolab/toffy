@@ -573,7 +573,7 @@ def test_normalize_fov(tmpdir, test_zeros, test_high_norm, test_low_norm):
 
     # if test_high_norm, set norm vals lower than 0.1
     if test_high_norm:
-        norm_vals[1] = 0.01
+        norm_vals[1] = -0.01
         norm_mults[1] = 0.1
 
     # if test_low_norm, set norm vals higher than 1
