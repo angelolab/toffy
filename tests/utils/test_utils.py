@@ -63,7 +63,6 @@ TEST_CHANNELS = [
 
 def make_run_file(tmp_dir, prefixes=[], include_nontiled=False):
     """Create a run subir and run json in the provided dir and return the path to this new dir."""
-
     if len(prefixes) == 1:
         prefix1, prefix2 = prefixes * 2
     else:
@@ -101,7 +100,7 @@ def make_run_file(tmp_dir, prefixes=[], include_nontiled=False):
 
 
 def generate_sample_fov_tiling_entry(coord, name, size):
-    """Generates a sample fov entry to put in a sample fovs list for tiling
+    """Generates a sample fov entry to put in a sample fovs list for tiling.
 
     Args:
         coord (tuple):
@@ -115,7 +114,6 @@ def generate_sample_fov_tiling_entry(coord, name, size):
         dict:
             An entry to be placed in the fovs list with provided coordinate and name
     """
-
     sample_fov_tiling_entry = {
         "scanCount": 1,
         "fovSizeMicrons": size,
@@ -138,7 +136,7 @@ def generate_sample_fov_tiling_entry(coord, name, size):
 
 
 def generate_sample_fovs_list(fov_coords, fov_names, fov_sizes):
-    """Generate a sample dictionary of fovs for tiling
+    """Generate a sample dictionary of fovs for tiling.
 
     Args:
         fov_coords (list):
@@ -152,7 +150,6 @@ def generate_sample_fovs_list(fov_coords, fov_names, fov_sizes):
         dict:
             A dummy fovs list with starting x and y set to the provided coordinates and name
     """
-
     sample_fovs_list = {
         "exportDateTime": "2021-03-12T19:02:37.920Z",
         "fovFormatVersion": "1.5",
@@ -222,43 +219,52 @@ def mock_visualize_mph(mph_df, out_dir, return_plot=True, regression: bool = Fal
         fig = plt.figure()
         ax1 = fig.add_subplot(111)
         ax1.scatter(mph_df["cum_total_count"], mph_df["MPH"])
-        ax2 = ax1.twiny()
         return fig
 
 
 class FovCallbackCases:
+    """Contains various FOV callback cases for watcher."""
+
     def case_all_callbacks(self):
+        """All possible callbacks."""
         panel_path = os.path.join(Path(__file__).parents[2], "data", "sample_panel.csv")
         return FOV_CALLBACKS, {"panel": pd.read_csv(panel_path), "extract_prof": True}
 
     def case_dont_extract_prof(self):
+        """No proficient extraction."""
         cbs, kwargs = self.case_all_callbacks()
         kwargs["extract_prof"] = False
         return cbs, kwargs
 
     def case_extract_only(self):
+        """Extraction only."""
         cbs, kwargs = self.case_all_callbacks()
         return cbs[:1], kwargs
 
     def case_qc_only(self):
+        """QC metric computation only."""
         cbs, kwargs = self.case_all_callbacks()
         return cbs[1:2], kwargs
 
     def case_mph_only(self):
+        """MPH computation only."""
         cbs, kwargs = self.case_all_callbacks()
         return cbs[2:3], kwargs
 
     def case_pulse_heights_only(self):
+        """Pulse height computation only."""
         cbs, kwargs = self.case_all_callbacks()
         return cbs[3:4], kwargs
 
     def case_extraction_intensities(self):
+        """Intensity extraction."""
         cbs, kwargs = self.case_all_callbacks()
         kwargs["intensities"] = True
         kwargs["replace"] = True
         return cbs, kwargs
 
     def case_extraction_intensities_not_replace(self):
+        """Intensity extraction saved as separate image."""
         cbs, kwargs = self.case_all_callbacks()
         kwargs["intensities"] = True
         kwargs["replace"] = False
@@ -266,30 +272,38 @@ class FovCallbackCases:
 
     @pytest.mark.xfail(raises=ValueError)
     def case_missing_panel(self):
+        """Missing panel failure."""
         cbs, _ = self.case_all_callbacks()
         return cbs, {}
 
     @pytest.mark.xfail(raises=ValueError)
     def case_bad_callback(self):
+        """Invalid fov callback failure."""
         return ["invalid_callback"], {}
 
 
 class RunCallbackCases:
+    """Contains various run callback cases for watcher."""
+
     def case_default(self):
+        """All callbacks."""
         panel_path = os.path.join(Path(__file__).parents[2], "data", "sample_panel.csv")
         return RUN_CALLBACKS, None, {"panel": pd.read_csv(panel_path), "extract_prof": True}
 
     def save_figure(self):
+        """QC metric and MPH figures saved."""
         cbs, ibs, kws = self.case_default()
         kws["save_dir"] = True
         return cbs, ibs, kws
 
     def case_dont_extract_prof(self):
+        """No proficient extraction."""
         cbs, ibs, kws = self.case_default()
         kws["extract_prof"] = False
         return cbs, ibs, kws
 
     def case_inter_callback(self):
+        """Intermediate callbacks only."""
         cbs, ibs, kws = self.case_default()
         ibs = list(cbs[:2])
         cbs = list(cbs[2:])
@@ -297,15 +311,18 @@ class RunCallbackCases:
 
     @pytest.mark.xfail(raises=ValueError)
     def case_missing_panel(self):
+        """Missing panel failure."""
         cbs, _, _ = self.case_default()
         return cbs, None, {}
 
     @pytest.mark.xfail(raises=ValueError)
     def case_bad_run_callback(self):
+        """Invalid run callback failure."""
         return ["invalid_callback"], None, {}
 
     @pytest.mark.xfail(raises=ValueError)
     def case_bad_inter_callback(self):
+        """Invalid intermediate callback failure."""
         return RUN_CALLBACKS, ["invalid_callback"], {}
 
 
@@ -317,7 +334,7 @@ def check_extraction_dir_structure(
     intensities: bool = False,
     replace: bool = True,
 ):
-    """Checks extraction directory for minimum expected structure
+    """Checks extraction directory for minimum expected structure.
 
     Args:
         ext_dir (str):
@@ -337,7 +354,6 @@ def check_extraction_dir_structure(
         AssertionError:
             Assertion error on missing expected tiff
     """
-
     for point, bad in zip(point_names, bad_points):
         assert not os.path.exists(os.path.join(ext_dir, bad))
 
@@ -351,7 +367,7 @@ def check_extraction_dir_structure(
 def check_qc_dir_structure(
     out_dir: str, point_names: List[str], bad_points: List[str], qc_plots: bool = False
 ):
-    """Checks QC directory for minimum expected structure
+    """Checks QC directory for minimum expected structure.
 
     Args:
         out_dir (str):
@@ -382,7 +398,7 @@ def check_mph_dir_structure(
     bad_points: List[str],
     combined: bool = False,
 ):
-    """Checks MPH directory for minimum expected structure
+    """Checks MPH directory for minimum expected structure.
 
     Args:
         mph_out_dir (str):
@@ -410,7 +426,7 @@ def check_mph_dir_structure(
 
 
 def check_pulse_dir_structure(pulse_out_dir: str, point_names: List[str], bad_points: List[str]):
-    """Checks pulse heights directory for minimum expected structure
+    """Checks pulse heights directory for minimum expected structure.
 
     Done for both proficient and deficient pulse height data
 
@@ -426,14 +442,13 @@ def check_pulse_dir_structure(pulse_out_dir: str, point_names: List[str], bad_po
         AssertionError:
             Assertion error on missing csv
     """
-
     for point, bad in zip(point_names, bad_points):
         assert os.path.exists(os.path.join(pulse_out_dir, f"{point}_pulse_heights.csv"))
         assert not os.path.exists(os.path.join(pulse_out_dir, f"{bad}_pulse_heights.csv"))
 
 
 def check_stitched_dir_structure(stitched_dir: str, channels: List[str]):
-    """Checks extraction directory for stitching structure
+    """Checks extraction directory for stitching structure.
 
     Args:
         stitched_dir (str):
@@ -450,7 +465,7 @@ def check_stitched_dir_structure(stitched_dir: str, channels: List[str]):
 
 
 def create_sample_run(name_list, run_order_list, scan_count_list, create_json=False, bad=False):
-    """Creates sample run metadata with option to create a temporary json file
+    """Creates sample run metadata with option to create a temporary json file.
 
     Args:
         name_list (list): List of strings for FOV names
@@ -494,12 +509,18 @@ def create_sample_run(name_list, run_order_list, scan_count_list, create_json=Fa
 # calling cases for data to test against
 # this should be limited to folders to call; no generation parameters allowed  >:(
 class WatcherTestData:
+    """Class containing the test directory for watcher."""
+
     def case_combined(self):
+        """Combined directory path."""
         return os.path.join(Path(__file__).parents[2], "data", "combined")
 
 
 class RunStructureTestContext:
+    """Handle directory structure for watcher testing."""
+
     def __init__(self, run_json, files=None):
+        """Initialize."""
         self.run_json = run_json
         self.files = files
         self.tmpdir = None
@@ -507,9 +528,11 @@ class RunStructureTestContext:
 
     @property
     def tempdir_name(self):
+        """Return temporary directory path."""
         return Path(self.tmpdir).parts[-1]
 
     def __enter__(self):
+        """Set up run directory."""
         self.tmpdir = tempfile.mkdtemp()
         with open(os.path.join(self.tmpdir, f"{self.tempdir_name}.json"), "w") as f:
             json.dump(self.run_json, f)
@@ -522,11 +545,15 @@ class RunStructureTestContext:
         return self.tmpdir, self.run_structure
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
+        """Remove directories after testing."""
         shutil.rmtree(self.tmpdir)
 
 
 class RunStructureCases:
+    """Cases for mibi run files."""
+
     def case_default(self):
+        """Two FOVs with all expected files generated."""
         fov_count = 2
         run_json = {"fovs": [{"runOrder": n + 1, "scanCount": 1} for n in range(fov_count)]}
         expected_files = [f"fov-{n + 1}-scan-1.bin" for n in range(fov_count)]
@@ -535,13 +562,14 @@ class RunStructureCases:
 
     @pytest.mark.xfail(raises=KeyError)
     def case_extrabin(self):
+        """Unexpected third bin file."""
         run_json, exp_files = self.case_default()
         exp_files += ["fov-X-scan-1.bin"]
         return run_json, exp_files
 
 
 class WatcherCases:
-    """Test cases for start_watcher
+    """Test cases for start_watcher.
 
     Cases in this class will, in order, return:
         (fov callback names, run callback names, kwargs for the callbacks,
@@ -560,6 +588,7 @@ class WatcherCases:
     @parametrize(replace=(False, True))
     @parametrize(extract_prof=(False, True))
     def case_default(self, intensity, replace, extract_prof):
+        """Executes all FOV and run level callbacks."""
         panel = pd.read_csv(os.path.join(Path(__file__).parents[2], "data", "sample_panel.csv"))
         validators = [
             functools.partial(
@@ -601,6 +630,7 @@ class WatcherCases:
     @parametrize(replace=(False, True))
     @parametrize(extract_prof=(False, True))
     def case_inter_callback(self, intensity, replace, extract_prof):
+        """Executes only intermediate callbacks."""
         rcs, _, fcs, kwargs, validators, wsl, ed = self.case_default(
             intensity, replace, extract_prof
         )
@@ -611,10 +641,12 @@ class WatcherCases:
 
     @parametrize(watcher_start_lag=(4, 8, 12))
     def case_watcher_lag(self, watcher_start_lag):
+        """Add a lag in file generation."""
         rcs, ics, fcs, kwargs, validators, _, ed = self.case_default(True, True, True)
         return (rcs, ics, fcs, kwargs, validators, watcher_start_lag, ed)
 
     @parametrize(existing_data=((True, "Full"), (True, "Partial"), (False, None)))
     def case_existing_data(self, existing_data):
+        """Various stages of run completion to start watcher at."""
         rcs, ics, fcs, kwargs, validators, wsl, _ = self.case_default(False, False, True)
         return (rcs, ics, fcs, kwargs, validators, wsl, existing_data)

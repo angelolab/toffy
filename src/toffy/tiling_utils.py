@@ -24,7 +24,7 @@ from toffy import json_utils, settings
 
 def assign_metadata_vals(input_dict, output_dict, keys_ignore):
     """Copy the `str`, `int`, `float`, and `bool` metadata keys of
-    `input_dict` over to `output_dict`, ignoring `keys_ignore` metadata keys
+    `input_dict` over to `output_dict`, ignoring `keys_ignore` metadata keys.
 
     Args:
         input_dict (dict):
@@ -40,7 +40,6 @@ def assign_metadata_vals(input_dict, output_dict, keys_ignore):
         dict:
             `output_dict` with the valid `metadata_keys` from `input_dict` copied over
     """
-
     # get the metadata values to copy over
     metadata_keys = list(input_dict.keys())
 
@@ -58,7 +57,7 @@ def assign_metadata_vals(input_dict, output_dict, keys_ignore):
 
 
 def verify_x_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = "optical") -> bool:
-    """Verify that the x-coordinate lies in the accepted slide boundary
+    """Verify that the x-coordinate lies in the accepted slide boundary.
 
     Args:
         coord_val (int):
@@ -71,7 +70,6 @@ def verify_x_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = "op
         bool:
             Whether the x-coordinate is in bounds or not
     """
-
     if coord_type not in ["optical", "stage", "micron"]:
         raise ValueError("Invalid x coord_type specified: must be 'optical', 'stage', or 'micron'")
 
@@ -102,7 +100,7 @@ def verify_x_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = "op
 
 
 def verify_y_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = "optical") -> bool:
-    """Verify that the y-coordinate lies in the accepted slide boundary
+    """Verify that the y-coordinate lies in the accepted slide boundary.
 
     Args:
         coord_val (int):
@@ -115,7 +113,6 @@ def verify_y_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = "op
         bool:
             Whether the y-coordinate is in bounds or not
     """
-
     if coord_type not in ["optical", "stage", "micron"]:
         raise ValueError("Invalid y coord_type specified: must be 'optical', 'stage', or 'micron'")
 
@@ -149,7 +146,7 @@ def verify_y_coordinate_on_slide(coord_val: int, coord_type: Optional[str] = "op
 def verify_coordinate_on_slide(
     coord_val: Iterable[Tuple[float, float]], coord_type: Optional[str] = "optical"
 ) -> bool:
-    """Verify that the coordinate lies in the accepted slide boundary
+    """Verify that the coordinate lies in the accepted slide boundary.
 
     Args:
         coord_val (Iterable[Tuple[float, float]]):
@@ -162,7 +159,6 @@ def verify_coordinate_on_slide(
         bool:
             Whether the coordinate is in bounds or not
     """
-
     if coord_type not in ["optical", "stage", "micron"]:
         raise ValueError("Invalid coord_type specified: must be 'optical', 'stage', or 'micron'")
 
@@ -172,7 +168,7 @@ def verify_coordinate_on_slide(
 
 
 def read_tiling_param(prompt, error_msg, cond, dtype):
-    """A helper function to read a tiling param from a user prompt
+    """A helper function to read a tiling param from a user prompt.
 
     Args:
         prompt (str):
@@ -188,7 +184,6 @@ def read_tiling_param(prompt, error_msg, cond, dtype):
         Union([int, float, str]):
             The value entered by the user
     """
-
     # ensure the dtype is valid
     misc_utils.verify_in_list(provided_dtype=dtype, acceptable_dtypes=[int, float, str])
 
@@ -210,13 +205,12 @@ def read_tiling_param(prompt, error_msg, cond, dtype):
 
 
 def read_fiducial_info():
-    """Prompt the user to input the fiducial info (in both stage and optical scoordinates)
+    """Prompt the user to input the fiducial info (in both stage and optical scoordinates).
 
     Returns:
         dict:
             Contains the stage and optical coordinates of all 6 required fiducials
     """
-
     # define the dict to fill in
     fiducial_info = {}
 
@@ -280,7 +274,7 @@ def read_fiducial_info():
 
 
 def verify_coreg_param_tolerance(coreg_params: dict, tol: Optional[float] = 0.2):
-    """Verify that the coreg params lie within acceptable range
+    """Verify that the coreg params lie within acceptable range.
 
     Args:
         coreg_params (dict):
@@ -292,7 +286,6 @@ def verify_coreg_param_tolerance(coreg_params: dict, tol: Optional[float] = 0.2)
         ValueError:
             If one of the co-registration parameters fails the tolerance test
     """
-
     # run for each parameter
     params_list = [
         "STAGE_TO_OPTICAL_X_MULTIPLIER",
@@ -331,7 +324,6 @@ def generate_coreg_params(fiducial_info):
         dict:
             Contains the new multiplier and offset along the x- and y-axes
     """
-
     # define the dict to fill in
     coreg_params = {}
 
@@ -376,7 +368,7 @@ def generate_coreg_params(fiducial_info):
 
 
 def save_coreg_params(coreg_params, coreg_path=settings.COREG_SAVE_PATH):
-    """Save the co-registration parameters to `coreg_params.json` in `toffy`
+    """Save the co-registration parameters to `coreg_params.json` in `toffy`.
 
     Args:
         coreg_params (dict):
@@ -384,7 +376,6 @@ def save_coreg_params(coreg_params, coreg_path=settings.COREG_SAVE_PATH):
         coreg_path (str):
             The path to save the co-registration parameters to
     """
-
     # generate the time this set of co-registration parameters were generated
     coreg_params["date"] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
 
@@ -403,7 +394,7 @@ def save_coreg_params(coreg_params, coreg_path=settings.COREG_SAVE_PATH):
 
 
 def generate_region_info(region_params):
-    """Generate the `region_params` list in the tiling parameter dict
+    """Generate the `region_params` list in the tiling parameter dict.
 
     Args:
         region_params (dict):
@@ -413,7 +404,6 @@ def generate_region_info(region_params):
         list:
             The complete set of `region_params` sorted by region
     """
-
     # define the region params list
     region_params_list = []
 
@@ -439,7 +429,6 @@ def read_tiled_region_inputs(region_corners, region_params):
         region_params (dict):
             A `dict` mapping each region-specific parameter to a list of values per FOV
     """
-
     # read in the data for each region (region_start from region_corners_path, others from user)
     for fov in region_corners["fovs"]:
         # append the name of the region
@@ -534,7 +523,6 @@ def set_tiled_region_params(region_corners_path):
         dict:
             Contains the tiling parameters for each tiled region
     """
-
     # file path validation
     if not os.path.exists(region_corners_path):
         raise FileNotFoundError(
@@ -599,7 +587,7 @@ def set_tiled_region_params(region_corners_path):
 
 def generate_x_y_fov_pairs(x_range, y_range):
     """Given all x and y coordinates (in microns) a FOV can take,
-    generate all possible `(x, y)` pairings
+    generate all possible `(x, y)` pairings.
 
     Args:
         x_range (list):
@@ -611,7 +599,6 @@ def generate_x_y_fov_pairs(x_range, y_range):
         list:
             Every possible `(x, y)` pair for a FOV
     """
-
     # define a list to hold all the (x, y) pairs
     all_pairs = []
 
@@ -627,7 +614,7 @@ def generate_x_y_fov_pairs(x_range, y_range):
 def generate_x_y_fov_pairs_rhombus(
     top_left, top_right, bottom_left, bottom_right, num_row, num_col
 ):
-    """Generates coordinates (in microns) of FOVs as defined by corners of a rhombus
+    """Generates coordinates (in microns) of FOVs as defined by corners of a rhombus.
 
     Args:
         top_left (XYCoord): coordinate of top left corner
@@ -638,8 +625,8 @@ def generate_x_y_fov_pairs_rhombus(
         num_col (int): number of fovs on column dimension
 
     Returns:
-        list: coordinates for all FOVs defined by region"""
-
+        list: coordinates for all FOVs defined by region
+    """
     # compute the vertical shift in the top and bottom row of the TMA
     top_row_shift = top_right.y - top_left.y
     bottom_row_shift = bottom_right.y - bottom_left.y
@@ -677,7 +664,7 @@ def generate_x_y_fov_pairs_rhombus(
 
 
 def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str] = None):
-    """Generate the list of FOVs on the image from the `tiling_params` set for tiled regions
+    """Generate the list of FOVs on the image from the `tiling_params` set for tiled regions.
 
     Moly point insertion: happens once every number of FOVs you specified in
     `tiled_region_set_params`. There are a couple caveats to keep in mind:
@@ -705,7 +692,6 @@ def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str] = Non
         dict:
             Data containing information about each FOV
     """
-
     # file path validation
     if (tiling_params.get("moly_region", "N") == "Y") or (
         tiling_params.get("moly_interval", 0) > 0
@@ -816,7 +802,7 @@ def generate_tiled_region_fov_list(tiling_params, moly_path: Optional[str] = Non
 
 
 def validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
-    """Ensures that the provided TMA corners match assumptions
+    """Ensures that the provided TMA corners match assumptions.
 
     Args:
         top_left (XYCoord): coordinate (in microns) of top left corner
@@ -864,12 +850,14 @@ def validate_tma_corners(top_left, top_right, bottom_left, bottom_right):
 
 @dataclass
 class XYCoord:
+    """Class for x,y coordinates of the tma."""
+
     x: float
     y: float
 
 
 def generate_tma_fov_list(tma_corners_path, num_fov_row, num_fov_col):
-    """Generate the list of FOVs on the image using the TMA input file in `tma_corners_path`
+    """Generate the list of FOVs on the image using the TMA input file in `tma_corners_path`.
 
     NOTE: unlike tiled regions, the returned list of FOVs is just an intermediate step to the
     interactive remapping process. So the result will just be each FOV name mapped to its centroid
@@ -887,7 +875,6 @@ def generate_tma_fov_list(tma_corners_path, num_fov_row, num_fov_col):
         dict:
             Data containing information about each FOV (just FOV name mapped to centroid)
     """
-
     # file path validation
     if not os.path.exists(tma_corners_path):
         raise FileNotFoundError("TMA corners file %s does not exist" % tma_corners_path)
@@ -961,7 +948,6 @@ def convert_stage_to_optical(coord, stage_optical_coreg_params):
             The converted coordinate from stage microns to optical pixels.
             Values truncated to `int`.
     """
-
     stage_to_optical_x_multiplier = stage_optical_coreg_params["STAGE_TO_OPTICAL_X_MULTIPLIER"]
     stage_to_optical_x_offset = stage_optical_coreg_params["STAGE_TO_OPTICAL_X_OFFSET"]
     stage_to_optical_y_multiplier = stage_optical_coreg_params["STAGE_TO_OPTICAL_Y_MULTIPLIER"]
@@ -984,7 +970,7 @@ def convert_stage_to_optical(coord, stage_optical_coreg_params):
 
 
 def assign_closest_fovs(manual_fovs, auto_fovs):
-    """For each FOV in `manual_fovs`, map it to its closest FOV in `auto_fovs`
+    """For each FOV in `manual_fovs`, map it to its closest FOV in `auto_fovs`.
 
     Args:
         manual_fovs (dict):
@@ -1000,7 +986,6 @@ def assign_closest_fovs(manual_fovs, auto_fovs):
         - A `pandas.DataFrame` defining the distance (in microns) from each manual FOV
           to each auto FOV, row indices are manual FOVs, column names are auto FOVs
     """
-
     # condense the manual FOVs JSON list into just a mapping between name and coordinate
     manual_fovs_name_coord = {
         fov["name"]: tuple(list(fov["centerPointMicrons"].values())) for fov in manual_fovs["fovs"]
@@ -1023,8 +1008,8 @@ def assign_closest_fovs(manual_fovs, auto_fovs):
     # assign the mapping in manual_to_auto_map
     for manual_index, auto_index in enumerate(closest_auto_point_ind):
         # get the coordinates of the manual fov and its closest auto fov
-        manual_coords = tuple(manual_centroids[manual_index])
-        auto_coords = tuple(auto_centroids[auto_index])
+        tuple(manual_centroids[manual_index])
+        tuple(auto_centroids[auto_index])
 
         # get the corresponding fov names
         man_name = list(manual_fovs_name_coord.keys())[manual_index]
@@ -1046,7 +1031,7 @@ def assign_closest_fovs(manual_fovs, auto_fovs):
 def generate_fov_circles(
     manual_fovs_info, auto_fovs_info, manual_name, auto_name, slide_img, draw_radius=7
 ):
-    """Draw the circles defining each FOV (manual and auto) on `slide_img`
+    """Draw the circles defining each FOV (manual and auto) on `slide_img`.
 
     Args:
         manual_fovs_info (dict):
@@ -1066,10 +1051,7 @@ def generate_fov_circles(
         numpy.ndarray:
             `slide_img` with defining each manually-defined and automatically-generated FOV
     """
-
     # define dicts to hold the coordinates
-    manual_coords = {}
-    auto_coords = {}
 
     # define the fov size boundaries, needed to prevent drawing a circle out of bounds
     fov_size = slide_img.shape[:2]
@@ -1124,7 +1106,7 @@ def update_mapping_display(
     slide_img,
     draw_radius=7,
 ):
-    """Changes the highlighted manual-auto fov pair on the image based on new selected manual FOV
+    """Changes the highlighted manual-auto fov pair on the image based on new selected manual FOV.
 
     Helper to `update_mapping` nested callback function in `interactive_remap`
 
@@ -1148,7 +1130,6 @@ def update_mapping_display(
         numpy.ndarray:
             `slide_img` with the updated circles after manual fov changed
     """
-
     # define the fov size boundaries, needed to prevent drawing a circle out of bounds
     fov_size = slide_img.shape[:2]
 
@@ -1214,8 +1195,8 @@ def remap_manual_to_auto_display(
     check_duplicates=True,
     check_mismatches=True,
 ):
-    """changes the highlighted automatically-generated FOV to new selected auto FOV
-    and updates the mapping in `manual_to_auto_map`
+    """Changes the highlighted automatically-generated FOV to new selected auto FOV
+    and updates the mapping in `manual_to_auto_map`.
 
     Helper to `remap_values` nested callback function in `interactive_remap`
 
@@ -1250,7 +1231,6 @@ def remap_manual_to_auto_display(
               remapping the fovs
             - `str`: the new error message to display after a remapping
     """
-
     # define the fov size boundaries, needed to prevent drawing a circle out of bounds
     fov_size = slide_img.shape[:2]
 
@@ -1290,7 +1270,7 @@ def remap_manual_to_auto_display(
 
 
 def save_json(json_data, save_ann, json_path):
-    """Saves `json__data` to `json_path` and notifies user through `save_ann`
+    """Saves `json__data` to `json_path` and notifies user through `save_ann`.
 
     Helper to `save_mapping` nested callback function in tiled region and tma visualizations
 
@@ -1302,7 +1282,6 @@ def save_json(json_data, save_ann, json_path):
         json_path (str):
             the path to save the JSON data to
     """
-
     # save the mapping
     json_utils.write_json_file(json_path=json_path, json_object=json_data, encoding="utf-8")
 
@@ -1329,7 +1308,7 @@ def save_json(json_data, save_ann, json_path):
 
 # TODO: potential type hinting candidate?
 def find_manual_auto_invalid_dist(manual_to_auto_map, manual_auto_dist, dist_threshold=2000):
-    """Finds the manual FOVs that map to auto FOVs greater than `dist_threshold` away (in microns)
+    """Finds the manual FOVs that map to auto FOVs greater than `dist_threshold` away (in microns).
 
     Args:
         manual_to_auto_map (dict):
@@ -1351,7 +1330,6 @@ def find_manual_auto_invalid_dist(manual_to_auto_map, manual_auto_dist, dist_thr
             applies only for manual-auto pairs with distance greater than `dist_threshold`
             (in microns), sorted by decreasing manual-auto FOV distance
     """
-
     # define the fov pairs at a distance greater than dist_thresh
     manual_auto_invalid_dist_pairs = [
         (mf, af, manual_auto_dist.loc[mf, af])
@@ -1368,7 +1346,7 @@ def find_manual_auto_invalid_dist(manual_to_auto_map, manual_auto_dist, dist_thr
 
 
 def find_duplicate_auto_mappings(manual_to_auto_map):
-    """Finds each auto FOV with more than one manual FOV mapping to it
+    """Finds each auto FOV with more than one manual FOV mapping to it.
 
     Args:
         manual_to_auto_map (dict):
@@ -1383,7 +1361,6 @@ def find_duplicate_auto_mappings(manual_to_auto_map):
 
             only for auto FOVs with more than one manual FOV mapping to it
     """
-
     # "reverse" manual_to_auto_map: for each auto FOV find the list of manual FOVs that map to it
     auto_fov_mappings = {}
 
@@ -1408,7 +1385,7 @@ def find_duplicate_auto_mappings(manual_to_auto_map):
 
 
 def find_manual_auto_name_mismatches(manual_to_auto_map):
-    """Finds the manual FOVs with names that do not match their corresponding auto FOV
+    """Finds the manual FOVs with names that do not match their corresponding auto FOV.
 
     Args:
         manual_to_auto_map (dict):
@@ -1421,7 +1398,6 @@ def find_manual_auto_name_mismatches(manual_to_auto_map):
             - `str`: the manual FOV
             - `str`: the corresponding auto FOV
     """
-
     # find the manual FOVs that don't match their corresponding closest_auto_fov name
     # NOTE: this method maintains the original manual FOV ordering which is already sorted
     manual_auto_mismatches = [(k, v) for (k, v) in manual_to_auto_map.items() if k != v]
@@ -1437,7 +1413,7 @@ def generate_validation_annot(
     check_duplicates=True,
     check_mismatches=True,
 ):
-    """Finds problematic manual-auto FOV pairs and generates a warning message to display
+    """Finds problematic manual-auto FOV pairs and generates a warning message to display.
 
     The following potential sources of error can be requested by the user:
 
@@ -1462,7 +1438,6 @@ def generate_validation_annot(
         str:
             describes the validation failures
     """
-
     # define the potential sources of error desired by user in the mapping
     invalid_dist = (
         find_manual_auto_invalid_dist(manual_to_auto_map, manual_auto_dist, check_dist)
@@ -1522,10 +1497,13 @@ def generate_validation_annot(
 
 
 class FOVRectangle:
+    """Class containing FOV rectangle information."""
+
     # ensure the rectangles don't try to operate on each other
     lock = None
 
     def __init__(self, coords, width, height, color, id_val, ax):
+        """Initialize FOVRectangle."""
         rect = Rectangle(coords, width, height, color=color, fill=False, linewidth=1)
         ax.add_patch(rect)
         self.rect = rect
@@ -1541,7 +1519,6 @@ class FOVRectangle:
 
     def on_press(self, event):
         """Check whether mouse is over us; if so, store some data."""
-
         # ensure we only operate on the correct rectangle in unlocked state
         if event.inaxes != self.rect.axes or FOVRectangle.lock is not None:
             return
@@ -1558,7 +1535,6 @@ class FOVRectangle:
 
     def on_release(self, event):
         """Set the new border and clear button press information."""
-
         # ensure we don't try to release a rectangle in locked state
         if FOVRectangle.lock is not self:
             return
@@ -1584,7 +1560,7 @@ class FOVRectangle:
 
 
 def generate_fov_rectangle(fov_info, region_colors, stage_optical_coreg_params, ax):
-    """Draws an interactive rectangle for the given FOV
+    """Draws an interactive rectangle for the given FOV.
 
     Args:
         fov_info (dict):
@@ -1600,7 +1576,6 @@ def generate_fov_rectangle(fov_info, region_colors, stage_optical_coreg_params, 
         FOVRectangle:
             The interactive rectangle object associated with the FOV to draw
     """
-
     # extract the region name, this method accounts for '_' in the region name itself
     fov_region = "_".join(fov_info["name"].split("_")[:-1])
 
@@ -1654,7 +1629,7 @@ def generate_fov_rectangle(fov_info, region_colors, stage_optical_coreg_params, 
 
 
 def delete_tiled_region_fovs(rectangles, tiled_region_fovs):
-    """Delete all the FOVs from tiled_region_fovs with lindwidth 5 (indicating its been selected)
+    """Delete all the FOVs from tiled_region_fovs with lindwidth 5 (indicating its been selected).
 
     Helper function to `delete_fovs` in `tiled_region_interactive_remap`
 
@@ -1665,7 +1640,6 @@ def delete_tiled_region_fovs(rectangles, tiled_region_fovs):
         tiled_region_fovs (dict):
             The list of FOVs to overlay for each tiled region
     """
-
     # define a list of FOVs to delete
     # NOTE: only FOVs with a linewidth of 5, indicates user has selected it
     fovs_delete = [fov for fov in rectangles if rectangles[fov].rect.get_linewidth() == 5]
@@ -1689,7 +1663,7 @@ def tiled_region_interactive_remap(
     coreg_path=settings.COREG_SAVE_PATH,
     figsize=(7, 7),
 ):
-    """Creates the tiled region interactive interface for manual to auto FOVs
+    """Creates the tiled region interactive interface for manual to auto FOVs.
 
     Args:
         tiled_region_fovs (dict):
@@ -1705,7 +1679,6 @@ def tiled_region_interactive_remap(
         figsize (tuple):
             The size of the interactive figure to display
     """
-
     # error check: ensure mapping path exists
     if not os.path.exists(os.path.split(tiled_region_path)[0]):
         raise FileNotFoundError(
@@ -1741,25 +1714,23 @@ def tiled_region_interactive_remap(
     save_ann = {"annotation": None}
 
     def delete_fovs(b):
-        """Deletes the FOVs from the `rectangles` dict, `tiled_region_fovs`, and the image
+        """Deletes the FOVs from the `rectangles` dict, `tiled_region_fovs`, and the image.
 
         Args:
             b (ipywidgets.widgets.widget_button.Button):
                 the button handler for `w_delete`, passed as a standard for `on_click` callback
         """
-
         with out:
             delete_tiled_region_fovs(rectangles, tiled_region_fovs)
             ax.figure.canvas.draw()
 
     def save_mapping(b):
-        """Saves the mapping defined in `tiled_region_fovs`
+        """Saves the mapping defined in `tiled_region_fovs`.
 
         Args:
             b (ipywidgets.widgets.widget_button.Button):
                 the button handler for `w_save`, passed as a standard for `on_click` callback
         """
-
         # needs to be in the output widget context to display status
         with out:
             # call the helper function to save tiled_region_fovs and notify user
@@ -1812,7 +1783,7 @@ def tiled_region_interactive_remap(
 
     with out:
         # draw the image
-        img_plot = ax.imshow(slide_img)
+        ax.imshow(slide_img)
 
         # overwrite the default title
         _ = plt.title("Overlay of tiled region FOVs")
@@ -1855,7 +1826,7 @@ def tma_interactive_remap(
     check_duplicates=True,
     check_mismatches=True,
 ):
-    """Creates the TMA remapping interactive interface for manual to auto FOVs
+    """Creates the TMA remapping interactive interface for manual to auto FOVs.
 
     Args:
         manual_fovs (dict):
@@ -1880,7 +1851,6 @@ def tma_interactive_remap(
         check_mismatches (bool):
             if `True`, validate whether the the manual auto FOV pairs have matching names
     """
-
     # error check: ensure mapping path exists
     if not os.path.exists(os.path.split(mapping_path)[0]):
         raise FileNotFoundError(
@@ -1991,7 +1961,7 @@ def tma_interactive_remap(
     )
 
     def increase_textarea_size(args):
-        """Ensures size of `w_err` adjusts based on the amount of validation text needed
+        """Ensures size of `w_err` adjusts based on the amount of validation text needed.
 
         Args:
             args (dict):
@@ -2065,13 +2035,12 @@ def tma_interactive_remap(
     # a callback function for changing w_auto to the value w_man maps to
     # NOTE: needs to be here so it can access w_man and w_auto in scope
     def update_mapping(change):
-        """Updates `w_auto` and bolds a different manual-auto pair when `w_prop` changes
+        """Updates `w_auto` and bolds a different manual-auto pair when `w_prop` changes.
 
         Args:
             change (dict):
                 defines the properties of the changed value in `w_prop`
         """
-
         # only operate if w_prop actually changed
         # prevents update if the user drops down w_prop but leaves it as the same manual fov
         if change["name"] == "value" and change["new"] != change["old"]:
@@ -2095,13 +2064,12 @@ def tma_interactive_remap(
     # NOTE: needs to be here so it can access w_man and w_auto in scope
     def remap_values(change):
         """Bolds the new `w_auto` and maps the selected FOV in `w_man`
-        to the new `w_auto` in `manual_to_auto_amp`
+        to the new `w_auto` in `manual_to_auto_amp`.
 
         Args:
             change (dict):
                 defines the properties of the changed value in `w_auto`
         """
-
         # only remap if the auto change as been updated
         # prevents update if the user drops down w_auto but leaves it as the same auto fov
         if change["name"] == "value" and change["new"] != change["old"]:
@@ -2129,13 +2097,12 @@ def tma_interactive_remap(
 
     # a callback function for saving manual_to_auto_map to mapping_path if w_save clicked
     def save_mapping(b):
-        """Saves the mapping defined in `manual_to_auto_map`
+        """Saves the mapping defined in `manual_to_auto_map`.
 
         Args:
             b (ipywidgets.widgets.widget_button.Button):
                 the button handler for `w_save`, only passed as a standard for `on_click` callback
         """
-
         # need to be in the output widget context to display status
         with out:
             # call the helper function to save manual_to_auto_map and notify user
@@ -2165,10 +2132,9 @@ def remap_and_reorder_fovs(
     moly_interval=5,
 ):
     """Runs 3 separate tasks on `manual_fov_regions`:
-
-    - Uses `manual_to_auto_map` to rename the FOVs
-    - Randomizes the order of the FOVs (if specified)
-    - Inserts Moly points at the specified interval (if specified)
+        - Uses `manual_to_auto_map` to rename the FOVs
+        - Randomizes the order of the FOVs (if specified)
+        - Inserts Moly points at the specified interval (if specified).
 
     Args:
         manual_fov_regions (dict):
@@ -2189,7 +2155,6 @@ def remap_and_reorder_fovs(
         dict:
             `manual_fov_regions` with new FOV names, randomized, and with Moly points
     """
-
     # only load moly_path and verify moly_interval if moly_insert set
     if moly_insert:
         # file path validation

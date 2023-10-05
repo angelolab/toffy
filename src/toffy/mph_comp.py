@@ -12,14 +12,14 @@ from toffy.normalize import combine_run_metrics
 
 
 def get_estimated_time(bin_file_dir, fov):
-    """Retrieve run time data for each fov json file
+    """Retrieve run time data for each fov json file.
+
     Args:
         bin_file_dir (str): path to the FOV bin and json files
         fov (str): name of fov to get estimated time for
     Returns:
         fov_time (int): estimated run time for the given fov
     """
-
     # path validation
     io_utils.validate_paths(bin_file_dir)
 
@@ -43,14 +43,14 @@ def get_estimated_time(bin_file_dir, fov):
 
 
 def generate_time_ticks(mph_df):
-    """Create a time axis for median pulse heights with ticks at approx. 6 hour increments
+    """Create a time axis for median pulse heights with ticks at approx. 6 hour increments.
+
     Args:
          mph_df: contains mph date, specifically requires cum_total_count and cum_total_time
          columns
     Returns:
         list of two lists detailing tick locations and tick number labels
     """
-
     # determine number of ticks and what the labels should be based on total run time
     sub_df = mph_df[["cum_total_count", "cum_total_time"]]
     total_time = sub_df["cum_total_time"].iloc[-1]
@@ -71,7 +71,8 @@ def generate_time_ticks(mph_df):
 
 
 def compute_mph_metrics(bin_file_dir, csv_dir, fov, mass=98, mass_start=97.5, mass_stop=98.5):
-    """Retrieves total counts, pulse heights, & estimated time for a given FOV
+    """Retrieves total counts, pulse heights, & estimated time for a given FOV.
+
     Args:
         bin_file_dir (str): path to the FOV bin and json files
         csv_dir (str): path to output csv to
@@ -80,7 +81,6 @@ def compute_mph_metrics(bin_file_dir, csv_dir, fov, mass=98, mass_start=97.5, ma
         mass_start (float): beginning of mass integration range
         mass_stop (float): end of mass integration range
     """
-
     target = None
     panel = pd.DataFrame(
         [
@@ -112,7 +112,8 @@ def compute_mph_metrics(bin_file_dir, csv_dir, fov, mass=98, mass_start=97.5, ma
 
 
 def combine_mph_metrics(csv_dir, return_data=False, warn_overwrite=True):
-    """Combines data from individual csvs into one
+    """Combines data from individual csvs into one.
+
     Args:
         csv_dir (str): path where FOV mph data csvs are stored
         return_data (bool): whether to return dataframe with mph metrics, default False
@@ -121,7 +122,6 @@ def combine_mph_metrics(csv_dir, return_data=False, warn_overwrite=True):
     Returns:
         combined mph data for all FOVs
     """
-
     # path validation checks
     io_utils.validate_paths(csv_dir)
 
@@ -149,7 +149,6 @@ def visualize_mph(mph_df, out_dir, regression: bool = False, return_plot: bool =
         regression (bool): whether to plot regression line, default is False
         return_plot (bool): if True, this will return the plot. Defaults to False.
     """
-
     # path validation checks
     if out_dir is not None:
         io_utils.validate_paths(out_dir)

@@ -7,7 +7,7 @@ select = [
     "F", # Pyflakes
     "I", # isort
 ]
-ignore = ["I001", "D103"]
+ignore = ["D100", "I001", "D103", "D205", "D104"]
 fixable = ["A", "B", "D", "E", "F", "W"]
 
 # Exclude a variety of commonly ignored directories.

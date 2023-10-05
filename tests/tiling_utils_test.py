@@ -582,7 +582,7 @@ def test_generate_tiled_region_fov_list_oob():
     sample_tiling_params["region_params"] = sample_region_params
 
     with pytest.raises(ValueError):
-        fov_list = tiling_utils.generate_tiled_region_fov_list(sample_tiling_params)
+        tiling_utils.generate_tiled_region_fov_list(sample_tiling_params)
 
     # TEST 2: down the bottom
     sample_region_inputs = {
@@ -600,7 +600,7 @@ def test_generate_tiled_region_fov_list_oob():
     sample_tiling_params["region_params"] = sample_region_params
 
     with pytest.raises(ValueError):
-        fov_list = tiling_utils.generate_tiled_region_fov_list(sample_tiling_params)
+        tiling_utils.generate_tiled_region_fov_list(sample_tiling_params)
 
 
 @test_cases.mock_tiling_bounds

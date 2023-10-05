@@ -14,15 +14,16 @@ from toffy import json_utils
 
 
 def get_max_img_size(tiff_out_dir, img_sub_folder="", run_dir=None, fov_list=None):
-    """Retrieves the maximum FOV image size listed in the run file, or for the given FOVs
+    """Retrieves the maximum FOV image size listed in the run file, or for the given FOVs.
+
     Args:
         tiff_out_dir (str): path to the extracted images for the specific run
         img_sub_folder (str): optional name of image sub-folder within each fov
         run_dir (str): path to the run directory containing the run json files, default None
         fov_list (list): list of fovs to check max size for, default none which check all fovs
     Returns:
-        value of max image size"""
-
+        value of max image size
+    """
     if run_dir:
         run_name = os.path.basename(run_dir)
         run_file_path = os.path.join(run_dir, run_name + ".json")
@@ -67,13 +68,14 @@ def get_max_img_size(tiff_out_dir, img_sub_folder="", run_dir=None, fov_list=Non
 
 
 def get_tiled_names(fov_list, run_dir):
-    """Retrieves the original tiled name for each fov
+    """Retrieves the original tiled name for each fov.
+
     Args:
         fov_list (list): list of fovs that have an existing image dir
         run_dir (str): path to the run directory containing the run json file
     Returns:
-        dictionary with RnCm name as keys and the fov-x-scan-1 name as values"""
-
+        dictionary with RnCm name as keys and the fov-x-scan-1 name as values
+    """
     run_name = os.path.basename(run_dir)
     run_file_path = os.path.join(run_dir, run_name + ".json")
     fov_names = {}
@@ -98,14 +100,14 @@ def get_tiled_names(fov_list, run_dir):
 
 
 def rescale_stitched_array(img_data, scale):
-    """Take an array of stitched image data and rescale the rows and cols dims
+    """Take an array of stitched image data and rescale the rows and cols dims.
+
     Args:
         img_data (xarray.DataArray): data array with 4 dimensions (fov, rows, cols, channels)
         scale (int): amount to scale the data up or down
     Returns:
         xarray.DataArray: data reshaped according to scale value while keeping fov/channel info
     """
-
     # extract dimension info from xarray
     fov_num, rows, cols, chan_num = img_data.shape
     fovs = img_data.fovs.values
@@ -131,7 +133,8 @@ def stitch_images(
     intensity_scale=200,
     img_size_scale=0.25,
 ):
-    """Creates a new directory containing stitched channel images for the run
+    """Creates a new directory containing stitched channel images for the run.
+
     Args:
         tiff_out_dir (str): path to the extracted images for the specific run
         run_dir (str): path to the run directory containing the run json files, default None
@@ -142,7 +145,6 @@ def stitch_images(
             needed for Photoshop compatibility
         img_size_scale (int/float): amount to scale down image, set to None for no scaling
     """
-
     io_utils.validate_paths(tiff_out_dir)
     if run_dir:
         io_utils.validate_paths(run_dir)
@@ -198,7 +200,7 @@ def stitch_images(
                 list(tiled_folders_dict.keys()), return_dims=True
             )
         except AttributeError:
-            raise ValueError(f"FOV names found in the run file were not in tiled (RnCm) format.")
+            raise ValueError("FOV names found in the run file were not in tiled (RnCm) format.")
 
     # make stitched subdir
     os.makedirs(stitched_dir)
@@ -268,7 +270,8 @@ def stitch_images(
 
 
 def rescale_images(img_data, scale, save_path=None):
-    """Rescale image data to a desired shape
+    """Rescale image data to a desired shape.
+
     Args:
         img_data (np.array): data to be reshaped, expected to be either 2 or 4 dimensions
         scale (int): amount to scale the data up or down
@@ -306,7 +309,8 @@ def rescale_images(img_data, scale, save_path=None):
 
 
 def fix_image_resolutions(resolution_data, extraction_dir):
-    """Rescales any images that are a different resolution than the majority in the run
+    """Rescales any images that are a different resolution than the majority in the run.
+
     Args:
         resolution_data (pd.DataFrame): details the fov names and resolutions
         extraction_dir (str): path to the extracted images dir for the specific run

@@ -6,13 +6,12 @@ from typing import Generator, List, Optional
 import numpy as np
 import pandas as pd
 import pytest
-from alpineer import test_utils
 from traitlets import Callable
 
 from toffy import qc_metrics_plots, settings
 from toffy.qc_comp import QCTMA, QCControlMetrics
 
-from .qc_comp_test import BatchEffectMetricData, QCMetricData, cohort_data, qc_tmas
+from .qc_comp_test import BatchEffectMetricData, QCMetricData
 
 
 def test_visualize_qc_metrics(tmp_path: Path):
@@ -77,8 +76,7 @@ def test_visualize_qc_metrics(tmp_path: Path):
 
 @pytest.fixture(scope="function")
 def qc_tma_data(qc_tmas: QCMetricData) -> Generator[Callable, None, None]:
-    """
-    A fixture which yields a function which creates the QCTMA class,
+    """A fixture which yields a function which creates the QCTMA class,
     and computes the metrics, and the rank metrics.
 
     Args:
@@ -132,8 +130,7 @@ def test_qc_tmas_metrics_plot(
 
 @pytest.fixture(scope="function")
 def batch_effect_qc_data(cohort_data: BatchEffectMetricData) -> Generator[Callable, None, None]:
-    """
-    Creates the QCControlMetrics class, and computes the metrics, and then filters out unwanted
+    """Creates the QCControlMetrics class, and computes the metrics, and then filters out unwanted
         channels.
 
     Args:

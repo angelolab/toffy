@@ -2,7 +2,7 @@ import os
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import Tuple
+from typing import Tuple, Union
 
 import numpy as np
 import pandas as pd
@@ -16,6 +16,7 @@ class StreakData:
     """Contains data for correcting the streaks consisting of binary masks, dataframes with
     location and size properties, a directory for saving, and the shape / channel for mask
     generation.
+
     Args:
         shape (tuple): The shape of the image / fov.
         fov (str): The name of the fov being processed.
@@ -33,7 +34,7 @@ class StreakData:
         correcting the streaks.
     """
 
-    shape: Tuple[int, int] = None
+    shape: Union[Tuple[int, int], None] = None
     fov: str = None
     streak_channel: str = None
     corrected_dir: Path = None
@@ -217,7 +218,6 @@ def _make_mask_dataframe(streak_data: StreakData, min_length: int = 70) -> None:
 
         # Filter out eccentricities that are less than 0.99999 (only keep straight lines)
         # Filter out small areas (small lines)
-        eccentricity_value = 0.9999999
         streak_data.filtered_streak_df = streak_data.streak_df.query(
             "eccentricity > @eccentricity_value and length > @min_length"
         )
@@ -400,11 +400,11 @@ def streak_correction(
         for identifying the streaks. Defaults to "Noodle".
         visualization_masks (bool, optional): If `True`, adds binary masks for visualization to
         the StreakData Dataclass which gets returned. Defaults to "False".
+
     Returns:
         Tuple[xr.DataArray, StreakData]: A tuple of the DataArray housing the corrected images,
         and the streak data containing masks and dataframes for analysis and visualization.
     """
-
     # Initialize the streak DataClass
     streak_data = StreakData()
     streak_data.streak_channel = streak_channel

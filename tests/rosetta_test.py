@@ -241,8 +241,8 @@ def test_combine_compensation_files():
             for cp in channel_pairs:
                 df = pd.DataFrame(
                     np.zeros((3, 3)),
-                    index=["chan1", "chan2", "chan3"],
-                    columns=["chan1", "chan2", "chan3"],
+                    index=channels,
+                    columns=channels,
                 )
                 df.loc[cp[0], cp[1]] = m
                 df.to_csv(
@@ -736,7 +736,7 @@ def test_copy_image_files(mocker):
             assert len(io_utils.list_folders(extracted_fov_dir)) == 10
             for i in range(1, 3):
                 assert len(io_utils.list_folders(extracted_fov_dir, f"run_{i}")) == 5
-            assert len(io_utils.list_folders(extracted_fov_dir, f"run_3")) == 0
+            assert len(io_utils.list_folders(extracted_fov_dir, "run_3")) == 0
 
             # check that files in fov folders are copied
             for folder in io_utils.list_folders(extracted_fov_dir):

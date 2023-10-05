@@ -9,10 +9,8 @@ from typing import Generator, List
 import numpy as np
 import pandas as pd
 import pytest
-import xarray as xr
 from alpineer import io_utils, load_utils, test_utils
 from mibi_bin_tools import bin_files
-from tqdm import tqdm
 
 from toffy import qc_comp, settings
 
@@ -115,7 +113,7 @@ def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
         bin_files.extract_bin_files(bin_file_path, extracted_imgs_path, panel=panel)
 
         # define a sample qc_path to write to
-        qc_path = os.path.join(temp_dir, "sample_qc_dir")
+        os.path.join(temp_dir, "sample_qc_dir")
 
         # extraction folder error check
         with pytest.raises(FileNotFoundError):
@@ -271,8 +269,7 @@ def test_format_img_data():
 
 @dataclass
 class QCMetricData:
-    """
-    Contains misc information for a testing set of QC information such as the tma names, fovs,
+    """Contains misc information for a testing set of QC information such as the tma names, fovs,
     channels, and a DataFrame containing testing data.
     """
 
@@ -292,8 +289,7 @@ class QCMetricData:
 def qc_tmas(
     rng: np.random.Generator, tmp_path: pathlib.Path
 ) -> Generator[QCMetricData, None, None]:
-    """
-    A Fixture which yields a dataclass used containing the QC dataframe with the three metrics,
+    """A Fixture which yields a dataclass used containing the QC dataframe with the three metrics,
     the tma name, fovs, channels and the regex search term for RnCm.
 
     Args:
@@ -303,7 +299,6 @@ def qc_tmas(
     Yields:
         Generator[QCMetricData, None, None]: The dataclass containing testing data.
     """
-
     # Set up the testing data features
     fov_count: int = 5
     channel_ignore_count: int = len(settings.QC_CHANNEL_IGNORE)
@@ -423,8 +418,11 @@ def test__channel_filtering(qc_tmas: QCMetricData, _channel_exclude, _channel_in
 
 
 class TestQCTMA:
+    """Class to test QC metrics across the TMA."""
+
     @pytest.fixture(scope="function", autouse=True)
     def _setup(self, qc_tmas: QCMetricData) -> None:
+        """Initialize."""
         self.qc_tmas_fixture = qc_tmas
 
         self.qc_tma = qc_comp.QCTMA(
@@ -434,12 +432,14 @@ class TestQCTMA:
         )
 
     def test__post_init__(self) -> None:
+        """Check output metrics."""
         assert self.qc_tma.qc_cols == settings.QC_COLUMNS
         assert self.qc_tma.qc_suffixes == settings.QC_SUFFIXES
 
         assert self.qc_tma.tma_avg_ranks == {}
 
     def test__get_r_c(self) -> None:
+        """Test retrieved row and column."""
         result = pd.DataFrame()
         result[["R", "C"]]: pd.DataFrame = self.qc_tmas_fixture.qc_df["fov"].apply(
             lambda row: self.qc_tma._get_r_c(row)
@@ -453,6 +453,7 @@ class TestQCTMA:
         assert set(result["C"]) == set(self.qc_tmas_fixture.tma_n_m[:, 1])
 
     def test_compute_qc_tma_metrics(self) -> None:
+        """Test computed TMA metrics."""
         self.qc_tma.compute_qc_tma_metrics(tmas=[self.qc_tmas_fixture.tma_name])
 
         for ms in settings.QC_SUFFIXES:
@@ -483,6 +484,7 @@ class TestQCTMA:
                 )
 
     def test__create_r_c_tma_matrix(self) -> None:
+        """Test row, column matrix creation."""
         y_size, x_size = np.max(self.qc_tmas_fixture.tma_n_m, axis=0)
 
         for qc_col in settings.QC_COLUMNS:
@@ -506,6 +508,7 @@ class TestQCTMA:
     )
     # test_qc_tma_metrics_compute_qc_tma_metrics
     def test_qc_tma_metrics_rank(self, channel_exclude) -> None:
+        """Test TMA rank metrics."""
         self.qc_tma.qc_tma_metrics_rank(
             tmas=[self.qc_tmas_fixture.tma_name], channel_exclude=channel_exclude
         )
@@ -518,8 +521,7 @@ class TestQCTMA:
 
 @dataclass
 class BatchEffectMetricData:
-    """
-    Contains misc information for a testing set of QC information such as the tma names, fovs,
+    """Contains misc information for a testing set of QC information such as the tma names, fovs,
     channels, and a DataFrame containing testing data.
     """
 
@@ -534,8 +536,7 @@ class BatchEffectMetricData:
 def cohort_data(
     rng: np.random.Generator, tmp_path: Path
 ) -> Generator[BatchEffectMetricData, None, None]:
-    """
-    A fixture for generating cohort fovs, and channels for various tissues.
+    """A fixture for generating cohort fovs, and channels for various tissues.
 
     Args:
         rng (np.random.Generator): The random number generator in `conftest.py`.
@@ -545,7 +546,6 @@ def cohort_data(
         Generator[BatchEffectMetricData, None, None]: Yields a dataclass containing
         the testing data: qc_metrics, qc dataframe, tissues, and cohort data_directory.
     """
-
     # Set up Directories for the cohort data
     cohort_dir: Path = tmp_path / "my_cohort"
     cohort_img_dir: Path = cohort_dir / "images"
@@ -607,8 +607,11 @@ def cohort_data(
 
 
 class TestQCControlMetrics:
+    """Class to test QC metrics across the controls."""
+
     @pytest.fixture(autouse=True)
     def _setup(self, cohort_data: BatchEffectMetricData) -> None:
+        """Initialize."""
         self.cohort_data: BatchEffectMetricData = cohort_data
 
         self.qc_control_metrics = qc_comp.QCControlMetrics(
@@ -618,6 +621,7 @@ class TestQCControlMetrics:
         )
 
     def test__post_init__(self) -> None:
+        """Check output metrics."""
         assert self.qc_control_metrics.qc_cols == settings.QC_COLUMNS
         assert self.qc_control_metrics.qc_suffixes == settings.QC_SUFFIXES
 
@@ -639,6 +643,7 @@ class TestQCControlMetrics:
         _channel_include,
         _channel_exclude,
     ) -> None:
+        """Test metrics computation."""
         self.qc_control_metrics.compute_control_qc_metrics(
             control_sample_name=_control_sample_name,
             fovs=self.cohort_data.fovs,
@@ -681,6 +686,7 @@ class TestQCControlMetrics:
         ],
     )
     def test_transformed_control_effects_data(self, _control_sample_name, _metric) -> None:
+        """Test tranformed data."""
         self.qc_control_metrics.compute_control_qc_metrics(
             control_sample_name=_control_sample_name,
             fovs=self.cohort_data.fovs,

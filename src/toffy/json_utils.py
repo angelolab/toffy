@@ -9,14 +9,14 @@ from alpineer import io_utils
 
 
 def rename_missing_fovs(fov_data):
-    """Identify FOVs that are missing the 'name' key and create one with value placeholder_{n}
+    """Identify FOVs that are missing the 'name' key and create one with value placeholder_{n}.
+
     Args:
-        fov_data (dict): the FOV run JSON data
+        fov_data (dict): the FOV run JSON data.
 
     Returns:
         dict: a copy of the run JSON data with placeholder names for FOVs that lack one
     """
-
     copy_fov_data = copy.deepcopy(fov_data)
 
     # count of FOVs that are missing the 'name' key
@@ -32,9 +32,8 @@ def rename_missing_fovs(fov_data):
 
 
 def rename_duplicate_fovs(tma_fovs):
-    """Identify and rename duplicate FOV names in `fov_list`
-
-    For a given FOV name, the subsequent duplicates get renamed `{FOV}_duplicate{n}`
+    """Identify and rename duplicate FOV names in `fov_list` For a given FOV name, the subsequent
+       duplicates get renamed `{FOV}_duplicate{n}`.
 
     Args:
         tma_fovs (dict):
@@ -44,7 +43,6 @@ def rename_duplicate_fovs(tma_fovs):
         dict:
             The same run JSON with the FOVs renamed to account for duplicates
     """
-
     # used for identifying the number of times each FOV was found
     fov_count = {}
 
@@ -62,15 +60,15 @@ def rename_duplicate_fovs(tma_fovs):
 
 
 def list_moly_fovs(bin_file_dir, fov_list=None):
-    """Lists all of the FOVs in a directory or provided list which are moly FOVs
+    """Lists all of the FOVs in a directory or provided list which are moly FOVs.
 
     Args:
         bin_file_dir (str): path to bin files
         fov_list (list): list of fov names to check, default None will check all fovs in dir
 
     Returns:
-        list: list of FOVs which are moly FOVs"""
-
+        list: list of FOVs which are moly FOVs
+    """
     run_name = os.path.basename(bin_file_dir)
 
     # check provided fovs
@@ -96,12 +94,14 @@ def list_moly_fovs(bin_file_dir, fov_list=None):
 
 
 def read_json_file(json_path, encoding=None):
-    """Reads json file and returns json file object while verifying dirs exist
+    """Reads json file and returns json file object while verifying dirs exist.
+
     Args:
         json_path (str): path to json file
+        encoding (str): type of file encoding
     Returns:
-        json file object"""
-
+        (dict) json file object
+    """
     # call to validate paths will raise errors if anything wrong, and do nothing if
     # file path valid
     io_utils.validate_paths(json_path)
@@ -113,12 +113,15 @@ def read_json_file(json_path, encoding=None):
 
 
 def write_json_file(json_path, json_object, encoding=None):
-    """Writes json file object to json file. Raises error if directory doesnt exist.
-    Args:
-        json_path: full path to write json file
-    Returns:
-        nothing"""
+    """Writes json file object to json file. Raises error if directory doesn't exist.
 
+    Args:
+        json_path (str): full path to write json file
+        json_object (dict): data to save to the file
+        encoding (str): type of file encoding
+    Returns:
+        nothing
+    """
     # get the path minus the proposed file name.
     dir_path = os.path.dirname(os.path.abspath(json_path))
 
@@ -130,7 +133,7 @@ def write_json_file(json_path, json_object, encoding=None):
 
 
 def split_run_file(run_dir, run_file_name, file_split: list):
-    """Splits a run json file into smaller fov amount files as defined by the user
+    """Splits a run json file into smaller fov amount files as defined by the user.
 
     Args:
         run_dir (str): path to directory containing the run file
@@ -138,8 +141,8 @@ def split_run_file(run_dir, run_file_name, file_split: list):
         file_split (list): list of ints defining how to break up the fovs into new jsons
 
     Returns:
-        saves the new json files to the base_dir"""
-
+        saves the new json files to the base_dir
+    """
     json_path = os.path.join(run_dir, run_file_name)
     full_json = read_json_file(json_path, encoding="utf-8")
 
@@ -165,7 +168,8 @@ def split_run_file(run_dir, run_file_name, file_split: list):
 
 
 def check_for_empty_files(bin_file_dir):
-    """Check for any empty json files and warn the user
+    """Check for any empty json files and warn the user.
+
     Args:
         bin_file_dir (str): directory containing the bin and json files
 
@@ -173,7 +177,6 @@ def check_for_empty_files(bin_file_dir):
         (list) of fov files with empty json, if none returns empty list
         raises a warning
     """
-
     # retrieve all fovs in bin_file_dir
     fov_names = io_utils.remove_file_extensions(io_utils.list_files(bin_file_dir, substrs=".bin"))
     empty_json_files = []
@@ -199,7 +202,8 @@ def check_for_empty_files(bin_file_dir):
 
 
 def check_fov_resolutions(bin_file_dir, run_name, save_path=None):
-    """Use the run metadata to calculate the resolution of each fov
+    """Use the run metadata to calculate the resolution of each fov.
+
     Args:
         bin_file_dir (str): directory containing the run json file
         run_name (str): name of the run and corresponding run file
@@ -261,7 +265,8 @@ def check_fov_resolutions(bin_file_dir, run_name, save_path=None):
 
 
 def missing_fov_check(bin_file_dir, run_name):
-    """Use the run metadata to check if all FOV data was generated
+    """Use the run metadata to check if all FOV data was generated.
+
     Args:
         bin_file_dir (str): directory containing the run json file
         run_name (str): name of the run and corresponding run file
@@ -269,7 +274,6 @@ def missing_fov_check(bin_file_dir, run_name):
     Raises:
         Warning if any FOVs specified in the run file doesn't have associated bin/json files
     """
-
     # read in run file
     run_file_path = os.path.join(bin_file_dir, run_name + ".json")
     io_utils.validate_paths([run_file_path])
