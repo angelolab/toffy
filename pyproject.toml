@@ -38,7 +38,7 @@ metadata = false
 [tool.poetry.dependencies]
 python = ">=3.9,<3.12"
 alpineer = ">=0.1.9"
-mibi-bin-tools = "0.2.10"
+mibi-bin-tools = "0.2.11"
 ipywidgets = "^8"
 numpy = "1.*"
 natsort = "^8"

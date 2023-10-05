@@ -47,8 +47,8 @@ def mocked_extract_bin_file(data_dir, include_fovs, panel, out_dir, intensities)
     return out_array
 
 
-def mocked_pulse_height(data_dir, fov, panel, channel):
-    return channel * 2
+def mocked_pulse_height(data_dir, fov, panel, channels):
+    return {chan: chan * 2 for chan in channels}
 
 
 def test_write_counts_per_mass(mocker):

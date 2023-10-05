@@ -97,7 +97,9 @@ def compute_mph_metrics(bin_file_dir, csv_dir, fov, mass=98, mass_start=97.5, ma
     pulse_height_file = fov + "-mph_pulse.csv"
 
     try:
-        median = bin_files.get_median_pulse_height(bin_file_dir, fov, target, panel)
+        median = list(
+            bin_files.get_median_pulse_height(bin_file_dir, fov, [target], panel).values()
+        )[0]
         count_dict = bin_files.get_total_counts(bin_file_dir, [fov])
     except FileNotFoundError:
         raise FileNotFoundError(f"The FOV name supplied doesn't have a JSON file: {fov}")
