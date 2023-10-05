@@ -60,7 +60,6 @@ def write_mph_per_mass(
         stop_offset (float): ending value for calculating mph values
         proficient (bool): whether proficient MPH data is written or not
     """
-
     # compute pulse heights
     panel = make_panel(
         mass=masses, target_name=masses, low_range=start_offset, high_range=stop_offset
