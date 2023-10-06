@@ -177,7 +177,6 @@ def test_watcher_run_timeout(
         mph_out_dir = os.path.join(tmpdir, "cb_2", RUN_DIR_NAME)
         plot_dir = os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME)
         pulse_out_dir = os.path.join(tmpdir, "cb_3", RUN_DIR_NAME)
-        os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, f"{RUN_DIR_NAME}_stitched")
 
         # add directories to kwargs
         kwargs["tiff_out_dir"] = tiff_out_dir
@@ -264,7 +263,6 @@ def test_watcher(
             mph_out_dir = os.path.join(tmpdir, "cb_2", RUN_DIR_NAME)
             plot_dir = os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME)
             pulse_out_dir = os.path.join(tmpdir, "cb_3", RUN_DIR_NAME)
-            os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, f"{RUN_DIR_NAME}_stitched")
 
             # add directories to kwargs
             kwargs["tiff_out_dir"] = tiff_out_dir

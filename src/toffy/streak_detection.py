@@ -2,7 +2,7 @@ import os
 from dataclasses import dataclass
 from functools import partial
 from pathlib import Path
-from typing import Tuple, Union
+from typing import Tuple
 
 import numpy as np
 import pandas as pd
@@ -34,7 +34,7 @@ class StreakData:
         correcting the streaks.
     """
 
-    shape: Union[Tuple[int, int], None] = None
+    shape: Tuple[int, int] = None
     fov: str = None
     streak_channel: str = None
     corrected_dir: Path = None
@@ -170,7 +170,9 @@ def _make_binary_mask(
     return binary_mask
 
 
-def _make_mask_dataframe(streak_data: StreakData, min_length: int = 70) -> None:
+def _make_mask_dataframe(
+    streak_data: StreakData, min_length: int = 70, eccentricity_value=0.9999999
+) -> None:
     """Converts the binary mask created by `_make_binary_mask` into a dataframe for
     processing. The streaks are labeled, pixel information (min_row, min_col, max_row, max_col)
     is evaluated and streak lengths / areas are calculated. In addition the `min_length` argument
@@ -180,6 +182,7 @@ def _make_mask_dataframe(streak_data: StreakData, min_length: int = 70) -> None:
         streak_data (StreakData): An instance of the StreakData Dataclass, holds all necessary
         data for streak correction.
         min_length (int): The lower threshold for filtering streaks in pixels. Defaults to 70.
+        eccentricity_value (float): The threshold to filter out eccentricities lower than this
     """
     # Label all the candidate streaks
     labeled_streaks = measure.label(streak_data.streak_mask, connectivity=2, return_num=False)
