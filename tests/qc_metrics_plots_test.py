@@ -11,7 +11,7 @@ from traitlets import Callable
 from toffy import qc_metrics_plots, settings
 from toffy.qc_comp import QCTMA, QCControlMetrics
 
-from .qc_comp_test import BatchEffectMetricData, QCMetricData
+from .qc_comp_test import BatchEffectMetricData, QCMetricData, cohort_data, qc_tmas
 
 
 def test_visualize_qc_metrics(tmp_path: Path):
