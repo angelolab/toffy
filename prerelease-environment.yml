@@ -14,4 +14,4 @@ dependencies:
     - alpineer==0.1.7
     - mibi-bin-tools==0.2.9
     - jupyter_contrib_nbextensions
-    - -e .[test]
+    - -e .
