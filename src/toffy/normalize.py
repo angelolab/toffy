@@ -85,7 +85,7 @@ def create_objective_function(obj_func):
         obj_func (str): the desired objective function. Must be either poly_2, ..., poly_5, or log
 
     Returns:
-        function: the function which will be optimized
+        Callable: the function which will be optimized
     """
     # input validation
     valid_funcs = ["poly_2", "poly_3", "poly_4", "poly_5", "log", "exp"]

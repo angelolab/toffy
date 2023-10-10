@@ -19,7 +19,7 @@ def parse_sweep_parameters(sweep_name):
         sweep_name: the name of a folder containing a single FOV of a detector sweep
 
     Returns:
-        tuple: the extracted voltage, date, and time
+        VoltageSweepFile: the extracted voltage, date, and time
     """
     _, voltage, date, time = sweep_name.split("_")
     voltage = int(voltage[:-1])
