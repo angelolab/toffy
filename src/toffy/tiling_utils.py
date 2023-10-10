@@ -1007,10 +1007,6 @@ def assign_closest_fovs(manual_fovs, auto_fovs):
 
     # assign the mapping in manual_to_auto_map
     for manual_index, auto_index in enumerate(closest_auto_point_ind):
-        # get the coordinates of the manual fov and its closest auto fov
-        tuple(manual_centroids[manual_index])
-        tuple(auto_centroids[auto_index])
-
         # get the corresponding fov names
         man_name = list(manual_fovs_name_coord.keys())[manual_index]
         auto_name = list(auto_fovs.keys())[auto_index]
@@ -1270,7 +1266,7 @@ def remap_manual_to_auto_display(
 
 
 def save_json(json_data, save_ann, json_path):
-    """Saves `json__data` to `json_path` and notifies user through `save_ann`.
+    """Saves `json_data` to `json_path` and notifies user through `save_ann`.
 
     Helper to `save_mapping` nested callback function in tiled region and tma visualizations
 
@@ -1783,7 +1779,7 @@ def tiled_region_interactive_remap(
 
     with out:
         # draw the image
-        ax.imshow(slide_img)
+        _ = ax.imshow(slide_img)
 
         # overwrite the default title
         _ = plt.title("Overlay of tiled region FOVs")

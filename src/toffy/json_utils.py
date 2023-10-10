@@ -100,7 +100,7 @@ def read_json_file(json_path, encoding=None):
         json_path (str): path to json file
         encoding (str): type of file encoding
     Returns:
-        (dict) json file object
+        dict: the JSON object loaded from `json_path`
     """
     # call to validate paths will raise errors if anything wrong, and do nothing if
     # file path valid
@@ -119,8 +119,6 @@ def write_json_file(json_path, json_object, encoding=None):
         json_path (str): full path to write json file
         json_object (dict): data to save to the file
         encoding (str): type of file encoding
-    Returns:
-        nothing
     """
     # get the path minus the proposed file name.
     dir_path = os.path.dirname(os.path.abspath(json_path))
@@ -139,9 +137,6 @@ def split_run_file(run_dir, run_file_name, file_split: list):
         run_dir (str): path to directory containing the run file
         run_file_name (str): name of the run file to split
         file_split (list): list of ints defining how to break up the fovs into new jsons
-
-    Returns:
-        saves the new json files to the base_dir
     """
     json_path = os.path.join(run_dir, run_file_name)
     full_json = read_json_file(json_path, encoding="utf-8")
@@ -174,7 +169,7 @@ def check_for_empty_files(bin_file_dir):
         bin_file_dir (str): directory containing the bin and json files
 
     Return:
-        (list) of fov files with empty json, if none returns empty list
+        list: fov files with empty json, if none returns empty list
         raises a warning
     """
     # retrieve all fovs in bin_file_dir

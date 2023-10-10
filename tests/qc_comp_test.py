@@ -112,9 +112,6 @@ def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
         os.makedirs(extracted_imgs_path)
         bin_files.extract_bin_files(bin_file_path, extracted_imgs_path, panel=panel)
 
-        # define a sample qc_path to write to
-        os.path.join(temp_dir, "sample_qc_dir")
-
         # extraction folder error check
         with pytest.raises(FileNotFoundError):
             qc_comp.compute_qc_metrics("bad_extraction_path", fovs[0], gaussian_blur)

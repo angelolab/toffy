@@ -101,7 +101,6 @@ def download_mibitracker_data(
 
     # extract the name of the FOVs and their associated internal IDs
     run_fov_names = [img["number"] for img in run_info["results"][0]["imageset"]["images"]]
-    [img["id"] for img in run_info["results"][0]["imageset"]["images"]]
 
     # if fovs is None, ensure all of the fovs in run_fov_names_ids are chosen
     if fovs is None:

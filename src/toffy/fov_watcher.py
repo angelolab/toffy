@@ -336,7 +336,6 @@ class FOV_EventHandler(FileSystemEventHandler):
 
         # NOTE: from observation, only the most recent FOV will ever be in danger of timing out
         # so all the FOVs processed in this function should already be fully processed
-        str(Path(path).parents[0])
         start_index = self.last_fov_num_processed + 1 if self.last_fov_num_processed else 1
         for i in np.arange(start_index, fov_num):
             fov_name = f"fov-{i}-scan-1"

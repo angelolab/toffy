@@ -131,7 +131,7 @@ def test_qc_tmas_metrics_plot(
 @pytest.fixture(scope="function")
 def batch_effect_qc_data(cohort_data: BatchEffectMetricData) -> Generator[Callable, None, None]:
     """Creates the QCControlMetrics class, and computes the metrics, and then filters out unwanted
-        channels.
+    channels.
 
     Args:
         cohort_data (BatchEffectMetricData): The Fixture which creates the BatchEffectMetricData
