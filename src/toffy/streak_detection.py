@@ -170,9 +170,7 @@ def _make_binary_mask(
     return binary_mask
 
 
-def _make_mask_dataframe(
-    streak_data: StreakData, min_length: int = 70, eccentricity_value=0.9999999
-) -> None:
+def _make_mask_dataframe(streak_data: StreakData, min_length: int = 70) -> None:
     """Converts the binary mask created by `_make_binary_mask` into a dataframe for
     processing. The streaks are labeled, pixel information (min_row, min_col, max_row, max_col)
     is evaluated and streak lengths / areas are calculated. In addition the `min_length` argument
@@ -221,8 +219,9 @@ def _make_mask_dataframe(
 
         # Filter out eccentricities that are less than 0.99999 (only keep straight lines)
         # Filter out small areas (small lines)
+        eccentricity_value = 0.9999999
         streak_data.filtered_streak_df = streak_data.streak_df.query(
-            "eccentricity > @eccentricity_value and length > @min_length"
+            f"eccentricity > {eccentricity_value} and length > {min_length}"
         )
     else:
         # otherwise, make a blank df
