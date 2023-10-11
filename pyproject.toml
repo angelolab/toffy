@@ -36,7 +36,7 @@ style = "pep440"
 metadata = false
 
 [tool.poetry.dependencies]
-python = ">=3.9,<3.12"
+python = ">=3.9"
 alpineer = ">=0.1.9"
 mibi-bin-tools = "0.2.11"
 ipywidgets = "^8"
