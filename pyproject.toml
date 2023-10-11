@@ -48,6 +48,7 @@ watchdog = "^3"
 tqdm = "^4"
 scipy = "^1.10.1"
 pandas = "^2"
+pywavelets = "^1.4.1"
 
 [tool.poetry.group.test]
 optional = true
