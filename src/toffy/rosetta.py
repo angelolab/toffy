@@ -530,6 +530,7 @@ def add_source_channel_to_tiled_image(
     max_img_size,
     img_sub_folder="",
     percent_norm=98,
+    img_size_scale=0.25,
 ):
     """Adds the specified source_channel to the first row of previously generated tiled images
 
@@ -542,6 +543,7 @@ def add_source_channel_to_tiled_image(
         source_channel (str): the channel which will be prepended to the tiled images
         percent_norm (int): percentile normalization param to enable easy visualization, set to
             None to skip this step
+        img_size_scale (int/float): amount to scale down image, set to None for no scaling
     """
 
     # load source images
@@ -555,21 +557,22 @@ def add_source_channel_to_tiled_image(
     # convert stacked images to concatenated row
     source_list = [source_imgs.values[fov, :, :, 0] for fov in range(source_imgs.shape[0])]
     source_row = np.concatenate(source_list, axis=1)
+    source_scaled = rescale_images(source_row, img_size_scale)
 
     # get percentile of source row if percent_norm set, otherwise leave unset
-    perc_source = np.percentile(source_row, percent_norm) if percent_norm else None
+    perc_source = np.percentile(source_scaled, percent_norm) if percent_norm else None
 
     # confirm tiled images have expected shape
     tiled_images = io_utils.list_files(tiled_img_dir)
     test_file = io.imread(os.path.join(tiled_img_dir, tiled_images[0]))
-    if test_file.shape[1] != source_row.shape[1]:
+    if test_file.shape[1] != source_scaled.shape[1]:
         raise ValueError(
             "Tiled image {} has shape {}, but source image {} hasshape {}".format(
-                tiled_images[0], test_file.shape, source_channel, source_row.shape
+                tiled_images[0], test_file.shape, source_channel, source_scaled.shape
             )
         )
 
-    # loop through each tiled image, prepend source row, and save
+    # loop through each tiled image, prepend source row scaled, and save
     for tile_name in tiled_images:
         current_tile = io.imread(os.path.join(tiled_img_dir, tile_name))
 
@@ -580,7 +583,7 @@ def add_source_channel_to_tiled_image(
             perc_tile = np.percentile(current_tile, percent_norm)
             perc_ratio = perc_source / perc_tile
 
-        rescaled_source = source_row / perc_ratio
+        rescaled_source = source_scaled / perc_ratio
 
         # combine together and save, compress to 3 decimal points for space optimization
         combined_tile = np.concatenate([rescaled_source, current_tile])

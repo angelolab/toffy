@@ -13,6 +13,7 @@ from alpineer import image_utils, io_utils, load_utils, misc_utils, test_utils
 from pytest_cases import parametrize_with_cases
 
 from toffy import rosetta
+from toffy.image_stitching import rescale_images
 from toffy.rosetta import create_rosetta_matrices
 
 from .utils import rosetta_test_cases as test_cases
@@ -491,11 +492,12 @@ def test_create_tiled_comparison(dir_num, channel_subset, img_size_scale):
 
 
 @parametrize("percent_norm", [98, None])
-def test_add_source_channel_to_tiled_image(percent_norm):
+@parametrize("img_scale", [1, 0.25])
+def test_add_source_channel_to_tiled_image(percent_norm, img_scale):
     with tempfile.TemporaryDirectory() as top_level_dir:
         num_fovs = 5
         num_chans = 4
-        im_size = 10
+        im_size = 12
 
         # create directory containing raw images
         raw_dir = os.path.join(top_level_dir, "raw_dir")
@@ -512,6 +514,8 @@ def test_add_source_channel_to_tiled_image(percent_norm):
         os.makedirs(tiled_dir)
         for i in range(2):
             vals = np.random.rand(im_size * 3 * im_size * num_fovs).reshape(tiled_shape)
+            if img_scale != 1:
+                vals = rescale_images(vals, scale=img_scale)
             fname = os.path.join(tiled_dir, f"tiled_image_{i}.tiff")
             image_utils.save_image(fname, vals)
 
@@ -522,15 +526,19 @@ def test_add_source_channel_to_tiled_image(percent_norm):
             tiled_img_dir=tiled_dir,
             output_dir=output_dir,
             source_channel="chan1",
-            max_img_size=10,
+            max_img_size=im_size,
             percent_norm=percent_norm,
+            img_size_scale=img_scale,
         )
 
         # each image should now have an extra row added on top
         tiled_images = io_utils.list_files(output_dir)
         for im_name in tiled_images:
             image = io.imread(os.path.join(output_dir, im_name))
-            assert image.shape == (tiled_shape[0] + im_size, tiled_shape[1])
+            assert image.shape == (
+                img_scale * (tiled_shape[0] + im_size),
+                img_scale * tiled_shape[1],
+            )
 
 
 @parametrize("fovs", [None, ["fov1"]])
