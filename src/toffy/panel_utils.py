@@ -142,13 +142,13 @@ def modify_panel_ranges(panel: pd.DataFrame, start_offset: float = 0, stop_offse
 
 def merge_duplicate_masses(panel):
     """Check a panel df for duplicate mass values and return a unique mass panel with the
-        target names combined
+        target names combined.
+
     Args:
         panel (pd.DataFrame): panel dataframe with columns Mass and Target
     Returns:
         pd.DataFrame with no duplicate masses
     """
-
     # find the mass and target values of duplicate
     duplicates = panel[panel["Mass"].duplicated(keep=False)]
 
@@ -165,16 +165,15 @@ def merge_duplicate_masses(panel):
 
 
 def convert_panel(panel_path):
-    """
-    Converts the panel retrieved from ionpath into a necessary toffy format,
-    also adds necessary channels for analysis
+    """Converts the panel retrieved from ionpath into a necessary toffy format,
+    also adds necessary channels for analysis.
+
     Args:
         panel_path (str): direct path to panel file
     Returns:
         panel (pd.DataFrame): detailing the Mass, Target, Start, and Stop values
         also saves the above to file with name formatted "panel_name-toffy.csv"
     """
-
     # retrieve the panel name and directory it is contained in
     panel_name = os.path.basename(os.path.splitext(panel_path)[0])
     panel_dir = os.path.dirname(panel_path)
@@ -247,13 +246,13 @@ def convert_panel(panel_path):
 
 
 def load_panel(panel_path):
-    """Loads in the toffy panel data, calls convert_panel() if necessary
+    """Loads in the toffy panel data, calls convert_panel() if necessary.
+
     Args:
         panel_path (str): direct path to panel file
     Returns:
         panel (pd.DataFrame): toffy formatted panel data
     """
-
     # read in the provided panel info
     panel_name = os.path.basename(panel_path).split(".")[0]
     panel_dir = os.path.dirname(panel_path)

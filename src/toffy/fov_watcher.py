@@ -6,7 +6,7 @@ import warnings
 from datetime import datetime
 from multiprocessing import Lock
 from pathlib import Path
-from typing import Callable, Optional, Tuple, Union
+from typing import Callable, Tuple, Union
 
 import natsort as ns
 import numpy as np
@@ -23,14 +23,14 @@ from toffy.json_utils import read_json_file
 
 
 class RunStructure:
-    """Expected bin and json files
+    """Expected bin and json files.
 
     Attributes:
         fov_progress (dict): Whether or not an expected file has been created
     """
 
     def __init__(self, run_folder: str, fov_timeout: int = 7800):
-        """initializes RunStructure by parsing run json within provided run folder
+        """Initializes RunStructure by parsing run json within provided run folder.
 
         Args:
             run_folder (str):
@@ -68,7 +68,7 @@ class RunStructure:
         self.highest_fov = len(self.fov_progress)
 
     def check_run_condition(self, path: str) -> Tuple[bool, str]:
-        """Checks if all requisite files exist and are complete
+        """Checks if all requisite files exist and are complete.
 
         Args:
             path (str):
@@ -81,7 +81,6 @@ class RunStructure:
             (bool, str):
                 whether or not both json and bin files exist, as well as the name of the point
         """
-
         filename = Path(path).parts[-1]
 
         # if filename starts with a '.' (temp file), it should be ignored
@@ -137,7 +136,7 @@ class RunStructure:
         return False, fov_name
 
     def processed(self, fov_name: str):
-        """Notifies run structure that fov has been processed
+        """Notifies run structure that fov has been processed.
 
         Args:
             fov_name (str):
@@ -146,7 +145,7 @@ class RunStructure:
         self.processed_fovs.append(fov_name)
 
     def check_fov_progress(self) -> dict:
-        """Condenses internal dictionary to show which fovs have finished
+        """Condenses internal dictionary to show which fovs have finished.
 
         Returns:
             dict
@@ -159,7 +158,7 @@ class RunStructure:
 
 
 class FOV_EventHandler(FileSystemEventHandler):
-    """File event handler for FOV files
+    """File event handler for FOV files.
 
     Attributes:
         run_folder (str):
@@ -186,7 +185,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         fov_timeout: int = 7800,
         watcher_timeout: int = 3 * 7800,
     ):
-        """Initializes FOV_EventHandler
+        """Initializes FOV_EventHandler.
 
         Args:
             run_folder (str):
@@ -247,7 +246,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         )
 
     def _check_fov_status(self, path: str):
-        """Verifies the status of the file written at `path`
+        """Verifies the status of the file written at `path`.
 
         Args:
             path (str):
@@ -276,7 +275,7 @@ class FOV_EventHandler(FileSystemEventHandler):
             return None, None
 
     def _generate_callback_data(self, point_name: str, overwrite: bool):
-        """Runs the `fov_func` and `inter_func` if applicable for a FOV
+        """Runs the `fov_func` and `inter_func` if applicable for a FOV.
 
         Args:
             point_name (str):
@@ -310,7 +309,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         self.check_complete()
 
     def _process_missed_fovs(self, path: str):
-        """Given a `path`, check if there are any missing FOVs to process before it
+        """Given a `path`, check if there are any missing FOVs to process before it.
 
         Args:
             path (str):
@@ -337,7 +336,6 @@ class FOV_EventHandler(FileSystemEventHandler):
 
         # NOTE: from observation, only the most recent FOV will ever be in danger of timing out
         # so all the FOVs processed in this function should already be fully processed
-        bin_dir = str(Path(path).parents[0])
         start_index = self.last_fov_num_processed + 1 if self.last_fov_num_processed else 1
         for i in np.arange(start_index, fov_num):
             fov_name = f"fov-{i}-scan-1"
@@ -426,7 +424,7 @@ class FOV_EventHandler(FileSystemEventHandler):
                 self._fov_callback_driver(fov_bin_path, overwrite=True)
 
     def _fov_callback_driver(self, file_trigger: str, overwrite: bool = False):
-        """The FOV and intermediate-level callback motherbase for a single .bin file
+        """The FOV and intermediate-level callback motherbase for a single .bin file.
 
         Args:
             file_trigger (str):
@@ -449,7 +447,7 @@ class FOV_EventHandler(FileSystemEventHandler):
     def _run_callbacks(
         self, event: Union[DirCreatedEvent, FileCreatedEvent, FileMovedEvent], check_last_fov: bool
     ):
-        """The pipeline runner, invoked when a new event is seen
+        """The pipeline runner, invoked when a new event is seen.
 
         Args:
             event (Union[DirCreatedEvent, FileCreatedEvent, FileMovedEvent]):
@@ -472,14 +470,14 @@ class FOV_EventHandler(FileSystemEventHandler):
             self._check_last_fov(file_trigger)
 
     def on_created(self, event: FileCreatedEvent, check_last_fov: bool = True):
-        """Handles file creation events
+        """Handles file creation events.
 
         If FOV structure is completed, the fov callback, `self.fov_func` will be run over the data.
         This function is automatically called; users generally shouldn't call this function
 
         Args:
-            event (FileCreatedEvent):
-                file creation event
+            event (FileCreatedEvent): file creation event
+            check_last_fov (bool): whether to check if the last fov has been processed
         """
         # reset event creation time
         current_time = datetime.now()
@@ -494,9 +492,9 @@ class FOV_EventHandler(FileSystemEventHandler):
             self._run_callbacks(event, check_last_fov)
 
     def file_timer(self, fov_timeout, watcher_timeout):
-        """Checks time since last file was generated
-        Args:
+        """Checks time since last file was generated.
 
+        Args:
             fov_timeout (int):
                 how long to wait for fov data to be generated once file detected
             watcher_timeout (int):
@@ -530,14 +528,14 @@ class FOV_EventHandler(FileSystemEventHandler):
             time.sleep(fov_timeout)
 
     def on_moved(self, event: FileMovedEvent, check_last_fov: bool = True):
-        """Handles file renaming events
+        """Handles file renaming events.
 
         If FOV structure is completed, the fov callback, `self.fov_func` will be run over the data.
         This function is automatically called; users generally shouldn't call this function
 
         Args:
-            event (FileMovedEvent):
-                file moved event
+            event (FileMovedEvent): file moved event
+            check_last_fov (bool): whether to check if last fov was processed
         """
         # this happens if _check_last_fov gets called by a prior FOV, no need to reprocess
         if self.last_fov_num_processed == self.run_structure.highest_fov:
@@ -548,13 +546,12 @@ class FOV_EventHandler(FileSystemEventHandler):
             self._run_callbacks(event, check_last_fov)
 
     def check_complete(self):
-        """Checks run structure fov_progress status
+        """Checks run structure fov_progress status.
 
         If run is complete, all callbacks in `per_run` will be run over the whole run.
 
         NOTE: bin files that had new data written will first need to be re-extracted.
         """
-
         if all(self.run_structure.check_fov_progress().values()) and not self.all_fovs_complete:
             self.all_fovs_complete = True
             self._check_bin_updates()
@@ -578,7 +575,7 @@ def start_watcher(
     zero_size_timeout: int = 7800,
     watcher_timeout: int = 3 * 7800,
 ):
-    """Passes bin files to provided callback functions as they're created
+    """Passes bin files to provided callback functions as they're created.
 
     Args:
         run_folder (str):
@@ -602,6 +599,8 @@ def start_watcher(
             note, this doesn't effect the watcher itself, just when this wrapper function exits.
         zero_size_timeout (int):
             number of seconds to wait for non-zero file size
+        watcher_timeout (int):
+            number of seconds to wait for new fov file generation
     """
     # if the run folder specified isn't already there, ask the user to explicitly confirm the name
     if not os.path.exists(run_folder):

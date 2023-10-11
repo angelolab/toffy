@@ -6,7 +6,8 @@ from mibi_bin_tools.bin_files import get_histograms_per_tof
 
 
 def bin_array(arr, bin_factor):
-    """Bin data for visualization according to a bin_factor
+    """Bin data for visualization according to a bin_factor.
+
     Args:
         arr (array_like): original data
         bin_factor (int): size of the bins for the histograms
@@ -23,7 +24,7 @@ def bin_array(arr, bin_factor):
 
 
 def compute_intensities(bin_file_dir, fov_list, mass, mass_start, mass_stop, bin_factor=100):
-    """Compute the pulse height intensities for given FOVs
+    """Compute the pulse height intensities for given FOVs.
 
     Args:
         bin_file_dir (str): path to the FOV bin files
@@ -37,7 +38,6 @@ def compute_intensities(bin_file_dir, fov_list, mass, mass_start, mass_stop, bin
         pd.DataFrame containing the MPH intensity data
 
     """
-
     panel = pd.DataFrame(
         [
             {
@@ -85,7 +85,7 @@ def visualize_intensity_data(
     x_cutoff=20000,
     normalize=True,
 ):
-    """Create a histogram of the pulse height intensities for given FOVs
+    """Create a histogram of the pulse height intensities for given FOVs.
 
     Args:
         bin_file_dir (str): path to the FOV bin files
@@ -94,10 +94,10 @@ def visualize_intensity_data(
         mass_stop (float): end of mass integration range
         fov_list (list): which FOVs to include, if None will include all in data_dir
         bin_factor (int): size of the bins for the histograms, default 100
+        x_cutoff (int): cutoff for x-axis
         normalize (bool): whether to normalize the histograms
 
     """
-
     # validate path
     io_utils.validate_paths(bin_file_dir)
 

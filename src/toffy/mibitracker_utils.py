@@ -30,7 +30,8 @@ DATA_TRANSFER_TIMEOUT = 30
 
 class MibiTrackerError(Exception):
     """Raise for exceptions where the response from the MibiTracker API is
-    invalid or unexpected."""
+    invalid or unexpected.
+    """
 
 
 class MibiRequests:
@@ -100,6 +101,7 @@ class MibiRequests:
         session_timeout=SESSION_TIMEOUT,
         data_transfer_timeout=DATA_TRANSFER_TIMEOUT,
     ):
+        """Initialize MibiRequests."""
         self.url = url.rstrip("/")  # We add this as part of request params
         self.session = StatusCheckedSession(timeout=session_timeout)
         self._data_transfer_timeout = data_transfer_timeout
@@ -138,7 +140,8 @@ class MibiRequests:
 
     def refresh(self):
         """Refreshes the authorization token stored in the session header.
-        Raises HTTP 400 if attempting to refresh an expired token."""
+        Raises HTTP 400 if attempting to refresh an expired token.
+        """
         token = self.session.post(  # use the session to avoid recursion
             "{}/api-token-refresh/".format(self.url),
             data=json.dumps({"token": self.session.headers["Authorization"][4:]}),
@@ -172,6 +175,7 @@ class MibiRequests:
                 Passed to ``requests.Session.get``.
             **kwargs:
                 Passes to ``requests.Session.get``.
+
         Returns:
             requests.Session.get:
                 The response from ``requests.Session.get``.
@@ -191,6 +195,7 @@ class MibiRequests:
                 Passed to ``requests.Session.post``.
             **kwargs:
                 Passes to ``requests.Session.post``.
+
         Returns:
             requests.Session.post:
                 The response from ``requests.Session.post``.
@@ -210,6 +215,7 @@ class MibiRequests:
                 Passed to ``requests.Session.put``.
             **kwargs:
                 Passes to ``requests.Session.put``.
+
         Returns:
             requests.Session.put:
                 The response from ``requests.Session.put``.
@@ -229,6 +235,7 @@ class MibiRequests:
                 Passed to ``requests.Session.delete``.
             **kwargs:
                 Passes to ``requests.Session.delete``.
+
         Returns:
             requests.Session.delete:
                 The response from ``requests.Session.delete``.
@@ -245,6 +252,7 @@ class MibiRequests:
             path:
                 The path to the file in storage. This usually can be
                 constructed from the run and image folders.
+
         Returns:
             io.BytesIO:
                 An open file object containing the downloaded file's data,
@@ -263,6 +271,7 @@ class MibiRequests:
         Args:
             run_name: The name of the run the image belongs to.
             run_label: (optional) The label of the run.
+
         Returns:
             list:
                 A list of JSON data for each run that matches the search.
@@ -272,7 +281,6 @@ class MibiRequests:
                 unique and the returned list could either be of length
                 zero or one.
         """
-
         payload = {"name": run_name}
 
         if run_label:
@@ -288,6 +296,7 @@ class MibiRequests:
                 The integer id of an image.
             channel_name:
                 The name of the channel to download.
+
         Returns:
             numpy.ndarray:
                 A MxN numpy array of the channel data.
@@ -311,11 +320,13 @@ class StatusCheckedSession(requests.Session):
     """Raises for HTTP errors and adds any response JSON to the message."""
 
     def __init__(self, timeout=SESSION_TIMEOUT):
+        """Initialize StatusCheckedSession."""
         super(StatusCheckedSession, self).__init__()
         self.timeout = timeout
 
     @staticmethod
     def _check_status(response):
+        """Check web status."""
         try:
             response.raise_for_status()
         except HTTPError as e:
@@ -327,30 +338,36 @@ class StatusCheckedSession(requests.Session):
         return response
 
     def _set_timeout(self, kwargs):
+        """Timeout set up."""
         if "timeout" not in kwargs:
             kwargs.update({"timeout": self.timeout})
 
     def get(self, *args, **kwargs):
+        """Get current time."""
         self._set_timeout(kwargs)
         response = super().get(*args, **kwargs)
         return self._check_status(response)
 
     def options(self, *args, **kwargs):
+        """Get options."""
         self._set_timeout(kwargs)
         response = super().options(*args, **kwargs)
         return self._check_status(response)
 
     def post(self, *args, **kwargs):
+        """Posts."""
         self._set_timeout(kwargs)
         response = super().post(*args, **kwargs)
         return self._check_status(response)
 
     def put(self, *args, **kwargs):
+        """Puts."""
         self._set_timeout(kwargs)
         response = super().put(*args, **kwargs)
         return self._check_status(response)
 
     def delete(self, *args, **kwargs):
+        """Deletes."""
         self._set_timeout(kwargs)
         response = super().delete(*args, **kwargs)
         return self._check_status(response)

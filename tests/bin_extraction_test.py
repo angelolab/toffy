@@ -155,7 +155,7 @@ def test_incomplete_fov_check():
         fov2_data = load_utils.load_imgs_from_tree(extraction_dir, fovs=["fov-2-scan-1"])
         fov2_data[:, 10:, :, 0] = 0
         image_utils.save_image(
-            os.path.join(extraction_dir, "fov-2-scan-1", f"Au.tiff"),
+            os.path.join(extraction_dir, "fov-2-scan-1", "Au.tiff"),
             fov2_data.loc["fov-2-scan-1", :, :, "Au"],
         )
 

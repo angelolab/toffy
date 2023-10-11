@@ -8,12 +8,12 @@ from toffy.json_utils import read_json_file, rename_duplicate_fovs, rename_missi
 
 
 def merge_partial_runs(cohort_dir, run_string):
-    """Combines different runs together into a single folder of FOVs
+    """Combines different runs together into a single folder of FOVs.
 
     Args:
         cohort_dir (str): the path to the directory containing the run folders
-        run_string (str): the substring that each run folder has"""
-
+        run_string (str): the substring that each run folder has
+    """
     # create folder to hold contents of all partial runs
     output_folder = os.path.join(cohort_dir, run_string)
     if not os.path.exists(output_folder):
@@ -60,11 +60,11 @@ def merge_partial_runs(cohort_dir, run_string):
 
 
 def combine_runs(cohort_dir):
-    """Combines FOVs from different runs together, using the run name as a unique identifier
+    """Combines FOVs from different runs together, using the run name as a unique identifier.
 
     Args:
-        cohort_dir (str): path to the directory containing individual run folders"""
-
+        cohort_dir (str): path to the directory containing individual run folders
+    """
     # get all runs
     run_folders = io_utils.list_folders(cohort_dir)
 
@@ -84,7 +84,7 @@ def combine_runs(cohort_dir):
 
 
 def rename_fov_dirs(json_run_path, default_run_dir, output_run_dir=None):
-    """Renames FOV directories with default_name to have custom_name sourced from the run JSON file
+    """Renames FOV directories with default_name to have custom_name sourced from the run JSON file.
 
     Args:
         json_run_path (str): path to the JSON run file which contains the custom name values
@@ -97,7 +97,6 @@ def rename_fov_dirs(json_run_path, default_run_dir, output_run_dir=None):
         UserWarning: not all custom names from the run file have an existing directory
 
     """
-
     io_utils.validate_paths(json_run_path)
     io_utils.validate_paths(default_run_dir)
 
@@ -154,14 +153,14 @@ def rename_fov_dirs(json_run_path, default_run_dir, output_run_dir=None):
 
 
 def rename_fovs_in_cohort(run_names, processed_base_dir, cohort_path, bin_base_dir):
-    """Renames the FOVs in each of the supplied runs
+    """Renames the FOVs in each of the supplied runs.
 
     Args:
         run_names (list): list of runs to rename
         processed_base_dir (str): the directory containing the processed data for each
         cohort_path (str): the path to the folder where renamed FOVs will be saved
-        bin_base_dir (str): the directory holding the bin files for each run"""
-
+        bin_base_dir (str): the directory holding the bin files for each run
+    """
     for run in run_names:
         print("Renaming FOVs in {}".format(run))
         input_dir = os.path.join(processed_base_dir, run)

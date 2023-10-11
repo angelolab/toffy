@@ -7,14 +7,14 @@ from alpineer import io_utils, misc_utils
 
 
 def get_hash(filepath):
-    """Computes the hash of the specified file to verify file integrity
+    """Computes the hash of the specified file to verify file integrity.
 
     Args:
         filepath (str | PathLike): full path to file
 
     Returns:
-        string: the hash of the file"""
-
+        string: the hash of the file
+    """
     with open(filepath, "rb") as f:
         file_hash = hashlib.blake2b()
         while chunk := f.read(8192):
@@ -23,15 +23,15 @@ def get_hash(filepath):
 
 
 def compare_directories(dir_1, dir_2):
-    """Compares two directories to ensure all files are present in both with the same hashes
+    """Compares two directories to ensure all files are present in both with the same hashes.
 
     Args:
         dir_1: first directory to compare
         dir_2: second directory to compare
 
     Returns:
-        list: a list of files with different hashes between the two directories"""
-
+        list: a list of files with different hashes between the two directories
+    """
     dir_1_folders = io_utils.list_folders(dir_1)
     dir_2_folders = io_utils.list_folders(dir_2)
 

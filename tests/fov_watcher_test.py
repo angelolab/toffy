@@ -3,7 +3,6 @@ import shutil
 import tempfile
 import time
 import warnings
-from datetime import datetime
 from multiprocessing import TimeoutError
 from multiprocessing.pool import ThreadPool as Pool
 from pathlib import Path
@@ -39,7 +38,7 @@ SLOW_COPY_INTERVAL_S = 1
 def _slow_copy_sample_tissue_data(
     dest: str, delta: int = 10, one_blank: bool = False, temp_bin: bool = False
 ):
-    """slowly copies files from ./data/tissue/
+    """Slowly copies files from ./data/tissue/.
 
     Args:
         dest (str):
@@ -51,7 +50,6 @@ def _slow_copy_sample_tissue_data(
         temp_bin (bool):
             Use initial temp bin file paths or not
     """
-
     for tissue_file in sorted(os.listdir(COMBINED_DATA_PATH)):
         time.sleep(delta)
         if one_blank and ".bin" in tissue_file and tissue_file[0] != ".":
@@ -179,7 +177,6 @@ def test_watcher_run_timeout(
         mph_out_dir = os.path.join(tmpdir, "cb_2", RUN_DIR_NAME)
         plot_dir = os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME)
         pulse_out_dir = os.path.join(tmpdir, "cb_3", RUN_DIR_NAME)
-        stitched_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, f"{RUN_DIR_NAME}_stitched")
 
         # add directories to kwargs
         kwargs["tiff_out_dir"] = tiff_out_dir
@@ -266,7 +263,6 @@ def test_watcher(
             mph_out_dir = os.path.join(tmpdir, "cb_2", RUN_DIR_NAME)
             plot_dir = os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME)
             pulse_out_dir = os.path.join(tmpdir, "cb_3", RUN_DIR_NAME)
-            stitched_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, f"{RUN_DIR_NAME}_stitched")
 
             # add directories to kwargs
             kwargs["tiff_out_dir"] = tiff_out_dir
