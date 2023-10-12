@@ -138,7 +138,7 @@ def test_convert_panel():
         bad_panel = pd.DataFrame({"bad_col1": [], "bad_col2": []})
         bad_panel.to_csv(os.path.join(temp_dir, "bad_panel.csv"), index=False)
         with pytest.raises(ValueError, match="not an Ionpath or toffy structured panel."):
-            bad_panel_convert = panel_utils.convert_panel(os.path.join(temp_dir, "bad_panel.csv"))
+            panel_utils.convert_panel(os.path.join(temp_dir, "bad_panel.csv"))
 
 
 def mock_panel_conversion(panel_path):

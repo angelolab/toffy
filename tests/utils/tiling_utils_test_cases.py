@@ -104,16 +104,22 @@ def generate_fiducial_read_vals(user_input_type="none"):
 
 
 class FiducialInfoReadCases:
+    """Test cases for fidicial points."""
+
     def case_no_reentry(self):
+        """No reentry."""
         return generate_fiducial_read_vals()
 
     def case_reentry_low_inputs(self):
+        """Low inputs."""
         return generate_fiducial_read_vals(user_input_type="low_inputs")
 
     def case_reentry_different_type(self):
+        """Different types."""
         return generate_fiducial_read_vals(user_input_type="diff_types")
 
     def case_reentry_large_inputs(self):
+        """Large inputs."""
         return generate_fiducial_read_vals(user_input_type="large_inputs")
 
 
@@ -260,7 +266,10 @@ def generate_tiled_region_cases(
 # NOTE: because of the way the moly_interval param is handled
 # it is generated directly in the tiling_utils_test test function
 class TiledRegionReadCases:
+    """Test cases for tiled regions."""
+
     def case_no_reentry_no_moly_param(self):
+        """No reentry and no moly points."""
         return generate_tiled_region_cases(
             _TILED_REGION_ROI_COORDS,
             _TILED_REGION_ROI_NAMES,
@@ -268,6 +277,7 @@ class TiledRegionReadCases:
         )
 
     def case_no_reentry_with_moly_param(self):
+        """No reentry with moly points."""
         fcl, fnl, fs, ui, bpv, fps = generate_tiled_region_cases(
             _TILED_REGION_ROI_COORDS,
             _TILED_REGION_ROI_NAMES,
@@ -277,6 +287,7 @@ class TiledRegionReadCases:
         return fcl, fnl, fs, ui + ["Y"], bpv, fps
 
     def case_reentry_same_type_no_moly_param(self):
+        """Same type reentry and no moly points."""
         return generate_tiled_region_cases(
             _TILED_REGION_ROI_COORDS,
             _TILED_REGION_ROI_NAMES,
@@ -285,6 +296,7 @@ class TiledRegionReadCases:
         )
 
     def case_reentry_same_type_with_moly_param(self):
+        """Same type reentry with moly points."""
         fcl, fnl, fs, ui, bpv, fps = generate_tiled_region_cases(
             _TILED_REGION_ROI_COORDS,
             _TILED_REGION_ROI_NAMES,
@@ -295,6 +307,7 @@ class TiledRegionReadCases:
         return fcl, fnl, fs, ui + ["hello", "Y"], bpv, fps
 
     def case_reentry_different_type_no_moly_param(self):
+        """Different type reentry and no moly points."""
         return generate_tiled_region_cases(
             _TILED_REGION_ROI_COORDS,
             _TILED_REGION_ROI_NAMES,
@@ -303,6 +316,7 @@ class TiledRegionReadCases:
         )
 
     def case_reentry_different_type_with_moly_param(self):
+        """Different type reentry with moly points."""
         fcl, fnl, fs, ui, bpv, fps = generate_tiled_region_cases(
             _TILED_REGION_ROI_COORDS,
             _TILED_REGION_ROI_NAMES,
@@ -314,6 +328,7 @@ class TiledRegionReadCases:
 
     @xfail(raises=ValueError, strict=True)
     def case_bad_fov_size_value_no_moly_param(self):
+        """Invalid FOV size input and no moly points."""
         fcl, fnl, fs, ui, bpv, fps = generate_tiled_region_cases(
             _TILED_REGION_ROI_COORDS,
             _TILED_REGION_ROI_NAMES,
@@ -326,6 +341,7 @@ class TiledRegionReadCases:
 
     @xfail(raises=ValueError, strict=True)
     def case_bad_fov_size_value_moly_param(self):
+        """Invalid FOV size input with moly points."""
         fcl, fnl, fs, ui, bpv, fps = generate_tiled_region_cases(
             _TILED_REGION_ROI_COORDS,
             _TILED_REGION_ROI_NAMES,
@@ -338,6 +354,7 @@ class TiledRegionReadCases:
 
     @xfail(raises=ValueError, strict=True)
     def case_bad_coords_no_moly_param(self):
+        """Bad coordinates and no moly points."""
         fcl, fnl, fs, ui, bpv, fps = generate_tiled_region_cases(
             [(50, 16000), (100, 300)],
             _TILED_REGION_ROI_NAMES,
@@ -348,36 +365,49 @@ class TiledRegionReadCases:
 
 
 class TiledRegionMolySettingCases:
+    """Test cases with moly points."""
+
     @xfail(raises=FileNotFoundError, strict=True)
     def case_bad_moly_path_roi_Y(self):
+        """Invalid moly point with roi setting Y."""
         return "bad_moly_point.json", "Y", False, 0, [], 8
 
     def case_bad_moly_path_roi_N(self):
+        """Invalid moly point with roi setting N."""
         return "bad_moly_point.json", "N", False, 0, [], 8
 
     def case_no_region_no_interval(self):
+        """No region and no interval."""
         return "sample_moly_point.json", "N", False, 0, [], 8
 
     def case_no_region_interval_uneven_partition(self):
+        """No region, no interval, and uneven partition."""
         return "sample_moly_point.json", "N", True, 3, [3, 7, 11, 15, 19], 10
 
     def case_no_region_interval_even_partition(self):
+        """No region, no interval, and even partition."""
         return "sample_moly_point.json", "N", True, 4, [4, 13], 9
 
     def case_region_no_interval(self):
+        """Valid region, but no interval."""
         return "sample_moly_point.json", "Y", False, 0, [8], 9
 
     def case_region_interval_uneven_partition(self):
+        """Valid region and interval, but even partition."""
         return "sample_moly_point.json", "Y", True, 3, [3, 7, 10, 12, 16, 20], 11
 
     def case_region_interval_even_partition(self):
+        """Valid region and interval, with even partition."""
         return "sample_moly_point.json", "Y", True, 4, [4, 9, 14], 10
 
 
 # TMA rhombus coordinate validation
 class ValidateRhombusCoordsCases:
+    """Test cases for checking rhombus coordinates."""
+
     @xfail(raises=ValueError, strict=True)
     def case_top_left_oob(self):
+        """Top left corner out of bounds."""
         top_left = XYCoord(100, 4000000)
         top_right = XYCoord(150, 300)
         bottom_left = XYCoord(150, 300)
@@ -387,6 +417,7 @@ class ValidateRhombusCoordsCases:
 
     @xfail(raises=ValueError, strict=True)
     def case_top_right_oob(self):
+        """Top righ corner out of bounds."""
         top_left = XYCoord(100, 400)
         top_right = XYCoord(150000, 300)
         bottom_left = XYCoord(150, 300)
@@ -396,6 +427,7 @@ class ValidateRhombusCoordsCases:
 
     @xfail(raises=ValueError, strict=True)
     def case_bottom_left_oob(self):
+        """Bottom left corner out of bounds."""
         top_left = XYCoord(100, 400)
         top_right = XYCoord(150, 300)
         bottom_left = XYCoord(150, 100000)
@@ -405,6 +437,7 @@ class ValidateRhombusCoordsCases:
 
     @xfail(raises=ValueError, strict=True)
     def case_bottom_right_oob(self):
+        """Bottom right corner out of bounds."""
         top_left = XYCoord(100, 400)
         top_right = XYCoord(150, 300)
         bottom_left = XYCoord(150, 300)
@@ -414,6 +447,7 @@ class ValidateRhombusCoordsCases:
 
     @xfail(raises=ValueError, strict=True)
     def case_top_left_failure(self):
+        """Top left coordinate fail."""
         top_left = XYCoord(100, 200)
         top_right = XYCoord(50, 100)
         bottom_left = XYCoord(150, 300)
@@ -423,6 +457,7 @@ class ValidateRhombusCoordsCases:
 
     @xfail(raises=ValueError, strict=True)
     def case_bottom_left_failure(self):
+        """Bottom left coordinate fail."""
         top_left = XYCoord(100, 200)
         top_right = XYCoord(150, 100)
         bottom_left = XYCoord(150, 300)
@@ -432,6 +467,7 @@ class ValidateRhombusCoordsCases:
 
     @xfail(raises=ValueError, strict=True)
     def case_top_right_failure(self):
+        """Top right coordinate fail."""
         top_left = XYCoord(100, 200)
         top_right = XYCoord(150, 100)
         bottom_left = XYCoord(150, 300)
@@ -441,6 +477,7 @@ class ValidateRhombusCoordsCases:
 
     @xfail(raises=ValueError, strict=True)
     def case_bottom_right_failure(self):
+        """Bottom right coordinate fail."""
         top_left = XYCoord(100, 400)
         top_right = XYCoord(150, 100)
         bottom_left = XYCoord(150, 300)
@@ -449,6 +486,7 @@ class ValidateRhombusCoordsCases:
         return top_left, top_right, bottom_left, bottom_right
 
     def case_success(self):
+        """Successful region definition."""
         top_left = XYCoord(100, 400)
         top_right = XYCoord(150, 300)
         bottom_left = XYCoord(150, 300)
@@ -462,7 +500,10 @@ _TMA_RHOMBUS_X_COORDS = (1500, 1666, 1833, 2000)
 
 
 class RhombusCoordInputCases:
+    """Test cases for rhombus shapes."""
+
     def case_rectangle(self):
+        """Rectangle shape defined."""
         coords = [
             XYCoord(1500, 2000),
             XYCoord(2000, 2000),
@@ -480,6 +521,7 @@ class RhombusCoordInputCases:
         return coords, actual_pairs
 
     def case_x_slant(self):
+        """Horizontal slant."""
         coords = [
             XYCoord(1500, 2000),
             XYCoord(2000, 2000),
@@ -504,6 +546,7 @@ class RhombusCoordInputCases:
         return coords, actual_pairs
 
     def case_y_slant(self):
+        """Vertical slant."""
         coords = [
             XYCoord(1500, 2000),
             XYCoord(2000, 2225),
@@ -528,6 +571,7 @@ class RhombusCoordInputCases:
         return coords, actual_pairs
 
     def case_both_slant(self):
+        """Both horizontal and vertical slant."""
         coords = [
             XYCoord(1600, 2000),
             XYCoord(2200, 2175),
@@ -569,10 +613,12 @@ class RhombusCoordInputCases:
         return coords, actual_pairs
 
 
-# testing manual and auto FOVs too far apart validation
 # TODO: make one mapping dict for all of the tests below?
 class MappingDistanceCases:
+    """Testing manual and auto FOVs too far apart validation."""
+
     def case_no_bad_dist(self):
+        """Success."""
         manual_to_auto_map = {
             "R0C0": "R0C0",
             "R0C1": "R0C1",
@@ -609,6 +655,7 @@ class MappingDistanceCases:
         return manual_to_auto_map, manual_auto_dist, bad_dist_list
 
     def case_bad_dist(self):
+        """Distances too far apart."""
         manual_to_auto_map = {
             "R0C0": "R0C0",
             "R0C1": "R0C1",
@@ -643,9 +690,11 @@ class MappingDistanceCases:
         return manual_to_auto_map, manual_auto_dist, bad_dist_list
 
 
-# testing auto FOVs mapped to by multiple manual FOVs validation
 class MappingDuplicateCases:
+    """Testing auto FOVs mapped to by multiple manual FOVs validation."""
+
     def case_no_duplicates(self):
+        """Success."""
         manual_to_auto_map = {
             "R0C0": "R0C0",
             "R0C1": "R0C1",
@@ -660,6 +709,7 @@ class MappingDuplicateCases:
         return manual_to_auto_map, duplicate_list
 
     def case_at_most_one_duplicate(self):
+        """One duplicate."""
         manual_to_auto_map = {
             "R0C0": "R0C0",
             "R0C1": "R0C1",
@@ -674,6 +724,7 @@ class MappingDuplicateCases:
         return manual_to_auto_map, duplicate_list
 
     def case_more_than_one_duplicate(self):
+        """Multiple duplicates."""
         manual_to_auto_map = {
             "R0C0": "R0C1",
             "R0C1": "R0C1",
@@ -691,9 +742,11 @@ class MappingDuplicateCases:
         return manual_to_auto_map, duplicate_list
 
 
-# testing manual-auto FOV name mismatch validation
 class MappingMismatchCases:
+    """Testing manual-auto FOV name mismatch validation."""
+
     def case_no_mismatches(self):
+        """Success."""
         manual_to_auto_map = {
             "R0C0": "R0C0",
             "R0C1": "R0C1",
@@ -706,6 +759,7 @@ class MappingMismatchCases:
         return manual_to_auto_map, mismatch_list
 
     def case_mismatches(self):
+        """Mismatch."""
         manual_to_auto_map = {
             "R0C0": "R0C0",
             "R0C1": "R0C2",
@@ -750,9 +804,10 @@ _ANNOT_SAMPLE_DIST = pd.DataFrame(
 )
 
 
-# a helper function to generate the sample annotation needed for _ANNOT_SAMPLE_MAPPING
-# NOTE: based on distance values in _ANNOT_SAMPLE_DIST
 def generate_sample_annot(check_dist, check_duplicates, check_mismatches):
+    """Helper function to generate the sample annotation needed for _ANNOT_SAMPLE_MAPPING.
+    NOTE: based on distance values in _ANNOT_SAMPLE_DIST.
+    """
     annot = ""
 
     if check_dist is not None:

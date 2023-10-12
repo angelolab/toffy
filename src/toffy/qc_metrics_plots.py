@@ -1,15 +1,12 @@
 import os
 import pathlib
-from math import e
 from typing import List, Optional, Union
 
 import matplotlib.gridspec as gridspec
 import matplotlib.pyplot as plt
-import natsort as ns
 import numpy as np
 import pandas as pd
 import seaborn as sns
-from matplotlib import cm
 from matplotlib.axes import Axes
 from matplotlib.colors import ListedColormap, Normalize
 from matplotlib.figure import Figure
@@ -29,8 +26,7 @@ def visualize_qc_metrics(
     dpi: int = 300,
     return_plot: bool = False,
 ) -> Optional[sns.FacetGrid]:
-    """
-    Visualize the barplot of a specific QC metric.
+    """Visualize the barplot of a specific QC metric.
 
     Args:
         metric_name (str):
@@ -134,19 +130,17 @@ def qc_tmas_metrics_plot(
     save_figure: bool = False,
     dpi: int = 300,
 ) -> None:
-    """
-    Produces the QC TMA metrics plot for a given set of QC metrics applied to a user specified
+    """Produces the QC TMA metrics plot for a given set of QC metrics applied to a user specified
     TMA. The figures are saved in `qc_tma_metrics_dir/figures`.
 
     Args:
         qc_tmas (QCTMA): The class which contains the QC TMA data, filepaths, and methods.
         QC matrix.
-        tma (str): The TMAs to plot the QC metrics for.
+        tmas (str): The TMAs to plot the QC metrics for.
         save_figure (bool, optional): If `True`, the figure is saved in a subdirectory in the
         `QCTMA.qc_tma_metrics_dir` directory. Defaults to `False`.
         dpi (int, optional): Dots per inch, the resolution of the image. Defaults to 300.
     """
-
     if save_figure:
         fig_dir: pathlib.Path = pathlib.Path(qc_tmas.metrics_dir) / "figures"
         fig_dir.mkdir(parents=True, exist_ok=True)
@@ -165,18 +159,17 @@ def _qc_tma_metrics_plot(
     save_figure: bool = False,
     dpi: int = 300,
 ) -> None:
-    """
-    Produces the QC TMA metrics plot for a given set of QC metrics applied to a user specified
+    """Produces the QC TMA metrics plot for a given set of QC metrics applied to a user specified
     TMA. The figures are saved in `qc_tma_metrics_dir/figures`.
 
     Args:
         qc_tmas (QCTMA): The class which contains the QC TMA data, filepaths, and methods.
         tma (str): The TMA to plot the metrics for.
+        fig_dir (pathlib.Path) : Path of where to save the plots.
         save_figure (bool, optional): If `True`, the figure is saved in a subdirectory in the
         `qc_tma_metrics_dir` directory. Defaults to `False`.
         dpi (int, optional): Dots per inch, the resolution of the image. Defaults to 300.
     """
-
     for qc_metric, suffix in zip(qc_tmas.qc_cols, qc_tmas.qc_suffixes):
         qc_tma_data: np.ndarray = qc_tmas.tma_avg_ranks[tma].loc[qc_metric].values
 
@@ -239,8 +232,7 @@ def longitudinal_control_heatmap(
     figsize: tuple[int, int] = (12, 12),
     dpi: int = 300,
 ) -> None:
-    """
-    Generates a heatmap of the QC metrics for the QC Control FOVs.
+    """Generates a heatmap of the QC metrics for the QC Control FOVs.
 
     Args:
         qc_control (QCControlMetrics): The class which contains the QC LC data, filepaths

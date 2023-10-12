@@ -10,15 +10,12 @@ from typing import Dict, List, Optional, Tuple, Union
 
 import natsort as ns
 import numpy as np
-import numpy.ma as ma
 import pandas as pd
 import xarray as xr
 from alpineer import image_utils, io_utils, load_utils, misc_utils
-from numpy.ma import MaskedArray
 from pandas.core.groupby import DataFrameGroupBy
 from requests.exceptions import HTTPError
 from scipy.ndimage import gaussian_filter
-from scipy.stats import rankdata
 from tqdm.auto import tqdm
 
 from toffy import settings
@@ -26,7 +23,7 @@ from toffy.mibitracker_utils import MibiRequests, MibiTrackerError
 
 
 def create_mibitracker_request_helper(email, password):
-    """Create a mibitracker request helper to access a user's MIBItracker info on Ionpath
+    """Create a mibitracker request helper to access a user's MIBItracker info on Ionpath.
 
     Args:
         email (str):
@@ -38,7 +35,6 @@ def create_mibitracker_request_helper(email, password):
         toffy.mibi.mibitracker_utils.MibiRequests:
             A request helper module instance to access a user's MIBItracker info
     """
-
     try:
         return MibiRequests(settings.MIBITRACKER_BACKEND, email, password)
     except HTTPError:
@@ -58,7 +54,7 @@ def download_mibitracker_data(
     channels=None,
 ):
     """Download a specific run's image data off of MIBITracker
-    in an `ark` compatible directory structure
+    in an `ark` compatible directory structure.
 
     Args:
         email (str):
@@ -88,7 +84,6 @@ def download_mibitracker_data(
             A list of tuples containing (point name, point id), sorted by point id.
             This defines the run acquisition order needed for plotting the QC graphs.
     """
-
     # verify that base_dir provided exists
     if not os.path.exists(base_dir):
         raise FileNotFoundError("base_dir %s does not exist" % base_dir)
@@ -106,7 +101,6 @@ def download_mibitracker_data(
 
     # extract the name of the FOVs and their associated internal IDs
     run_fov_names = [img["number"] for img in run_info["results"][0]["imageset"]["images"]]
-    run_fov_ids = [img["id"] for img in run_info["results"][0]["imageset"]["images"]]
 
     # if fovs is None, ensure all of the fovs in run_fov_names_ids are chosen
     if fovs is None:
@@ -170,7 +164,7 @@ def download_mibitracker_data(
             # fail on the whole FOV if the channel is not found (most likely a Moly point)
             try:
                 chan_data = mr.get_channel_data(img["id"], chan)
-            except MibiTrackerError as mte:
+            except MibiTrackerError:
                 print(
                     "On FOV %s, failed to download channel %s, moving on to the next FOV. "
                     "If FOV %s is a Moly point, ignore. "
@@ -198,7 +192,7 @@ def download_mibitracker_data(
 
 
 def compute_nonzero_mean_intensity(image_data):
-    """Compute the nonzero mean of a specific fov/chan pair
+    """Compute the nonzero mean of a specific fov/chan pair.
 
     Args:
         image_data (numpy.ndarray):
@@ -208,7 +202,6 @@ def compute_nonzero_mean_intensity(image_data):
         float:
             The nonzero mean intensity of the fov/chan pair (`np.nan` if channel contains all 0s)
     """
-
     # take just the non-zero pixels
     image_data_nonzero = image_data[image_data != 0]
 
@@ -223,7 +216,7 @@ def compute_nonzero_mean_intensity(image_data):
 
 
 def compute_total_intensity(image_data):
-    """Compute the sum of all pixels of a specific fov/chan pair
+    """Compute the sum of all pixels of a specific fov/chan pair.
 
     Args:
         image_data (numpy.ndarray):
@@ -233,12 +226,11 @@ def compute_total_intensity(image_data):
         float:
             The total intensity of the fov/chan pair (`np.nan` if channel contains all 0s)
     """
-
     return np.sum(image_data)
 
 
 def compute_99_9_intensity(image_data):
-    """Compute the 99.9% pixel intensity value of a specific fov/chan pair
+    """Compute the 99.9% pixel intensity value of a specific fov/chan pair.
 
     Args:
         image_data (numpy.ndarray):
@@ -248,12 +240,11 @@ def compute_99_9_intensity(image_data):
         float:
             The 99.9% pixel intensity value of a specific fov/chan pair
     """
-
     return np.percentile(image_data, q=99.9)
 
 
 def sort_bin_file_fovs(fovs, suffix_ignore=None):
-    """Sort a list of fovs in a bin file by fov and scan number
+    """Sort a list of fovs in a bin file by fov and scan number.
 
     fovs (list):
         a list of fovs prefixed with `'fov-m-scan-n'`
@@ -264,7 +255,6 @@ def sort_bin_file_fovs(fovs, suffix_ignore=None):
         list:
             fov name list sorted by ascending fov number, the ascending scan number
     """
-
     # set suffix_ignore to the empty string if None
     if suffix_ignore is None:
         suffix_ignore = ""
@@ -282,7 +272,7 @@ def sort_bin_file_fovs(fovs, suffix_ignore=None):
 def compute_qc_metrics(
     extracted_imgs_path, fov_name, gaussian_blur=False, blur_factor=1, save_csv=None
 ):
-    """Compute the QC metric matrices for the image data provided
+    """Compute the QC metric matrices for the image data provided.
 
     Args:
         extracted_imgs_path (str):
@@ -301,7 +291,6 @@ def compute_qc_metrics(
     Returns:
         None
     """
-
     # path validation checks
     if not os.path.exists(extracted_imgs_path):
         raise FileNotFoundError("extracted_imgs_path %s does not exist" % extracted_imgs_path)
@@ -318,7 +307,7 @@ def compute_qc_metrics(
 
 
 def compute_qc_metrics_direct(image_data, fov_name, gaussian_blur=False, blur_factor=1):
-    """Compute the QC metric matrices for the image data provided
+    """Compute the QC metric matrices for the image data provided.
 
     Args:
         image_data (xr.DataArray):
@@ -333,7 +322,6 @@ def compute_qc_metrics_direct(image_data, fov_name, gaussian_blur=False, blur_fa
             ignored if `gaussian_blur` set to `False`
 
     """
-
     # there's only 1 FOV and 1 type ('pulse'), so subset on that
     image_data = image_data.loc[fov_name, "pulse", :, :, :]
 
@@ -388,7 +376,7 @@ def compute_qc_metrics_direct(image_data, fov_name, gaussian_blur=False, blur_fa
 
 
 def combine_qc_metrics(qc_metrics_dir, warn_overwrite=True):
-    """Aggregates the QC results of each FOV into one `.csv`
+    """Aggregates the QC results of each FOV into one `.csv`.
 
     Args:
         qc_metrics_dir (str):
@@ -396,7 +384,6 @@ def combine_qc_metrics(qc_metrics_dir, warn_overwrite=True):
         warn_overwrite (bool):
             whether to warn if existing combined CSV found for each metric
     """
-
     # path validation check
     if not os.path.exists(qc_metrics_dir):
         raise FileNotFoundError("qc_metrics_dir %s does not exist" % qc_metrics_dir)
@@ -430,12 +417,12 @@ def combine_qc_metrics(qc_metrics_dir, warn_overwrite=True):
 def format_img_data(img_data):
     """Formats the image array from load_imgs_from_tree to be same structure as the array returned
     by extract_bin_files. Works for one FOV data at a time.
+
     Args:
         img_data (str): current image data array as produced by load function
     Returns:
          xarray.DataArray: image data array with shape [fov, type, x, y, channel]
     """
-
     # add type dimension
     img_data = img_data.assign_coords(type="pulse")
     img_data = img_data.expand_dims("type", 1)
@@ -447,8 +434,7 @@ def format_img_data(img_data):
 
 
 def qc_filtering(qc_metrics: List[str]) -> Tuple[List[str], List[str]]:
-    """
-    Filters the QC columns and suffixes based on the user specified QC metrics,
+    """Filters the QC columns and suffixes based on the user specified QC metrics,
     then sorts the suffixes w.r.t the columns. Refer to `settings.py` for the
     Column and Suffixes available.
 
@@ -478,8 +464,7 @@ def qc_filtering(qc_metrics: List[str]) -> Tuple[List[str], List[str]]:
 def _channel_filtering(
     df: pd.DataFrame, channel_include: List[str] = None, channel_exclude: List[str] = None
 ) -> pd.DataFrame:
-    """
-    Filters the DataFrame based on the included and excluded channels. In addition
+    """Filters the DataFrame based on the included and excluded channels. In addition
     the default ignored channels; Au, Fe, Na, Ta, Noodle, are removed.
 
     Args:
@@ -490,7 +475,6 @@ def _channel_filtering(
     Returns:
         pd.DataFrame: The filtered DataFrame.
     """
-
     if (
         isinstance(channel_include, list)
         and isinstance(channel_exclude, list)
@@ -515,10 +499,8 @@ def _channel_filtering(
 
 @dataclass
 class QCTMA:
-    """
-    Computes the QC metrics for a given list of TMAs of interest and saves TMA specific QC files
+    """Computes the QC metrics for a given list of TMAs of interest and saves TMA specific QC files
     in the `qc_tma_metrics_dir` directory.
-
 
     Args:
         cohort_path (Union[str,pathlib.Path]): The directory where the extracted images are
@@ -552,6 +534,7 @@ class QCTMA:
     tma_avg_ranks: Dict[str, xr.DataArray] = field(init=False)
 
     def __post_init__(self):
+        """Initialize QCTMA."""
         # Input validation: Ensure that the paths exist
         io_utils.validate_paths([self.cohort_path, self.metrics_dir])
 
@@ -568,6 +551,7 @@ class QCTMA:
 
         Args:
             fov_name (pd.Series): The FOV's name.
+
         Returns:
             pd.Series: Returns `n` and `m` as a series of integers.
         """
@@ -577,10 +561,8 @@ class QCTMA:
     def _create_r_c_tma_matrix(
         self, group: DataFrameGroupBy, n_cols: int, n_rows: int, qc_col: str
     ) -> pd.Series:
-        """
-        Ranks all FOVS for a given channel and creates a matrix of size `n_rows` by `n_cols`
+        """Ranks all FOVS for a given channel and creates a matrix of size `n_rows` by `n_cols`
         as the TMA grid.
-
 
         Args:
             group (DataFrameGroupBy): Each group consists of an individual channel, and all of it's
@@ -592,15 +574,13 @@ class QCTMA:
         Returns:
             pd.Series[np.ndarray]: Returns the a series containing the ranked matrix.
         """
-
         rc_array: np.ndarray = np.full(shape=(n_cols, n_rows), fill_value=np.nan)
         rc_array[group["column"] - 1, group["row"] - 1] = group[qc_col].rank()
 
         return pd.Series([rc_array])
 
     def compute_qc_tma_metrics(self, tmas: List[str]):
-        """
-        Calculates the QC metrics for a user specified list of TMAs.
+        """Calculates the QC metrics for a user specified list of TMAs.
 
         Args:
             tmas (List[str]): The FOVs with the TMA in the folder name to gather.
@@ -614,14 +594,12 @@ class QCTMA:
                 tma_pbar.update(n=1)
 
     def _compute_qc_tma_metrics(self, tma: str):
-        """
-        Computes the FOV QC metrics for all FOVs in a given TMA.
-        If the QC metrics have already been computed, then
+        """Computes the FOV QC metrics for all FOVs in a given TMA.
+        If the QC metrics have already been computed, then.
 
         Args:
             tma (str): The TMA to compute the QC metrics for.
         """
-
         # cannot use `io_utils.list_folders` because it cannot do a partial "exact match"
         # i.e. if we want to match `tma_1_Rn_Cm` but not `tma_10_Rn_Cm`, `io_utils.list_folders`
         # will return both for `tma_1`
@@ -674,17 +652,14 @@ class QCTMA:
             )
 
     def qc_tma_metrics_rank(self, tmas: List[str], channel_exclude: List[str] = None):
-        """
-        Creates the average rank for a given TMA across all FOVs and unexcluded channels.
+        """Creates the average rank for a given TMA across all FOVs and unexcluded channels.
         By default the following channels are excluded: Au, Fe, Na, Ta, Noodle.
-
 
         Args:
             tmas (List[str]): The FOVs withmetet the TMA in the folder name to gather.
             channel_exclude (List[str], optional): An optional list of channels to further filter
                 out. Defaults to None.
         """
-
         with tqdm(total=len(tmas), desc="Computing QC TMA Metric Ranks", unit="TMA") as pbar:
             for tma in tmas:
                 self.tma_avg_ranks[tma] = self._compute_qc_tma_metrics_rank(
@@ -698,10 +673,8 @@ class QCTMA:
         tma: str,
         channel_exclude: List[str] = None,
     ) -> xr.DataArray:
-        """
-        Creates the average rank for a given TMA across all FOVs and unexcluded channels.
+        """Creates the average rank for a given TMA across all FOVs and unexcluded channels.
         By default the following channels are excluded: Au, Fe, Na, Ta, Noodle.
-
 
         Args:
             tma (str): The TMA to compute the average rank for.
@@ -712,7 +685,6 @@ class QCTMA:
             xr.DataArray: An xarray DataArray containing the average rank for each channel across
                 a TMA.
         """
-
         # Sort the loaded combined csv files based on the filtered `qc_suffixes`
         combined_metric_tmas: List[str] = ns.natsorted(
             io_utils.list_files(self.metrics_dir, substrs=f"{tma}_combined"),
@@ -756,8 +728,7 @@ class QCTMA:
 
 @dataclass
 class QCControlMetrics:
-    """
-    Computes QC Metrics for a set of control sample FOVs across various runs, and saves the QC
+    """Computes QC Metrics for a set of control sample FOVs across various runs, and saves the QC
     files in the `longitudinal_control_metrics_dir`.
 
     Args:
@@ -786,6 +757,7 @@ class QCControlMetrics:
     longitudinal_control_metrics: Dict[Tuple[str, str], pd.DataFrame] = field(init=False)
 
     def __post_init__(self):
+        """Initialize QCControlMetrics."""
         # Input validation: Ensure that the paths exist
         io_utils.validate_paths([self.cohort_path, self.metrics_dir])
 
@@ -800,13 +772,12 @@ class QCControlMetrics:
         channel_exclude: List[str] = None,
         channel_include: List[str] = None,
     ) -> None:
-        """
-        Computes QC metrics for a set of Control Sample FOVs and saves their QC files in the
+        """Computes QC metrics for a set of Control Sample FOVs and saves their QC files in the
         `longitudinal_control_metrics_dir`. Calculates the following metrics for the specified
         control samples:
                 - `"Non-zero mean intensity"`
                 - `"Total intensity"`
-                - `"99.9% intensity value"`
+                - `"99.9% intensity value"`.
 
         Args:
             control_sample_name (str): An identifier for naming the control sample.
@@ -878,8 +849,7 @@ class QCControlMetrics:
     def transformed_control_effects_data(
         self, control_sample_name: str, qc_metric: str, to_csv: bool = False
     ) -> pd.DataFrame:
-        """
-        Creates a transformed DataFrame for the Longitudinal Control effects data, normalizing by the mean,
+        """Creates a transformed DataFrame for the Longitudinal Control effects data, normalizing by the mean,
         then taking the `log2` of each value.
 
         Args:

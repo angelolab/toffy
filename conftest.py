@@ -6,8 +6,7 @@ import pytest
 
 @pytest.fixture(scope="module")
 def rng() -> Generator[np.random.Generator, None, None]:
-    """
-    Create a new Random Number Generator for tests which require randomized data.
+    """Create a new Random Number Generator for tests which require randomized data.
 
     Yields:
         Generator[np.random.Generator, None, None]: The generator used for creating randomized
