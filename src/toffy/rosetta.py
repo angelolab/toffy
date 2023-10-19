@@ -188,9 +188,10 @@ def combine_compensation_files(comp_matrix_path, compensation_matrix_names, fina
     )
 
     # loop over the rest and add them in
+    # NOTE: skip the first column, since that just delineates the channels
     for matrix in compensation_matrix_names[1:]:
-        final_compensation_matrix = final_compensation_matrix.add(
-            pd.read_csv(os.path.join(comp_matrix_path, matrix))
+        final_compensation_matrix.iloc[:, 1:] = final_compensation_matrix.iloc[:, 1:].add(
+            pd.read_csv(os.path.join(comp_matrix_path, matrix)).iloc[:, 1:]
         )
 
     # save the final compensation matrix to final_matrix_name

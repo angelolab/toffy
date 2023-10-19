@@ -241,10 +241,11 @@ def test_combine_compensation_files():
         for m in mults:
             for cp in channel_pairs:
                 df = pd.DataFrame(
-                    np.zeros((3, 3)),
+                    np.zeros((3, 4)),
                     index=channels,
-                    columns=channels,
+                    columns=[None] + channels,
                 )
+                df.iloc[:, 0] = np.arange(3)
                 df.loc[cp[0], cp[1]] = m
                 df.to_csv(
                     os.path.join(rosetta_test_dir, f"{cp[0]}_{cp[1]}_compensation_matrix_{m}.csv"),
@@ -261,12 +262,18 @@ def test_combine_compensation_files():
             rosetta_test_dir, compensation_matrices, "final_rosetta_matrix.csv"
         )
 
-        # assert final_rosetta_matrix.csv created and generated correctly
+        # assert final_rosetta_matrix.csv created
         final_rosetta_matrix_path = os.path.join(rosetta_test_dir, "final_rosetta_matrix.csv")
         assert os.path.exists(final_rosetta_matrix_path)
+
+        # assert the compensation coefficients got combined correctly
         final_rosetta_matrix = pd.read_csv(final_rosetta_matrix_path)
         actual_final_values = np.array([[0, 0.5, 0], [0, 0, 1], [2, 0, 0]])
-        assert np.all(final_rosetta_matrix.values == actual_final_values)
+        assert np.all(final_rosetta_matrix.values[:, 1:] == actual_final_values)
+
+        # assert the channel column didn't get modified
+        actual_column_values = np.arange(3)
+        assert np.all(final_rosetta_matrix.iloc[:, 0].values == actual_column_values)
 
 
 def test_flat_field_correction():
