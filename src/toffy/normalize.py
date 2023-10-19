@@ -656,13 +656,16 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
             pulse_height_df.loc[mass_idx, "pulse_height_fit"] = 0.0
             continue
 
-        # load channel-specific prediction function
-        mass_json = read_json_file(mass_path)
+        # # load channel-specific prediction function
+        # mass_json = read_json_file(mass_path)
 
-        # compute predicted MPH
-        name, weights = mass_json["name"], mass_json["weights"]
-        pred_func = create_prediction_function(name=name, weights=weights)
-        pred_vals = pred_func(fov_order)
+        # # compute predicted MPH
+        # name, weights = mass_json["name"], mass_json["weights"]
+        # pred_func = create_prediction_function(name=name, weights=weights)
+        # pred_vals = pred_func(fov_order)
+
+        ph_vals = pulse_height_df.loc[mass_idx, "pulse_height"].values
+        pred_vals = np.cumsum(ph_vals) / (np.arange(len(arr)) + 1)
 
         # update df
         pulse_height_df.loc[mass_idx, "pulse_height_fit"] = pred_vals
