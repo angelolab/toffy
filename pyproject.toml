@@ -21,6 +21,7 @@ classifiers = [
     "Programming Language :: Python :: 3.9",
     "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
 ]
 packages = [{ include = 'toffy', from = 'src' }]
 
@@ -38,7 +39,7 @@ metadata = false
 [tool.poetry.dependencies]
 python = "^3.9,<3.13"
 alpineer = ">=0.1.9"
-mibi-bin-tools = "0.2.11"
+mibi-bin-tools = "0.2.12"
 ipywidgets = "^8"
 numpy = "1.*"
 natsort = "^8"
