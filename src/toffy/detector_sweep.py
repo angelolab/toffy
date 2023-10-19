@@ -5,20 +5,22 @@ from alpineer import io_utils, misc_utils
 
 @dataclass
 class VoltageSweepFile:
+    """Class containing sweep information."""
+
     voltage: int
     date: str
     time: str
 
 
 def parse_sweep_parameters(sweep_name):
-    """Performs string manipulations to get the sweep parameters from an FOV folder
+    """Performs string manipulations to get the sweep parameters from an FOV folder.
 
     Args:
         sweep_name: the name of a folder containing a single FOV of a detector sweep
 
-    Returns
-        tuple: the extracted voltage, date, and time"""
-
+    Returns:
+        VoltageSweepFile: the extracted voltage, date, and time
+    """
     _, voltage, date, time = sweep_name.split("_")
     voltage = int(voltage[:-1])
     time = time.replace("-", "")
@@ -27,7 +29,7 @@ def parse_sweep_parameters(sweep_name):
 
 
 def find_detector_sweep_folders(data_dir, first_fov, last_fov, sweep_step=25):
-    """Generates the names of all folders from a single detector sweep
+    """Generates the names of all folders from a single detector sweep.
 
     Args:
         data_dir: directory where runs are saved
@@ -36,8 +38,8 @@ def find_detector_sweep_folders(data_dir, first_fov, last_fov, sweep_step=25):
         sweep_step: the voltage increase between FOVs in the detector sweep
 
     Returns:
-        list: the names of all detector sweep folders"""
-
+        list: the names of all detector sweep folders
+    """
     first_sweep = parse_sweep_parameters(first_fov)
     last_sweep = parse_sweep_parameters(last_fov)
 

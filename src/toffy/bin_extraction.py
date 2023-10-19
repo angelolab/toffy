@@ -18,8 +18,8 @@ def extract_missing_fovs(
     extract_intensities=["Au", "chan_39"],
     replace=True,
 ):
-    """Check for already extracted FOV bin files, and extract the remaining
-        (excluding moly fovs and fovs with empty json files)
+    """Check for already extracted FOV bin files, and extract the remaining (excluding moly fovs
+       and fovs with empty json files).
 
     Args:
         bin_file_dir (str): path to directory containing the bin and json files
@@ -80,7 +80,8 @@ def extract_missing_fovs(
 def incomplete_fov_check(
     bin_file_dir, extraction_dir, num_rows=10, num_channels=5, signal_percent=0.02
 ):
-    """Read in the supplied number tiff files for each FOV to check for incomplete images
+    """Read in the supplied number tiff files for each FOV to check for incomplete images.
+
     Args:
         bin_file_dir (str): directory containing the run json file
         extraction_dir (str): directory containing the extracted tifs
@@ -91,7 +92,6 @@ def incomplete_fov_check(
     Raises:
         Warning if any FOVs have only partially generated images
     """
-
     io_utils.validate_paths([bin_file_dir, extraction_dir])
 
     # read in json file to get custom fov names

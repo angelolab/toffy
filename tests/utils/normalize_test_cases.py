@@ -9,7 +9,8 @@ fovs = ["fov{}".format(12 - i) for i in range(4)]
 
 
 def generate_tuning_data(channel_counts):
-    """Creates mph and channel count data frames in the appropriate tuning file format
+    """Creates mph and channel count data frames in the appropriate tuning file format.
+
     Args:
         channel_counts (np.array): random values, may include low values for testing
     Returns:
@@ -31,7 +32,10 @@ def generate_tuning_data(channel_counts):
 
 
 class TuningCurveFiles:
+    """Class of various possible tuning curve cases."""
+
     def case_default_combined_files(self):
+        """Default case."""
         dirs = ["Detector_202{}v_2022-01-13_13-30-5{}".format(i, i) for i in range(1, 5)]
 
         # create lists to hold dfs from each directory
@@ -49,6 +53,7 @@ class TuningCurveFiles:
 
     @pytest.mark.xfail(raises=ValueError)
     def case_low_count_fail(self):
+        """Low enough counts to result in failure."""
         # 5 fovs, 2 with low count fails
         dirs = ["Detector_202{}v_2022-01-13_13-30-5{}".format(i, i) for i in range(1, 6)]
 
@@ -72,6 +77,7 @@ class TuningCurveFiles:
 
     @pytest.mark.filterwarnings("ignore:The counts for the FOV")
     def case_low_count_warn(self):
+        """Low counts that trigger a warning."""
         # 6 fovs, 2 with low count passes
         dirs = ["Detector_202{}v_2022-01-13_13-30-5{}".format(i, i) for i in range(1, 7)]
 
@@ -95,7 +101,10 @@ class TuningCurveFiles:
 
 
 class CombineRunMetricFiles:
+    """Class of example data."""
+
     def case_default_metrics(self):
+        """Default case."""
         # create full directory of files, include proficient data which should be ignored
         metrics = []
         metrics_prof = []

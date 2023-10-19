@@ -18,16 +18,15 @@ from toffy.streak_detection import streak_correction
 
 
 def transform_compensation_json(json_path, comp_mat_path):
-    """Converts the JSON file from ionpath into a compensation matrix
+    """Converts the JSON file from ionpath into a compensation matrix.
 
     Args:
         json_path (str): path to json file
         comp_mat_path (str): path to comp matrix
 
-    returns:
+    Returns:
         pd.DataTable: matrix with sources channels as rows and target channels as columns
     """
-
     data = read_json_file(json_path)["Data"]
 
     comp_mat = pd.read_csv(comp_mat_path, index_col=0)
@@ -43,7 +42,7 @@ def transform_compensation_json(json_path, comp_mat_path):
 
 
 def _compensate_matrix_simple(raw_inputs, comp_coeffs, out_indices):
-    """Perform compensation on the raw data using the supplied compensation values
+    """Perform compensation on the raw data using the supplied compensation values.
 
     Args:
         raw_inputs (numpy.ndarray):
@@ -53,9 +52,9 @@ def _compensate_matrix_simple(raw_inputs, comp_coeffs, out_indices):
         out_indices (numpy.ndarray):
             which indices to generate compensated outputs for
 
-    returns:
-        numpy.ndarray: compensated copy of the raw inputs"""
-
+    Returns:
+        numpy.ndarray: compensated copy of the raw inputs
+    """
     outputs = np.copy(raw_inputs)
 
     # loop over each channel and construct compensation values
@@ -95,7 +94,7 @@ def validate_inputs(
     batch_size,
     gaus_rad,
 ):
-    """Helper function to validate inputs for compensate_image_data
+    """Helper function to validate inputs for compensate_image_data.
 
     Args:
         raw_data_dir (str): path to raw data
@@ -109,8 +108,8 @@ def validate_inputs(
         save_format (str): format to save the data
         raw_data_sub_folder (string): sub-folder for raw images
         batch_size (int): number of images to process concurrently
-        gaus_rad (int): radius for smoothing"""
-
+        gaus_rad (int): radius for smoothing
+    """
     # make sure panel is in increasing order
     if not np.all(acquired_masses == sorted(acquired_masses)):
         raise ValueError("Masses must be sorted numerically in the panel_info file")
@@ -153,12 +152,11 @@ def validate_inputs(
 
 
 def clean_rosetta_test_dir(folder_path):
-    """Remove the unnecessary intermediate folders created by rosetta test data computation
+    """Remove the unnecessary intermediate folders created by rosetta test data computation.
 
     Args:
         folder_path (str): base dir for testing, image subdirs will be stored here
     """
-
     # remove any files beginning with ._, needed to ensure external drive hidden files clear
     _ = subprocess.call(["find", folder_path, "-type", "f", "-name", "._*", "-delete"])
 
@@ -175,15 +173,15 @@ def combine_compensation_files(comp_matrix_path, compensation_matrix_names, fina
     """Combine a list of round two compensation matrix files in a given cohort folder.
     This is done additively since round two compensation files are mutually exclusive w.r.t.
     output channels.
+
     Args:
-        cohort_folder_path (str):
+        comp_matrix_path (str):
             Path to the compensation matrix files to combine
         compensation_matrix_names (list):
             List of files inside `cohort_folder_path` to combine
         final_matrix_name (str):
             Where to write the combined compensation matrix to
     """
-
     # load in the first matrix inside compensation_matrix_names
     final_compensation_matrix = pd.read_csv(
         os.path.join(comp_matrix_path, compensation_matrix_names[0])
@@ -200,15 +198,15 @@ def combine_compensation_files(comp_matrix_path, compensation_matrix_names, fina
 
 
 def flat_field_correction(img, gaus_rad=100):
-    """Apply flat field correction to an image
+    """Apply flat field correction to an image.
 
     Args:
         img (np.ndarray): image to be corrected
         gaus_rad (int): radius for smoothing
 
     Returns:
-        np.ndarray: corrected image"""
-
+        np.ndarray: corrected image
+    """
     # if image is empty, return empty image
     if not np.any(img):
         warnings.warn("Image for flatfield correction is empty")
@@ -236,7 +234,6 @@ def get_masses_from_channel_names(names, panel_df):
     Returns:
         list: the masses for the given channels
     """
-
     misc_utils.verify_in_list(
         supplied_channel_names=names, panel_channel_names=panel_df["Target"].values
     )
@@ -262,7 +259,7 @@ def compensate_image_data(
     correct_streaks=False,
     streak_chan="Noodle",
 ):
-    """Function to compensate MIBI data with a flow-cytometry style compensation matrix
+    """Function to compensate MIBI data with a flow-cytometry style compensation matrix.
 
     Args:
         raw_data_dir: path to directory containing raw images
@@ -404,7 +401,7 @@ def compensate_image_data(
 def copy_round_one_compensated_images(
     runs, round_one_comp_folder, round_two_comp_folder, channels_to_copy
 ):
-    """Copies channels that don't need round two compensation to the round two comp folder
+    """Copies channels that don't need round two compensation to the round two comp folder.
 
     Args:
         runs (list):
@@ -458,7 +455,6 @@ def create_tiled_comparison(
         channels: list of channels to compare.
         img_size_scale (int/float): amount to scale down image, set to None for no scaling
     """
-
     test_dir = input_dir_list[0]
     test_fov = io_utils.list_folders(test_dir)[0]
     test_data = load_utils.load_imgs_from_tree(
@@ -530,8 +526,9 @@ def add_source_channel_to_tiled_image(
     max_img_size,
     img_sub_folder="",
     percent_norm=98,
+    img_size_scale=0.25,
 ):
-    """Adds the specified source_channel to the first row of previously generated tiled images
+    """Adds the specified source_channel to the first row of previously generated tiled images.
 
     Args:
         raw_img_dir (str): path to directory containing the raw images
@@ -542,8 +539,8 @@ def add_source_channel_to_tiled_image(
         source_channel (str): the channel which will be prepended to the tiled images
         percent_norm (int): percentile normalization param to enable easy visualization, set to
             None to skip this step
+        img_size_scale (int/float): amount to scale down image, set to None for no scaling
     """
-
     # load source images
     source_imgs = load_utils.load_imgs_from_tree(
         raw_img_dir,
@@ -555,21 +552,22 @@ def add_source_channel_to_tiled_image(
     # convert stacked images to concatenated row
     source_list = [source_imgs.values[fov, :, :, 0] for fov in range(source_imgs.shape[0])]
     source_row = np.concatenate(source_list, axis=1)
+    source_scaled = rescale_images(source_row, img_size_scale)
 
     # get percentile of source row if percent_norm set, otherwise leave unset
-    perc_source = np.percentile(source_row, percent_norm) if percent_norm else None
+    perc_source = np.percentile(source_scaled, percent_norm) if percent_norm else None
 
     # confirm tiled images have expected shape
     tiled_images = io_utils.list_files(tiled_img_dir)
     test_file = io.imread(os.path.join(tiled_img_dir, tiled_images[0]))
-    if test_file.shape[1] != source_row.shape[1]:
+    if test_file.shape[1] != source_scaled.shape[1]:
         raise ValueError(
             "Tiled image {} has shape {}, but source image {} hasshape {}".format(
-                tiled_images[0], test_file.shape, source_channel, source_row.shape
+                tiled_images[0], test_file.shape, source_channel, source_scaled.shape
             )
         )
 
-    # loop through each tiled image, prepend source row, and save
+    # loop through each tiled image, prepend source row scaled, and save
     for tile_name in tiled_images:
         current_tile = io.imread(os.path.join(tiled_img_dir, tile_name))
 
@@ -580,7 +578,7 @@ def add_source_channel_to_tiled_image(
             perc_tile = np.percentile(current_tile, percent_norm)
             perc_ratio = perc_source / perc_tile
 
-        rescaled_source = source_row / perc_ratio
+        rescaled_source = source_scaled / perc_ratio
 
         # combine together and save, compress to 3 decimal points for space optimization
         combined_tile = np.concatenate([rescaled_source, current_tile])
@@ -589,7 +587,7 @@ def add_source_channel_to_tiled_image(
 
 
 def replace_with_intensity_image(run_dir, channel="Au", replace=True, fovs=None):
-    """Replaces the specified channel with the intensity image of that channel
+    """Replaces the specified channel with the intensity image of that channel.
 
     Args:
         run_dir (str): directory containing extracted run data
@@ -597,8 +595,8 @@ def replace_with_intensity_image(run_dir, channel="Au", replace=True, fovs=None)
         fovs (list or None): the subset of fovs within run_dir which will have their
             intensity image copied over. If None, applies to all fovs
         replace (bool): controls whether intensity image is copied over with _intensity appended
-            or if it will overwrite existing channel"""
-
+            or if it will overwrite existing channel
+    """
     all_fovs = io_utils.list_folders(run_dir)
 
     # ensure supplied folders are valid
@@ -625,14 +623,13 @@ def replace_with_intensity_image(run_dir, channel="Au", replace=True, fovs=None)
 
 
 def remove_sub_dirs(run_dir, sub_dirs, fovs=None):
-    """Removes specified sub-folders from fovs in a run
+    """Removes specified sub-folders from fovs in a run.
 
     Args:
         run_dir (str): path to directory containing fovs
         sub_dirs (list): directories to remove from each fov
         fovs (list): list of fovs to remove dirs from, otherwise removes from all fovs
     """
-
     all_fovs = io_utils.list_folders(run_dir)
 
     # ensure supplied folders are valid
@@ -658,7 +655,8 @@ def create_rosetta_matrices(
     output_channel_names,
     masses=None,
 ):
-    """Creates a series of compensation matrices for evaluating coefficients
+    """Creates a series of compensation matrices for evaluating coefficients.
+
     Args:
         default_matrix (str): path to the rosetta matrix to use as the default
         save_dir (str): output directory
@@ -709,7 +707,8 @@ def copy_image_files(
     cohort_name, run_names, rosetta_testing_dir, extracted_imgs_dir, fovs_per_run=5
 ):
     """Creates a new directory for rosetta testing and copies over a random subset of
-        previously extracted images
+        previously extracted images.
+
     Args:
         cohort_name (str): name for all combined runs
         run_names (list): gives names of run folders to retrieve extracted images from
@@ -770,7 +769,8 @@ def copy_image_files(
 
 
 def rescale_raw_imgs(img_out_dir, scale=200):
-    """Rescale image data to be between 0 and 1
+    """Rescale image data to be between 0 and 1.
+
     Args:
         img_out_dir (str): the directory containing extracted images
         scale (int): how much to rescale the image data by
@@ -809,7 +809,7 @@ def generate_rosetta_test_imgs(
     norm_const=1,
     ffc_masses=[39],
 ):
-    """Compensate example FOV images based on given multipliers
+    """Compensate example FOV images based on given multipliers.
 
     Args:
         rosetta_mat_path (str): path to rosetta compensation matrix
