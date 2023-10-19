@@ -129,8 +129,8 @@ def modify_panel_ranges(panel: pd.DataFrame, start_offset: float = 0, stop_offse
     ].index.values
 
     # ensure safe conversion of types
-    panel_new["Start"] = panel_new["Start"].astype(np.float16)
-    panel_new["Stop"] = panel_new["Stop"].astype(np.float16)
+    panel_new["Start"] = panel_new["Start"].astype(np.float64)
+    panel_new["Stop"] = panel_new["Stop"].astype(np.float64)
 
     # add start_offset to 'Start' column
     panel_new.loc[panel_rows_modify, "Start"] = (
