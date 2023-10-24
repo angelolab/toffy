@@ -14,7 +14,7 @@ jobs:
       # Ensure that a wheel builder finishes even if another fails
       fail-fast: false
       matrix:
-        python-version: [3.11] # latest stable release
+        python-version: [latest] # latest stable release
         poetry-version: [latest]
 
     steps:
