@@ -141,3 +141,4 @@ scripts/
 coverage.lcov
 
 data/combined/*.csv
+.idea/

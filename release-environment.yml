@@ -2,7 +2,7 @@ name: toffy_env
 channels:
   - conda-forge
 dependencies:
-  - python=3.9
+  - python=3.11
   - pip
   - numpy
   - seaborn
@@ -11,7 +11,7 @@ dependencies:
   - pip:
     - natsort
     - watchdog
-    - alpineer==0.1.7
-    - mibi-bin-tools==0.2.9
-    - toffy==0.2.0
+    - alpineer==0.1.10
+    - mibi-bin-tools==0.2.11
     - jupyter_contrib_nbextensions
+    - toffy==0.2.1
