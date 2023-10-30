@@ -182,7 +182,7 @@ conda remove --name toffy_env --all
 conda env create -f release-environment.yml
 ```
 
-or 
+or
 
 ```shell
 conda env remove --name toffy_prerelease_env --all
