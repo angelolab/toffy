@@ -444,7 +444,7 @@ def create_tiled_comparison(
     max_img_size,
     img_sub_folder="rescaled",
     channels=None,
-    img_size_scale=0.25,
+    img_size_scale=0.5,
 ):
     """Creates a tiled image comparing FOVs from all supplied runs for each channel.
 
@@ -526,8 +526,8 @@ def add_source_channel_to_tiled_image(
     source_channel,
     max_img_size,
     img_sub_folder="",
-    percent_norm=98,
-    img_size_scale=0.25,
+    percent_norm=99,
+    img_size_scale=0.5,
 ):
     """Adds the specified source_channel to the first row of previously generated tiled images.
 
