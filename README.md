@@ -10,7 +10,7 @@
 </div>
 
 
-The toffy repo is designed to simplify the process of generating and processing data on the MIBIScope platform.
+The `toffy` repo is designed to simplify the process of generating and processing data on the MIBIScope platform.
 
 This repo is currently in beta testing. None of the code has been published yet, and we will be making breaking changes frequently. If you find bugs, please [open an issue](https://github.com/angelolab/toffy/issues/new/choose).
 
@@ -80,7 +80,7 @@ For more information, see the [reorganizing your data walkthrough](https://www.y
 ![flow-chart](templates/img/toffy_processing.png)
 
 ## Installation
-In order to get toffy working, you'll need to first install some dependencies and the repository itself. For more information, see the  [toffy setup walkthrough](https://www.youtube.com/watch?v=g52-oqP_QjA&list=PLjNbkEm4vA27f8-EB7q9u_lDPI7oxohhn&index=1)
+In order to get `toffy` working, you'll need to first install some dependencies and the repository itself. For more information, see the [toffy setup walkthrough](https://www.youtube.com/watch?v=g52-oqP_QjA&list=PLjNbkEm4vA27f8-EB7q9u_lDPI7oxohhn&index=1)
 
 ### Requirements for specific operating systems
 The process of setting up is largely the same for different operating systems. However, there are a few key differences.
@@ -113,15 +113,16 @@ Choose "Just Me" option for installation, and do not need to select the "Tutoria
 Continue with the installation.
 
 ### Setting up the virtual environment
-* For Windows, you will need open the Anaconda powershell prompt instead of the regular powershell prompt for the following.
+* For Windows, you will need to open the Anaconda powershell prompt instead of the regular powershell prompt for the following.
 <p align="center">
 <img height="400" src="templates/img/conda_powershell.png" width="500"/>
 </p>
 
-* If macOS user, open terminal.
+* If you're running `toffy` on macOS, open the terminal.
 
 If you do not already have git installed, run
-```
+
+```shell
 conda install git
 ```
 Navigate to the desired location (ex: Documents) and clone the repo.
@@ -132,19 +133,27 @@ git clone https://github.com/angelolab/toffy.git
 
 Move into directory and build the environment
 
-```
+```shell
 cd toffy
-conda env create -f environment.yml
+conda env create -f release-environment.yml
 ```
 
-This creates a *Python 3.8* environment named `toffy_env`. You can view everything that gets installed by looking at the `environment.yml` file.
+This creates a *Python 3.11* environment named `toffy_env`. You can view everything that gets installed by looking at the `release-environment.yml` file.
+
+If you would like to use the latest version of `toffy`, you can instead run:
+
+```shell
+cd toffy
+conda env create -f prerelease-environment.yml
+```
+Which will create a *Python 3.11* environment named `toffy_prerelease_env`. This will install the latest version of `toffy` from the `main` branch.
 
 ### Using the repo
 Once you're ready to use the repo, enter the following commands.
 
 First, activate the environment:
 
-```
+```shell
 conda activate toffy_env
 ```
 
@@ -160,7 +169,7 @@ You can leave the jupyter notebook running once you're done. If it ever gets clo
 
 ### Updating the repo
 
-The toffy repo is constantly being updated. In order to get those changes to your version, you'll need to tell git to update with the following command:
+The `toffy` repo is constantly being updated. In order to get those changes to your version, you'll need to tell git to update with the following command:
 
 ```
 git pull
@@ -168,20 +177,27 @@ git pull
 
 After performing the above command, you will sometimes need to update your environment:
 
-```
+```shell
 conda remove --name toffy_env --all
-conda env create -f environment.yml
+conda env create -f release-environment.yml
+```
+
+or
+
+```shell
+conda env remove --name toffy_prerelease_env --all
+conda env create -f prerelease-environment.yml
 ```
 
 To update the notebooks, run this command for Windows:
 
-```
+```shell
 start_jupyter.sh -u
 ```
 
 or this command for macOS:
 
-```
+```shell
 ./start_jupyter.sh -u
 ```
 

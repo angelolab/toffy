@@ -1,0 +1,17 @@
+name: toffy_prerelease_env
+channels:
+  - conda-forge
+dependencies:
+  - python=3.11
+  - pip
+  - numpy
+  - seaborn
+  - scikit-learn
+  - jupyterlab
+  - pip:
+    - natsort
+    - watchdog
+    - alpineer>=0.1.10
+    - mibi-bin-tools==0.2.12
+    - jupyter_contrib_nbextensions
+    - -e .

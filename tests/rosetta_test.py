@@ -13,6 +13,7 @@ from alpineer import image_utils, io_utils, load_utils, misc_utils, test_utils
 from pytest_cases import parametrize_with_cases
 
 from toffy import rosetta
+from toffy.image_stitching import rescale_images
 from toffy.rosetta import create_rosetta_matrices
 
 from .utils import rosetta_test_cases as test_cases
@@ -240,10 +241,11 @@ def test_combine_compensation_files():
         for m in mults:
             for cp in channel_pairs:
                 df = pd.DataFrame(
-                    np.zeros((3, 3)),
-                    index=["chan1", "chan2", "chan3"],
-                    columns=["chan1", "chan2", "chan3"],
+                    np.zeros((3, 4)),
+                    index=channels,
+                    columns=[None] + channels,
                 )
+                df.iloc[:, 0] = np.arange(3)
                 df.loc[cp[0], cp[1]] = m
                 df.to_csv(
                     os.path.join(rosetta_test_dir, f"{cp[0]}_{cp[1]}_compensation_matrix_{m}.csv"),
@@ -260,12 +262,18 @@ def test_combine_compensation_files():
             rosetta_test_dir, compensation_matrices, "final_rosetta_matrix.csv"
         )
 
-        # assert final_rosetta_matrix.csv created and generated correctly
+        # assert final_rosetta_matrix.csv created
         final_rosetta_matrix_path = os.path.join(rosetta_test_dir, "final_rosetta_matrix.csv")
         assert os.path.exists(final_rosetta_matrix_path)
+
+        # assert the compensation coefficients got combined correctly
         final_rosetta_matrix = pd.read_csv(final_rosetta_matrix_path)
         actual_final_values = np.array([[0, 0.5, 0], [0, 0, 1], [2, 0, 0]])
-        assert np.all(final_rosetta_matrix.values == actual_final_values)
+        assert np.all(final_rosetta_matrix.values[:, 1:] == actual_final_values)
+
+        # assert the channel column didn't get modified
+        actual_column_values = np.arange(3)
+        assert np.all(final_rosetta_matrix.iloc[:, 0].values == actual_column_values)
 
 
 def test_flat_field_correction():
@@ -491,11 +499,12 @@ def test_create_tiled_comparison(dir_num, channel_subset, img_size_scale):
 
 
 @parametrize("percent_norm", [98, None])
-def test_add_source_channel_to_tiled_image(percent_norm):
+@parametrize("img_scale", [1, 0.25])
+def test_add_source_channel_to_tiled_image(percent_norm, img_scale):
     with tempfile.TemporaryDirectory() as top_level_dir:
         num_fovs = 5
         num_chans = 4
-        im_size = 10
+        im_size = 12
 
         # create directory containing raw images
         raw_dir = os.path.join(top_level_dir, "raw_dir")
@@ -512,6 +521,8 @@ def test_add_source_channel_to_tiled_image(percent_norm):
         os.makedirs(tiled_dir)
         for i in range(2):
             vals = np.random.rand(im_size * 3 * im_size * num_fovs).reshape(tiled_shape)
+            if img_scale != 1:
+                vals = rescale_images(vals, scale=img_scale)
             fname = os.path.join(tiled_dir, f"tiled_image_{i}.tiff")
             image_utils.save_image(fname, vals)
 
@@ -522,15 +533,19 @@ def test_add_source_channel_to_tiled_image(percent_norm):
             tiled_img_dir=tiled_dir,
             output_dir=output_dir,
             source_channel="chan1",
-            max_img_size=10,
+            max_img_size=im_size,
             percent_norm=percent_norm,
+            img_size_scale=img_scale,
         )
 
         # each image should now have an extra row added on top
         tiled_images = io_utils.list_files(output_dir)
         for im_name in tiled_images:
             image = io.imread(os.path.join(output_dir, im_name))
-            assert image.shape == (tiled_shape[0] + im_size, tiled_shape[1])
+            assert image.shape == (
+                img_scale * (tiled_shape[0] + im_size),
+                img_scale * tiled_shape[1],
+            )
 
 
 @parametrize("fovs", [None, ["fov1"]])
@@ -736,7 +751,7 @@ def test_copy_image_files(mocker):
             assert len(io_utils.list_folders(extracted_fov_dir)) == 10
             for i in range(1, 3):
                 assert len(io_utils.list_folders(extracted_fov_dir, f"run_{i}")) == 5
-            assert len(io_utils.list_folders(extracted_fov_dir, f"run_3")) == 0
+            assert len(io_utils.list_folders(extracted_fov_dir, "run_3")) == 0
 
             # check that files in fov folders are copied
             for folder in io_utils.list_folders(extracted_fov_dir):

@@ -150,9 +150,9 @@ def test_save_streak_data(tmp_path: Path, streak_dataset: Callable):
         sd._save_streak_data(streak_data=streak_data_test, name=field)
         # Read the field
         if rf.ext == ".csv":
-            data = rf.read_fn(Path(tmp_path, f"streak_data_chan0", field + rf.ext), index_col=0)
+            data = rf.read_fn(Path(tmp_path, "streak_data_chan0", field + rf.ext), index_col=0)
         else:
-            data = rf.read_fn(Path(tmp_path, f"streak_data_chan0", field + rf.ext))
+            data = rf.read_fn(Path(tmp_path, "streak_data_chan0", field + rf.ext))
 
         # Assert that the correct numpy array was saved as a tiff.
         if type(data) is np.ndarray:
@@ -192,9 +192,9 @@ def test_save_streak_masks(tmp_path: Path, streak_dataset: Callable):
 
     for field, rf in fields.items():
         if rf.ext == ".csv":
-            data = rf.read_fn(Path(tmp_path, f"streak_data_chan0", field + rf.ext), index_col=0)
+            data = rf.read_fn(Path(tmp_path, "streak_data_chan0", field + rf.ext), index_col=0)
         else:
-            data = rf.read_fn(Path(tmp_path, f"streak_data_chan0", field + rf.ext))
+            data = rf.read_fn(Path(tmp_path, "streak_data_chan0", field + rf.ext))
 
         # Assert that the correct numpy array was saved as a tiff.
         if type(data) is np.ndarray:
@@ -448,7 +448,7 @@ def test_save_corrected_channels(tmp_path, streak_dataset):
                 Path(
                     tmp_path,
                     "fov0" + "-corrected",
-                    f"streak_data_chan0",
+                    "streak_data_chan0",
                     field + rf.ext,
                 ),
                 index_col=0,
@@ -458,7 +458,7 @@ def test_save_corrected_channels(tmp_path, streak_dataset):
                 Path(
                     tmp_path,
                     "fov0" + "-corrected",
-                    f"streak_data_chan0",
+                    "streak_data_chan0",
                     field + rf.ext,
                 )
             )

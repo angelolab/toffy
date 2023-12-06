@@ -27,3 +27,9 @@ repos:
       - id: poetry-check
         name: Check - Poetry Configuration
         stages: [commit, push, manual]
+  - repo: https://github.com/charliermarsh/ruff-pre-commit
+    rev: "v0.0.259"
+    hooks:
+      - id: ruff
+        name: Linting - ruff
+        args: [ --fix, --exit-non-zero-on-fix ]
