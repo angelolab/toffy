@@ -631,7 +631,8 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
 
     Args:
         pulse_height_df (pd.DataFrame): contains the MPH value per mass for all FOVs
-        obj_func_dir (str): directory containing the curves generated for each mass
+        obj_func_dir (str): directory containing the curves generated for each mass.
+            Set to None if autogain flag is set for calling functions.
 
     Returns:
         pd.DataFrame: updated dataframe with fitted version of each MPH value for each mass
@@ -648,24 +649,28 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
     fov_order = np.linspace(0, num_fovs - 1, num_fovs)
 
     for mass in masses:
+        mass_idx = pulse_height_df["mass"] == mass
+
         # if channel-specific prediction function does not exist, set to 0
         mass_path = os.path.join(obj_func_dir, str(mass) + "_norm_func.json")
-        mass_idx = pulse_height_df["mass"] == mass
 
         if not os.path.exists(mass_path):
             pulse_height_df.loc[mass_idx, "pulse_height_fit"] = 0.0
             continue
 
-        # # load channel-specific prediction function
-        # mass_json = read_json_file(mass_path)
+        # load channel-specific prediction function
+        mass_json = read_json_file(mass_path)
 
-        # # compute predicted MPH
-        # name, weights = mass_json["name"], mass_json["weights"]
-        # pred_func = create_prediction_function(name=name, weights=weights)
-        # pred_vals = pred_func(fov_order)
+        # compute predicted MPH
+        name, weights = mass_json["name"], mass_json["weights"]
+        pred_func = create_prediction_function(name=name, weights=weights)
+        pred_vals = pred_func(fov_order)
 
-        ph_vals = pulse_height_df.loc[mass_idx, "pulse_height"].values
-        pred_vals = np.cumsum(ph_vals) / (np.arange(len(arr)) + 1)
+        # # if autogain turned on, just take the full average across all observed MPHs
+        # else:
+        #     # take the full average
+        #     ph_vals = pulse_height_df.loc[mass_idx, "pulse_height"].values
+        #     pred_vals = np.repeat(np.mean(ph_vals), len(ph_vals))
 
         # update df
         pulse_height_df.loc[mass_idx, "pulse_height_fit"] = pred_vals
@@ -673,7 +678,9 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
     return pulse_height_df
 
 
-def create_fitted_pulse_heights_file(pulse_height_dir, panel_info, norm_dir, mass_obj_func):
+def create_fitted_pulse_heights_file(
+    pulse_height_dir, panel_info, norm_dir, mass_obj_func, autogain=False
+):
     """Create a single file containing the pulse heights after fitting a curve per mass
 
     Args:
@@ -710,7 +717,12 @@ def create_fitted_pulse_heights_file(pulse_height_dir, panel_info, norm_dir, mas
             warnings.warn("Skipping normalization for mass %s with all zero pulse heights" % mass)
             continue
 
-        fit_mass_mph_curve(mph_vals=mph_vals, mass=mass, save_dir=fit_dir, obj_func=mass_obj_func)
+        # for non-autogain runs, use the default min_obs at 10 for curve fitting
+        # for autogain runs, the median of all observed MPH values should always be used
+        min_obs = 0 if autogain else 10
+        fit_mass_mph_curve(
+            mph_vals=mph_vals, mass=mass, save_dir=fit_dir, obj_func=mass_obj_func, min_obs=10
+        )
 
     # update pulse_height_df to include fitted mph values
     pulse_height_df = create_fitted_mass_mph_vals(
@@ -790,6 +802,7 @@ def normalize_image_data(
     mass_obj_func="poly_2",
     extreme_vals=(0.4, 1.1),
     norm_func_path=os.path.join("..", "tuning_curves", "avg_norm_func_2600.json"),
+    autogain=False,
 ):
     """Normalizes image data based on median pulse height from the run and a tuning curve
 
@@ -801,6 +814,7 @@ def normalize_image_data(
         mass_obj_func (str): class of function to use for modeling MPH over time per mass
         extreme_vals (tuple): determines the range for norm vals which will raise a warning
         norm_func_path (str): file containing the saved weights for the normalization function
+        autogain (bool): whether the run had autogain turned on or not
     """
 
     # error checks
@@ -825,6 +839,7 @@ def normalize_image_data(
         panel_info=panel_info,
         norm_dir=norm_dir,
         mass_obj_func=mass_obj_func,
+        autogain=autogain,
     )
     # add channel name to pulse_height_df
     renamed_panel = panel_info.rename({"Mass": "mass"}, axis=1)
