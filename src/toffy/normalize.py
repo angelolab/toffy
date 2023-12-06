@@ -666,12 +666,6 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
         pred_func = create_prediction_function(name=name, weights=weights)
         pred_vals = pred_func(fov_order)
 
-        # # if autogain turned on, just take the full average across all observed MPHs
-        # else:
-        #     # take the full average
-        #     ph_vals = pulse_height_df.loc[mass_idx, "pulse_height"].values
-        #     pred_vals = np.repeat(np.mean(ph_vals), len(ph_vals))
-
         # update df
         pulse_height_df.loc[mass_idx, "pulse_height_fit"] = pred_vals
 
