@@ -668,13 +668,14 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
 def create_fitted_pulse_heights_file(
     pulse_height_dir, panel_info, norm_dir, mass_obj_func, autogain=False
 ):
-    """Create a single file containing the pulse heights after fitting a curve per mass
+    """Create a single file containing the pulse heights after fitting a curve per mass.
 
     Args:
         pulse_height_dir (str): path to directory containing pulse height csvs
         panel_info (pd.DataFrame): the panel for this dataset
         norm_dir (str): the directory where normalized images will be saved
         mass_obj_func (str): the objective function used to fit the MPH over time per mass
+        autogain (bool): whether the run had autogain turned on or not
 
     Returns:
         pd.DataFrame: the combined pulse heights file
@@ -708,7 +709,7 @@ def create_fitted_pulse_heights_file(
         # for autogain runs, the median of all observed MPH values should always be used
         min_obs = 0 if autogain else 10
         fit_mass_mph_curve(
-            mph_vals=mph_vals, mass=mass, save_dir=fit_dir, obj_func=mass_obj_func, min_obs=10
+            mph_vals=mph_vals, mass=mass, save_dir=fit_dir, obj_func=mass_obj_func, min_obs=min_obs
         )
 
     # update pulse_height_df to include fitted mph values
