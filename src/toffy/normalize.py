@@ -707,7 +707,7 @@ def create_fitted_pulse_heights_file(
 
         # for non-autogain runs, use the default min_obs at 10 for curve fitting
         # for autogain runs, the median of all observed MPH values should always be used
-        min_obs = 0 if autogain else 10
+        min_obs = 10**10 if autogain else 10
         fit_mass_mph_curve(
             mph_vals=mph_vals, mass=mass, save_dir=fit_dir, obj_func=mass_obj_func, min_obs=min_obs
         )
