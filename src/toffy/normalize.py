@@ -899,7 +899,7 @@ def check_detector_voltage(run_dir):
 
 
 def plot_detector_voltage(
-    base_dir: Union[pathlib.Path, str],
+    run_folder: Union[pathlib.Path, str],
     mph_run_dir: Union[pathlib.Path, str],
     detector_volt_type: Literal["hvAdc", "hvDac"] = "hvAdc",
 ) -> None:
@@ -907,15 +907,20 @@ def plot_detector_voltage(
     detector voltage over fov progression.
 
     Args:
-        base_dir (Union[pathlib.Path, str]):
+        run_folder (Union[pathlib.Path, str]):
             Path to where the run data (and json files) are stored.
         mph_run_dir (Union[pathlib.Path, str]):
             Path to where the run metrics are stored.
         detector_volt_type (Union["hvAdc", "hvDac"]):
             Either "hvAdc" (default) or "hvDac" voltage metric to plot.
     """
+    # Verify that detector_volt_type is valid
+    misc_utils.verify_in_list(
+        specified_volt_type=detector_volt_type, valid_volt_types=["hvAdc", "hvDac"]
+    )
+
     # Get all the JSON run files
-    json_files = sorted(glob.glob(os.path.join(base_dir, "fov-*-scan-?.json")))
+    json_files = sorted(glob.glob(os.path.join(run_folder, "fov-*-scan-?.json")))
 
     # Map each FOV to their observed detector voltage
     detector_voltage_data = {"FOVs": [], "Detector Voltage": []}
@@ -929,16 +934,16 @@ def plot_detector_voltage(
         # Extract the FOV from the filename
         fov = os.path.basename(json_file).split("-")[1]
 
+        # For hvAdc and hvDac, the key associated with the voltage is different
+        voltage_key = "value" if detector_volt_type == "hvAdc" else "currentSetPoint"
+
         # Extract the Detector voltage
         # Assuming the "hvAdc" and/or "hvDac" field is always present and has the "Detector" entry
-        if detector_volt_type == "hvAdc":
-            detector_voltage = [
-                item["value"] for item in json_data["hvAdc"] if item["name"] == "Detector"
-            ][0]
-        else:
-            detector_voltage = [
-                item["currentSetPoint"] for item in json_data["hvDac"] if item["name"] == "Detector"
-            ][0]
+        detector_voltage = [
+            item[voltage_key]
+            for item in json_data[detector_volt_type]
+            if item["name"] == "Detector"
+        ][0]
 
         # Add the data to our dictionary
         detector_voltage_data["FOVs"].append(int(fov))
