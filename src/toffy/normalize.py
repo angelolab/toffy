@@ -927,9 +927,8 @@ def plot_detector_voltage(
 
     # Iterate over the list of files
     for json_file in json_files:
-        # Open the JSON file and load the data
-        with open(json_file, "r") as f:
-            json_data = json.load(f)
+        # Load the JSON file
+        run_json_data = read_json_file(json_file, encoding="utf-8")
 
         # Extract the FOV from the filename
         fov = os.path.basename(json_file).split("-")[1]
@@ -941,7 +940,7 @@ def plot_detector_voltage(
         # Assuming the "hvAdc" and/or "hvDac" field is always present and has the "Detector" entry
         detector_voltage = [
             item[voltage_key]
-            for item in json_data[detector_volt_type]
+            for item in run_json_data[detector_volt_type]
             if item["name"] == "Detector"
         ][0]
 

@@ -768,8 +768,7 @@ def test_plot_detector_voltage(tmp_path_factory: TempPathFactory, detector_volt_
             ],
         }
 
-        with open(run_folder / file, "w") as outfile:
-            json.dump(sample_data, outfile, indent=4)
+        write_json_file(run_folder / file, sample_data, encoding="utf-8")
 
     normalize.plot_detector_voltage(
         run_folder=run_folder, mph_run_dir=mph_run_dir, detector_volt_type=detector_volt_type
