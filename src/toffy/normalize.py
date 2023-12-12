@@ -556,7 +556,7 @@ def smooth_outliers(vals, outlier_idx, smooth_range=2):
     return smoothed_vals
 
 
-def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=10):
+def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=10, outlier_fraction=0.1):
     """Fits a curve for the MPH over time for the specified mass.
 
     Args:
@@ -565,13 +565,17 @@ def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=10):
         save_dir (str): the directory to save the fit parameters
         obj_func (str): the function to use for constructing the fit
         min_obs (int): the minimum number of observations to fit a curve, otherwise uses median
+        outlier_fraction (float): the fractional deviation from predicted value required in
+            order to classify a data point as an outlier
     """
     fov_order = np.linspace(0, len(mph_vals) - 1, len(mph_vals))
     save_path = os.path.join(save_dir, str(mass) + "_mph_fit.jpg")
 
     if len(mph_vals) > min_obs:
         # find outliers in the MPH vals
-        outlier_idx = identify_outliers(x_vals=fov_order, y_vals=mph_vals, obj_func=obj_func)
+        outlier_idx = identify_outliers(
+            x_vals=fov_order, y_vals=mph_vals, obj_func=obj_func, outlier_fraction=outlier_fraction
+        )
 
         # replace with local smoothing around that point
         smoothed_vals = smooth_outliers(vals=mph_vals, outlier_idx=outlier_idx)
@@ -593,7 +597,6 @@ def fit_mass_mph_curve(mph_vals, mass, save_dir, obj_func, min_obs=10):
             plot_fit=True,
             save_path=save_path,
         )
-
     else:
         # default to using the median instead for short runs with small number of FOVs
         mph_median = np.median(mph_vals)
@@ -666,7 +669,7 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
 
 
 def create_fitted_pulse_heights_file(
-    pulse_height_dir, panel_info, norm_dir, mass_obj_func, autogain=False
+    pulse_height_dir, panel_info, norm_dir, mass_obj_func, autogain=False, **kwargs
 ):
     """Create a single file containing the pulse heights after fitting a curve per mass.
 
@@ -676,6 +679,7 @@ def create_fitted_pulse_heights_file(
         norm_dir (str): the directory where normalized images will be saved
         mass_obj_func (str): the objective function used to fit the MPH over time per mass
         autogain (bool): whether the run had autogain turned on or not
+        **kwargs (dict): additional parameters to pass to `fit_mass_mph_curve` for outlier detection
 
     Returns:
         pd.DataFrame: the combined pulse heights file
@@ -707,9 +711,16 @@ def create_fitted_pulse_heights_file(
 
         # for non-autogain runs, use the default min_obs at 10 for curve fitting
         # for autogain runs, the median of all observed MPH values should always be used
-        min_obs = 10**10 if autogain else 10
+        min_obs = 10**10 if autogain else kwargs.get("min_obs", 10)
+        outlier_fraction = kwargs.get("outlier_fraction", 0.1)
+
         fit_mass_mph_curve(
-            mph_vals=mph_vals, mass=mass, save_dir=fit_dir, obj_func=mass_obj_func, min_obs=min_obs
+            mph_vals=mph_vals,
+            mass=mass,
+            save_dir=fit_dir,
+            obj_func=mass_obj_func,
+            min_obs=min_obs,
+            outlier_fraction=outlier_fraction,
         )
 
     # update pulse_height_df to include fitted mph values
@@ -789,6 +800,7 @@ def normalize_image_data(
     extreme_vals=(0.4, 1.1),
     norm_func_path=os.path.join("..", "tuning_curves", "avg_norm_func_2600.json"),
     autogain=False,
+    **kwargs,
 ):
     """Normalizes image data based on median pulse height from the run and a tuning curve.
 
@@ -802,6 +814,7 @@ def normalize_image_data(
         extreme_vals (tuple): determines the range for norm vals which will raise a warning
         norm_func_path (str): file containing the saved weights for the normalization function
         autogain (bool): whether the run had autogain turned on or not
+        **kwargs (dict): additional parameters to pass to `fit_mass_mph_curve` for outlier detection
     """
     # error checks
     if not os.path.exists(norm_func_path):
@@ -826,6 +839,7 @@ def normalize_image_data(
         norm_dir=norm_dir,
         mass_obj_func=mass_obj_func,
         autogain=autogain,
+        kwargs=kwargs,
     )
     # add channel name to pulse_height_df
     renamed_panel = panel_info.rename({"Mass": "mass"}, axis=1)

@@ -516,6 +516,7 @@ def test_create_fitted_pulse_heights_file(tmpdir, test_zeros, autogain, metrics)
 
     panel = test_cases.panel
     fovs = natsort.natsorted(test_cases.fovs)
+    kwargs = {"min_obs": 4, "outlier_fraction": 2}
 
     if test_zeros:
         with pytest.warns(UserWarning, match="Skipping normalization"):
@@ -525,6 +526,7 @@ def test_create_fitted_pulse_heights_file(tmpdir, test_zeros, autogain, metrics)
                 norm_dir=tmpdir,
                 mass_obj_func="poly_3",
                 autogain=autogain,
+                **kwargs,
             )
     else:
         df = normalize.create_fitted_pulse_heights_file(
@@ -533,10 +535,11 @@ def test_create_fitted_pulse_heights_file(tmpdir, test_zeros, autogain, metrics)
             norm_dir=tmpdir,
             mass_obj_func="poly_3",
             autogain=autogain,
+            **kwargs,
         )
 
     # all four FOVs included
-    assert len(np.unique(df["fov"].values)) == 4
+    assert len(np.unique(df["fov"].values)) == 5
 
     # FOVs are ordered in proper order
     ordered_fovs = df.loc[df["mass"] == 10, "fov"].values.astype("str")
@@ -547,8 +550,15 @@ def test_create_fitted_pulse_heights_file(tmpdir, test_zeros, autogain, metrics)
         assert np.all(df[df["mass"] == 5]["pulse_height"].values == 0)
         df = df[df["mass"] != 5].copy()
 
-    # fitted values are distinct from original
-    assert np.all(df["pulse_height"].values != df["pulse_height_fit"])
+    # with autogain, max one FOV should contain the original value (depends on # of FOVs)
+    if autogain:
+        for mass in df["mass"].unique():
+            mass_ph = df.loc[df["mass"] == mass, "pulse_height"].values
+            mass_ph_med = np.median(mass_ph)
+            assert np.sum(mass_ph[mass_ph == mass_ph_med]) <= 1
+    # fitted values are distinct from original without autogain
+    else:
+        assert np.all(df["pulse_height"].values != df["pulse_height_fit"].values)
 
 
 @parametrize("test_zeros", [False, True])
