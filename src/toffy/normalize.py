@@ -1,7 +1,11 @@
 # adapted from https://machinelearningmastery.com/curve-fitting-with-python/
 import copy
+import glob
+import json
 import os
+import pathlib
 import warnings
+from typing import Literal, Union
 
 import matplotlib.pyplot as plt
 import natsort as ns
@@ -919,3 +923,86 @@ def check_detector_voltage(run_dir):
     # non-empty list of changes will raise an error
     if changes_in_voltage:
         raise ValueError("Changes in detector voltage were found during the run:\n" + err_str)
+
+
+def plot_detector_voltage(
+    run_folder: Union[pathlib.Path, str],
+    mph_run_dir: Union[pathlib.Path, str],
+    detector_volt_type: Literal["hvAdc", "hvDac"] = "hvAdc",
+) -> None:
+    """Extracts saved detector voltage values during fov acquisition and creates a txt file and png plot with
+    detector voltage over fov progression.
+
+    Args:
+        run_folder (Union[pathlib.Path, str]):
+            Path to where the run data (and json files) are stored.
+        mph_run_dir (Union[pathlib.Path, str]):
+            Path to where the run metrics are stored.
+        detector_volt_type (Union["hvAdc", "hvDac"]):
+            Either "hvAdc" (default) or "hvDac" voltage metric to plot.
+    """
+    # Verify that detector_volt_type is valid
+    misc_utils.verify_in_list(
+        specified_volt_type=detector_volt_type, valid_volt_types=["hvAdc", "hvDac"]
+    )
+
+    # Get all the JSON run files
+    json_files = sorted(glob.glob(os.path.join(run_folder, "fov-*-scan-?.json")))
+
+    # Map each FOV to their observed detector voltage
+    detector_voltage_data = {"FOVs": [], "Detector Voltage": []}
+
+    # Iterate over the list of files
+    for json_file in json_files:
+        # Load the JSON file
+        run_json_data = read_json_file(json_file, encoding="utf-8")
+
+        # Extract the FOV from the filename
+        fov = os.path.basename(json_file).split("-")[1]
+
+        # For hvAdc and hvDac, the key associated with the voltage is different
+        voltage_key = "value" if detector_volt_type == "hvAdc" else "currentSetPoint"
+
+        # Extract the Detector voltage
+        # Assuming the "hvAdc" and/or "hvDac" field is always present and has the "Detector" entry
+        detector_voltage = [
+            item[voltage_key]
+            for item in run_json_data[detector_volt_type]
+            if item["name"] == "Detector"
+        ][0]
+
+        # Add the data to our dictionary
+        detector_voltage_data["FOVs"].append(int(fov))
+        detector_voltage_data["Detector Voltage"].append(detector_voltage)
+
+    # Save data in a text log
+    detector_gain_file = os.path.join(mph_run_dir, "detector_gain_values.csv")
+    detector_gain_df = pd.DataFrame(detector_voltage_data)
+    detector_gain_df.to_csv(detector_gain_file, index=False)
+
+    # Create a new figure and axes
+    fig, ax = plt.subplots()
+
+    # Plot the data with color coding and without a line connecting the points
+    for (
+        fov,
+        voltage,
+    ) in zip(detector_voltage_data["FOVs"], detector_voltage_data["Detector Voltage"]):
+        ax.plot(fov, voltage, marker="o", color="blue")
+
+    # Set the labels for the axes
+    ax.set_xlabel("FOVs")
+    ax.set_ylabel("Detector Voltage (v)")
+
+    # Show the plot
+    plt.savefig(
+        fname=os.path.join(mph_run_dir, "detector_gain_plot.png"),
+        dpi="figure",
+        format="png",
+        metadata=None,
+        bbox_inches=None,
+        pad_inches=0.1,
+        facecolor="auto",
+        edgecolor="auto",
+        backend=None,
+    )

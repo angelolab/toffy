@@ -1,6 +1,9 @@
+import json
 import os
+import pathlib
 import shutil
 import tempfile
+from typing import List
 from unittest.mock import patch
 
 import natsort
@@ -10,6 +13,7 @@ import pandas as pd
 import pytest
 import xarray as xr
 from alpineer import io_utils, load_utils, test_utils
+from pytest import TempPathFactory
 from pytest_cases import parametrize_with_cases
 
 from toffy import normalize
@@ -767,3 +771,37 @@ def test_check_detector_voltage():
             ),
         ):
             normalize.check_detector_voltage(tmp_dir)
+
+
+@parametrize("detector_volt_type", ["hvAdc", "hvDac"])
+def test_plot_detector_voltage(tmp_path_factory: TempPathFactory, detector_volt_type: str):
+    run_folder: pathlib.Path = tmp_path_factory.mktemp("run_folder")
+    mph_run_dir: pathlib.Path = tmp_path_factory.mktemp("mph_run_dir")
+    json_files: List[str] = [f"fov-{i}-scan-1.json" for i in np.arange(1, 4)]
+
+    for i, file in enumerate(json_files):
+        sample_data = {
+            "hvAdc": [{"name": "Detector", "value": 1 * (i + 1)}, {"name": "Not Detector"}],
+            "hvDac": [
+                {"name": "Detector", "currentSetPoint": 10 * (i + 1)},
+                {"name": "Not Detector"},
+            ],
+        }
+
+        write_json_file(run_folder / file, sample_data, encoding="utf-8")
+
+    normalize.plot_detector_voltage(
+        run_folder=run_folder, mph_run_dir=mph_run_dir, detector_volt_type=detector_volt_type
+    )
+
+    detector_gain_values_path: pathlib.Path = mph_run_dir / "detector_gain_values.csv"
+    assert os.path.exists(detector_gain_values_path)
+
+    detector_gain_values: pd.DataFrame = pd.read_csv(detector_gain_values_path)
+    expected_voltage_vals: np.ndarray = (
+        np.array([1, 2, 3]) if detector_volt_type == "hvAdc" else np.array([10, 20, 30])
+    )
+    assert np.all(detector_gain_values["FOVs"] == np.arange(1, 4))
+    assert np.all(detector_gain_values["Detector Voltage"] == expected_voltage_vals)
+
+    assert os.path.exists(mph_run_dir / "detector_gain_plot.png")
