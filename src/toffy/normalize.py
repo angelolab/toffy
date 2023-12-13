@@ -638,7 +638,7 @@ def create_fitted_mass_mph_vals(pulse_height_df, obj_func_dir):
     masses = np.unique(pulse_height_df["mass"].values)
 
     # create column to hold fitted values
-    pulse_height_df["pulse_height_fit"] = 0
+    pulse_height_df["pulse_height_fit"] = 0.0
 
     # create x axis values
     num_fovs = len(np.unique(pulse_height_df["fov"]))
