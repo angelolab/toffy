@@ -169,9 +169,9 @@ def test_combine_run_metrics(metrics, warn_overwrite_test):
             name_prof, values_df_prof = metric[0], pd.DataFrame(metric[1])
             values_df_prof.to_csv(os.path.join(temp_dir, name_prof), index=False)
 
-        normalize.combine_run_metrics(temp_dir, "pulse_height")
+        normalize.combine_run_metrics(temp_dir, "pulse_heights")
 
-        combined_data = pd.read_csv(os.path.join(temp_dir, "pulse_height_combined.csv"))
+        combined_data = pd.read_csv(os.path.join(temp_dir, "pulse_heights_combined.csv"))
 
         assert np.array_equal(combined_data.columns, ["pulse_height", "mass", "fov"])
         assert len(combined_data) == len(metrics["deficient"]) * 10
@@ -180,9 +180,9 @@ def test_combine_run_metrics(metrics, warn_overwrite_test):
         # NOTE: only if warn_overwrite turned on
         if warn_overwrite_test:
             with pytest.warns(UserWarning, match="previously generated"):
-                normalize.combine_run_metrics(temp_dir, "pulse_height", warn_overwrite_test)
+                normalize.combine_run_metrics(temp_dir, "pulse_heights", warn_overwrite_test)
         else:
-            normalize.combine_run_metrics(temp_dir, "pulse_height", warn_overwrite_test)
+            normalize.combine_run_metrics(temp_dir, "pulse_heights", warn_overwrite_test)
 
         # check that files with different lengths raises error
         name, bad_vals = metrics["deficient"][0][0], pd.DataFrame(metrics["deficient"][0][1])
@@ -190,14 +190,14 @@ def test_combine_run_metrics(metrics, warn_overwrite_test):
         bad_vals.to_csv(os.path.join(temp_dir, name), index=False)
 
         with pytest.raises(ValueError, match="files are the same length"):
-            normalize.combine_run_metrics(temp_dir, "pulse_height")
+            normalize.combine_run_metrics(temp_dir, "pulse_heights")
 
         # empty directory raises error
         empty_dir = os.path.join(temp_dir, "empty")
         os.makedirs(empty_dir)
 
         with pytest.raises(ValueError, match="No files"):
-            normalize.combine_run_metrics(empty_dir, "pulse_height")
+            normalize.combine_run_metrics(empty_dir, "pulse_heights")
 
 
 @parametrize_with_cases("dir_names, mph_dfs, count_dfs", test_cases.TuningCurveFiles)
