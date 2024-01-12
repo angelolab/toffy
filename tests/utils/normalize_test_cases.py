@@ -108,7 +108,7 @@ class CombineRunMetricFiles:
         # create full directory of files, include proficient data which should be ignored
         metrics = []
         metrics_prof = []
-        for i in range(0, 4):
+        for i in range(0, 5):
             metric_name = "pulse_heights_{}.csv".format(i)
             metric_prof_name = "pulse_heights_{}_proficient.csv".format(i)
             metric_values = {

@@ -499,8 +499,9 @@ def test_create_fitted_mass_mph_vals(tmpdir, skip_norm_func):
 
 
 @parametrize("test_zeros", [False, True])
+@parametrize("autogain", [False, True])
 @parametrize_with_cases("metrics", cases=test_cases.CombineRunMetricFiles)
-def test_create_fitted_pulse_heights_file(tmpdir, test_zeros, metrics):
+def test_create_fitted_pulse_heights_file(tmpdir, test_zeros, autogain, metrics):
     # create metric files
     pulse_dir = os.path.join(tmpdir, "pulse_heights")
     os.makedirs(pulse_dir)
@@ -519,6 +520,7 @@ def test_create_fitted_pulse_heights_file(tmpdir, test_zeros, metrics):
 
     panel = test_cases.panel
     fovs = natsort.natsorted(test_cases.fovs)
+    kwargs = {"min_obs": 4, "outlier_fraction": 2}
 
     if test_zeros:
         with pytest.warns(UserWarning, match="Skipping normalization"):
@@ -527,14 +529,21 @@ def test_create_fitted_pulse_heights_file(tmpdir, test_zeros, metrics):
                 panel_info=panel,
                 norm_dir=tmpdir,
                 mass_obj_func="poly_3",
+                autogain=autogain,
+                **kwargs,
             )
     else:
         df = normalize.create_fitted_pulse_heights_file(
-            pulse_height_dir=pulse_dir, panel_info=panel, norm_dir=tmpdir, mass_obj_func="poly_3"
+            pulse_height_dir=pulse_dir,
+            panel_info=panel,
+            norm_dir=tmpdir,
+            mass_obj_func="poly_3",
+            autogain=autogain,
+            **kwargs,
         )
 
     # all four FOVs included
-    assert len(np.unique(df["fov"].values)) == 4
+    assert len(np.unique(df["fov"].values)) == 5
 
     # FOVs are ordered in proper order
     ordered_fovs = df.loc[df["mass"] == 10, "fov"].values.astype("str")
@@ -545,8 +554,15 @@ def test_create_fitted_pulse_heights_file(tmpdir, test_zeros, metrics):
         assert np.all(df[df["mass"] == 5]["pulse_height"].values == 0)
         df = df[df["mass"] != 5].copy()
 
-    # fitted values are distinct from original
-    assert np.all(df["pulse_height"].values != df["pulse_height_fit"])
+    # with autogain, max one FOV should contain the original value (depends on # of FOVs)
+    if autogain:
+        for mass in df["mass"].unique():
+            mass_ph = df.loc[df["mass"] == mass, "pulse_height"].values
+            mass_ph_med = np.median(mass_ph)
+            assert np.sum(mass_ph[mass_ph == mass_ph_med]) <= 1
+    # fitted values are distinct from original without autogain
+    else:
+        assert np.all(df["pulse_height"].values != df["pulse_height_fit"].values)
 
 
 @parametrize("test_zeros", [False, True])
@@ -644,8 +660,9 @@ def test_normalize_fov(tmpdir, test_zeros, test_high_norm, test_low_norm):
         )
 
 
+@parametrize("autogain", [False, True])
 @parametrize_with_cases("metrics", cases=test_cases.CombineRunMetricFiles)
-def test_normalize_image_data(tmpdir, metrics):
+def test_normalize_image_data(tmpdir, autogain, metrics):
     # create directory of pulse height csvs
     pulse_height_dir = os.path.join(tmpdir, "pulse_height_dir")
     os.makedirs(pulse_height_dir)
@@ -690,6 +707,7 @@ def test_normalize_image_data(tmpdir, metrics):
         pulse_height_dir=pulse_height_dir,
         panel_info=panel,
         norm_func_path=func_path,
+        autogain=autogain,
     )
 
     assert np.array_equal(io_utils.list_folders(norm_dir, "fov").sort(), fovs.sort())
@@ -702,6 +720,7 @@ def test_normalize_image_data(tmpdir, metrics):
             pulse_height_dir=pulse_height_dir,
             panel_info=panel,
             norm_func_path="bad_path",
+            autogain=autogain,
         )
 
     # mismatch between FOVs
@@ -715,6 +734,7 @@ def test_normalize_image_data(tmpdir, metrics):
             pulse_height_dir=pulse_height_dir,
             panel_info=panel,
             norm_func_path=func_path,
+            autogain=autogain,
         )
 
 
