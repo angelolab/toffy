@@ -662,7 +662,9 @@ def test_normalize_image_data(tmpdir, metrics):
     img_dir = os.path.join(tmpdir, "img_dir")
     os.makedirs(img_dir)
 
-    fovs, chans = test_cases.fovs, test_cases.channels
+    fovs = [f"fov-{12 - i}-scan-1" for i in np.arange(4)]
+    chans = [f"chan_{i}" for i in np.arange(10)]
+    # fovs, chans = test_cases.fovs, test_cases.channels
     filelocs, data_xr = test_utils.create_paired_xarray_fovs(
         img_dir, fovs, chans, img_shape=(10, 10), dtype="float32"
     )
