@@ -433,7 +433,7 @@ class TestQCTMA:
         assert self.qc_tma.qc_cols == settings.QC_COLUMNS
         assert self.qc_tma.qc_suffixes == settings.QC_SUFFIXES
 
-        assert self.qc_tma.tma_avg_ranks == {}
+        assert self.qc_tma.tma_avg_zscores == {}
 
     def test__get_r_c(self) -> None:
         """Test retrieved row and column."""
@@ -504,13 +504,13 @@ class TestQCTMA:
         ],
     )
     # test_qc_tma_metrics_compute_qc_tma_metrics
-    def test_qc_tma_metrics_rank(self, channel_exclude) -> None:
-        """Test TMA rank metrics."""
-        self.qc_tma.qc_tma_metrics_rank(
+    def test_qc_tma_metrics_zscore(self, channel_exclude) -> None:
+        """Test TMA z-score metrics."""
+        self.qc_tma.qc_tma_metrics_zscore(
             tmas=[self.qc_tmas_fixture.tma_name], channel_exclude=channel_exclude
         )
 
-        assert self.qc_tma.tma_avg_ranks[self.qc_tmas_fixture.tma_name].shape == (
+        assert self.qc_tma.tma_avg_zscores[self.qc_tmas_fixture.tma_name].shape == (
             3,
             *self.qc_tmas_fixture.tma_n_m.max(0).tolist(),
         )
@@ -683,7 +683,7 @@ class TestQCControlMetrics:
         ],
     )
     def test_transformed_control_effects_data(self, _control_sample_name, _metric) -> None:
-        """Test tranformed data."""
+        """Test transformed data."""
         self.qc_control_metrics.compute_control_qc_metrics(
             control_sample_name=_control_sample_name,
             fovs=self.cohort_data.fovs,

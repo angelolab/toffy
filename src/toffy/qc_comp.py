@@ -15,6 +15,7 @@ import xarray as xr
 from alpineer import image_utils, io_utils, load_utils, misc_utils
 from pandas.core.groupby import DataFrameGroupBy
 from requests.exceptions import HTTPError
+from scipy import stats
 from scipy.ndimage import gaussian_filter
 from tqdm.auto import tqdm
 
@@ -517,8 +518,8 @@ class QCTMA:
         qc_cols (List[str]): A list of the QC columns.
         qc_suffixes (List[str]): A list of the QC suffixes, ordered w.r.t `qc_cols`.
         search_term (re.Pattern): The regex pattern to extract n,m from FOV names of the form RnCm.
-        tma_avg_ranks (Dict[str, xr.DataArray]): A dictionary containing the average ranks for each
-            TMA for each QC Metric in `qc_metrics`.
+        tma_avg_zscores (Dict[str, xr.DataArray]): A dictionary containing the average z-scores for
+            each TMA for each QC Metric in `qc_metrics`.
     """
 
     qc_metrics: Optional[List[str]]
@@ -531,7 +532,7 @@ class QCTMA:
     qc_suffixes: List[str] = field(init=False)
 
     # Set by methods
-    tma_avg_ranks: Dict[str, xr.DataArray] = field(init=False)
+    tma_avg_zscores: Dict[str, xr.DataArray] = field(init=False)
 
     def __post_init__(self):
         """Initialize QCTMA."""
@@ -543,8 +544,8 @@ class QCTMA:
         # Create regex pattern for searching RnCm
         self.search_term: re.Pattern = re.compile(r"R\+?(\d+)C\+?(\d+)")
 
-        # Set the tma_avg_ranks to be an empty dictionary
-        self.tma_avg_ranks = {}
+        # Set the tma_avg_zscores to be an empty dictionary
+        self.tma_avg_zscores = {}
 
     def _get_r_c(self, fov_name: pd.Series) -> pd.Series:
         """Extracts the row and column value from a FOV's name containing RnCm.
@@ -561,7 +562,7 @@ class QCTMA:
     def _create_r_c_tma_matrix(
         self, group: DataFrameGroupBy, n_cols: int, n_rows: int, qc_col: str
     ) -> pd.Series:
-        """Ranks all FOVS for a given channel and creates a matrix of size `n_rows` by `n_cols`
+        """Z-scores all FOVS for a given channel and creates a matrix of size `n_rows` by `n_cols`
         as the TMA grid.
 
         Args:
@@ -572,10 +573,10 @@ class QCTMA:
             qc_col (str): The column to get the the QC data.
 
         Returns:
-            pd.Series[np.ndarray]: Returns the a series containing the ranked matrix.
+            pd.Series[np.ndarray]: Returns the a series containing the z-score matrix.
         """
         rc_array: np.ndarray = np.full(shape=(n_cols, n_rows), fill_value=np.nan)
-        rc_array[group["column"] - 1, group["row"] - 1] = group[qc_col].rank()
+        rc_array[group["column"] - 1, group["row"] - 1] = stats.zscore(group[qc_col])
 
         return pd.Series([rc_array])
 
@@ -651,8 +652,8 @@ class QCTMA:
                 index=False,
             )
 
-    def qc_tma_metrics_rank(self, tmas: List[str], channel_exclude: List[str] = None):
-        """Creates the average rank for a given TMA across all FOVs and unexcluded channels.
+    def qc_tma_metrics_zscore(self, tmas: List[str], channel_exclude: List[str] = None):
+        """Creates the average zscore for a given TMA across all FOVs and unexcluded channels.
         By default the following channels are excluded: Au, Fe, Na, Ta, Noodle.
 
         Args:
@@ -660,29 +661,46 @@ class QCTMA:
             channel_exclude (List[str], optional): An optional list of channels to further filter
                 out. Defaults to None.
         """
-        with tqdm(total=len(tmas), desc="Computing QC TMA Metric Ranks", unit="TMA") as pbar:
+        max_col, max_row = 0, 0
+        with tqdm(total=len(tmas), desc="Computing QC TMA Metric Z-scores", unit="TMA") as pbar:
             for tma in tmas:
-                self.tma_avg_ranks[tma] = self._compute_qc_tma_metrics_rank(
+                self.tma_avg_zscores[tma] = self._compute_qc_tma_metrics_zscore(
                     tma, channel_exclude=channel_exclude
+                )
+                max_col = (
+                    self.tma_avg_zscores[tma].shape[1]
+                    if self.tma_avg_zscores[tma].shape[1] > max_col
+                    else max_col
+                )
+                max_row = (
+                    self.tma_avg_zscores[tma].shape[2]
+                    if self.tma_avg_zscores[tma].shape[2] > max_row
+                    else max_row
                 )
                 pbar.set_postfix(TMA=tma)
                 pbar.update()
 
-    def _compute_qc_tma_metrics_rank(
+        # also average z-scores and store
+        all_tmas = np.full(shape=(len(tmas), max_col, max_row), fill_value=np.nan)
+        for i, tma in enumerate(tmas):
+            all_tmas[i, :, :] = self.tma_avg_zscores[tma].squeeze()
+        self.tma_avg_zscores["cross_TMA_averages"] = np.nanmean(all_tmas, axis=0)
+
+    def _compute_qc_tma_metrics_zscore(
         self,
         tma: str,
         channel_exclude: List[str] = None,
     ) -> xr.DataArray:
-        """Creates the average rank for a given TMA across all FOVs and unexcluded channels.
+        """Creates the average z-score for a given TMA across all FOVs and unexcluded channels.
         By default the following channels are excluded: Au, Fe, Na, Ta, Noodle.
 
         Args:
-            tma (str): The TMA to compute the average rank for.
+            tma (str): The TMA to compute the average z-score for.
             channel_exclude (List[str], optional): An optional list of channels to further filter
                 out. Defaults to None.
 
         Returns:
-            xr.DataArray: An xarray DataArray containing the average rank for each channel across
+            xr.DataArray: An xarray DataArray containing the average z-score for each channel across
                 a TMA.
         """
         # Sort the loaded combined csv files based on the filtered `qc_suffixes`
@@ -691,7 +709,7 @@ class QCTMA:
             key=lambda tma_mf: (i for i, qc_s in enumerate(self.qc_suffixes) if qc_s in tma_mf),
         )
 
-        ranked_channels_matrix = []
+        zscore_channels_matrix = []
         n_cols: int = None
         n_rows: int = None
 
@@ -707,20 +725,20 @@ class QCTMA:
             n_cols = cmt_df["column"].max()
             n_rows = cmt_df["row"].max()
 
-            # Rank all FOVs per channel, and then create the heatmap matrix
-            ranked_channel_tmas: pd.DataFrame = cmt_df.groupby(by="channel", sort=True).apply(
+            # Z-score all FOVs per channel, and then create the heatmap matrix
+            zscore_channel_tmas: pd.DataFrame = cmt_df.groupby(by="channel", sort=True).apply(
                 lambda group: self._create_r_c_tma_matrix(group, n_cols, n_rows, qc_col)
             )
-            ranked_channel_matrices: np.ndarray = np.array(
-                [c_tma[0] for c_tma in ranked_channel_tmas.values],
+            zscore_channel_matrices: np.ndarray = np.array(
+                [c_tma[0] for c_tma in zscore_channel_tmas.values],
             )
 
-            avg_rank = np.mean(ranked_channel_matrices, axis=0)
+            avg_zscore = np.mean(zscore_channel_matrices, axis=0)
 
-            ranked_channels_matrix.append(avg_rank)
+            zscore_channels_matrix.append(avg_zscore)
 
         return xr.DataArray(
-            data=np.stack(ranked_channels_matrix),
+            data=np.stack(zscore_channels_matrix),
             coords=[self.qc_cols, np.arange(n_cols), np.arange(n_rows)],
             dims=["qc_col", "cols", "rows"],
         )

@@ -77,7 +77,7 @@ def test_visualize_qc_metrics(tmp_path: Path):
 @pytest.fixture(scope="function")
 def qc_tma_data(qc_tmas: QCMetricData) -> Generator[Callable, None, None]:
     """A fixture which yields a function which creates the QCTMA class,
-    and computes the metrics, and the rank metrics.
+    and computes the metrics, and the zscore metrics.
 
     Args:
         qc_tmas (QCMetricData): The fixture which creates the QCMetricData class.
@@ -98,7 +98,7 @@ def qc_tma_data(qc_tmas: QCMetricData) -> Generator[Callable, None, None]:
         )
 
         qc_tmas_data.compute_qc_tma_metrics(tmas=tmas)
-        qc_tmas_data.qc_tma_metrics_rank(tmas=tmas, channel_exclude=channel_exclude)
+        qc_tmas_data.qc_tma_metrics_zscore(tmas=tmas, channel_exclude=channel_exclude)
 
         return qc_tmas_data
 
