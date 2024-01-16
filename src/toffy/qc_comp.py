@@ -681,9 +681,11 @@ class QCTMA:
                 pbar.update()
 
         # also average z-scores and store
-        all_tmas = np.full(shape=(len(tmas), max_col, max_row), fill_value=np.nan)
+        all_tmas = np.full(
+            shape=(len(tmas), len(self.qc_metrics), max_col, max_row), fill_value=np.nan
+        )
         for i, tma in enumerate(tmas):
-            all_tmas[i, :, :] = self.tma_avg_zscores[tma].squeeze()
+            all_tmas[i, :, :, :] = self.tma_avg_zscores[tma]
         self.tma_avg_zscores["cross_TMA_averages"] = np.nanmean(all_tmas, axis=0)
 
     def _compute_qc_tma_metrics_zscore(
