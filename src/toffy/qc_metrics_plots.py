@@ -148,7 +148,7 @@ def qc_tmas_metrics_plot(
     # also plot averages
     tmas.append("cross_TMA_averages")
 
-    with tqdm(total=len(tmas), desc="Plotting QC TMA Metric Ranks", unit="TMAs") as pbar:
+    with tqdm(total=len(tmas), desc="Plotting QC TMA Metric Z-scores", unit="TMAs") as pbar:
         for tma in tmas:
             _qc_tma_metrics_plot(qc_tmas, tma, fig_dir=fig_dir, save_figure=save_figure, dpi=dpi)
             pbar.set_postfix(TMA=tma)
@@ -174,7 +174,7 @@ def _qc_tma_metrics_plot(
         dpi (int, optional): Dots per inch, the resolution of the image. Defaults to 300.
     """
     for qc_metric, suffix in zip(qc_tmas.qc_cols, qc_tmas.qc_suffixes):
-        qc_tma_data: np.ndarray = qc_tmas.tma_avg_ranks[tma].loc[qc_metric].values
+        qc_tma_data: np.ndarray = qc_tmas.tma_avg_zscores[tma].loc[qc_metric].values
 
         # Set up the Figure for multiple axes
         fig: Figure = plt.figure(dpi=dpi)
