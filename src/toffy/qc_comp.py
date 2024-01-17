@@ -686,7 +686,12 @@ class QCTMA:
         )
         for i, tma in enumerate(tmas):
             all_tmas[i, :, :, :] = self.tma_avg_zscores[tma]
-        self.tma_avg_zscores["cross_TMA_averages"] = np.nanmean(all_tmas, axis=0)
+
+        self.tma_avg_zscores["cross_TMA_averages"] = xr.DataArray(
+            data=np.stack(np.nanmean(all_tmas, axis=0)),
+            coords=[self.qc_cols, np.arange(max_col), np.arange(max_row)],
+            dims=["qc_col", "cols", "rows"],
+        )
 
     def _compute_qc_tma_metrics_zscore(
         self,
