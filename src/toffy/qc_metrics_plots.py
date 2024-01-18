@@ -210,10 +210,10 @@ def _qc_tma_metrics_plot(
 
         ax_heatmap.set_xlabel("Column")
         ax_heatmap.set_ylabel("Row")
-        if tma == "averages":
+        if tma == "cross_TMA_averages":
             ax_heatmap.set_title("Average Scores Across All TMAs\n")
         else:
-            ax_heatmap.set_title(f"{tma} - Average Channel Z-score per FOV\n")
+            ax_heatmap.set_title(f"{tma} - Average {qc_metric}\n")
 
         if save_figure:
             fig.savefig(
