@@ -122,6 +122,7 @@ def test_qc_tmas_metrics_plot(
     total_figures = [
         f"{tissue}_{qc}.png" for tissue, qc in itertools.product(_tmas, qc_tma.qc_suffixes)
     ]
+    total_figures = total_figures + [f"cross_TMA_averages_{qc}.png" for qc in qc_tma.qc_suffixes]
 
     # Assert the existance of the QC TMA metrics figures
     for fig in total_figures:

@@ -515,6 +515,11 @@ class TestQCTMA:
             *self.qc_tmas_fixture.tma_n_m.max(0).tolist(),
         )
 
+        assert self.qc_tma.tma_avg_zscores["cross_TMA_averages"].shape == (
+            3,
+            *self.qc_tmas_fixture.tma_n_m.max(0).tolist(),
+        )
+
 
 @dataclass
 class BatchEffectMetricData:
