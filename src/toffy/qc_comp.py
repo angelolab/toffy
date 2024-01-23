@@ -668,7 +668,7 @@ class QCTMA:
                     tma, channel_exclude=channel_exclude
                 )
                 max_col = max(self.tma_avg_zscores[tma].shape[1], max_col)
-                max_row = max(self.tma_avg_zscores[tma].shape[2], max_col)
+                max_row = max(self.tma_avg_zscores[tma].shape[2], max_row)
 
                 pbar.set_postfix(TMA=tma)
                 pbar.update()
