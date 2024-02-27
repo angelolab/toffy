@@ -145,7 +145,10 @@ def qc_tmas_metrics_plot(
         fig_dir: pathlib.Path = pathlib.Path(qc_tmas.metrics_dir) / "figures"
         fig_dir.mkdir(parents=True, exist_ok=True)
 
-    with tqdm(total=len(tmas), desc="Plotting QC TMA Metric Ranks", unit="TMAs") as pbar:
+    # also plot averages
+    tmas.append("cross_TMA_averages")
+
+    with tqdm(total=len(tmas), desc="Plotting QC TMA Metric Z-scores", unit="TMAs") as pbar:
         for tma in tmas:
             _qc_tma_metrics_plot(qc_tmas, tma, fig_dir=fig_dir, save_figure=save_figure, dpi=dpi)
             pbar.set_postfix(TMA=tma)
@@ -171,25 +174,26 @@ def _qc_tma_metrics_plot(
         dpi (int, optional): Dots per inch, the resolution of the image. Defaults to 300.
     """
     for qc_metric, suffix in zip(qc_tmas.qc_cols, qc_tmas.qc_suffixes):
-        qc_tma_data: np.ndarray = qc_tmas.tma_avg_ranks[tma].loc[qc_metric].values
+        qc_tma_data: np.ndarray = qc_tmas.tma_avg_zscores[tma].loc[qc_metric].values
 
         # Set up the Figure for multiple axes
         fig: Figure = plt.figure(dpi=dpi)
-        fig.set_layout_engine(layout="constrained")
-        gs = gridspec.GridSpec(1, 2, figure=fig, wspace=0.05)
-        fig.suptitle(f"{tma} - {qc_metric}")
+        qc_tma_data = qc_tma_data.round(decimals=2)
 
         # Heatmap
-        ax_heatmap: Axes = fig.add_subplot(gs[0, 0])
+        _norm = Normalize(vmin=-1, vmax=1)
+        ax_heatmap = fig.add_subplot()
         sns.heatmap(
             data=qc_tma_data,
             square=True,
             ax=ax_heatmap,
             linewidths=1,
             linecolor="black",
+            annot_kws={"size": 7},
             cbar_kws={"shrink": 0.5},
             annot=True,
-            cmap=sns.color_palette(palette="Blues", as_cmap=True),
+            cmap=sns.color_palette(palette="vlag", as_cmap=True),
+            norm=_norm,
         )
         # Set ticks
         ax_heatmap.set_xticks(
@@ -206,13 +210,10 @@ def _qc_tma_metrics_plot(
 
         ax_heatmap.set_xlabel("Column")
         ax_heatmap.set_ylabel("Row")
-        ax_heatmap.set_title("Average Rank")
-
-        # Histogram
-        ax_hist: Axes = fig.add_subplot(gs[0, 1])
-        sns.histplot(qc_tma_data.ravel(), ax=ax_hist, bins=10)
-        ax_hist.set(xlabel="Average Rank", ylabel="Count")
-        ax_hist.set_title("Average Rank Distribution")
+        if tma == "cross_TMA_averages":
+            ax_heatmap.set_title("Average Scores Across All TMAs\n")
+        else:
+            ax_heatmap.set_title(f"{tma} - Average {qc_metric}\n")
 
         if save_figure:
             fig.savefig(
