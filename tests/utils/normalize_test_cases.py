@@ -5,7 +5,7 @@ import pytest
 masses = np.arange(5, 15)
 channels = ["chan_{}".format(i) for i in range(len(masses))]
 panel = pd.DataFrame({"Mass": masses, "Target": channels})
-fovs = ["fov{}".format(12 - i) for i in range(5)]
+fovs = ["fov-{}-scan-1".format(12 - i) for i in range(4)]
 
 
 def generate_tuning_data(channel_counts):
