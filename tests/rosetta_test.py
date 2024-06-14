@@ -324,7 +324,9 @@ def test_compensate_image_data(
         os.makedirs(output_dir)
 
         # make fake data for testing
-        fovs, chans = test_utils.gen_fov_chan_names(num_fovs=3, num_chans=3)
+        fovs = [f"fov-{i}-scan-1" for i in np.arange(3)]
+        chans = [f"chan{i}" for i in np.arange(3)]
+        # fovs, chans = test_utils.gen_fov_chan_names(num_fovs=3, num_chans=3)
         filelocs, data_xr = test_utils.create_paired_xarray_fovs(
             data_dir, fovs, chans, img_shape=(10, 10), fills=True, dtype=np.uint32
         )
@@ -360,8 +362,8 @@ def test_compensate_image_data(
 
         for folder in format_folders:
             # check that all files were created
-            output_files = io_utils.list_files(os.path.join(output_dir, fovs[0], folder), ".tif")
-            output_files = [chan.split(".tif")[0] for chan in output_files]
+            output_files = io_utils.list_files(os.path.join(output_dir, fovs[0], folder), ".tiff")
+            output_files = [chan.split(".tiff")[0] for chan in output_files]
 
             if output_masses is None or len(output_masses) == 3:
                 assert set(output_files) == set(panel_info["Target"].values)
@@ -697,7 +699,7 @@ def mock_img_size(run_dir, fov_list=None):
 def test_copy_image_files(mocker):
     mocker.patch("toffy.image_stitching.get_max_img_size", mock_img_size)
 
-    run_names = ["run_1", "run_2", "run_3"]
+    run_names = ["run1", "run2", "run3"]
     with tempfile.TemporaryDirectory() as temp_dir:
         for i in range(0, 3):
             run_folder = os.path.join(temp_dir, run_names[i])
@@ -733,7 +735,7 @@ def test_copy_image_files(mocker):
             extracted_fov_dir = os.path.join(temp_dir2, "cohort_name", "extracted_images")
             assert len(io_utils.list_folders(extracted_fov_dir)) == 12
             for i in range(1, 4):
-                assert len(list(io_utils.list_folders(extracted_fov_dir, f"run_{i}"))) == 4
+                assert len(list(io_utils.list_folders(extracted_fov_dir, f"run{i}"))) == 4
             assert len(list(io_utils.list_folders(extracted_fov_dir, "stitched_images"))) == 0
 
             # check that files in fov folders are copied
@@ -750,8 +752,8 @@ def test_copy_image_files(mocker):
             # check that correct total and per run fovs are copied, assert run 3 didn't get copied
             assert len(io_utils.list_folders(extracted_fov_dir)) == 10
             for i in range(1, 3):
-                assert len(io_utils.list_folders(extracted_fov_dir, f"run_{i}")) == 5
-            assert len(io_utils.list_folders(extracted_fov_dir, "run_3")) == 0
+                assert len(io_utils.list_folders(extracted_fov_dir, f"run{i}")) == 5
+            assert len(io_utils.list_folders(extracted_fov_dir, "run3")) == 0
 
             # check that files in fov folders are copied
             for folder in io_utils.list_folders(extracted_fov_dir):
