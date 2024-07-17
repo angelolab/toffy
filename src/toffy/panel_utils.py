@@ -238,6 +238,9 @@ def convert_panel(panel_path):
     toffy_panel["Start"] = toffy_panel["Mass"].copy() - 0.3
     toffy_panel["Stop"] = toffy_panel["Mass"].copy()
 
+    # specify 116.7 - 125 Noodle extraction range
+    toffy_panel.loc[toffy_panel.Mass == 117, "Stop"] = 125
+
     # sort data by mass
     toffy_panel = toffy_panel.sort_values(by=["Mass"])
 
