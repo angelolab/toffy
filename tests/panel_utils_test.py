@@ -129,6 +129,9 @@ def test_convert_panel():
             mass in list(converted_panel["Mass"]) for mass in (list(necessary_panel["Mass"]))
         )
 
+        # check for correct Noodle extraction range
+        assert converted_panel[converted_panel.Mass == 117].Stop.values[0] == 125
+
         # check that correctly formatted panel loads without issue
         converted_panel.to_csv(os.path.join(temp_dir, "converted_panel.csv"), index=False)
         result_panel = panel_utils.convert_panel(os.path.join(temp_dir, "converted_panel.csv"))
