@@ -24,7 +24,8 @@ def get_estimated_time(bin_file_dir, fov):
     io_utils.validate_paths(bin_file_dir)
 
     # get fov json file in bin_file_path
-    json_file = io_utils.list_files(bin_file_dir, fov, exact_match=True)
+    json_file = sorted(io_utils.list_files(bin_file_dir, fov, exact_match=True))
+    json_file = list(filter(lambda f: ".json" in f, json_file))
     if len(json_file) == 0:
         raise FileNotFoundError(f"The FOV name supplied doesn't have a JSON file: {fov}")
 
