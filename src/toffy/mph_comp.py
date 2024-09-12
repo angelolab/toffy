@@ -25,7 +25,7 @@ def get_estimated_time(bin_file_dir, fov):
 
     # get fov json file in bin_file_path
     json_file = os.path.join(bin_file_dir, f"{fov}.json")
-    if not os.path.exists(json_file) == 0:
+    if not os.path.exists(json_file):
         raise FileNotFoundError(f"The FOV name supplied doesn't have a JSON file: {fov}")
 
     # retrieve estimated time (frame dimensions x pixel dwell time)
