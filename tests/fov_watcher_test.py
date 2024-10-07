@@ -82,12 +82,12 @@ def _slow_copy_sample_tissue_data(
                     bin_file_name = tissue_data[0] + ".bin"
                     shutil.copy(
                         os.path.join(COMBINED_DATA_PATH, bin_file_name),
-                        os.path.join(dest, bin_file_name + ".temp")
+                        os.path.join(dest, bin_file_name + ".temp"),
                     )
                     os.remove(os.path.join(dest, bin_file_name))
                     os.rename(
                         os.path.join(dest, bin_file_name + ".temp"),
-                        os.path.join(dest, bin_file_name)
+                        os.path.join(dest, bin_file_name),
                     )
                 num_bin_files += 1
 
