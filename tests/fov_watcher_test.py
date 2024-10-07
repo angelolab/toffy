@@ -50,6 +50,7 @@ def _slow_copy_sample_tissue_data(
         temp_bin (bool):
             Use initial temp bin file paths or not
     """
+    num_bin_files = 0
     for tissue_file in sorted(os.listdir(COMBINED_DATA_PATH)):
         time.sleep(delta)
         if one_blank and ".bin" in tissue_file and tissue_file[0] != ".":
@@ -69,20 +70,22 @@ def _slow_copy_sample_tissue_data(
                 time.sleep(delta)
                 copied_tissue_path = os.path.join(dest, "." + tissue_file + ".aBcDeF")
                 os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
+
             else:
                 shutil.copy(tissue_path, dest)
 
-    # get all .bin files
-    bin_files = [bfile for bfile in sorted(os.listdir(COMBINED_DATA_PATH)) if ".bin" in bfile]
-
-    # simulate updating the creation time for some .bin files, this tests _check_bin_updates
-    for i, bfile in enumerate(bin_files):
-        if i % 2 == 0:
-            shutil.copy(
-                os.path.join(COMBINED_DATA_PATH, bfile), os.path.join(dest, bfile + ".temp")
-            )
-            os.remove(os.path.join(dest, bfile))
-            os.rename(os.path.join(dest, bfile + ".temp"), os.path.join(dest, bfile))
+            # simulate a timestamp update if .bin file has been extracted
+            # NOTE: this assumes .json file always copies after the .bin, which does happen on Ionpath
+            tissue_data = os.path.splitext(tissue_file)
+            if tissue_data[1] == ".json" and "_processing" not in tissue_data[0]:
+                if num_bin_files % 2 == 0:
+                    bin_file_name = tissue_data[0] + ".bin"
+                    shutil.copy(
+                        os.path.join(COMBINED_DATA_PATH, bin_file_name), os.path.join(dest, bin_file_name + ".temp")
+                    )
+                    os.remove(os.path.join(dest, bin_file_name))
+                    os.rename(os.path.join(dest, bin_file_name + ".temp"), os.path.join(dest, bin_file_name))
+                num_bin_files += 1
 
 
 COMBINED_RUN_JSON_SPOOF = {
@@ -255,7 +258,6 @@ def test_watcher(
     add_blank,
     temp_bin,
 ):
-    print("The watcher start lag is: %d" % watcher_start_lag)
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             tiff_out_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME)
