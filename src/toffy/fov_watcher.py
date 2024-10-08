@@ -224,6 +224,8 @@ class FOV_EventHandler(FileSystemEventHandler):
             format="%(name)s - %(levelname)s - %(message)s",
         )
         logging.info(f"Starting run on {run_folder}\n")
+        logger = logging.getLogger()
+        logger.propagate = False
 
         # create run structure
         self.run_structure = RunStructure(run_folder, fov_timeout=fov_timeout)
