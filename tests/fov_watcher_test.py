@@ -381,6 +381,9 @@ def test_watcher(
 
                     res_scan.get()
 
+            print("Testing log out status")
+            print(log_out)
+            print(os.listdir(log_out))
             with open(os.path.join(log_out, "test_run_log.txt")) as f:
                 logtxt = f.read()
                 assert add_blank == ("non-zero file size..." in logtxt)
