@@ -427,8 +427,9 @@ def test_watcher(
             # pulse heights check
             validators[4](os.path.join(tmpdir, "cb_3", RUN_DIR_NAME), fovs, bad_fovs)
 
-    except OSError:
-        warnings.warn("Temporary file cleanup was incomplete.")
+    except OSError as ose:
+        print(ose)
+        # warnings.warn("Temporary file cleanup was incomplete.")
 
 
 def test_watcher_missing_fovs():
