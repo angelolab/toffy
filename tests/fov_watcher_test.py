@@ -80,15 +80,19 @@ def _slow_copy_sample_tissue_data(
             if tissue_data[1] == ".json" and "_processing" not in tissue_data[0]:
                 if num_bin_files % 2 == 0:
                     bin_file_name = tissue_data[0] + ".bin"
+                    print(f"Simulating .bin file update on {bin_file_name}")
                     shutil.copy(
                         os.path.join(COMBINED_DATA_PATH, bin_file_name),
                         os.path.join(dest, bin_file_name + ".temp"),
                     )
+                    print("Renamed bin file to temp")
                     os.remove(os.path.join(dest, bin_file_name))
+                    print("Removed old bin file")
                     os.rename(
                         os.path.join(dest, bin_file_name + ".temp"),
                         os.path.join(dest, bin_file_name),
                     )
+                    print("Renamed temp bin file back to orig")
                 num_bin_files += 1
 
 
