@@ -450,7 +450,7 @@ def test_watcher(
                 infile.write("\n")
 
     except OSError as ose:
-        print("There was a failure:")
+        print("Ran into an error:")
         print(ose)
         # warnings.warn("Temporary file cleanup was incomplete.")
 
