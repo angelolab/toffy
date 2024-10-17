@@ -36,21 +36,11 @@ RUN_DIR_NAME = "run_XXX"
 SLOW_COPY_INTERVAL_S = 1
 
 
-@pytest.fixture
+@pytest.fixture(scope="session", autouse=True)
 def configure_logging():
-    log_file = "test_log_file.log"
-
-    # Ensure any existing log file is removed
-    if os.path.exists(log_file):
-        os.remove(log_file)
-
-    # Set up logging to write to the file
-    logging.basicConfig(filename=log_file, level=logging.INFO)
-
-    yield log_file
-
-    # Optionally flush the logs to ensure file is written
-    logging.shutdown()
+    logging.basicConfig(filename="pytest.txt", level=logging.INFO)
+    yield
+    logging.shutdown()  # Ensure all log messages are flushed to the file
 
 
 def _slow_copy_sample_tissue_data(
@@ -74,7 +64,6 @@ def _slow_copy_sample_tissue_data(
         if one_blank and ".bin" in tissue_file and tissue_file[0] != ".":
             # create blank (0 size) file
             open(os.path.join(dest, tissue_file), "w").close()
-            one_blank = False
         else:
             tissue_path = os.path.join(COMBINED_DATA_PATH, tissue_file)
             if temp_bin and ".bin" in tissue_file:
@@ -92,11 +81,14 @@ def _slow_copy_sample_tissue_data(
             else:
                 shutil.copy(tissue_path, dest)
 
-            # simulate a timestamp update if .bin file has been extracted
+            # simulate a timestamp update if .bin file has been extracted AND not blank
             # NOTE: this assumes .json file always copies after the .bin, which does happen on Ionpath
             tissue_data = os.path.splitext(tissue_file)
             if tissue_data[1] == ".json" and "_processing" not in tissue_data[0]:
-                if num_bin_files % 2 == 0:
+                if one_blank:
+                    one_blank = False
+                    continue
+                elif num_bin_files % 2 == 0:
                     bin_file_name = tissue_data[0] + ".bin"
                     print(f"Simulating .bin file update on {bin_file_name}")
                     shutil.copy(
@@ -284,6 +276,8 @@ def test_watcher(
     add_blank,
     temp_bin,
 ):
+    if add_blank:
+        print("Add blank is True, testing")
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             tiff_out_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME)
@@ -403,7 +397,7 @@ def test_watcher(
             print(log_out)
             print(os.listdir(log_out))
             # with open(os.path.join(log_out, "test_run_log.txt")) as f:
-            with open("test_log_file.txt") as f:
+            with open("pytest.txt") as f:
                 logtxt = f.read()
                 assert add_blank == ("non-zero file size..." in logtxt)
 
