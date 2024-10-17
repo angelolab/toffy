@@ -397,6 +397,7 @@ def test_watcher(
             print(log_out)
             print(os.listdir(log_out))
             # with open(os.path.join(log_out, "test_run_log.txt")) as f:
+            print(os.listdir("."))
             with open("pytest.txt") as f:
                 logtxt = f.read()
                 assert add_blank == ("non-zero file size..." in logtxt)
