@@ -36,11 +36,11 @@ RUN_DIR_NAME = "run_XXX"
 SLOW_COPY_INTERVAL_S = 1
 
 
-@pytest.fixture(scope="session", autouse=True)
-def configure_logging():
-    logging.basicConfig(filename="pytest.txt", level=logging.INFO)
-    yield
-    logging.shutdown()  # Ensure all log messages are flushed to the file
+# @pytest.fixture(scope="session", autouse=True)
+# def configure_logging():
+#     logging.basicConfig(filename="pytest.txt", level=logging.INFO)
+#     yield
+#     logging.shutdown()  # Ensure all log messages are flushed to the file
 
 
 def _slow_copy_sample_tissue_data(
@@ -416,6 +416,7 @@ def test_watcher(
                 fovs = fovs[1:]
 
             # extract tiffs check
+            print("TIFF validator check")
             validators[0](os.path.join(tmpdir, "cb_0", RUN_DIR_NAME), fovs, bad_fovs)
             if kwargs["extract_prof"]:
                 validators[0](
@@ -427,9 +428,11 @@ def test_watcher(
                 )
 
             # qc check
+            print("QC check")
             validators[1](os.path.join(tmpdir, "cb_1", RUN_DIR_NAME), fovs, bad_fovs)
 
             # mph check
+            print("MPH check")
             validators[2](
                 os.path.join(tmpdir, "cb_2", RUN_DIR_NAME),
                 os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME),
@@ -443,7 +446,11 @@ def test_watcher(
             # pulse heights check
             validators[4](os.path.join(tmpdir, "cb_3", RUN_DIR_NAME), fovs, bad_fovs)
 
+            with open("pytest.txt", "w") as infile:
+                infile.write("\n")
+
     except OSError as ose:
+        print("There was a failure:")
         print(ose)
         # warnings.warn("Temporary file cleanup was incomplete.")
 
