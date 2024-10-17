@@ -35,6 +35,23 @@ RUN_DIR_NAME = "run_XXX"
 SLOW_COPY_INTERVAL_S = 1
 
 
+@pytest.fixture
+def configure_logging():
+    log_file = "test_log_file.log"
+    
+    # Ensure any existing log file is removed
+    if os.path.exists(log_file):
+        os.remove(log_file)
+    
+    # Set up logging to write to the file
+    logging.basicConfig(filename=log_file, level=logging.INFO)
+    
+    yield log_file
+    
+    # Optionally flush the logs to ensure file is written
+    logging.shutdown()
+
+
 def _slow_copy_sample_tissue_data(
     dest: str, delta: int = 10, one_blank: bool = False, temp_bin: bool = False
 ):
@@ -384,7 +401,8 @@ def test_watcher(
             print("Testing log out status")
             print(log_out)
             print(os.listdir(log_out))
-            with open(os.path.join(log_out, "test_run_log.txt")) as f:
+            # with open(os.path.join(log_out, "test_run_log.txt")) as f:
+            with open("test_log_file.txt") as f:
                 logtxt = f.read()
                 assert add_blank == ("non-zero file size..." in logtxt)
 
