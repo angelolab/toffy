@@ -39,16 +39,16 @@ SLOW_COPY_INTERVAL_S = 1
 @pytest.fixture
 def configure_logging():
     log_file = "test_log_file.log"
-    
+
     # Ensure any existing log file is removed
     if os.path.exists(log_file):
         os.remove(log_file)
-    
+
     # Set up logging to write to the file
     logging.basicConfig(filename=log_file, level=logging.INFO)
-    
+
     yield log_file
-    
+
     # Optionally flush the logs to ensure file is written
     logging.shutdown()
 
