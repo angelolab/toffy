@@ -395,10 +395,9 @@ def test_watcher(
 
             print("Testing log out status")
             print(log_out)
-            print(os.listdir(log_out))
             # with open(os.path.join(log_out, "test_run_log.txt")) as f:
             print(os.listdir("."))
-            with open("pytest.txt") as f:
+            with open(os.path.join(Path(__file__).parents[1], "pytest.txt")) as f:
                 logtxt = f.read()
                 assert add_blank == ("non-zero file size..." in logtxt)
 
@@ -447,7 +446,7 @@ def test_watcher(
             # pulse heights check
             validators[4](os.path.join(tmpdir, "cb_3", RUN_DIR_NAME), fovs, bad_fovs)
 
-            with open("pytest.txt", "w") as infile:
+            with open(os.path.join(Path(__file__).parents[1], "pytest.txt"), "w") as infile:
                 infile.write("\n")
 
     except OSError as ose:
