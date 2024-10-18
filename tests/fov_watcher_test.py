@@ -276,8 +276,6 @@ def test_watcher(
     add_blank,
     temp_bin,
 ):
-    if add_blank:
-        print("Add blank is True, testing")
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             tiff_out_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME)
