@@ -216,12 +216,14 @@ class FOV_EventHandler(FileSystemEventHandler):
         self.log_path = os.path.join(log_folder, f"{Path(run_folder).parts[-1]}_log.txt")
         if not os.path.exists(log_folder):
             os.makedirs(log_folder)
+        print(f"Setting log path to {self.log_path}")
         logging.basicConfig(
             level=logging.INFO,
             filename=self.log_path,
             filemode="a",
             format="%(name)s - %(levelname)s - %(message)s",
         )
+        logging.info(f"Starting run on {run_folder}\n")
 
         # create run structure
         self.run_structure = RunStructure(run_folder, fov_timeout=fov_timeout)

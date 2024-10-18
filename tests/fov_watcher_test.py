@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import tempfile
@@ -35,6 +36,13 @@ RUN_DIR_NAME = "run_XXX"
 SLOW_COPY_INTERVAL_S = 1
 
 
+# @pytest.fixture(scope="session", autouse=True)
+# def configure_logging():
+#     logging.basicConfig(filename="pytest.txt", level=logging.INFO)
+#     yield
+#     logging.shutdown()  # Ensure all log messages are flushed to the file
+
+
 def _slow_copy_sample_tissue_data(
     dest: str, delta: int = 10, one_blank: bool = False, temp_bin: bool = False
 ):
@@ -50,39 +58,55 @@ def _slow_copy_sample_tissue_data(
         temp_bin (bool):
             Use initial temp bin file paths or not
     """
+    num_bin_files = 0
     for tissue_file in sorted(os.listdir(COMBINED_DATA_PATH)):
         time.sleep(delta)
         if one_blank and ".bin" in tissue_file and tissue_file[0] != ".":
             # create blank (0 size) file
             open(os.path.join(dest, tissue_file), "w").close()
-            one_blank = False
         else:
             tissue_path = os.path.join(COMBINED_DATA_PATH, tissue_file)
             if temp_bin and ".bin" in tissue_file:
                 # copy to a temporary file with hash extension, then move to dest folder
+                print(f"Copying over a temporary file with hash extension on {tissue_file}")
                 new_tissue_path = os.path.join(COMBINED_DATA_PATH, "." + tissue_file + ".aBcDeF")
                 shutil.copy(tissue_path, new_tissue_path)
                 shutil.copy(new_tissue_path, dest)
+                print(f"Removing the old tissue path at .{tissue_file}.aBcDeF")
                 os.remove(new_tissue_path)
 
                 # simulate a renaming event in dest
                 time.sleep(delta)
+                print(f"Renaming back to {tissue_file}")
                 copied_tissue_path = os.path.join(dest, "." + tissue_file + ".aBcDeF")
                 os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
+
             else:
                 shutil.copy(tissue_path, dest)
 
-    # get all .bin files
-    bin_files = [bfile for bfile in sorted(os.listdir(COMBINED_DATA_PATH)) if ".bin" in bfile]
-
-    # simulate updating the creation time for some .bin files, this tests _check_bin_updates
-    for i, bfile in enumerate(bin_files):
-        if i % 2 == 0:
-            shutil.copy(
-                os.path.join(COMBINED_DATA_PATH, bfile), os.path.join(dest, bfile + ".temp")
-            )
-            os.remove(os.path.join(dest, bfile))
-            os.rename(os.path.join(dest, bfile + ".temp"), os.path.join(dest, bfile))
+            # simulate a timestamp update if .bin file has been extracted AND not blank
+            # NOTE: this assumes .json file always copies after the .bin, which does happen on Ionpath
+            tissue_data = os.path.splitext(tissue_file)
+            if tissue_data[1] == ".json" and "_processing" not in tissue_data[0]:
+                if one_blank:
+                    one_blank = False
+                    continue
+                elif num_bin_files % 2 == 0:
+                    bin_file_name = tissue_data[0] + ".bin"
+                    print(f"Simulating .bin file update on {bin_file_name}")
+                    shutil.copy(
+                        os.path.join(COMBINED_DATA_PATH, bin_file_name),
+                        os.path.join(dest, bin_file_name + ".temp"),
+                    )
+                    print("Renamed bin file to temp")
+                    os.remove(os.path.join(dest, bin_file_name))
+                    print("Removed old bin file")
+                    os.rename(
+                        os.path.join(dest, bin_file_name + ".temp"),
+                        os.path.join(dest, bin_file_name),
+                    )
+                    print("Renamed temp bin file back to orig")
+                num_bin_files += 1
 
 
 COMBINED_RUN_JSON_SPOOF = {
@@ -255,7 +279,6 @@ def test_watcher(
     add_blank,
     temp_bin,
 ):
-    print("The watcher start lag is: %d" % watcher_start_lag)
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             tiff_out_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME)
@@ -371,7 +394,11 @@ def test_watcher(
 
                     res_scan.get()
 
-            with open(os.path.join(log_out, "test_run_log.txt")) as f:
+            print("Testing log out status")
+            print(log_out)
+            # with open(os.path.join(log_out, "test_run_log.txt")) as f:
+            print(os.listdir("."))
+            with open(os.path.join(Path(__file__).parents[1], "pytest.txt")) as f:
                 logtxt = f.read()
                 assert add_blank == ("non-zero file size..." in logtxt)
 
@@ -390,6 +417,7 @@ def test_watcher(
                 fovs = fovs[1:]
 
             # extract tiffs check
+            print("TIFF validator check")
             validators[0](os.path.join(tmpdir, "cb_0", RUN_DIR_NAME), fovs, bad_fovs)
             if kwargs["extract_prof"]:
                 validators[0](
@@ -401,9 +429,11 @@ def test_watcher(
                 )
 
             # qc check
+            print("QC check")
             validators[1](os.path.join(tmpdir, "cb_1", RUN_DIR_NAME), fovs, bad_fovs)
 
             # mph check
+            print("MPH check")
             validators[2](
                 os.path.join(tmpdir, "cb_2", RUN_DIR_NAME),
                 os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME),
@@ -417,8 +447,13 @@ def test_watcher(
             # pulse heights check
             validators[4](os.path.join(tmpdir, "cb_3", RUN_DIR_NAME), fovs, bad_fovs)
 
-    except OSError:
-        warnings.warn("Temporary file cleanup was incomplete.")
+            with open(os.path.join(Path(__file__).parents[1], "pytest.txt"), "w") as infile:
+                infile.write("\n")
+
+    except OSError as ose:
+        print("Ran into an error:")
+        print(ose)
+        # warnings.warn("Temporary file cleanup was incomplete.")
 
 
 def test_watcher_missing_fovs():
