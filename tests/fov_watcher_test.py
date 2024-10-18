@@ -68,13 +68,16 @@ def _slow_copy_sample_tissue_data(
             tissue_path = os.path.join(COMBINED_DATA_PATH, tissue_file)
             if temp_bin and ".bin" in tissue_file:
                 # copy to a temporary file with hash extension, then move to dest folder
+                print(f"Copying over a temporary file with hash extension on {tissue_file}")
                 new_tissue_path = os.path.join(COMBINED_DATA_PATH, "." + tissue_file + ".aBcDeF")
                 shutil.copy(tissue_path, new_tissue_path)
                 shutil.copy(new_tissue_path, dest)
+                print(f"Removing the old tissue path at .{tissue_file}.aBcDeF")
                 os.remove(new_tissue_path)
 
                 # simulate a renaming event in dest
                 time.sleep(delta)
+                print(f"Renaming back to {tissue_file}")
                 copied_tissue_path = os.path.join(dest, "." + tissue_file + ".aBcDeF")
                 os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
 
