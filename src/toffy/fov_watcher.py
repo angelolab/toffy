@@ -207,11 +207,11 @@ class FOV_EventHandler(FileSystemEventHandler):
         self.run_folder = run_folder
 
         self.last_event_time = datetime.now()
-        self.timer_thread = threading.Thread(
-            target=self.file_timer, args=(fov_timeout, watcher_timeout)
-        )
-        self.timer_thread.daemon = True
-        self.timer_thread.start()
+        # self.timer_thread = threading.Thread(
+        #     target=self.file_timer, args=(fov_timeout, watcher_timeout)
+        # )
+        # self.timer_thread.daemon = True
+        # self.timer_thread.start()
 
         self.log_path = os.path.join(log_folder, f"{Path(run_folder).parts[-1]}_log.txt")
         if not os.path.exists(log_folder):
@@ -489,45 +489,45 @@ class FOV_EventHandler(FileSystemEventHandler):
         if self.last_fov_num_processed == self.run_structure.highest_fov:
             return
 
-        # with self.lock:
-        super().on_created(event)
-        self._run_callbacks(event, check_last_fov)
+        with self.lock:
+            super().on_created(event)
+            self._run_callbacks(event, check_last_fov)
 
-    def file_timer(self, fov_timeout, watcher_timeout):
-        """Checks time since last file was generated.
+    # def file_timer(self, fov_timeout, watcher_timeout):
+    #     """Checks time since last file was generated.
 
-        Args:
-            fov_timeout (int):
-                how long to wait for fov data to be generated once file detected
-            watcher_timeout (int):
-                length to wait for new file generation before timing out
-        """
-        while True:
-            current_time = datetime.now()
-            time_elapsed = (current_time - self.last_event_time).total_seconds()
+    #     Args:
+    #         fov_timeout (int):
+    #             how long to wait for fov data to be generated once file detected
+    #         watcher_timeout (int):
+    #             length to wait for new file generation before timing out
+    #     """
+    #     while True:
+    #         current_time = datetime.now()
+    #         time_elapsed = (current_time - self.last_event_time).total_seconds()
 
-            # 3 fov cycles and no new files --> timeout
-            if time_elapsed > watcher_timeout:
-                fov_num = self.last_fov_num_processed
-                fov_name = list(self.run_structure.fov_progress.keys())[fov_num]
-                print(f"Timed out waiting for {fov_name} files to be generated.")
-                logging.info(
-                    f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Timed out'
-                    f"waiting for {fov_name} files to be generated.\n"
-                )
-                logging.info(
-                    f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
-                    f"Running {self.run_func.__name__} on FOVs\n"
-                )
+    #         # 3 fov cycles and no new files --> timeout
+    #         if time_elapsed > watcher_timeout:
+    #             fov_num = self.last_fov_num_processed
+    #             fov_name = list(self.run_structure.fov_progress.keys())[fov_num]
+    #             print(f"Timed out waiting for {fov_name} files to be generated.")
+    #             logging.info(
+    #                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Timed out'
+    #                 f"waiting for {fov_name} files to be generated.\n"
+    #             )
+    #             logging.info(
+    #                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '
+    #                 f"Running {self.run_func.__name__} on FOVs\n"
+    #             )
 
-                # mark remaining fovs as completed to exit watcher
-                for fov_name in list(self.run_structure.fov_progress.keys()):
-                    self.run_structure.fov_progress[fov_name] = {"json": True, "bin": True}
+    #             # mark remaining fovs as completed to exit watcher
+    #             for fov_name in list(self.run_structure.fov_progress.keys()):
+    #                 self.run_structure.fov_progress[fov_name] = {"json": True, "bin": True}
 
-                # trigger run callbacks
-                self.run_func(self.run_folder)
-                break
-            time.sleep(fov_timeout)
+    #             # trigger run callbacks
+    #             self.run_func(self.run_folder)
+    #             break
+    #         time.sleep(fov_timeout)
 
     def on_moved(self, event: FileMovedEvent, check_last_fov: bool = True):
         """Handles file renaming events.
@@ -543,9 +543,9 @@ class FOV_EventHandler(FileSystemEventHandler):
         if self.last_fov_num_processed == self.run_structure.highest_fov:
             return
 
-        # with self.lock:
-        super().on_moved(event)
-        self._run_callbacks(event, check_last_fov)
+        with self.lock:
+            super().on_moved(event)
+            self._run_callbacks(event, check_last_fov)
 
     def check_complete(self):
         """Checks run structure fov_progress status.
