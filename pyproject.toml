@@ -37,7 +37,7 @@ metadata = false
 
 [tool.poetry.dependencies]
 python = "^3.9,<3.12"
-alpineer = ">=0.1.10"
+alpineer = ">=0.1.12"
 mibi-bin-tools = "0.2.12"
 ipywidgets = "^8"
 numpy = "1.*"

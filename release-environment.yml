@@ -10,7 +10,7 @@ dependencies:
   - pip:
     - natsort
     - watchdog
-    - alpineer>=0.1.10
+    - alpineer>=0.1.12
     - mibi-bin-tools==0.2.12
     - jupyter_contrib_nbextensions
     - toffy==0.2.2
