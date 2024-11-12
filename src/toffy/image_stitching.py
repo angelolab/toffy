@@ -256,7 +256,6 @@ def stitch_images(
             print(tiff_out_dir)
             print(img_sub_folder)
             print(os.listdir(tiff_out_dir))
-            directories = os.listdir(tiff_out_dir)
             subfolder = "" if img_sub_folder is None else img_sub_folder
             for fov in folders:
                 print(f"Here's what's in fov {fov}")
