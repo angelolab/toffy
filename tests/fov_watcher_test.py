@@ -448,7 +448,7 @@ def test_watcher(
             validators[4](os.path.join(tmpdir, "cb_3", RUN_DIR_NAME), fovs, bad_fovs)
 
             with open(os.path.join(Path(__file__).parents[1], "pytest.txt"), "w") as infile:
-                infile.write("\n")
+                infile.write("")
 
     except OSError as ose:
         print("Ran into an error:")
