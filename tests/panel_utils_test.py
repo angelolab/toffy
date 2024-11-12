@@ -156,10 +156,10 @@ def test_load_panel(mocker):
     mocker.patch("toffy.panel_utils.convert_panel", mock_panel_conversion)
     toffy_panel = pd.DataFrame(
         {
-            "Mass": [69, 71, 89],
-            "Target": ["Calprotectin", "Chymase", "Mast Cell Tryptase"],
-            "Start": [68.7, 70.7, 88.7],
-            "Stop": [69, 71, 89],
+            "Mass": [69, 71, 89, 117],
+            "Target": ["Calprotectin", "Chymase", "Mast Cell Tryptase", "Noodle"],
+            "Start": [68.7, 70.7, 88.7, 116.7],
+            "Stop": [69, 71, 89, 117],
         }
     )
 
@@ -176,8 +176,9 @@ def test_load_panel(mocker):
         # toffy panel
         toffy_panel.to_csv(os.path.join(temp_dir, "test_panel-toffy.csv"), index=False)
 
-        # check that previously converted panel is loaded
+        # check that previously converted panel is loaded with Noodle channel corrected
         panel = panel_utils.load_panel(os.path.join(temp_dir, "test_panel-toffy.csv"))
+        toffy_panel.loc[toffy_panel["Target"] == "Noodle", "Stop"] = 125
         assert panel.equals(toffy_panel)
 
         # check that original panel is not read in if converted already exists
