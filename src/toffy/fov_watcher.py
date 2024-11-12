@@ -489,9 +489,9 @@ class FOV_EventHandler(FileSystemEventHandler):
         if self.last_fov_num_processed == self.run_structure.highest_fov:
             return
 
-        with self.lock:
-            super().on_created(event)
-            self._run_callbacks(event, check_last_fov)
+        # with self.lock:
+        super().on_created(event)
+        self._run_callbacks(event, check_last_fov)
 
     # def file_timer(self, fov_timeout, watcher_timeout):
     #     """Checks time since last file was generated.
@@ -543,9 +543,9 @@ class FOV_EventHandler(FileSystemEventHandler):
         if self.last_fov_num_processed == self.run_structure.highest_fov:
             return
 
-        with self.lock:
-            super().on_moved(event)
-            self._run_callbacks(event, check_last_fov)
+        # with self.lock:
+        super().on_moved(event)
+        self._run_callbacks(event, check_last_fov)
 
     def check_complete(self):
         """Checks run structure fov_progress status.
