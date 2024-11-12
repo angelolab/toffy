@@ -442,9 +442,11 @@ def test_watcher(
             )
 
             # stitch images check
+            print("Stitch images check")
             validators[3](os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, f"{RUN_DIR_NAME}_stitched"))
 
             # pulse heights check
+            print("Pulse heights check")
             validators[4](os.path.join(tmpdir, "cb_3", RUN_DIR_NAME), fovs, bad_fovs)
 
             with open(os.path.join(Path(__file__).parents[1], "pytest.txt"), "w") as infile:
