@@ -52,8 +52,8 @@ jobs:
         run: |
           poetry install --no-interaction
 
-      - name: Debug
-        uses: lhotari/action-upterm@v1
+      # - name: Debug
+      #   uses: lhotari/action-upterm@v1
 
       - name: Run Tests
         run: |
