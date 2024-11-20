@@ -118,6 +118,7 @@ def _slow_copy_sample_tissue_data(
             Use initial temp bin file paths or not
     """
     for tissue_file in sorted(os.listdir(COMBINED_DATA_PATH)):
+        print(f"Copying over file {tissue_file}")
         time.sleep(delta)
         if one_blank and ".bin" in tissue_file and tissue_file[0] != ".":
             # create blank (0 size) file
@@ -138,18 +139,38 @@ def _slow_copy_sample_tissue_data(
                 os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
             else:
                 shutil.copy(tissue_path, dest)
+                tissue_data = os.path.splitext(tissue_file)
 
-    # get all .bin files
-    bin_files = [bfile for bfile in sorted(os.listdir(COMBINED_DATA_PATH)) if ".bin" in bfile]
+                if tissue_data[1] == ".json" and "_processing" not in tissue_data[0]:
+                    time.sleep(2)
+                    bin_file_name = tissue_data[0] + ".bin"
+                    print(f"Simulating .bin file update on {bin_file_name}")
+                    shutil.copy(
+                        os.path.join(COMBINED_DATA_PATH, bin_file_name),
+                        os.path.join(dest, bin_file_name + ".temp"),
+                    )
+                    print("Renamed bin file to temp")
+                    os.remove(os.path.join(dest, bin_file_name))
+                    print("Removed old bin file")
+                    os.rename(
+                        os.path.join(dest, bin_file_name + ".temp"),
+                        os.path.join(dest, bin_file_name),
+                    )
+                    print("Renamed temp bin file back to orig")
 
-    # simulate updating the creation time for some .bin files, this tests _check_bin_updates
-    for i, bfile in enumerate(bin_files):
-        if i % 2 == 0:
-            shutil.copy(
-                os.path.join(COMBINED_DATA_PATH, bfile), os.path.join(dest, bfile + ".temp")
-            )
-            os.remove(os.path.join(dest, bfile))
-            os.rename(os.path.join(dest, bfile + ".temp"), os.path.join(dest, bfile))
+
+    # # get all .bin files
+    # bin_files = [bfile for bfile in sorted(os.listdir(COMBINED_DATA_PATH)) if ".bin" in bfile]
+
+    # # simulate updating the creation time for some .bin files, this tests _check_bin_updates
+    # for i, bfile in enumerate(bin_files):
+    #     if i % 2 == 0:
+    #         print(f"Simulating a .bin file update for {bfile}")
+    #         shutil.copy(
+    #             os.path.join(COMBINED_DATA_PATH, bfile), os.path.join(dest, bfile + ".temp")
+    #         )
+    #         os.remove(os.path.join(dest, bfile))
+    #         os.rename(os.path.join(dest, bfile + ".temp"), os.path.join(dest, bfile))
 
 
 COMBINED_RUN_JSON_SPOOF = {
@@ -322,6 +343,9 @@ def test_watcher(
     add_blank,
     temp_bin,
 ):
+    print(existing_data)
+    print(add_blank)
+    print(temp_bin)
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             tiff_out_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME)
