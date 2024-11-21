@@ -560,6 +560,10 @@ def add_source_channel_to_tiled_image(
     # get percentile of source row if percent_norm set, otherwise leave unset
     perc_source = np.percentile(source_scaled, percent_norm) if percent_norm else None
 
+    # normalize by max if percent_norm is 0 for source in case of sparse signal
+    if percent_norm and perc_source == 0:
+        perc_source = np.percentile(source_scaled, 100)
+
     # confirm tiled images have expected shape
     tiled_images = io_utils.list_files(tiled_img_dir)
     test_file = io.imread(os.path.join(tiled_img_dir, tiled_images[0]))
@@ -579,6 +583,11 @@ def add_source_channel_to_tiled_image(
         perc_ratio = 1
         if percent_norm:
             perc_tile = np.percentile(current_tile, percent_norm)
+
+            # normalize by max if percent_norm is 0 for tile in case of sparse signal
+            if perc_tile == 0:
+                perc_tile = np.percentile(current_tile, 100)
+
             perc_ratio = perc_source / perc_tile
 
         rescaled_source = source_scaled / perc_ratio

@@ -501,6 +501,7 @@ def test_create_tiled_comparison(dir_num, channel_subset, img_size_scale):
 @parametrize("percent_norm", [98, None])
 @parametrize("img_scale", [1, 0.25])
 def test_add_source_channel_to_tiled_image(percent_norm, img_scale):
+    # test compensation without percent norm correction
     with tempfile.TemporaryDirectory() as top_level_dir:
         num_fovs = 5
         num_chans = 4
@@ -521,6 +522,63 @@ def test_add_source_channel_to_tiled_image(percent_norm, img_scale):
         os.makedirs(tiled_dir)
         for i in range(2):
             vals = np.random.rand(im_size * 3 * im_size * num_fovs).reshape(tiled_shape)
+            if img_scale != 1:
+                vals = rescale_images(vals, scale=img_scale)
+            fname = os.path.join(tiled_dir, f"tiled_image_{i}.tiff")
+            image_utils.save_image(fname, vals)
+
+        output_dir = os.path.join(top_level_dir, "output_dir")
+        os.makedirs(output_dir)
+        rosetta.add_source_channel_to_tiled_image(
+            raw_img_dir=raw_dir,
+            tiled_img_dir=tiled_dir,
+            output_dir=output_dir,
+            source_channel="chan1",
+            max_img_size=im_size,
+            percent_norm=percent_norm,
+            img_size_scale=img_scale,
+        )
+
+        # each image should now have an extra row added on top
+        tiled_images = io_utils.list_files(output_dir)
+        for im_name in tiled_images:
+            image = io.imread(os.path.join(output_dir, im_name))
+            assert image.shape == (
+                img_scale * (tiled_shape[0] + im_size),
+                img_scale * tiled_shape[1],
+            )
+
+    # test compensation with percent norm correction
+    with tempfile.TemporaryDirectory() as top_level_dir:
+        num_fovs = 1
+        num_chans = 2
+        im_size = 20
+
+        # create directory containing raw images
+        raw_dir = os.path.join(top_level_dir, "raw_dir")
+        os.makedirs(raw_dir)
+
+        fovs, chans = test_utils.gen_fov_chan_names(num_fovs=num_fovs, num_chans=num_chans)
+        filelocs, data_xr = test_utils.create_paired_xarray_fovs(
+            raw_dir, fovs, chans, img_shape=(im_size, im_size), fills=True
+        )
+
+        # create sparse signal source
+        for fov in data_xr.fovs.values:
+            fileloc_ind = 0
+            for chan in data_xr.channels.values:
+                data_xr_sub = np.zeros(data_xr.loc[fov, ..., chan].shape)
+                data_xr_sub[0, 0] = 1e-20
+                io.imsave(filelocs[fov][fileloc_ind] + ".tiff", data_xr_sub)
+                fileloc_ind += 1
+
+        # create directory containing sparse stitched images
+        tiled_shape = (im_size * 3, im_size * num_fovs)
+        tiled_dir = os.path.join(top_level_dir, "tiled_dir")
+        os.makedirs(tiled_dir)
+        for i in range(2):
+            vals = np.zeros(tiled_shape)
+            vals[0, 0] = 1e-20
             if img_scale != 1:
                 vals = rescale_images(vals, scale=img_scale)
             fname = os.path.join(tiled_dir, f"tiled_image_{i}.tiff")
