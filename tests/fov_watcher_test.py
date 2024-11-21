@@ -268,108 +268,88 @@ def test_watcher(
     add_blank,
     temp_bin,
 ):
-    print(existing_data)
-    print(add_blank)
-    print(temp_bin)
-    try:
-        with tempfile.TemporaryDirectory() as tmpdir:
-            tiff_out_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME)
-            qc_out_dir = os.path.join(tmpdir, "cb_1", RUN_DIR_NAME)
-            mph_out_dir = os.path.join(tmpdir, "cb_2", RUN_DIR_NAME)
-            plot_dir = os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME)
-            pulse_out_dir = os.path.join(tmpdir, "cb_3", RUN_DIR_NAME)
+    with tempfile.TemporaryDirectory() as tmpdir:
+        tiff_out_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME)
+        qc_out_dir = os.path.join(tmpdir, "cb_1", RUN_DIR_NAME)
+        mph_out_dir = os.path.join(tmpdir, "cb_2", RUN_DIR_NAME)
+        plot_dir = os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME)
+        pulse_out_dir = os.path.join(tmpdir, "cb_3", RUN_DIR_NAME)
 
-            # add directories to kwargs
-            kwargs["tiff_out_dir"] = tiff_out_dir
-            kwargs["qc_out_dir"] = qc_out_dir
-            kwargs["mph_out_dir"] = mph_out_dir
-            kwargs["pulse_out_dir"] = pulse_out_dir
-            kwargs["plot_dir"] = plot_dir
+        # add directories to kwargs
+        kwargs["tiff_out_dir"] = tiff_out_dir
+        kwargs["qc_out_dir"] = qc_out_dir
+        kwargs["mph_out_dir"] = mph_out_dir
+        kwargs["pulse_out_dir"] = pulse_out_dir
+        kwargs["plot_dir"] = plot_dir
 
-            # ensure warn_overwrite set to False if intermediate callbacks set, otherwise True
-            kwargs["warn_overwrite"] = True if int_cbs else False
+        # ensure warn_overwrite set to False if intermediate callbacks set, otherwise True
+        kwargs["warn_overwrite"] = True if int_cbs else False
 
-            run_data = os.path.join(tmpdir, "test_run")
-            log_out = os.path.join(tmpdir, "log_output")
-            os.makedirs(run_data)
-            fov_callback, run_callback, intermediate_callback = build_callbacks(
-                run_cbs, int_cbs, fov_cbs, **kwargs
+        run_data = os.path.join(tmpdir, "test_run")
+        log_out = os.path.join(tmpdir, "log_output")
+        os.makedirs(run_data)
+        fov_callback, run_callback, intermediate_callback = build_callbacks(
+            run_cbs, int_cbs, fov_cbs, **kwargs
+        )
+        write_json_file(
+            json_path=os.path.join(run_data, "test_run.json"),
+            json_object=COMBINED_RUN_JSON_SPOOF,
+            encoding="utf-8",
+        )
+
+        # if existing_data set to True, test case where a FOV has already been extracted
+        if existing_data[0]:
+            os.makedirs(os.path.join(tiff_out_dir, "fov-2-scan-1"))
+            channels_write = TEST_CHANNELS if existing_data[1] == "Full" else [TEST_CHANNELS[1]]
+            for channel in channels_write:
+                random_img = np.random.rand(32, 32)
+                imsave(
+                    os.path.join(tiff_out_dir, "fov-2-scan-1", f"{channel}.tiff"), random_img
+                )
+
+            os.makedirs(qc_out_dir)
+            for qcs, qcc in zip(QC_SUFFIXES, QC_COLUMNS):
+                df_qc = pd.DataFrame(
+                    np.random.rand(len(TEST_CHANNELS), 3), columns=["fov", "channel", qcc]
+                )
+                df_qc["fov"] = "fov-2-scan-1"
+                df_qc["channel"] = TEST_CHANNELS
+                df_qc.to_csv(os.path.join(qc_out_dir, f"fov-2-scan-1_{qcs}.csv"), index=False)
+
+            os.makedirs(mph_out_dir)
+            df_mph = pd.DataFrame(
+                np.random.rand(1, 4), columns=["fov", "MPH", "total_count", "time"]
             )
-            write_json_file(
-                json_path=os.path.join(run_data, "test_run.json"),
-                json_object=COMBINED_RUN_JSON_SPOOF,
-                encoding="utf-8",
+            df_mph["fov"] = "fov-2-scan-1"
+            df_mph.to_csv(os.path.join(mph_out_dir, "fov-2-scan-1-mph_pulse.csv"), index=False)
+
+            os.makedirs(pulse_out_dir)
+            df_ph = pd.DataFrame(np.random.rand(10, 3), columns=["mass", "fov", "pulse_height"])
+            df_ph["fov"] = "fov-2-scan-1"
+            df_ph.to_csv(
+                os.path.join(pulse_out_dir, "fov-2-scan-1_pulse_heights.csv"), index=False
             )
 
-            # if existing_data set to True, test case where a FOV has already been extracted
-            if existing_data[0]:
-                os.makedirs(os.path.join(tiff_out_dir, "fov-2-scan-1"))
-                channels_write = TEST_CHANNELS if existing_data[1] == "Full" else [TEST_CHANNELS[1]]
-                for channel in channels_write:
-                    random_img = np.random.rand(32, 32)
-                    imsave(
-                        os.path.join(tiff_out_dir, "fov-2-scan-1", f"{channel}.tiff"), random_img
-                    )
+        # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
+        # client access computer.  `start_watcher` is made async here since these processes
+        # wouldn't block each other in normal use
+        with Pool(processes=4) as pool:
+            pool.apply_async(
+                _slow_copy_sample_tissue_data,
+                (run_data, SLOW_COPY_INTERVAL_S, add_blank, temp_bin),
+            )
+            time.sleep(watcher_start_lag)
 
-                os.makedirs(qc_out_dir)
-                for qcs, qcc in zip(QC_SUFFIXES, QC_COLUMNS):
-                    df_qc = pd.DataFrame(
-                        np.random.rand(len(TEST_CHANNELS), 3), columns=["fov", "channel", qcc]
-                    )
-                    df_qc["fov"] = "fov-2-scan-1"
-                    df_qc["channel"] = TEST_CHANNELS
-                    df_qc.to_csv(os.path.join(qc_out_dir, f"fov-2-scan-1_{qcs}.csv"), index=False)
-
-                os.makedirs(mph_out_dir)
-                df_mph = pd.DataFrame(
-                    np.random.rand(1, 4), columns=["fov", "MPH", "total_count", "time"]
+            watcher_warnings = []
+            if not add_blank:
+                watcher_warnings.append(
+                    r"Re-extracting incompletely extracted FOV fov-1-scan-1"
                 )
-                df_mph["fov"] = "fov-2-scan-1"
-                df_mph.to_csv(os.path.join(mph_out_dir, "fov-2-scan-1-mph_pulse.csv"), index=False)
+            if existing_data[0] and existing_data[1] == "Full":
+                watcher_warnings.append(r"already extracted for FOV fov-2-scan-1")
 
-                os.makedirs(pulse_out_dir)
-                df_ph = pd.DataFrame(np.random.rand(10, 3), columns=["mass", "fov", "pulse_height"])
-                df_ph["fov"] = "fov-2-scan-1"
-                df_ph.to_csv(
-                    os.path.join(pulse_out_dir, "fov-2-scan-1_pulse_heights.csv"), index=False
-                )
-
-            # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
-            # client access computer.  `start_watcher` is made async here since these processes
-            # wouldn't block each other in normal use
-            with Pool(processes=4) as pool:
-                pool.apply_async(
-                    _slow_copy_sample_tissue_data,
-                    (run_data, SLOW_COPY_INTERVAL_S, add_blank, temp_bin),
-                )
-                time.sleep(watcher_start_lag)
-
-                watcher_warnings = []
-                if not add_blank:
-                    watcher_warnings.append(
-                        r"Re-extracting incompletely extracted FOV fov-1-scan-1"
-                    )
-                if existing_data[0] and existing_data[1] == "Full":
-                    watcher_warnings.append(r"already extracted for FOV fov-2-scan-1")
-
-                if len(watcher_warnings) > 0:
-                    with pytest.warns(UserWarning, match="|".join(watcher_warnings)):
-                        res_scan = pool.apply_async(
-                            start_watcher,
-                            (
-                                run_data,
-                                log_out,
-                                fov_callback,
-                                run_callback,
-                                intermediate_callback,
-                                2700,
-                                1,
-                                SLOW_COPY_INTERVAL_S,
-                            ),
-                        )
-
-                        res_scan.get()
-                else:
+            if len(watcher_warnings) > 0:
+                with pytest.warns(UserWarning, match="|".join(watcher_warnings)):
                     res_scan = pool.apply_async(
                         start_watcher,
                         (
@@ -385,98 +365,105 @@ def test_watcher(
                     )
 
                     res_scan.get()
-
-            with open(os.path.join(Path(__file__).parents[1], "pytest.txt")) as f:
-                logtxt = f.read()
-                try:
-                    assert add_blank == ("non-zero file size..." in logtxt)
-                except AssertionError as e:
-                    _reset_logging_file()
-                    raise AssertionError(e)
-
-            fovs = [
-                bin_file.split(".")[0]
-                for bin_file in sorted(io_utils.list_files(COMBINED_DATA_PATH, substrs=[".bin"]))
-            ]
-
-            # callbacks are not performed on moly points, remove fov-3-scan-1
-            bad_fovs = [fovs[-2]]
-            fovs = fovs[:-2] + [fovs[-1]]
-
-            # callbacks are not performed for skipped fovs, remove blank fov (fov-1-scan-1)
-            if add_blank:
-                bad_fovs.append(fovs[0])
-                fovs = fovs[1:]
-
-            # extract tiffs check
-            print("TIFF validator check")
-            validators[0](os.path.join(tmpdir, "cb_0", RUN_DIR_NAME), fovs, bad_fovs)
-            if kwargs["extract_prof"]:
-                try:
-                    validators[0](
-                        os.path.join(tmpdir, "cb_0", RUN_DIR_NAME + "_proficient"), fovs, bad_fovs
-                    )
-                except AssertionError as e:
-                    _reset_logging_file()
-                    raise AssertionError(e)
             else:
-                try:
-                    assert not os.path.exists(
-                        os.path.join(tmpdir, "cb_0", RUN_DIR_NAME) + "_proficient"
-                    )
-                except AssertionError as e:
-                    _reset_logging_file()
-                    raise AssertionError(e)
+                res_scan = pool.apply_async(
+                    start_watcher,
+                    (
+                        run_data,
+                        log_out,
+                        fov_callback,
+                        run_callback,
+                        intermediate_callback,
+                        2700,
+                        1,
+                        SLOW_COPY_INTERVAL_S,
+                    ),
+                )
 
-            # qc check
-            print("QC check")
+                res_scan.get()
+
+        with open(os.path.join(Path(__file__).parents[1], "pytest.txt")) as f:
+            logtxt = f.read()
             try:
-                validators[1](os.path.join(tmpdir, "cb_1", RUN_DIR_NAME), fovs, bad_fovs)
+                assert add_blank == ("non-zero file size..." in logtxt)
             except AssertionError as e:
                 _reset_logging_file()
                 raise AssertionError(e)
 
-            # mph check
-            print("MPH check")
+        fovs = [
+            bin_file.split(".")[0]
+            for bin_file in sorted(io_utils.list_files(COMBINED_DATA_PATH, substrs=[".bin"]))
+        ]
+
+        # callbacks are not performed on moly points, remove fov-3-scan-1
+        bad_fovs = [fovs[-2]]
+        fovs = fovs[:-2] + [fovs[-1]]
+
+        # callbacks are not performed for skipped fovs, remove blank fov (fov-1-scan-1)
+        if add_blank:
+            bad_fovs.append(fovs[0])
+            fovs = fovs[1:]
+
+        # extract tiffs check
+        print("TIFF validator check")
+        validators[0](os.path.join(tmpdir, "cb_0", RUN_DIR_NAME), fovs, bad_fovs)
+        if kwargs["extract_prof"]:
             try:
-                validators[2](
-                    os.path.join(tmpdir, "cb_2", RUN_DIR_NAME),
-                    os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME),
-                    fovs,
-                    bad_fovs,
+                validators[0](
+                    os.path.join(tmpdir, "cb_0", RUN_DIR_NAME + "_proficient"), fovs, bad_fovs
+                )
+            except AssertionError as e:
+                _reset_logging_file()
+                raise AssertionError(e)
+        else:
+            try:
+                assert not os.path.exists(
+                    os.path.join(tmpdir, "cb_0", RUN_DIR_NAME) + "_proficient"
                 )
             except AssertionError as e:
                 _reset_logging_file()
                 raise AssertionError(e)
 
-            # stitch images check
-            print("Stitch images check")
-            try:
-                validators[3](
-                    os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, f"{RUN_DIR_NAME}_stitched")
-                )
-            except AssertionError as e:
-                _reset_logging_file()
-                raise AssertionError(e)
-
-            # pulse heights check
-            print("Pulse heights check")
-            try:
-                validators[4](os.path.join(tmpdir, "cb_3", RUN_DIR_NAME), fovs, bad_fovs)
-            except AssertionError as e:
-                _reset_logging_file()
-                raise AssertionError(e)
-
-            # os.remove(os.path.join(Path(__file__).parents[1], "pytest.txt"))
-            # Path(os.path.join(Path(__file__).parents[1], "pytest.txt")).touch()
-
+        # qc check
+        print("QC check")
+        try:
+            validators[1](os.path.join(tmpdir, "cb_1", RUN_DIR_NAME), fovs, bad_fovs)
+        except AssertionError as e:
             _reset_logging_file()
+            raise AssertionError(e)
 
-    except OSError as ose:
-        print("Ran into an error:")
-        print(ose)
+        # mph check
+        print("MPH check")
+        try:
+            validators[2](
+                os.path.join(tmpdir, "cb_2", RUN_DIR_NAME),
+                os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME),
+                fovs,
+                bad_fovs,
+            )
+        except AssertionError as e:
+            _reset_logging_file()
+            raise AssertionError(e)
+
+        # stitch images check
+        print("Stitch images check")
+        try:
+            validators[3](
+                os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, f"{RUN_DIR_NAME}_stitched")
+            )
+        except AssertionError as e:
+            _reset_logging_file()
+            raise AssertionError(e)
+
+        # pulse heights check
+        print("Pulse heights check")
+        try:
+            validators[4](os.path.join(tmpdir, "cb_3", RUN_DIR_NAME), fovs, bad_fovs)
+        except AssertionError as e:
+            _reset_logging_file()
+            raise AssertionError(e)
+
         _reset_logging_file()
-        # warnings.warn("Temporary file cleanup was incomplete.")
 
 
 def test_watcher_missing_fovs():
