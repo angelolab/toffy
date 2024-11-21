@@ -253,7 +253,6 @@ def stitch_images(
             num_cols = math.isqrt(len(folders))
             max_img_size = get_max_img_size(tiff_out_dir, img_sub_folder, run_dir)
 
-            subfolder = "" if img_sub_folder is None else img_sub_folder
             image_data = load_utils.load_imgs_from_tree(
                 tiff_out_dir,
                 img_sub_folder=img_sub_folder,

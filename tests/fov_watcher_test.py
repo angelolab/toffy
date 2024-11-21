@@ -35,8 +35,9 @@ RUN_DIR_NAME = "run_XXX"
 
 SLOW_COPY_INTERVAL_S = 1
 
+
 def _reset_logging_file():
-    with open(os.path.join(Path(__file__).parents[1], "pytest.txt"), "w") as infile:
+    with open(os.path.join(Path(__file__).parents[1], "pytest.txt"), "w"):
         pass
 
 
