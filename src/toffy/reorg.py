@@ -20,7 +20,9 @@ def merge_partial_runs(cohort_dir, run_string):
         os.makedirs(output_folder)
 
     # get list of matching subfolders
-    partial_folders = io_utils.list_folders(cohort_dir, substrs=run_string)
+    # TODO: list_folders does not handle cases such as "run_dup2" correctly
+    # need to add a fix in to alpineer to deal with this
+    partial_folders = [f for f in os.listdir(cohort_dir) if run_string in f]
     partial_folders = [partial for partial in partial_folders if partial != run_string]
 
     if len(partial_folders) == 0:
