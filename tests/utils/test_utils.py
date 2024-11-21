@@ -19,7 +19,6 @@ from toffy.json_utils import write_json_file
 from toffy.settings import QC_COLUMNS, QC_SUFFIXES
 
 TEST_CHANNELS = [
-    "Calprotectin",
     "Chymase",
     "SMA",
     "Vimentin",

@@ -35,6 +35,10 @@ RUN_DIR_NAME = "run_XXX"
 
 SLOW_COPY_INTERVAL_S = 1
 
+def _reset_logging_file():
+    with open(os.path.join(Path(__file__).parents[1], "pytest.txt"), "w") as infile:
+        pass
+
 
 # def _slow_copy_sample_tissue_data(
 #     dest: str, delta: int = 10, one_blank: bool = False, temp_bin: bool = False
@@ -118,13 +122,14 @@ def _slow_copy_sample_tissue_data(
             Use initial temp bin file paths or not
     """
     for tissue_file in sorted(os.listdir(COMBINED_DATA_PATH)):
-        print(f"Copying over file {tissue_file}")
         time.sleep(delta)
         if one_blank and ".bin" in tissue_file and tissue_file[0] != ".":
+            print(f"Creating a blank .bin file at {os.path.join(dest, tissue_file)}")
             # create blank (0 size) file
             open(os.path.join(dest, tissue_file), "w").close()
             one_blank = False
         else:
+            print(f"Copying over file {tissue_file}")
             tissue_path = os.path.join(COMBINED_DATA_PATH, tissue_file)
             if temp_bin and ".bin" in tissue_file:
                 # copy to a temporary file with hash extension, then move to dest folder
@@ -141,35 +146,23 @@ def _slow_copy_sample_tissue_data(
                 shutil.copy(tissue_path, dest)
                 tissue_data = os.path.splitext(tissue_file)
 
+                # simulate a .bin file update to test _check_bin_updates
                 if tissue_data[1] == ".json" and "_processing" not in tissue_data[0]:
+                    # ensure a sleep so the update doesn't interfere with an existing extraction
                     time.sleep(2)
                     bin_file_name = tissue_data[0] + ".bin"
-                    print(f"Simulating .bin file update on {bin_file_name}")
-                    shutil.copy(
-                        os.path.join(COMBINED_DATA_PATH, bin_file_name),
-                        os.path.join(dest, bin_file_name + ".temp"),
-                    )
-                    print("Renamed bin file to temp")
-                    os.remove(os.path.join(dest, bin_file_name))
-                    print("Removed old bin file")
-                    os.rename(
-                        os.path.join(dest, bin_file_name + ".temp"),
-                        os.path.join(dest, bin_file_name),
-                    )
-                    print("Renamed temp bin file back to orig")
 
-    # # get all .bin files
-    # bin_files = [bfile for bfile in sorted(os.listdir(COMBINED_DATA_PATH)) if ".bin" in bfile]
-
-    # # simulate updating the creation time for some .bin files, this tests _check_bin_updates
-    # for i, bfile in enumerate(bin_files):
-    #     if i % 2 == 0:
-    #         print(f"Simulating a .bin file update for {bfile}")
-    #         shutil.copy(
-    #             os.path.join(COMBINED_DATA_PATH, bfile), os.path.join(dest, bfile + ".temp")
-    #         )
-    #         os.remove(os.path.join(dest, bfile))
-    #         os.rename(os.path.join(dest, bfile + ".temp"), os.path.join(dest, bfile))
+                    # make sure only to update non-blank bin files
+                    if os.path.getsize(os.path.join(dest, bin_file_name)) != 0:
+                        shutil.copy(
+                            os.path.join(COMBINED_DATA_PATH, bin_file_name),
+                            os.path.join(dest, bin_file_name + ".temp"),
+                        )
+                        os.remove(os.path.join(dest, bin_file_name))
+                        os.rename(
+                            os.path.join(dest, bin_file_name + ".temp"),
+                            os.path.join(dest, bin_file_name),
+                        )
 
 
 COMBINED_RUN_JSON_SPOOF = {
@@ -460,13 +453,15 @@ def test_watcher(
 
                     res_scan.get()
 
-            print("Testing log out status")
-            print(log_out)
-            # with open(os.path.join(log_out, "test_run_log.txt")) as f:
-            print(os.listdir("."))
             with open(os.path.join(Path(__file__).parents[1], "pytest.txt")) as f:
                 logtxt = f.read()
-                assert add_blank == ("non-zero file size..." in logtxt)
+                print("The log to read is: ")
+                print(logtxt)
+                try:
+                    assert add_blank == ("non-zero file size..." in logtxt)
+                except AssertionError as e:
+                    _reset_logging_file()
+                    raise AssertionError(e)
 
             fovs = [
                 bin_file.split(".")[0]
@@ -486,41 +481,70 @@ def test_watcher(
             print("TIFF validator check")
             validators[0](os.path.join(tmpdir, "cb_0", RUN_DIR_NAME), fovs, bad_fovs)
             if kwargs["extract_prof"]:
-                validators[0](
-                    os.path.join(tmpdir, "cb_0", RUN_DIR_NAME + "_proficient"), fovs, bad_fovs
-                )
+                try:
+                    validators[0](
+                        os.path.join(tmpdir, "cb_0", RUN_DIR_NAME + "_proficient"), fovs, bad_fovs
+                    )
+                except AssertionError as e:
+                    _reset_logging_file()
+                    raise AssertionError(e)
             else:
-                assert not os.path.exists(
-                    os.path.join(tmpdir, "cb_0", RUN_DIR_NAME) + "_proficient"
-                )
+                try:
+                    assert not os.path.exists(
+                        os.path.join(tmpdir, "cb_0", RUN_DIR_NAME) + "_proficient"
+                    )
+                except AssertionError as e:
+                    _reset_logging_file()
+                    raise AssertionError(e)
 
             # qc check
             print("QC check")
-            validators[1](os.path.join(tmpdir, "cb_1", RUN_DIR_NAME), fovs, bad_fovs)
+            try:
+                validators[1](os.path.join(tmpdir, "cb_1", RUN_DIR_NAME), fovs, bad_fovs)
+            except AssertionError as e:
+                _reset_logging_file()
+                raise AssertionError(e)
 
             # mph check
             print("MPH check")
-            validators[2](
-                os.path.join(tmpdir, "cb_2", RUN_DIR_NAME),
-                os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME),
-                fovs,
-                bad_fovs,
-            )
+            try:
+                validators[2](
+                    os.path.join(tmpdir, "cb_2", RUN_DIR_NAME),
+                    os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME),
+                    fovs,
+                    bad_fovs,
+                )
+            except AssertionError as e:
+                _reset_logging_file()
+                raise AssertionError(e)
 
             # stitch images check
             print("Stitch images check")
-            validators[3](os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, f"{RUN_DIR_NAME}_stitched"))
+            try:
+                validators[3](
+                    os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, f"{RUN_DIR_NAME}_stitched")
+                )
+            except AssertionError as e:
+                _reset_logging_file()
+                raise AssertionError(e)
 
             # pulse heights check
             print("Pulse heights check")
-            validators[4](os.path.join(tmpdir, "cb_3", RUN_DIR_NAME), fovs, bad_fovs)
+            try:
+                validators[4](os.path.join(tmpdir, "cb_3", RUN_DIR_NAME), fovs, bad_fovs)
+            except AssertionError as e:
+                _reset_logging_file()
+                raise AssertionError(e)
 
-            with open(os.path.join(Path(__file__).parents[1], "pytest.txt"), "w") as infile:
-                infile.write("")
+            # os.remove(os.path.join(Path(__file__).parents[1], "pytest.txt"))
+            # Path(os.path.join(Path(__file__).parents[1], "pytest.txt")).touch()
+
+            _reset_logging_file()
 
     except OSError as ose:
         print("Ran into an error:")
         print(ose)
+        _reset_logging_file()
         # warnings.warn("Temporary file cleanup was incomplete.")
 
 

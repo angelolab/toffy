@@ -369,7 +369,6 @@ class FovCallbacks:
              - start_offset
              - stop_offset
         """
-        print("Inside computing pulse heights")
         if not os.path.exists(pulse_out_dir):
             os.makedirs(pulse_out_dir)
 

@@ -82,7 +82,6 @@ class RunStructure:
                 whether or not both json and bin files exist, as well as the name of the point
         """
         filename = Path(path).parts[-1]
-        print(f"The filename to check is: {filename}")
 
         # if filename starts with a '.' (temp file), it should be ignored
         if filename[0] == ".":
@@ -124,7 +123,6 @@ class RunStructure:
 
                     time.sleep(self.timeout / 10)
                     wait_time += self.timeout / 10
-
                 self.fov_progress[fov_name][extension] = True
 
             if all(self.fov_progress[fov_name].values()):
@@ -217,7 +215,6 @@ class FOV_EventHandler(FileSystemEventHandler):
         self.log_path = os.path.join(log_folder, f"{Path(run_folder).parts[-1]}_log.txt")
         if not os.path.exists(log_folder):
             os.makedirs(log_folder)
-        print(f"Setting log path to {self.log_path}")
         logging.basicConfig(
             level=logging.INFO,
             filename=self.log_path,
@@ -405,9 +402,6 @@ class FOV_EventHandler(FileSystemEventHandler):
             fov_bin_path = os.path.join(self.run_folder, fov + ".bin")
             fov_json_path = os.path.join(self.run_folder, fov + ".json")
 
-            print(f"Verifying fov_bin_path: {fov_bin_path}")
-            print(f"Verifying fov_json_path: {fov_json_path}")
-
             # if .bin file ctime > .json file ctime, incomplete extraction, need to re-extract
             fov_bin_create = Path(fov_bin_path).stat().st_ctime
             fov_json_create = Path(fov_json_path).stat().st_ctime
@@ -514,7 +508,6 @@ class FOV_EventHandler(FileSystemEventHandler):
             if time_elapsed > watcher_timeout:
                 fov_num = self.last_fov_num_processed
                 fov_name = list(self.run_structure.fov_progress.keys())[fov_num]
-                print(f"Timed out waiting for {fov_name} files to be generated.")
                 logging.info(
                     f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Timed out'
                     f"waiting for {fov_name} files to be generated.\n"
@@ -559,10 +552,8 @@ class FOV_EventHandler(FileSystemEventHandler):
         NOTE: bin files that had new data written will first need to be re-extracted.
         """
         if all(self.run_structure.check_fov_progress().values()) and not self.all_fovs_complete:
-            print("All FOVs complete, checking for bin updates")
             self.all_fovs_complete = True
             self._check_bin_updates()
-            print("Finished checking for bin updates, starting run callbacks")
             logging.info(f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- All FOVs finished\n')
             logging.info(
                 f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- '

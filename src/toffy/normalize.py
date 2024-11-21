@@ -65,17 +65,14 @@ def write_mph_per_mass(
         proficient (bool): whether proficient MPH data is written or not
     """
     # compute pulse heights
-    print("Inside writing MPH per mass")
     panel = make_panel(
         mass=masses, target_name=masses, low_range=start_offset, high_range=stop_offset
     )
 
     # generate the MPH values for each mass
-    print("About to get median pulse height")
     mph_vals = list(
         get_median_pulse_height(data_dir=base_dir, fov=fov, channels=masses, panel=panel).values()
     )
-    print("Computed median pulse height")
 
     fovs = np.repeat(fov, len(masses))
     out_df = pd.DataFrame({"mass": masses, "fov": fovs, "pulse_height": mph_vals})
