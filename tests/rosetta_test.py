@@ -360,8 +360,8 @@ def test_compensate_image_data(
 
         for folder in format_folders:
             # check that all files were created
-            output_files = io_utils.list_files(os.path.join(output_dir, fovs[0], folder), ".tif")
-            output_files = [chan.split(".tif")[0] for chan in output_files]
+            output_files = io_utils.list_files(os.path.join(output_dir, fovs[0], folder), ".tiff")
+            output_files = [chan.split(".tiff")[0] for chan in output_files]
 
             if output_masses is None or len(output_masses) == 3:
                 assert set(output_files) == set(panel_info["Target"].values)

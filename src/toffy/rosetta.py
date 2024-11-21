@@ -288,7 +288,9 @@ def compensate_image_data(
     io_utils.validate_paths([raw_data_dir, comp_data_dir, comp_mat_path])
 
     # get list of all fovs
-    fovs = io_utils.list_folders(raw_data_dir, substrs="fov")
+    # TODO: list_folders does not handle cases such as "fov0" correctly
+    # need to add a fix in to alpineer to deal with this
+    fovs = [f for f in os.listdir(raw_data_dir) if "fov" in f]
 
     # load csv files
     comp_mat = pd.read_csv(comp_mat_path, index_col=0)
