@@ -221,7 +221,6 @@ class FOV_EventHandler(FileSystemEventHandler):
             filemode="a",
             format="%(name)s - %(levelname)s - %(message)s",
         )
-        logging.info(f"Starting run on {run_folder}\n")
 
         # create run structure
         self.run_structure = RunStructure(run_folder, fov_timeout=fov_timeout)
@@ -508,6 +507,7 @@ class FOV_EventHandler(FileSystemEventHandler):
             if time_elapsed > watcher_timeout:
                 fov_num = self.last_fov_num_processed
                 fov_name = list(self.run_structure.fov_progress.keys())[fov_num]
+                print(f"Timed out waiting for {fov_name} files to be generated.")
                 logging.info(
                     f'{datetime.now().strftime("%d/%m/%Y %H:%M:%S")} -- Timed out'
                     f"waiting for {fov_name} files to be generated.\n"
