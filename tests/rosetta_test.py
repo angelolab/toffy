@@ -694,6 +694,8 @@ def mock_img_size(run_dir, fov_list=None):
     return sizes[run]
 
 
+# TODO: anything with [f for f in os.listdir(...) ...] needs to be changed
+# after list_folders with substrs specified is fixed
 def test_copy_image_files(mocker):
     mocker.patch("toffy.image_stitching.get_max_img_size", mock_img_size)
 
@@ -733,7 +735,7 @@ def test_copy_image_files(mocker):
             extracted_fov_dir = os.path.join(temp_dir2, "cohort_name", "extracted_images")
             assert len(io_utils.list_folders(extracted_fov_dir)) == 12
             for i in range(1, 4):
-                assert len(list(io_utils.list_folders(extracted_fov_dir, f"run_{i}"))) == 4
+                assert len([f for f in os.listdir(extracted_fov_dir) if f"run_{i}" in f]) == 4
             assert len(list(io_utils.list_folders(extracted_fov_dir, "stitched_images"))) == 0
 
             # check that files in fov folders are copied
@@ -750,8 +752,8 @@ def test_copy_image_files(mocker):
             # check that correct total and per run fovs are copied, assert run 3 didn't get copied
             assert len(io_utils.list_folders(extracted_fov_dir)) == 10
             for i in range(1, 3):
-                assert len(io_utils.list_folders(extracted_fov_dir, f"run_{i}")) == 5
-            assert len(io_utils.list_folders(extracted_fov_dir, "run_3")) == 0
+                assert len([f for f in os.listdir(extracted_fov_dir) if f"run_{i}" in f]) == 5
+            assert len([f for f in os.listdir(extracted_fov_dir) if f"run_3" in f]) == 0
 
             # check that files in fov folders are copied
             for folder in io_utils.list_folders(extracted_fov_dir):

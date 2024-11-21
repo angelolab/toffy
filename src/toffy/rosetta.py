@@ -706,6 +706,8 @@ def create_rosetta_matrices(
         mult_matrix.to_csv(os.path.join(save_dir, comp_name))
 
 
+# TODO: anything with [f for f in os.listdir(...) ...] needs to be changed
+# after list_folders with substrs specified is fixed
 def copy_image_files(
     cohort_name, run_names, rosetta_testing_dir, extracted_imgs_dir, fovs_per_run=5
 ):
@@ -728,7 +730,7 @@ def copy_image_files(
     for run in run_names:
         if not os.path.exists(os.path.join(extracted_imgs_dir, run)):
             raise ValueError(f"{run} is not a valid run name found in {extracted_imgs_dir}")
-        fovs_in_run = io_utils.list_folders(os.path.join(extracted_imgs_dir, run), substrs="fov")
+        fovs_in_run = [f for f in os.listdir(os.path.join(extracted_imgs_dir, run)) if "fov" in f]
         # check number of fovs in each run
         if len(fovs_in_run) < fovs_per_run:
             small_runs.append(run)
@@ -758,7 +760,7 @@ def copy_image_files(
     for i, run in enumerate(ns.natsorted(run_names_process)):
         run_path = os.path.join(extracted_imgs_dir, run)
 
-        fovs_in_run = io_utils.list_folders(run_path, substrs="fov")
+        fovs_in_run = [f for f in os.listdir(run_path) if "fov" in f]
         fovs_in_run = ns.natsorted(fovs_in_run)
         rosetta_fovs = random.sample(fovs_in_run, k=fovs_per_run)
 
