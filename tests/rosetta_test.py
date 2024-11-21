@@ -753,7 +753,7 @@ def test_copy_image_files(mocker):
             assert len(io_utils.list_folders(extracted_fov_dir)) == 10
             for i in range(1, 3):
                 assert len([f for f in os.listdir(extracted_fov_dir) if f"run_{i}" in f]) == 5
-            assert len([f for f in os.listdir(extracted_fov_dir) if f"run_3" in f]) == 0
+            assert len([f for f in os.listdir(extracted_fov_dir) if "run_3" in f]) == 0
 
             # check that files in fov folders are copied
             for folder in io_utils.list_folders(extracted_fov_dir):
