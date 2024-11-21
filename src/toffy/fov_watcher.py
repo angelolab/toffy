@@ -123,6 +123,7 @@ class RunStructure:
 
                     time.sleep(self.timeout / 10)
                     wait_time += self.timeout / 10
+
                 self.fov_progress[fov_name][extension] = True
 
             if all(self.fov_progress[fov_name].values()):
