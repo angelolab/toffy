@@ -59,12 +59,10 @@ def _slow_copy_sample_tissue_data(
     for tissue_file in sorted(os.listdir(COMBINED_DATA_PATH)):
         time.sleep(delta)
         if one_blank and ".bin" in tissue_file and tissue_file[0] != ".":
-            print(f"Creating a blank .bin file at {os.path.join(dest, tissue_file)}")
             # create blank (0 size) file
             open(os.path.join(dest, tissue_file), "w").close()
             one_blank = False
         else:
-            print(f"Copying over file {tissue_file}")
             tissue_path = os.path.join(COMBINED_DATA_PATH, tissue_file)
             if temp_bin and ".bin" in tissue_file:
                 # copy to a temporary file with hash extension, then move to dest folder
@@ -390,8 +388,6 @@ def test_watcher(
 
             with open(os.path.join(Path(__file__).parents[1], "pytest.txt")) as f:
                 logtxt = f.read()
-                print("The log to read is: ")
-                print(logtxt)
                 try:
                     assert add_blank == ("non-zero file size..." in logtxt)
                 except AssertionError as e:
