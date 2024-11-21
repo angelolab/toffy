@@ -158,7 +158,6 @@ def _slow_copy_sample_tissue_data(
                     )
                     print("Renamed temp bin file back to orig")
 
-
     # # get all .bin files
     # bin_files = [bfile for bfile in sorted(os.listdir(COMBINED_DATA_PATH)) if ".bin" in bfile]
 
