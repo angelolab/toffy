@@ -104,7 +104,7 @@ def incomplete_fov_check(
     fovs = [f for f in os.listdir(extraction_dir) if "fov" in f]
 
     # NOTE: the specifically-named "Au" channel is no longer be assumed to be present
-    # simply check the first 5 channels found
+    # simply check the first "num_channels" channels found
     channels = io_utils.list_files(os.path.join(extraction_dir, fovs[0]), ".tiff")
     channels_subset = channels[:num_channels]
 
