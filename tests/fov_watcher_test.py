@@ -1,3 +1,4 @@
+import logging
 import os
 import shutil
 import tempfile
@@ -33,6 +34,11 @@ COMBINED_DATA_PATH = os.path.join(Path(__file__).parents[1], "data", "combined")
 RUN_DIR_NAME = "run_XXX"
 
 SLOW_COPY_INTERVAL_S = 1
+
+
+def _reset_logging_file():
+    with open(os.path.join(Path(__file__).parents[1], "pytest.txt"), "w"):
+        pass
 
 
 def _slow_copy_sample_tissue_data(
@@ -71,18 +77,25 @@ def _slow_copy_sample_tissue_data(
                 os.rename(copied_tissue_path, os.path.join(dest, tissue_file))
             else:
                 shutil.copy(tissue_path, dest)
+                tissue_data = os.path.splitext(tissue_file)
 
-    # get all .bin files
-    bin_files = [bfile for bfile in sorted(os.listdir(COMBINED_DATA_PATH)) if ".bin" in bfile]
+                # simulate a .bin file update to test _check_bin_updates
+                if tissue_data[1] == ".json" and "_processing" not in tissue_data[0]:
+                    # ensure a sleep so the update doesn't interfere with an existing extraction
+                    time.sleep(2)
+                    bin_file_name = tissue_data[0] + ".bin"
 
-    # simulate updating the creation time for some .bin files, this tests _check_bin_updates
-    for i, bfile in enumerate(bin_files):
-        if i % 2 == 0:
-            shutil.copy(
-                os.path.join(COMBINED_DATA_PATH, bfile), os.path.join(dest, bfile + ".temp")
-            )
-            os.remove(os.path.join(dest, bfile))
-            os.rename(os.path.join(dest, bfile + ".temp"), os.path.join(dest, bfile))
+                    # make sure only to update non-blank bin files
+                    if os.path.getsize(os.path.join(dest, bin_file_name)) != 0:
+                        shutil.copy(
+                            os.path.join(COMBINED_DATA_PATH, bin_file_name),
+                            os.path.join(dest, bin_file_name + ".temp"),
+                        )
+                        os.remove(os.path.join(dest, bin_file_name))
+                        os.rename(
+                            os.path.join(dest, bin_file_name + ".temp"),
+                            os.path.join(dest, bin_file_name),
+                        )
 
 
 COMBINED_RUN_JSON_SPOOF = {
@@ -255,7 +268,6 @@ def test_watcher(
     add_blank,
     temp_bin,
 ):
-    print("The watcher start lag is: %d" % watcher_start_lag)
     try:
         with tempfile.TemporaryDirectory() as tmpdir:
             tiff_out_dir = os.path.join(tmpdir, "cb_0", RUN_DIR_NAME)
@@ -371,9 +383,13 @@ def test_watcher(
 
                     res_scan.get()
 
-            with open(os.path.join(log_out, "test_run_log.txt")) as f:
+            with open(os.path.join(Path(__file__).parents[1], "pytest.txt")) as f:
                 logtxt = f.read()
-                assert add_blank == ("non-zero file size..." in logtxt)
+                try:
+                    assert add_blank == ("non-zero file size..." in logtxt)
+                except AssertionError as e:
+                    _reset_logging_file()
+                    raise AssertionError(e)
 
             fovs = [
                 bin_file.split(".")[0]
@@ -390,32 +406,65 @@ def test_watcher(
                 fovs = fovs[1:]
 
             # extract tiffs check
+            print("TIFF validator check")
             validators[0](os.path.join(tmpdir, "cb_0", RUN_DIR_NAME), fovs, bad_fovs)
             if kwargs["extract_prof"]:
-                validators[0](
-                    os.path.join(tmpdir, "cb_0", RUN_DIR_NAME + "_proficient"), fovs, bad_fovs
-                )
+                try:
+                    validators[0](
+                        os.path.join(tmpdir, "cb_0", RUN_DIR_NAME + "_proficient"), fovs, bad_fovs
+                    )
+                except AssertionError as e:
+                    _reset_logging_file()
+                    raise AssertionError(e)
             else:
-                assert not os.path.exists(
-                    os.path.join(tmpdir, "cb_0", RUN_DIR_NAME) + "_proficient"
-                )
+                try:
+                    assert not os.path.exists(
+                        os.path.join(tmpdir, "cb_0", RUN_DIR_NAME) + "_proficient"
+                    )
+                except AssertionError as e:
+                    _reset_logging_file()
+                    raise AssertionError(e)
 
             # qc check
-            validators[1](os.path.join(tmpdir, "cb_1", RUN_DIR_NAME), fovs, bad_fovs)
+            print("QC check")
+            try:
+                validators[1](os.path.join(tmpdir, "cb_1", RUN_DIR_NAME), fovs, bad_fovs)
+            except AssertionError as e:
+                _reset_logging_file()
+                raise AssertionError(e)
 
             # mph check
-            validators[2](
-                os.path.join(tmpdir, "cb_2", RUN_DIR_NAME),
-                os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME),
-                fovs,
-                bad_fovs,
-            )
+            print("MPH check")
+            try:
+                validators[2](
+                    os.path.join(tmpdir, "cb_2", RUN_DIR_NAME),
+                    os.path.join(tmpdir, "cb_2_plots", RUN_DIR_NAME),
+                    fovs,
+                    bad_fovs,
+                )
+            except AssertionError as e:
+                _reset_logging_file()
+                raise AssertionError(e)
 
             # stitch images check
-            validators[3](os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, f"{RUN_DIR_NAME}_stitched"))
+            print("Stitch images check")
+            try:
+                validators[3](
+                    os.path.join(tmpdir, "cb_0", RUN_DIR_NAME, f"{RUN_DIR_NAME}_stitched")
+                )
+            except AssertionError as e:
+                _reset_logging_file()
+                raise AssertionError(e)
 
             # pulse heights check
-            validators[4](os.path.join(tmpdir, "cb_3", RUN_DIR_NAME), fovs, bad_fovs)
+            print("Pulse heights check")
+            try:
+                validators[4](os.path.join(tmpdir, "cb_3", RUN_DIR_NAME), fovs, bad_fovs)
+            except AssertionError as e:
+                _reset_logging_file()
+                raise AssertionError(e)
+
+            _reset_logging_file()
 
     except OSError:
         warnings.warn("Temporary file cleanup was incomplete.")
