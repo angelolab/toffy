@@ -82,7 +82,7 @@ def _slow_copy_sample_tissue_data(
                 # simulate a .bin file update to test _check_bin_updates
                 if tissue_data[1] == ".json" and "_processing" not in tissue_data[0]:
                     # ensure a sleep so the update doesn't interfere with an existing extraction
-                    time.sleep(2)
+                    time.sleep(3)
                     bin_file_name = tissue_data[0] + ".bin"
 
                     # make sure only to update non-blank bin files
