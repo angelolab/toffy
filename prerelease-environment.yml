@@ -7,11 +7,12 @@ dependencies:
   - numpy
   - seaborn
   - scikit-learn
+  - jupyter
   - jupyterlab
+  - jupyter_contrib_nbextensions
   - pip:
     - natsort
     - watchdog
     - alpineer>=0.1.10
     - mibi-bin-tools==0.2.14
-    - jupyter_contrib_nbextensions
     - -e .
