@@ -292,3 +292,6 @@ Before opening, please double check and see that someone else hasn't opened an i
 
 ## How to cite
 Please directly cite the `toffy` repo (https://github.com/angelolab/toffy) if it was a part of your analysis.
+In addition, please cite Greenwald, Nederlof et al. if you used the MPH normalization, and McCaffrey, Delmastro et al. if you used Rosetta compensation
+
+1. [Greenwald, Nederlof et al. Temporal and spatial composition of the tumor microenvironment predicts response to immune checkpoint inhibition [2025]](https://www.biorxiv.org/content/10.1101/2025.01.26.634557v1)
