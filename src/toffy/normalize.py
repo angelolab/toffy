@@ -926,8 +926,9 @@ def check_detector_voltage(run_dir):
         err_str = err_str + "\n" + err_i
 
     # non-empty list of changes will raise an error
+    run_name = os.path.basename(run_dir)
     if changes_in_voltage:
-        raise ValueError("Changes in detector voltage were found during the run:\n" + err_str)
+        raise ValueError(f"Changes in detector voltage were found during run {run_name}:\n{err_str}")
 
 
 def plot_detector_voltage(
@@ -994,6 +995,10 @@ def plot_detector_voltage(
         voltage,
     ) in zip(detector_voltage_data["FOVs"], detector_voltage_data["Detector Voltage"]):
         ax.plot(fov, voltage, marker="o", color="blue")
+
+    # Set the title for the plot
+    run_name = os.path.basename(run_folder)
+    ax.set_title(f"Detector Voltage Per FOV For {run_name}")
 
     # Set the labels for the axes
     ax.set_xlabel("FOVs")
