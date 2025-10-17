@@ -1,8 +1,8 @@
 import os
 import shutil
 from collections import Counter
-import imageio.v3 as iio
 
+import imageio.v3 as iio
 from alpineer import io_utils, misc_utils
 
 from toffy.json_utils import read_json_file, rename_duplicate_fovs, rename_missing_fovs
@@ -177,17 +177,16 @@ def rename_fovs_in_cohort(run_names, processed_base_dir, cohort_path, bin_base_d
 
 
 def convert_img_dtype(cohort_dir, dtype):
-    """Converts all the images in the cohort to the desired dtype
+    """Converts all the images in the cohort to the desired dtype.
 
     Args:
         cohort_dir (str): path to the directory containing individual run folders
         dtype (str): the data type to convert the images to
     """
-
     if dtype not in ["float64", "float32", "float16", "int64", "int32", "int16"]:
         raise ValueError(
-            "Invalid dtype specified: must be one of float64, float32, float16, "
-            "int64, int32, int16")
+            "Invalid dtype specified: must be one of float64, float32, float16, int64, int32, int16"
+        )
 
     # get all runs
     run_folders = io_utils.list_folders(cohort_dir)

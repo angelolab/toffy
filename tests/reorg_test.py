@@ -235,7 +235,6 @@ def test_convert_img_dtype(tmpdir):
     run_names = ["run1", "run2", "run4"]
     fov_names = [["fov1", "fov2"], ["fov1", "fov3"], ["fov5"]]
     chan_names = ["chan1", "chan2"]
-    expected_names = []
 
     # create each fov within each run
     for i in range(len(run_names)):

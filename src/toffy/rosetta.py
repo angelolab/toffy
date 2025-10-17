@@ -783,8 +783,8 @@ def copy_image_files(
 
 
 def rescale_raw_imgs(img_out_dir, scale=1):
-    """Rescale image according to the scaling factor and converts to float32 for 
-    floating-point precision required for Rosetta
+    """Rescale image according to the scaling factor and converts to float32 for
+    floating-point precision required for Rosetta.
 
     Args:
         img_out_dir (str): the directory containing extracted images
