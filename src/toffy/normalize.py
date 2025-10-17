@@ -928,7 +928,9 @@ def check_detector_voltage(run_dir):
     # non-empty list of changes will raise an error
     run_name = os.path.basename(run_dir)
     if changes_in_voltage:
-        raise ValueError(f"Changes in detector voltage were found during run {run_name}:\n{err_str}")
+        raise ValueError(
+            f"Changes in detector voltage were found during run {run_name}:\n{err_str}"
+        )
 
 
 def plot_detector_voltage(
