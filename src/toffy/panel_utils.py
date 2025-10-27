@@ -212,6 +212,10 @@ def convert_panel(panel_path):
     if list(panel.columns) == ["Mass", "Target", "Start", "Stop\n"]:
         print(f"{panel_name}.csv has the correct toffy format. Loading in panel data.")
         panel.columns = ["Mass", "Target", "Start", "Stop"]
+
+        # backwards compatibility: ensure older toffy files are supported
+        panel.loc[panel.Mass == 117, "Stop"] = 125
+        panel.loc[panel.Mass == 197, "Target"] = "Au"
         return panel
     # if not ionpath panel, raise error
     elif list(panel.columns) != [
