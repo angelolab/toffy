@@ -15,7 +15,7 @@ def extract_missing_fovs(
     bin_file_dir,
     extraction_dir,
     panel,
-    extract_intensities=["Au", "chan_39"],
+    extract_intensities=["138Ba", "Au", "chan_39"],
     replace=True,
 ):
     """Check for already extracted FOV bin files, and extract the remaining (excluding moly fovs
