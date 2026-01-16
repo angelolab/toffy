@@ -16,6 +16,7 @@ necessary_masses = pd.DataFrame(
             113,
             115,
             117,
+            138,
             141,
             142,
             143,
@@ -64,6 +65,7 @@ necessary_masses = pd.DataFrame(
             "chan_113",
             "chan_115",
             "Noodle",
+            "138Ba",
             "chan_141",
             "chan_142",
             "chan_143",
@@ -208,6 +210,10 @@ def convert_panel(panel_path):
     if list(panel.columns) == ["Mass", "Target", "Start", "Stop\n"]:
         print(f"{panel_name}.csv has the correct toffy format. Loading in panel data.")
         panel.columns = ["Mass", "Target", "Start", "Stop"]
+
+        # backwards compatibility: ensure older toffy files are supported
+        panel.loc[panel.Mass == 117, "Stop"] = 125
+        panel.loc[panel.Mass == 197, "Target"] = "Au"
         return panel
     # if not ionpath panel, raise error
     elif list(panel.columns) != [
@@ -240,6 +246,9 @@ def convert_panel(panel_path):
 
     # specify 116.7 - 125 Noodle extraction range
     toffy_panel.loc[toffy_panel.Mass == 117, "Stop"] = 125
+
+    # ensure mass 197 is set to "Au" (required for downstream processing)
+    toffy_panel.loc[toffy_panel.Mass == 197, "Target"] = "Au"
 
     # sort data by mass
     toffy_panel = toffy_panel.sort_values(by=["Mass"])
@@ -275,6 +284,7 @@ def load_panel(panel_path):
             )
         else:
             toffy_panel.loc[toffy_panel.Mass == 117, "Stop"] = 125
+            toffy_panel.loc[toffy_panel.Mass == 197, "Target"] = "Au"
             print(f"{panel_name}.csv is in the correct toffy format. Loading in panel data.")
     else:
         # check if toffy panel exists in panel_dir and load it
@@ -283,6 +293,7 @@ def load_panel(panel_path):
             converted_panel_path = os.path.join(panel_dir, panel_name + "-toffy.csv")
             toffy_panel = pd.read_csv(converted_panel_path, index_col=False)
             toffy_panel.loc[toffy_panel.Mass == 117, "Stop"] = 125
+            toffy_panel.loc[toffy_panel.Mass == 197, "Target"] = "Au"
             print(
                 f"Detected {panel_name}-toffy.csv in {panel_dir}. "
                 "Loading in toffy formatted panel data."
