@@ -238,6 +238,7 @@ def stitch_images(
                 fname = os.path.join(tile_stitched_dir, chan + "_stitched.tiff")
                 stitched = data_utils.stitch_images(image_data, num_cols)
                 current_img = stitched.loc["stitched_image", :, :, chan] / intensity_scale
+                current_img = current_img.astype(np.float32)
                 image_utils.save_image(fname, current_img)
 
         if tma_folders or not tiled:
@@ -266,6 +267,7 @@ def stitch_images(
             fname = os.path.join(stitched_subdir, chan + "_stitched.tiff")
             stitched = data_utils.stitch_images(image_data, num_cols)
             current_img = stitched.loc["stitched_image", :, :, chan] / intensity_scale
+            current_img = current_img.astype(np.float32)
             image_utils.save_image(fname, current_img)
 
 

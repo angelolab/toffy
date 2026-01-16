@@ -217,6 +217,7 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir, img_size
                     assert tiled_data.shape == (1, 20 * img_scale, 30 * img_scale, 1)
                 else:
                     assert tiled_data.shape == (1, 20 * img_scale, 20 * img_scale, 1)
+                assert tiled_data.dtype == np.float32
 
                 _, expected_fovs, num_rows, num_cols = expected_tiles[i]
 
@@ -236,6 +237,7 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir, img_size
                 assert sorted(io_utils.list_files(save_dir)) == sorted(stitched_tifs)
                 tma_data = load_utils.load_imgs_from_dir(save_dir, files=["Au_stitched.tiff"])
                 assert tma_data.shape == (1, 20 * img_scale, 10 * img_scale, 1)
+                assert tma_data.dtype == np.float32
 
         # max img size 10 with 3 or 5 acquired fovs
         else:
@@ -246,6 +248,7 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir, img_size
                 assert data.shape == (1, 30 * img_scale, 20 * img_scale, 1)
             else:
                 assert data.shape == (1, 30 * img_scale, 10 * img_scale, 1)
+            assert data.dtype == np.float32
 
             # data_trim = data[0, ..., ..., 0].values
             base_data = load_utils.load_imgs_from_tree(
