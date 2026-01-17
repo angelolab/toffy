@@ -1,6 +1,7 @@
 import os
 import tempfile
 
+import imageio.v3 as iio
 import numpy as np
 import pytest
 from alpineer import io_utils
@@ -228,3 +229,38 @@ def test_rename_fovs_in_cohort(tmpdir):
         renamed_fovs = io_utils.list_folders(renamed_dir)
 
         assert set(renamed_fovs) == set(fov_names)
+
+
+def test_convert_img_dtype(tmpdir):
+    run_names = ["run1", "run2", "run4"]
+    fov_names = [["fov1", "fov2"], ["fov1", "fov3"], ["fov5"]]
+    chan_names = ["chan1", "chan2"]
+
+    # create each fov within each run
+    for i in range(len(run_names)):
+        run = run_names[i]
+        run_path = os.path.join(tmpdir, run)
+        os.makedirs(run_path)
+
+        fovs = fov_names[i]
+        for fov in fovs:
+            os.makedirs(os.path.join(run_path, fov))
+
+            # NOTE: numpy defaults to float 64
+            for chan in chan_names:
+                img = np.random.rand(5, 5)
+                iio.imwrite(os.path.join(tmpdir, run_path, fov, f"{chan}.tiff"), img)
+
+    reorg.convert_img_dtype(tmpdir, dtype="int16")
+    for i in range(len(run_names)):
+        run = run_names[i]
+        run_path = os.path.join(tmpdir, run)
+
+        fovs = fov_names[i]
+        for fov in fovs:
+            for chan in chan_names:
+                img = iio.imread(os.path.join(tmpdir, run_path, fov, f"{chan}.tiff"))
+                assert img.dtype == np.int16
+
+    with pytest.raises(ValueError, match="Invalid dtype specified"):
+        reorg.convert_img_dtype(tmpdir, dtype="float128")

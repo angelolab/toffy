@@ -255,7 +255,7 @@ def compensate_image_data(
     raw_data_sub_folder="",
     batch_size=1,
     gaus_rad=1,
-    norm_const=200,
+    norm_const=1,
     ffc_masses=[39],
     correct_streaks=False,
     streak_chan="Noodle",
@@ -782,8 +782,9 @@ def copy_image_files(
             shutil.copytree(fov_path, new_path)
 
 
-def rescale_raw_imgs(img_out_dir, scale=200):
-    """Rescale image data to be between 0 and 1.
+def rescale_raw_imgs(img_out_dir, scale=1):
+    """Rescale image according to the scaling factor and converts to float32 for
+    floating-point precision required for Rosetta.
 
     Args:
         img_out_dir (str): the directory containing extracted images
