@@ -2,6 +2,7 @@ import os
 import shutil
 from collections import Counter
 
+import imageio.v3 as iio
 from alpineer import io_utils, misc_utils
 
 from toffy.json_utils import read_json_file, rename_duplicate_fovs, rename_missing_fovs
@@ -173,3 +174,30 @@ def rename_fovs_in_cohort(run_names, processed_base_dir, cohort_path, bin_base_d
             default_run_dir=input_dir,
             output_run_dir=output_dir,
         )
+
+
+def convert_img_dtype(cohort_dir, dtype):
+    """Converts all the images in the cohort to the desired dtype.
+
+    Args:
+        cohort_dir (str): path to the directory containing individual run folders
+        dtype (str): the data type to convert the images to
+    """
+    if dtype not in ["float64", "float32", "float16", "int64", "int32", "int16"]:
+        raise ValueError(
+            "Invalid dtype specified: must be one of float64, float32, float16, int64, int32, int16"
+        )
+
+    # get all runs
+    run_folders = io_utils.list_folders(cohort_dir)
+
+    # loop over each run
+    for run in run_folders:
+        run_path = os.path.join(cohort_dir, run)
+        fovs = io_utils.list_folders(run_path)
+        chan_files = io_utils.list_files(os.path.join(run_path, fovs[0]), substrs=".tiff")
+
+        for fov in fovs:
+            for chan_f in chan_files:
+                img_data = iio.imread(os.path.join(run_path, fov, chan_f)).astype(dtype)
+                iio.imwrite(os.path.join(run_path, fov, chan_f), img_data)
