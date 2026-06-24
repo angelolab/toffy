@@ -23,10 +23,11 @@ def rename_missing_fovs(fov_data):
     missing_count = 0
 
     # iterate over each FOV and add a placeholder name if necessary
-    for fov in copy_fov_data["fovs"]:
-        if "name" not in fov.keys():
-            missing_count += 1
-            fov["name"] = f"placeholder_{missing_count}"
+    for roi_data in copy_fov_data["rois"]:
+        for fov in roi_data["fovs"]:
+            if "name" not in fov.keys():
+                missing_count += 1
+                fov["name"] = f"placeholder_{missing_count}"
 
     return copy_fov_data
 
@@ -47,14 +48,15 @@ def rename_duplicate_fovs(tma_fovs):
     fov_count = {}
 
     # iterate over each FOV
-    for fov in tma_fovs["fovs"]:
-        if fov["name"] not in fov_count:
-            fov_count[fov["name"]] = 0
-
-        fov_count[fov["name"]] += 1
-
-        if fov_count[fov["name"]] > 1:
-            fov["name"] = "%s_duplicate%d" % (fov["name"], fov_count[fov["name"]] - 1)
+    for roi_data in tma_fovs["rois"]:
+        for fov in roi_data["fovs"]:
+            if fov["name"] not in fov_count:
+                fov_count[fov["name"]] = 0
+    
+            fov_count[fov["name"]] += 1
+    
+            if fov_count[fov["name"]] > 1:
+                fov["name"] = "%s_duplicate%d" % (fov["name"], fov_count[fov["name"]] - 1)
 
     return tma_fovs
 

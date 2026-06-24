@@ -116,16 +116,17 @@ def rename_fov_dirs(json_run_path, default_run_dir, output_run_dir=None):
 
     # retrieve custom names and number of scans for each fov, construct matching default names
     fov_scan = dict()
-    for fov in run_metadata.get("fovs", ()):
-        custom_name = fov.get("name")
-        run_order = fov.get("runOrder")
-        scans = fov.get("scanCount")
+    for roi_data in run_metadata.get("rois", ()):
+        for fov in roi_data.get("fovs", ()):
+            custom_name = fov.get("name")
+            run_order = fov.get("runOrder")
+            scans = fov.get("scanCount")
 
-        # fovs with multiple scans have scan    number specified
-        for scan in range(1, scans + 1):
-            default_name = f"fov-{run_order}-scan-{scan}"
-            name_ext = f"-{scan}" if scans > 1 else ""
-            fov_scan[default_name] = custom_name + name_ext
+            # fovs with multiple scans have scan    number specified
+            for scan in range(1, scans + 1):
+                default_name = f"fov-{run_order}-scan-{scan}"
+                name_ext = f"-{scan}" if scans > 1 else ""
+                fov_scan[default_name] = custom_name + name_ext
 
     # retrieve current default directory names, check if already renamed
     old_dirs = io_utils.list_folders(default_run_dir, "fov")

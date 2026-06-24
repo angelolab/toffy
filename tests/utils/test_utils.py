@@ -479,7 +479,7 @@ def create_sample_run(name_list, run_order_list, scan_count_list, create_json=Fa
 
     """
     fov_list = []
-    sample_run = {"fovs": fov_list}
+    sample_run = {"rois": [{"fovs": fov_list}]}
 
     # set up dictionary
     for name, run_order, scan_count in zip(name_list, run_order_list, scan_count_list):
@@ -487,14 +487,14 @@ def create_sample_run(name_list, run_order_list, scan_count_list, create_json=Fa
         fov_list.append(ex_fov)
 
     # delete name key if one is not provided
-    for fov in sample_run.get("fovs", ()):
+    for fov in sample_run["rois"][0].get("fovs", ()):
         if fov.get("name") is None:
             del fov["name"]
 
     # create bad dictionary
     if bad:
-        sample_run["bad key"] = sample_run["fovs"]
-        del sample_run["fovs"]
+        sample_run["rois"][0]["bad key"] = sample_run["rois"][0]["fovs"]
+        del sample_run["rois"][0]["fovs"]
 
     # create json file for the data
     if create_json:
