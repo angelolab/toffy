@@ -52,9 +52,9 @@ def rename_duplicate_fovs(tma_fovs):
         for fov in roi_data["fovs"]:
             if fov["name"] not in fov_count:
                 fov_count[fov["name"]] = 0
-    
+
             fov_count[fov["name"]] += 1
-    
+
             if fov_count[fov["name"]] > 1:
                 fov["name"] = "%s_duplicate%d" % (fov["name"], fov_count[fov["name"]] - 1)
 
