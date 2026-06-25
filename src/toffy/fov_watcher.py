@@ -57,12 +57,7 @@ class RunStructure:
                 raise KeyError(f"Could not locate keys in {run_folder}.json")
 
             # scan 2's don't contain significant imaging data per new MIBI specs
-            if run_order < 10:
-                fov_name = f"fov-00{run_order}-scan-1"
-            elif run_order >= 10 and run_order < 100:
-                fov_name = f"fov-0{run_order}-scan-1"
-            else:
-                fov_name = f"fov-{run_order}-scan-1"
+            fov_name = f"fov-{run_order:03d}-scan-1"
 
             if fov.get("standardTarget", "") == "Molybdenum Foil":
                 self.moly_points.append(fov_name)

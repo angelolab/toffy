@@ -30,7 +30,7 @@ def test_get_estimated_time():
     bad_fov = "not-a-fov"
 
     good_path = os.path.join(Path(__file__).parents[1], "data", "combined")
-    good_fov = "fov-1-scan-1"
+    good_fov = "fov-001-scan-1"
 
     # bad directory path should raise an error
     with pytest.raises(FileNotFoundError):
@@ -73,7 +73,7 @@ def test_generate_time_ticks():
 
 def test_compute_mph_metrics():
     bin_file_path = os.path.join(Path(__file__).parents[1], "data", "combined")
-    fov_name = "fov-1-scan-1"
+    fov_name = "fov-001-scan-1"
 
     with tempfile.TemporaryDirectory() as tmpdir:
         # invalid fov name should raise an error

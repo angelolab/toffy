@@ -554,8 +554,8 @@ class RunStructureCases:
     def case_default(self):
         """Two FOVs with all expected files generated."""
         fov_count = 2
-        run_json = {"fovs": [{"runOrder": n + 1, "scanCount": 1} for n in range(fov_count)]}
-        expected_files = [f"fov-{n + 1}-scan-1.bin" for n in range(fov_count)]
+        run_json = {"rois": [{"fovs": [{"runOrder": n + 1, "scanCount": 1} for n in range(fov_count)]}]}
+        expected_files = [f"fov-{n + 1:03d}-scan-1.bin" for n in range(fov_count)]
         expected_files += [binf.split(".")[0] + ".json" for binf in expected_files]
         return run_json, expected_files
 
