@@ -326,7 +326,9 @@ def test_watcher(
                     np.random.rand(1, 4), columns=["fov", "MPH", "total_count", "time"]
                 )
                 df_mph["fov"] = "fov-002-scan-1"
-                df_mph.to_csv(os.path.join(mph_out_dir, "fov-002-scan-1-mph_pulse.csv"), index=False)
+                df_mph.to_csv(
+                    os.path.join(mph_out_dir, "fov-002-scan-1-mph_pulse.csv"), index=False
+                )
 
                 os.makedirs(pulse_out_dir)
                 df_ph = pd.DataFrame(np.random.rand(10, 3), columns=["mass", "fov", "pulse_height"])
@@ -480,8 +482,7 @@ def test_watcher_missing_fovs():
         large_run_json_spoof = {
             "rois": [
                 {
-                    "fovs": COMBINED_RUN_JSON_SPOOF["rois"][0]["fovs"]
-                    + [
+                    "fovs": COMBINED_RUN_JSON_SPOOF["rois"][0]["fovs"] + [
                         {
                             "runOrder": 5,
                             "scanCount": 1,
