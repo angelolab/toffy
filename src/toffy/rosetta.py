@@ -255,7 +255,7 @@ def compensate_image_data(
     raw_data_sub_folder="",
     batch_size=1,
     gaus_rad=1,
-    norm_const=200,
+    norm_const=1,
     ffc_masses=[39],
     correct_streaks=False,
     streak_chan="Noodle",
@@ -288,7 +288,9 @@ def compensate_image_data(
     io_utils.validate_paths([raw_data_dir, comp_data_dir, comp_mat_path])
 
     # get list of all fovs
-    fovs = io_utils.list_folders(raw_data_dir, substrs="fov")
+    # TODO: list_folders does not handle cases such as "fov0" correctly
+    # need to add a fix in to alpineer to deal with this
+    fovs = [f for f in os.listdir(raw_data_dir) if "fov" in f]
 
     # load csv files
     comp_mat = pd.read_csv(comp_mat_path, index_col=0)
@@ -558,6 +560,10 @@ def add_source_channel_to_tiled_image(
     # get percentile of source row if percent_norm set, otherwise leave unset
     perc_source = np.percentile(source_scaled, percent_norm) if percent_norm else None
 
+    # normalize by max if percent_norm is 0 for source in case of sparse signal
+    if percent_norm and perc_source == 0:
+        perc_source = np.percentile(source_scaled, 100)
+
     # confirm tiled images have expected shape
     tiled_images = io_utils.list_files(tiled_img_dir)
     test_file = io.imread(os.path.join(tiled_img_dir, tiled_images[0]))
@@ -577,6 +583,11 @@ def add_source_channel_to_tiled_image(
         perc_ratio = 1
         if percent_norm:
             perc_tile = np.percentile(current_tile, percent_norm)
+
+            # normalize by max if percent_norm is 0 for tile in case of sparse signal
+            if perc_tile == 0:
+                perc_tile = np.percentile(current_tile, 100)
+
             perc_ratio = perc_source / perc_tile
 
         rescaled_source = source_scaled / perc_ratio
@@ -704,6 +715,8 @@ def create_rosetta_matrices(
         mult_matrix.to_csv(os.path.join(save_dir, comp_name))
 
 
+# TODO: anything with [f for f in os.listdir(...) ...] needs to be changed
+# after list_folders with substrs specified is fixed
 def copy_image_files(
     cohort_name, run_names, rosetta_testing_dir, extracted_imgs_dir, fovs_per_run=5
 ):
@@ -726,7 +739,7 @@ def copy_image_files(
     for run in run_names:
         if not os.path.exists(os.path.join(extracted_imgs_dir, run)):
             raise ValueError(f"{run} is not a valid run name found in {extracted_imgs_dir}")
-        fovs_in_run = io_utils.list_folders(os.path.join(extracted_imgs_dir, run), substrs="fov")
+        fovs_in_run = [f for f in os.listdir(os.path.join(extracted_imgs_dir, run)) if "fov" in f]
         # check number of fovs in each run
         if len(fovs_in_run) < fovs_per_run:
             small_runs.append(run)
@@ -756,7 +769,7 @@ def copy_image_files(
     for i, run in enumerate(ns.natsorted(run_names_process)):
         run_path = os.path.join(extracted_imgs_dir, run)
 
-        fovs_in_run = io_utils.list_folders(run_path, substrs="fov")
+        fovs_in_run = [f for f in os.listdir(run_path) if "fov" in f]
         fovs_in_run = ns.natsorted(fovs_in_run)
         rosetta_fovs = random.sample(fovs_in_run, k=fovs_per_run)
 
@@ -769,8 +782,9 @@ def copy_image_files(
             shutil.copytree(fov_path, new_path)
 
 
-def rescale_raw_imgs(img_out_dir, scale=200):
-    """Rescale image data to be between 0 and 1.
+def rescale_raw_imgs(img_out_dir, scale=1):
+    """Rescale image according to the scaling factor and converts to float32 for
+    floating-point precision required for Rosetta.
 
     Args:
         img_out_dir (str): the directory containing extracted images

@@ -831,7 +831,9 @@ def normalize_image_data(
     # create normalization function for mapping MPH to counts
     norm_json = read_json_file(norm_func_path)
 
-    img_fovs = io_utils.list_folders(img_dir, "fov")
+    # TODO: list_folders does not handle cases such as "fov0" correctly
+    # need to add a fix in to alpineer to deal with this
+    img_fovs = [f for f in os.listdir(img_dir) if "fov" in f]
 
     norm_weights, norm_name = norm_json["weights"], norm_json["name"]
     norm_func = create_prediction_function(norm_name, norm_weights)
@@ -852,6 +854,9 @@ def normalize_image_data(
 
     # make sure FOVs used to construct tuning curve are same ones being normalized
     pulse_fovs = np.unique(pulse_height_df["fov"])
+
+    # TODO: verify_same_elements needs to throw a ValueError in the special case
+    # where one list is empty but the other isn't
     misc_utils.verify_same_elements(image_data_fovs=img_fovs, pulse_height_csv_files=pulse_fovs)
 
     # loop over each fov
@@ -921,8 +926,11 @@ def check_detector_voltage(run_dir):
         err_str = err_str + "\n" + err_i
 
     # non-empty list of changes will raise an error
+    run_name = os.path.basename(run_dir)
     if changes_in_voltage:
-        raise ValueError("Changes in detector voltage were found during the run:\n" + err_str)
+        raise ValueError(
+            f"Changes in detector voltage were found during run {run_name}:\n{err_str}"
+        )
 
 
 def plot_detector_voltage(
@@ -989,6 +997,10 @@ def plot_detector_voltage(
         voltage,
     ) in zip(detector_voltage_data["FOVs"], detector_voltage_data["Detector Voltage"]):
         ax.plot(fov, voltage, marker="o", color="blue")
+
+    # Set the title for the plot
+    run_name = os.path.basename(run_folder)
+    ax.set_title(f"Detector Voltage Per FOV For {run_name}")
 
     # Set the labels for the axes
     ax.set_xlabel("FOVs")
