@@ -31,8 +31,8 @@ def test_extract_missing_fovs(mocked_print):
 
     # only 1 fov that has empty json should raise a warning
     with tempfile.TemporaryDirectory() as tmpdir:
-        test_utils._make_blank_file(tmpdir, "fov-1-scan-1.bin")
-        test_utils._make_blank_file(tmpdir, "fov-1-scan-1.json")
+        test_utils._make_blank_file(tmpdir, "fov-001-scan-1.bin")
+        test_utils._make_blank_file(tmpdir, "fov-001-scan-1.json")
 
         with pytest.warns(Warning) as warninfo:
             bin_extraction.extract_missing_fovs(tmpdir, tmpdir, panel, extract_intensities=False)
@@ -42,7 +42,7 @@ def test_extract_missing_fovs(mocked_print):
                 UserWarning,
                 (
                     "The following FOVs have empty json files and will not be "
-                    "processed:\n ['fov-1-scan-1']"
+                    "processed:\n ['fov-001-scan-1']"
                 ),
             ),
             (Warning, f"No viable bin files were found in {tmpdir}"),
@@ -50,14 +50,14 @@ def test_extract_missing_fovs(mocked_print):
 
     # test that it does not re-extract fovs
     with tempfile.TemporaryDirectory() as extraction_dir:
-        os.makedirs(os.path.join(extraction_dir, "fov-1-scan-1"))
+        os.makedirs(os.path.join(extraction_dir, "fov-001-scan-1"))
         bin_extraction.extract_missing_fovs(
             bin_file_dir, extraction_dir, panel, extract_intensities=False
         )
 
         assert mocked_print.mock_calls == [
-            call("Skipping the following previously extracted FOVs: ", "fov-1-scan-1"),
-            call("Moly FOVs which will not be extracted: ", "fov-3-scan-1"),
+            call("Skipping the following previously extracted FOVs: ", "fov-001-scan-1"),
+            call("Moly FOVs which will not be extracted: ", "fov-003-scan-1"),
             call("Found 2 FOVs to extract."),
             call("Extraction completed!"),
         ]
@@ -77,7 +77,7 @@ def test_extract_missing_fovs(mocked_print):
 
         # check for correct output
         with tempfile.TemporaryDirectory() as extraction_dir:
-            os.makedirs(os.path.join(extraction_dir, "fov-1-scan-1"))
+            os.makedirs(os.path.join(extraction_dir, "fov-001-scan-1"))
             with pytest.warns(UserWarning, match="empty json files"):
                 bin_extraction.extract_missing_fovs(
                     combined_bin_file_dir,
@@ -87,8 +87,8 @@ def test_extract_missing_fovs(mocked_print):
                 )
 
             assert mocked_print.mock_calls == [
-                call("Skipping the following previously extracted FOVs: ", "fov-1-scan-1"),
-                call("Moly FOVs which will not be extracted: ", "fov-3-scan-1"),
+                call("Skipping the following previously extracted FOVs: ", "fov-001-scan-1"),
+                call("Moly FOVs which will not be extracted: ", "fov-003-scan-1"),
                 call("FOVs with empty json files which will not be extracted: ", "empty"),
                 call("Found 2 FOVs to extract."),
                 call("Extraction completed!"),
@@ -105,7 +105,7 @@ def test_extract_missing_fovs(mocked_print):
 
             # test that neither moly nor empty fov were extracted
             assert ns.natsorted(io_utils.list_folders(extraction_dir)) == ns.natsorted(
-                ["fov-1-scan-1", "fov-2-scan-1", "fov-4-scan-1"]
+                ["fov-001-scan-1", "fov-002-scan-1", "fov-004-scan-1"]
             )
 
     # test successful extraction of fovs
@@ -114,12 +114,12 @@ def test_extract_missing_fovs(mocked_print):
         bin_extraction.extract_missing_fovs(
             bin_file_dir, extraction_dir, panel, extract_intensities=False
         )
-        fovs = ["fov-1-scan-1", "fov-2-scan-1"]
+        fovs = ["fov-001-scan-1", "fov-002-scan-1", "fov-004-scan-1"]
         fovs_extracted = io_utils.list_folders(extraction_dir)
 
         # test no extra print statements
         assert mocked_print.mock_calls == [
-            call("Moly FOVs which will not be extracted: ", "fov-3-scan-1"),
+            call("Moly FOVs which will not be extracted: ", "fov-003-scan-1"),
             call("Found 3 FOVs to extract."),
             call("Extraction completed!"),
         ]

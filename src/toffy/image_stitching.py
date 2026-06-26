@@ -36,8 +36,9 @@ def get_max_img_size(tiff_out_dir, img_sub_folder="", run_dir=None, fov_list=Non
         run_data = json_utils.read_json_file(run_file_path)
 
         if not fov_list:
-            for fov in run_data["fovs"]:
-                img_sizes.append(fov.get("frameSizePixels")["width"])
+            for roi_data in run_data["rois"]:
+                for fov in roi_data["fovs"]:
+                    img_sizes.append(fov.get("frameSizePixels")["width"])
         else:
             for fov in fov_list:
                 fov_digits = re.findall(r"\d+", fov)
