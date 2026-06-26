@@ -59,10 +59,10 @@ def test_build_fov_callback(callbacks, kwargs, data_path):
         run_data = os.path.join(tmp_dir, "tissue")
         os.makedirs(run_data)
         for fov in [
-            "fov-1-scan-1.bin",
-            "fov-1-scan-1.json",
-            "fov-2-scan-1.bin",
-            "fov-2-scan-1.json",
+            "fov-001-scan-1.bin",
+            "fov-001-scan-1.json",
+            "fov-002-scan-1.bin",
+            "fov-002-scan-1.json",
         ]:
             shutil.copy(os.path.join(data_path, fov), os.path.join(run_data, fov))
 
@@ -118,10 +118,10 @@ def test_build_callbacks(viz_mock, run_callbacks, inter_callbacks, kwargs, data_
         run_data = os.path.join(tmp_dir, "tissue")
         os.makedirs(run_data)
         for fov in [
-            "fov-1-scan-1.bin",
-            "fov-1-scan-1.json",
-            "fov-2-scan-1.bin",
-            "fov-2-scan-1.json",
+            "fov-001-scan-1.bin",
+            "fov-001-scan-1.json",
+            "fov-002-scan-1.bin",
+            "fov-002-scan-1.json",
         ]:
             shutil.copy(os.path.join(data_path, fov), os.path.join(run_data, fov))
 

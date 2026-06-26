@@ -479,7 +479,7 @@ def create_sample_run(name_list, run_order_list, scan_count_list, create_json=Fa
 
     """
     fov_list = []
-    sample_run = {"fovs": fov_list}
+    sample_run = {"rois": [{"fovs": fov_list}]}
 
     # set up dictionary
     for name, run_order, scan_count in zip(name_list, run_order_list, scan_count_list):
@@ -487,14 +487,14 @@ def create_sample_run(name_list, run_order_list, scan_count_list, create_json=Fa
         fov_list.append(ex_fov)
 
     # delete name key if one is not provided
-    for fov in sample_run.get("fovs", ()):
+    for fov in sample_run["rois"][0].get("fovs", ()):
         if fov.get("name") is None:
             del fov["name"]
 
     # create bad dictionary
     if bad:
-        sample_run["bad key"] = sample_run["fovs"]
-        del sample_run["fovs"]
+        sample_run["rois"][0]["bad key"] = sample_run["rois"][0]["fovs"]
+        del sample_run["rois"][0]["fovs"]
 
     # create json file for the data
     if create_json:
@@ -551,18 +551,28 @@ class RunStructureTestContext:
 class RunStructureCases:
     """Cases for mibi run files."""
 
-    def case_default(self):
-        """Two FOVs with all expected files generated."""
+    def case_new_format(self):
+        """Two FOVs using the new rois-nested run file format."""
+        fov_count = 2
+        run_json = {
+            "rois": [{"fovs": [{"runOrder": n + 1, "scanCount": 1} for n in range(fov_count)]}]
+        }
+        expected_files = [f"fov-{n + 1:03d}-scan-1.bin" for n in range(fov_count)]
+        expected_files += [binf.split(".")[0] + ".json" for binf in expected_files]
+        return run_json, expected_files
+
+    def case_old_format(self):
+        """Two FOVs using the legacy root-level fovs run file format."""
         fov_count = 2
         run_json = {"fovs": [{"runOrder": n + 1, "scanCount": 1} for n in range(fov_count)]}
-        expected_files = [f"fov-{n + 1}-scan-1.bin" for n in range(fov_count)]
+        expected_files = [f"fov-{n + 1:03d}-scan-1.bin" for n in range(fov_count)]
         expected_files += [binf.split(".")[0] + ".json" for binf in expected_files]
         return run_json, expected_files
 
     @pytest.mark.xfail(raises=KeyError)
     def case_extrabin(self):
         """Unexpected third bin file."""
-        run_json, exp_files = self.case_default()
+        run_json, exp_files = self.case_new_format()
         exp_files += ["fov-X-scan-1.bin"]
         return run_json, exp_files
 

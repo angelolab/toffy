@@ -19,7 +19,7 @@ from watchdog.events import (
 )
 from watchdog.observers import Observer
 
-from toffy.json_utils import read_json_file
+from toffy.json_utils import get_fovs_from_run_file, read_json_file
 
 
 class RunStructure:
@@ -50,14 +50,14 @@ class RunStructure:
         )
 
         # parse run_metadata and populate expected structure
-        for fov in run_metadata.get("fovs", ()):
+        for fov in get_fovs_from_run_file(run_metadata):
             run_order = fov.get("runOrder", -1)
             scan = fov.get("scanCount", -1)
             if run_order * scan < 0:
                 raise KeyError(f"Could not locate keys in {run_folder}.json")
 
             # scan 2's don't contain significant imaging data per new MIBI specs
-            fov_name = f"fov-{run_order}-scan-1"
+            fov_name = f"fov-{run_order:03d}-scan-1"
             if fov.get("standardTarget", "") == "Molybdenum Foil":
                 self.moly_points.append(fov_name)
 
@@ -338,7 +338,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         # so all the FOVs processed in this function should already be fully processed
         start_index = self.last_fov_num_processed + 1 if self.last_fov_num_processed else 1
         for i in np.arange(start_index, fov_num):
-            fov_name = f"fov-{i}-scan-1"
+            fov_name = f"fov-{int(i):03d}-scan-1"
             fov_bin_file = os.path.join(self.run_folder, fov_name + ".bin")
             fov_json_file = os.path.join(self.run_folder, fov_name + ".json")
 
@@ -359,7 +359,7 @@ class FOV_EventHandler(FileSystemEventHandler):
                 The path that triggers this call. Used only for formatting purposes.
         """
         # define the name of the last FOV
-        last_fov = f"fov-{self.run_structure.highest_fov}-scan-1"
+        last_fov = f"fov-{self.run_structure.highest_fov:03d}-scan-1"
         last_fov_bin = f"{last_fov}.bin"
         last_fov_json = f"{last_fov}.json"
 
@@ -374,7 +374,7 @@ class FOV_EventHandler(FileSystemEventHandler):
         if not last_fov_is_processed and last_fov_data_exists:
             start_index = self.last_fov_num_processed + 1 if self.last_fov_num_processed else 1
             for i in np.arange(start_index, self.run_structure.highest_fov):
-                fov_name = f"fov-{i}-scan-1"
+                fov_name = f"fov-{int(i):03d}-scan-1"
                 fov_bin_file = os.path.join(self.run_folder, fov_name + ".bin")
                 fov_json_file = os.path.join(self.run_folder, fov_name + ".json")
 

@@ -8,6 +8,23 @@ import pandas as pd
 from alpineer import io_utils
 
 
+def get_fovs_from_run_file(run_metadata):
+    """Extract the FOV list from run metadata, supporting both run file formats.
+
+    Old format: ``{"fovs": [...]}``
+    New format: ``{"rois": [{"fovs": [...]}]}``
+
+    Args:
+        run_metadata (dict): parsed run JSON
+
+    Returns:
+        list: the FOV entries, or an empty tuple if none found
+    """
+    if "rois" in run_metadata:
+        return run_metadata["rois"][0]["fovs"]
+    return run_metadata.get("fovs", ())
+
+
 def rename_missing_fovs(fov_data):
     """Identify FOVs that are missing the 'name' key and create one with value placeholder_{n}.
 
@@ -23,7 +40,7 @@ def rename_missing_fovs(fov_data):
     missing_count = 0
 
     # iterate over each FOV and add a placeholder name if necessary
-    for fov in copy_fov_data["fovs"]:
+    for fov in get_fovs_from_run_file(copy_fov_data):
         if "name" not in fov.keys():
             missing_count += 1
             fov["name"] = f"placeholder_{missing_count}"
@@ -47,7 +64,7 @@ def rename_duplicate_fovs(tma_fovs):
     fov_count = {}
 
     # iterate over each FOV
-    for fov in tma_fovs["fovs"]:
+    for fov in get_fovs_from_run_file(tma_fovs):
         if fov["name"] not in fov_count:
             fov_count[fov["name"]] = 0
 
@@ -213,7 +230,7 @@ def check_fov_resolutions(bin_file_dir, run_name, save_path=None):
     run_metadata = read_json_file(run_file_path, encoding="utf-8")
 
     fov_names, custom_names, resolutions = [], [], []
-    for fov in run_metadata.get("fovs", ()):
+    for fov in get_fovs_from_run_file(run_metadata):
         # ignore moly resolutions
         if fov.get("standardTarget") == "Molybdenum Foil":
             continue
@@ -275,7 +292,7 @@ def missing_fov_check(bin_file_dir, run_name):
     run_metadata = read_json_file(run_file_path, encoding="utf-8")
 
     missing_fovs = {}
-    for fov in run_metadata.get("fovs", ()):
+    for fov in get_fovs_from_run_file(run_metadata):
         if fov.get("standardTarget") == "Molybdenum Foil":
             continue
 

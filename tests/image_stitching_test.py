@@ -73,7 +73,7 @@ def test_get_tiled_names(prefixes, nontiled_fov):
         else:
             fov4_prefix = prefixes[0]
         tiled_names = [f"{prefixes[0]}R1C3", f"{prefixes[0]}R2C1", f"{fov4_prefix}R2C2"]
-        fov_list = ["fov-1-scan-1", "fov-2-scan-1", "fov-4-scan-1"]
+        fov_list = ["fov-001-scan-1", "fov-002-scan-1", "fov-004-scan-1"]
 
         fov_names = image_stitching.get_tiled_names(fov_list, test_dir)
         assert list(fov_names.values()) == fov_list
@@ -81,7 +81,7 @@ def test_get_tiled_names(prefixes, nontiled_fov):
 
         # check for subset of fovs in run that actually have image dirs
         tiled_names = [f"{prefixes[0]}R1C3", f"{fov4_prefix}R2C2"]
-        fov_list = ["fov-1-scan-1", "fov-4-scan-1"]
+        fov_list = ["fov-001-scan-1", "fov-004-scan-1"]
 
         fov_names = image_stitching.get_tiled_names(fov_list, test_dir)
         assert list(fov_names.values()) == fov_list
@@ -171,9 +171,9 @@ def test_stitch_images(mocker, tiled, tile_names, nontiled_fov, subdir, img_size
     ]
     # ignore moly fov in run file
     fov_list = (
-        ["fov-1-scan-1", "fov-2-scan-1", "fov-4-scan-1", "fov-5-scan-1", "fov-6-scan-1"]
+        ["fov-001-scan-1", "fov-002-scan-1", "fov-004-scan-1", "fov-005-scan-1", "fov-006-scan-1"]
         if nontiled_fov
-        else ["fov-1-scan-1", "fov-2-scan-1", "fov-4-scan-1"]
+        else ["fov-001-scan-1", "fov-002-scan-1", "fov-004-scan-1"]
     )
 
     with tempfile.TemporaryDirectory() as tmpdir:

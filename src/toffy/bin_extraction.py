@@ -8,7 +8,12 @@ import pandas as pd
 from alpineer import io_utils, load_utils
 from mibi_bin_tools import bin_files
 
-from toffy.json_utils import check_for_empty_files, list_moly_fovs, read_json_file
+from toffy.json_utils import (
+    check_for_empty_files,
+    get_fovs_from_run_file,
+    list_moly_fovs,
+    read_json_file,
+)
 
 
 def extract_missing_fovs(
@@ -119,7 +124,7 @@ def incomplete_fov_check(
         total_pixels = img_data.shape[1] * num_rows * num_channels
         if np.count_nonzero(img_bottoms) / total_pixels < signal_percent:
             i = re.findall(r"\d+", fov)[0]
-            custom_name = run_metadata["fovs"][int(i) - 1]["name"]
+            custom_name = get_fovs_from_run_file(run_metadata)[int(i) - 1]["name"]
             incomplete_fovs[fov] = custom_name
 
     if incomplete_fovs:
