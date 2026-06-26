@@ -142,7 +142,7 @@ def test_rename_fov_dirs():
         remove_fov_dirs(fov_dir)
 
         # create correct fov folders
-        correct_fovs = ["fov-1-scan-1", "fov-2-scan-1", "fov-2-scan-2", "fov-3-scan-1"]
+        correct_fovs = ["fov-001-scan-1", "fov-002-scan-1", "fov-002-scan-2", "fov-003-scan-1"]
         create_sample_fov_dirs(correct_fovs, fov_dir)
 
         # test successful renaming to new dir
@@ -157,7 +157,7 @@ def test_rename_fov_dirs():
         remove_fov_dirs(fov_dir)
 
         # create not enough fov folders
-        less_fovs = ["fov-1-scan-1", "fov-2-scan-1", "fov-3-scan-1"]
+        less_fovs = ["fov-001-scan-1", "fov-002-scan-1", "fov-003-scan-1"]
         create_sample_fov_dirs(less_fovs, fov_dir)
 
         # fovs in rule file without an existing dir should raise an error
@@ -167,11 +167,11 @@ def test_rename_fov_dirs():
 
         # create extra fov folders
         extra_fovs = [
-            "fov-1-scan-1",
-            "fov-2-scan-1",
-            "fov-2-scan-2",
-            "fov-3-scan-1",
-            "fov-3-scan-3",
+            "fov-001-scan-1",
+            "fov-002-scan-1",
+            "fov-002-scan-2",
+            "fov-003-scan-1",
+            "fov-003-scan-3",
         ]
         create_sample_fov_dirs(extra_fovs, fov_dir)
 
@@ -210,7 +210,7 @@ def test_rename_fovs_in_cohort(tmpdir):
         write_json_file(json_path=json_path, json_object=json_file)
 
     # create run FOVs
-    fovs = ["fov-1-scan-1", "fov-2-scan-1", "fov-3-scan-1"]
+    fovs = ["fov-001-scan-1", "fov-002-scan-1", "fov-003-scan-1"]
     for run in runs:
         run_path = os.path.join(processed_base_dir, run)
         os.makedirs(run_path)

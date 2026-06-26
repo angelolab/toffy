@@ -5,7 +5,12 @@ from collections import Counter
 import imageio.v3 as iio
 from alpineer import io_utils, misc_utils
 
-from toffy.json_utils import read_json_file, rename_duplicate_fovs, rename_missing_fovs
+from toffy.json_utils import (
+    get_fovs_from_run_file,
+    read_json_file,
+    rename_duplicate_fovs,
+    rename_missing_fovs,
+)
 
 
 def merge_partial_runs(cohort_dir, run_string):
@@ -116,17 +121,16 @@ def rename_fov_dirs(json_run_path, default_run_dir, output_run_dir=None):
 
     # retrieve custom names and number of scans for each fov, construct matching default names
     fov_scan = dict()
-    for roi_data in run_metadata.get("rois", ()):
-        for fov in roi_data.get("fovs", ()):
-            custom_name = fov.get("name")
-            run_order = fov.get("runOrder")
-            scans = fov.get("scanCount")
+    for fov in get_fovs_from_run_file(run_metadata):
+        custom_name = fov.get("name")
+        run_order = fov.get("runOrder")
+        scans = fov.get("scanCount")
 
-            # fovs with multiple scans have scan    number specified
-            for scan in range(1, scans + 1):
-                default_name = f"fov-{run_order}-scan-{scan}"
-                name_ext = f"-{scan}" if scans > 1 else ""
-                fov_scan[default_name] = custom_name + name_ext
+        # fovs with multiple scans have scan number specified
+        for scan in range(1, scans + 1):
+            default_name = f"fov-{run_order:03d}-scan-{scan}"
+            name_ext = f"-{scan}" if scans > 1 else ""
+            fov_scan[default_name] = custom_name + name_ext
 
     # retrieve current default directory names, check if already renamed
     old_dirs = io_utils.list_folders(default_run_dir, "fov")

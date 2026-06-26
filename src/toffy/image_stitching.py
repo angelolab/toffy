@@ -36,12 +36,12 @@ def get_max_img_size(tiff_out_dir, img_sub_folder="", run_dir=None, fov_list=Non
         run_data = json_utils.read_json_file(run_file_path)
 
         if not fov_list:
-            for fov in run_data["fovs"]:
+            for fov in json_utils.get_fovs_from_run_file(run_data):
                 img_sizes.append(fov.get("frameSizePixels")["width"])
         else:
             for fov in fov_list:
                 fov_digits = re.findall(r"\d+", fov)
-                run = run_data.get("fovs")
+                run = json_utils.get_fovs_from_run_file(run_data)
                 # get data for fov in list
                 fov_data = list(
                     filter(
@@ -85,9 +85,9 @@ def get_tiled_names(fov_list, run_dir):
 
     # retrieve all tiled fov names
     run_data = json_utils.read_json_file(run_file_path)
-    for fov in run_data["fovs"]:
+    for fov in json_utils.get_fovs_from_run_file(run_data):
         run_order = fov.get("runOrder")
-        default_name = f"fov-{run_order}-scan-1"
+        default_name = f"fov-{run_order:03d}-scan-1"
 
         if default_name in fov_list:
             # get tiled name

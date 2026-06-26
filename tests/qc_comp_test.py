@@ -84,11 +84,11 @@ def test_sort_bin_file_fovs():
 
 
 # NOTE: we don't need to test iteration over multiple FOVs because
-# test_compute_qc_metrics computes on 1 FOV at a time, fov-3-scan-1 is a moly point
+# test_compute_qc_metrics computes on 1 FOV at a time, fov-003-scan-1 is a moly point
 @parametrize("gaussian_blur", [False, True])
 @parametrize(
     "bin_file_folder, fovs",
-    [("combined", ["fov-3-scan-1"]), ("combined", ["fov-1-scan-1"])],
+    [("combined", ["fov-003-scan-1"]), ("combined", ["fov-001-scan-1"])],
 )
 def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -143,7 +143,7 @@ def test_compute_qc_metrics(gaussian_blur, bin_file_folder, fovs):
             assert list(metric_data["channel"]) == ["SMA"]
 
 
-@parametrize("fovs", [["fov-1-scan-1"], ["fov-1-scan-1", "fov-2-scan-1"]])
+@parametrize("fovs", [["fov-001-scan-1"], ["fov-001-scan-1", "fov-002-scan-1"]])
 @parametrize("warn_overwrite_test", [True, False])
 def test_combine_qc_metrics(fovs, warn_overwrite_test):
     with tempfile.TemporaryDirectory() as temp_dir:
@@ -249,11 +249,11 @@ def test_format_img_data():
         bin_files.extract_bin_files(bin_file_path, extracted_imgs_path, panel=panel)
 
         # retrieve image array from tiffs
-        load_data = load_utils.load_imgs_from_tree(extracted_imgs_path, fovs=["fov-1-scan-1"])
+        load_data = load_utils.load_imgs_from_tree(extracted_imgs_path, fovs=["fov-001-scan-1"])
 
         # retrieve image array from bin files
         extracted_data = bin_files.extract_bin_files(
-            bin_file_path, out_dir=None, include_fovs=["fov-1-scan-1"], panel=panel
+            bin_file_path, out_dir=None, include_fovs=["fov-001-scan-1"], panel=panel
         )
 
         # check that they have inherently different structures

@@ -551,18 +551,28 @@ class RunStructureTestContext:
 class RunStructureCases:
     """Cases for mibi run files."""
 
-    def case_default(self):
-        """Two FOVs with all expected files generated."""
+    def case_new_format(self):
+        """Two FOVs using the new rois-nested run file format."""
+        fov_count = 2
+        run_json = {
+            "rois": [{"fovs": [{"runOrder": n + 1, "scanCount": 1} for n in range(fov_count)]}]
+        }
+        expected_files = [f"fov-{n + 1:03d}-scan-1.bin" for n in range(fov_count)]
+        expected_files += [binf.split(".")[0] + ".json" for binf in expected_files]
+        return run_json, expected_files
+
+    def case_old_format(self):
+        """Two FOVs using the legacy root-level fovs run file format."""
         fov_count = 2
         run_json = {"fovs": [{"runOrder": n + 1, "scanCount": 1} for n in range(fov_count)]}
-        expected_files = [f"fov-{n + 1}-scan-1.bin" for n in range(fov_count)]
+        expected_files = [f"fov-{n + 1:03d}-scan-1.bin" for n in range(fov_count)]
         expected_files += [binf.split(".")[0] + ".json" for binf in expected_files]
         return run_json, expected_files
 
     @pytest.mark.xfail(raises=KeyError)
     def case_extrabin(self):
         """Unexpected third bin file."""
-        run_json, exp_files = self.case_default()
+        run_json, exp_files = self.case_new_format()
         exp_files += ["fov-X-scan-1.bin"]
         return run_json, exp_files
 

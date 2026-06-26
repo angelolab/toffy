@@ -22,7 +22,7 @@ def test_rename_missing_fovs():
 
     # test that missing names are given a placeholder
     ex_run = json_utils.rename_missing_fovs(ex_run)
-    for fov in ex_run.get("fovs", ()):
+    for fov in json_utils.get_fovs_from_run_file(ex_run):
         assert fov.get("name") is not None
 
 

@@ -98,35 +98,39 @@ def _slow_copy_sample_tissue_data(
                         )
 
 
-COMBINED_RUN_JSON_SPOOF = {
-    "fovs": [
-        {
-            "runOrder": 1,
-            "scanCount": 1,
-            "name": "R1C1",
-            "frameSizePixels": {"width": 32, "height": 32},
-        },
-        {
-            "runOrder": 2,
-            "scanCount": 1,
-            "name": "R2C1",
-            "frameSizePixels": {"width": 32, "height": 32},
-        },
-        {
-            "runOrder": 3,
-            "scanCount": 1,
-            "name": "R1C2",
-            "frameSizePixels": {"width": 32, "height": 32},
-            "standardTarget": "Molybdenum Foil",
-        },
-        {
-            "runOrder": 4,
-            "scanCount": 1,
-            "name": "R2C2",
-            "frameSizePixels": {"width": 32, "height": 32},
-        },
-    ],
-}
+_SPOOF_FOVS = [
+    {
+        "runOrder": 1,
+        "scanCount": 1,
+        "name": "R1C1",
+        "frameSizePixels": {"width": 32, "height": 32},
+    },
+    {
+        "runOrder": 2,
+        "scanCount": 1,
+        "name": "R2C1",
+        "frameSizePixels": {"width": 32, "height": 32},
+    },
+    {
+        "runOrder": 3,
+        "scanCount": 1,
+        "name": "R1C2",
+        "frameSizePixels": {"width": 32, "height": 32},
+        "standardTarget": "Molybdenum Foil",
+    },
+    {
+        "runOrder": 4,
+        "scanCount": 1,
+        "name": "R2C2",
+        "frameSizePixels": {"width": 32, "height": 32},
+    },
+]
+
+# New rois-nested format
+COMBINED_RUN_JSON_SPOOF = {"rois": [{"fovs": _SPOOF_FOVS}]}
+
+# Legacy root-level fovs format
+COMBINED_RUN_JSON_SPOOF_OLD = {"fovs": _SPOOF_FOVS}
 
 
 @parametrize_with_cases("run_json, expected_files", cases=RunStructureCases)
@@ -300,12 +304,12 @@ def test_watcher(
 
             # if existing_data set to True, test case where a FOV has already been extracted
             if existing_data[0]:
-                os.makedirs(os.path.join(tiff_out_dir, "fov-2-scan-1"))
+                os.makedirs(os.path.join(tiff_out_dir, "fov-002-scan-1"))
                 channels_write = TEST_CHANNELS if existing_data[1] == "Full" else [TEST_CHANNELS[1]]
                 for channel in channels_write:
                     random_img = np.random.rand(32, 32)
                     imsave(
-                        os.path.join(tiff_out_dir, "fov-2-scan-1", f"{channel}.tiff"), random_img
+                        os.path.join(tiff_out_dir, "fov-002-scan-1", f"{channel}.tiff"), random_img
                     )
 
                 os.makedirs(qc_out_dir)
@@ -313,22 +317,24 @@ def test_watcher(
                     df_qc = pd.DataFrame(
                         np.random.rand(len(TEST_CHANNELS), 3), columns=["fov", "channel", qcc]
                     )
-                    df_qc["fov"] = "fov-2-scan-1"
+                    df_qc["fov"] = "fov-002-scan-1"
                     df_qc["channel"] = TEST_CHANNELS
-                    df_qc.to_csv(os.path.join(qc_out_dir, f"fov-2-scan-1_{qcs}.csv"), index=False)
+                    df_qc.to_csv(os.path.join(qc_out_dir, f"fov-002-scan-1_{qcs}.csv"), index=False)
 
                 os.makedirs(mph_out_dir)
                 df_mph = pd.DataFrame(
                     np.random.rand(1, 4), columns=["fov", "MPH", "total_count", "time"]
                 )
-                df_mph["fov"] = "fov-2-scan-1"
-                df_mph.to_csv(os.path.join(mph_out_dir, "fov-2-scan-1-mph_pulse.csv"), index=False)
+                df_mph["fov"] = "fov-002-scan-1"
+                df_mph.to_csv(
+                    os.path.join(mph_out_dir, "fov-002-scan-1-mph_pulse.csv"), index=False
+                )
 
                 os.makedirs(pulse_out_dir)
                 df_ph = pd.DataFrame(np.random.rand(10, 3), columns=["mass", "fov", "pulse_height"])
-                df_ph["fov"] = "fov-2-scan-1"
+                df_ph["fov"] = "fov-002-scan-1"
                 df_ph.to_csv(
-                    os.path.join(pulse_out_dir, "fov-2-scan-1_pulse_heights.csv"), index=False
+                    os.path.join(pulse_out_dir, "fov-002-scan-1_pulse_heights.csv"), index=False
                 )
 
             # `_slow_copy_sample_tissue_data` mimics the instrument computer uploading data to the
@@ -344,10 +350,10 @@ def test_watcher(
                 watcher_warnings = []
                 if not add_blank:
                     watcher_warnings.append(
-                        r"Re-extracting incompletely extracted FOV fov-1-scan-1"
+                        r"Re-extracting incompletely extracted FOV fov-001-scan-1"
                     )
                 if existing_data[0] and existing_data[1] == "Full":
-                    watcher_warnings.append(r"already extracted for FOV fov-2-scan-1")
+                    watcher_warnings.append(r"already extracted for FOV fov-002-scan-1")
 
                 if len(watcher_warnings) > 0:
                     with pytest.warns(UserWarning, match="|".join(watcher_warnings)):
@@ -470,19 +476,39 @@ def test_watcher(
         warnings.warn("Temporary file cleanup was incomplete.")
 
 
-def test_watcher_missing_fovs():
+@pytest.mark.parametrize(
+    "large_run_json_spoof",
+    [
+        # new rois-nested format
+        {
+            "rois": [
+                {
+                    "fovs": _SPOOF_FOVS + [
+                        {
+                            "runOrder": 5,
+                            "scanCount": 1,
+                            "frameSizePixels": {"width": 32, "height": 32},
+                            "name": "missing_fov",
+                        }
+                    ]
+                }
+            ]
+        },
+        # legacy root-level fovs format
+        {
+            "fovs": _SPOOF_FOVS + [
+                {
+                    "runOrder": 5,
+                    "scanCount": 1,
+                    "frameSizePixels": {"width": 32, "height": 32},
+                    "name": "missing_fov",
+                }
+            ]
+        },
+    ],
+)
+def test_watcher_missing_fovs(large_run_json_spoof):
     with tempfile.TemporaryDirectory() as tmpdir:
-        # add extra fov to run file
-        large_run_json_spoof = COMBINED_RUN_JSON_SPOOF.copy()
-        large_run_json_spoof["fovs"] = COMBINED_RUN_JSON_SPOOF["fovs"] + [
-            {
-                "runOrder": 5,
-                "scanCount": 1,
-                "frameSizePixels": {"width": 32, "height": 32},
-                "name": "missing_fov",
-            }
-        ]
-
         run_data = os.path.join(tmpdir, "test_run")
         os.makedirs(run_data)
         for file in io_utils.list_files(COMBINED_DATA_PATH, substrs=[".bin", ".json"]):
