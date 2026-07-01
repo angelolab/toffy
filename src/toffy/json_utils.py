@@ -11,8 +11,8 @@ from alpineer import io_utils
 def get_scan_count(fov):
     """Get the scan count from a FOV dict, supporting both key names.
 
-    Old format: ``"scanCount"``
-    New format: ``"scans"``
+    Old format: ``"scanCount"``, raw int value used directly.
+    New format: ``"scans"``, a list; length is returned as the count.
 
     Args:
         fov (dict): a single FOV entry from run metadata
@@ -20,7 +20,9 @@ def get_scan_count(fov):
     Returns:
         int: the scan count, or -1 if neither key is present
     """
-    return fov.get("scans", fov.get("scanCount", -1))
+    if "scans" in fov:
+        return len(fov["scans"])
+    return fov.get("scanCount", -1)
 
 
 def get_fovs_from_run_file(run_metadata):

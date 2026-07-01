@@ -101,26 +101,26 @@ def _slow_copy_sample_tissue_data(
 _SPOOF_FOVS = [
     {
         "runOrder": 1,
-        "scans": 1,
+        "scans": [1],
         "name": "R1C1",
         "frameSizePixels": {"width": 32, "height": 32},
     },
     {
         "runOrder": 2,
-        "scans": 1,
+        "scans": [1],
         "name": "R2C1",
         "frameSizePixels": {"width": 32, "height": 32},
     },
     {
         "runOrder": 3,
-        "scans": 1,
+        "scans": [1],
         "name": "R1C2",
         "frameSizePixels": {"width": 32, "height": 32},
         "standardTarget": "Molybdenum Foil",
     },
     {
         "runOrder": 4,
-        "scans": 1,
+        "scans": [1],
         "name": "R2C2",
         "frameSizePixels": {"width": 32, "height": 32},
     },
@@ -486,7 +486,7 @@ def test_watcher(
                     "fovs": _SPOOF_FOVS + [
                         {
                             "runOrder": 5,
-                            "scans": 1,
+                            "scans": [1],
                             "frameSizePixels": {"width": 32, "height": 32},
                             "name": "missing_fov",
                         }
@@ -499,7 +499,7 @@ def test_watcher(
             "fovs": _SPOOF_FOVS + [
                 {
                     "runOrder": 5,
-                    "scans": 1,
+                    "scans": [1],
                     "frameSizePixels": {"width": 32, "height": 32},
                     "name": "missing_fov",
                 }

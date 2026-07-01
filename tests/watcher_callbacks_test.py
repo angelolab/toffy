@@ -25,13 +25,13 @@ COMBINED_RUN_JSON_SPOOF = {
     "fovs": [
         {
             "runOrder": 1,
-            "scans": 1,
+            "scanCount": 1,
             "name": "R1C1",
             "frameSizePixels": {"width": 32, "height": 32},
         },
         {
             "runOrder": 2,
-            "scans": 1,
+            "scanCount": 1,
             "name": "R1C2",
             "frameSizePixels": {"width": 32, "height": 32},
         },

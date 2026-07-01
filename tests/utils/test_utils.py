@@ -83,7 +83,7 @@ def make_run_file(tmp_dir, prefixes=[], include_nontiled=False):
         run_data.append(
             {
                 "runOrder": i + 1,
-                "scans": 1,
+                "scanCount": 1,
                 "frameSizePixels": {"width": fov_data[fov], "height": fov_data[fov]},
                 "name": fov,
             }
@@ -114,7 +114,7 @@ def generate_sample_fov_tiling_entry(coord, name, size):
             An entry to be placed in the fovs list with provided coordinate and name
     """
     sample_fov_tiling_entry = {
-        "scans": 1,
+        "scanCount": 1,
         "fovSizeMicrons": size,
         "centerPointMicrons": {"x": coord[0], "y": coord[1]},
         "timingChoice": 7,
@@ -483,7 +483,7 @@ def create_sample_run(name_list, run_order_list, scan_count_list, create_json=Fa
 
     # set up dictionary
     for name, run_order, scan_count in zip(name_list, run_order_list, scan_count_list):
-        ex_fov = {"scans": scan_count, "runOrder": run_order, "name": name}
+        ex_fov = {"scans": list(range(1, scan_count + 1)), "runOrder": run_order, "name": name}
         fov_list.append(ex_fov)
 
     # delete name key if one is not provided
@@ -554,7 +554,7 @@ class RunStructureCases:
     def case_new_format(self):
         """Two FOVs using the new rois-nested run file format with new scan key."""
         fov_count = 2
-        run_json = {"rois": [{"fovs": [{"runOrder": n + 1, "scans": 1} for n in range(fov_count)]}]}
+        run_json = {"rois": [{"fovs": [{"runOrder": n + 1, "scans": [1]} for n in range(fov_count)]}]}
         expected_files = [f"fov-{n + 1:03d}-scan-1.bin" for n in range(fov_count)]
         expected_files += [binf.split(".")[0] + ".json" for binf in expected_files]
         return run_json, expected_files
@@ -562,7 +562,7 @@ class RunStructureCases:
     def case_old_format(self):
         """Two FOVs using the legacy root-level fovs run file format with new scan key."""
         fov_count = 2
-        run_json = {"fovs": [{"runOrder": n + 1, "scans": 1} for n in range(fov_count)]}
+        run_json = {"fovs": [{"runOrder": n + 1, "scans": [1]} for n in range(fov_count)]}
         expected_files = [f"fov-{n + 1:03d}-scan-1.bin" for n in range(fov_count)]
         expected_files += [binf.split(".")[0] + ".json" for binf in expected_files]
         return run_json, expected_files
