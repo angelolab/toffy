@@ -181,6 +181,31 @@ def test_rename_fov_dirs():
         remove_fov_dirs(fov_dir)
 
 
+def test_rename_fov_dirs_old_scan_key():
+    """Verify rename_fov_dirs works with legacy 'scanCount' key in run JSON."""
+    with tempfile.TemporaryDirectory() as base_dir:
+        fov_dir = os.path.join(base_dir, "fov_folder")
+        os.mkdir(fov_dir)
+
+        # build a run JSON using the old scanCount key
+        run_json = {
+            "rois": [
+                {
+                    "fovs": [
+                        {"runOrder": 1, "scanCount": 1, "name": "custom_1"},
+                        {"runOrder": 2, "scanCount": 1, "name": "custom_2"},
+                    ]
+                }
+            ]
+        }
+        run_json_path = os.path.join(base_dir, "run.json")
+        write_json_file(run_json_path, run_json)
+
+        create_sample_fov_dirs(["fov-001-scan-1", "fov-002-scan-1"], fov_dir)
+        reorg.rename_fov_dirs(run_json_path, fov_dir)
+        assert set(io_utils.list_folders(fov_dir)) == {"custom_1", "custom_2"}
+
+
 def test_rename_fovs_in_cohort(tmpdir):
     bin_base_dir = os.path.join(tmpdir, "bins")
     cohort_dir = os.path.join(tmpdir, "cohort")

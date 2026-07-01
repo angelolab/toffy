@@ -192,26 +192,26 @@ def test_check_fov_resolutions(capsys):
             "fovs": [
                 {
                     "runOrder": 1,
-                    "scanCount": 1,
+                    "scans": 1,
                     "frameSizePixels": {"width": 10, "height": 10},
                     "fovSizeMicrons": 100,
                 },
                 {
                     "runOrder": 2,
-                    "scanCount": 1,
+                    "scans": 1,
                     "frameSizePixels": {"width": 10, "height": 10},
                     "fovSizeMicrons": 100,
                 },
                 {
                     "runOrder": 3,
-                    "scanCount": 1,
+                    "scans": 1,
                     "frameSizePixels": {"width": 5, "height": 5},
                     "fovSizeMicrons": 100,
                     "name": "wrong_resolution",
                 },
                 {
                     "runOrder": 4,
-                    "scanCount": 1,
+                    "scans": 1,
                     "frameSizePixels": {"width": 2, "height": 2},
                     "fovSizeMicrons": 100,
                     "standardTarget": "Molybdenum Foil",
