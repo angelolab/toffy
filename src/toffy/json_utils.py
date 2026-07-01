@@ -38,7 +38,7 @@ def get_fovs_from_run_file(run_metadata):
         list: the FOV entries, or an empty tuple if none found
     """
     if "rois" in run_metadata:
-        return run_metadata["rois"][0]["fovs"]
+        return [fov for roi in run_metadata["rois"] for fov in roi["fovs"]]
     return run_metadata.get("fovs", ())
 
 
