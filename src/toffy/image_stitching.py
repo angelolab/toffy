@@ -46,7 +46,7 @@ def get_max_img_size(tiff_out_dir, img_sub_folder="", run_dir=None, fov_list=Non
                 fov_data = list(
                     filter(
                         lambda fov: fov["runOrder"] == int(fov_digits[0])
-                        and fov["scanCount"] == int(fov_digits[1]),
+                        and json_utils.get_scan_count(fov) == int(fov_digits[1]),
                         run,
                     )
                 )

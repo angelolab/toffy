@@ -8,6 +8,23 @@ import pandas as pd
 from alpineer import io_utils
 
 
+def get_scan_count(fov):
+    """Get the scan count from a FOV dict, supporting both key names.
+
+    Old format: ``"scanCount"``, raw int value used directly.
+    New format: ``"scans"``, a list; length is returned as the count.
+
+    Args:
+        fov (dict): a single FOV entry from run metadata
+
+    Returns:
+        int: the scan count, or -1 if neither key is present
+    """
+    if "scans" in fov:
+        return len(fov["scans"])
+    return fov.get("scanCount", -1)
+
+
 def get_fovs_from_run_file(run_metadata):
     """Extract the FOV list from run metadata, supporting both run file formats.
 
@@ -21,7 +38,7 @@ def get_fovs_from_run_file(run_metadata):
         list: the FOV entries, or an empty tuple if none found
     """
     if "rois" in run_metadata:
-        return run_metadata["rois"][0]["fovs"]
+        return [fov for roi in run_metadata["rois"] for fov in roi["fovs"]]
     return run_metadata.get("fovs", ())
 
 

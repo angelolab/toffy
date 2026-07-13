@@ -19,7 +19,7 @@ from watchdog.events import (
 )
 from watchdog.observers import Observer
 
-from toffy.json_utils import get_fovs_from_run_file, read_json_file
+from toffy.json_utils import get_fovs_from_run_file, get_scan_count, read_json_file
 
 
 class RunStructure:
@@ -52,7 +52,7 @@ class RunStructure:
         # parse run_metadata and populate expected structure
         for fov in get_fovs_from_run_file(run_metadata):
             run_order = fov.get("runOrder", -1)
-            scan = fov.get("scanCount", -1)
+            scan = get_scan_count(fov)
             if run_order * scan < 0:
                 raise KeyError(f"Could not locate keys in {run_folder}.json")
 
