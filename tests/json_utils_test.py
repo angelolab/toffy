@@ -227,8 +227,7 @@ def test_check_fov_resolutions(capsys):
         )
         out, err = capsys.readouterr()
         assert (
-            out
-            == "Inconsistent resolutions.\n"
+            out == "Inconsistent resolutions.\n"
             "All FOVs are 40 pixels per 400 microns except the following:\n"
             "         fov             name  pixels / 400 microns\n"
             "fov-3-scan-1 wrong_resolution                    20\n"

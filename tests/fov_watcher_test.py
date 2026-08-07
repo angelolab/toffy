@@ -483,27 +483,33 @@ def test_watcher(
         {
             "rois": [
                 {
-                    "fovs": _SPOOF_FOVS + [
-                        {
-                            "runOrder": 5,
-                            "scans": [1],
-                            "frameSizePixels": {"width": 32, "height": 32},
-                            "name": "missing_fov",
-                        }
-                    ]
+                    "fovs": (
+                        _SPOOF_FOVS
+                        + [
+                            {
+                                "runOrder": 5,
+                                "scans": [1],
+                                "frameSizePixels": {"width": 32, "height": 32},
+                                "name": "missing_fov",
+                            }
+                        ]
+                    )
                 }
             ]
         },
         # legacy root-level fovs format
         {
-            "fovs": _SPOOF_FOVS + [
-                {
-                    "runOrder": 5,
-                    "scans": [1],
-                    "frameSizePixels": {"width": 32, "height": 32},
-                    "name": "missing_fov",
-                }
-            ]
+            "fovs": (
+                _SPOOF_FOVS
+                + [
+                    {
+                        "runOrder": 5,
+                        "scans": [1],
+                        "frameSizePixels": {"width": 32, "height": 32},
+                        "name": "missing_fov",
+                    }
+                ]
+            )
         },
     ],
 )
