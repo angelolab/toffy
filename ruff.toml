@@ -1,14 +1,5 @@
 # Formatting and Linting
 line-length = 110
-select = [
-    "D", # pydocstyle
-    "E", # pycodestyle Error
-    "W", # pycodestyle Warning
-    "F", # Pyflakes
-    "I", # isort
-]
-ignore = ["D100", "I001", "D103", "D205", "D104", "F401", "F811"]
-fixable = ["A", "B", "D", "E", "F", "W"]
 
 # Exclude a variety of commonly ignored directories.
 exclude = [
@@ -32,16 +23,28 @@ exclude = [
     "dist",
     "node_modules",
     "venv",
+    "*.ipynb",
 ]
 
-# Assume Python 3.10
-target-version = "py310"
+# Assume Python 3.11
+target-version = "py311"
 
-[mccabe]
+[lint]
+select = [
+    "D", # pydocstyle
+    "E", # pycodestyle Error
+    "W", # pycodestyle Warning
+    "F", # Pyflakes
+    "I", # isort
+]
+ignore = ["D100", "I001", "D103", "D205", "D104", "F401", "F811"]
+fixable = ["A", "B", "D", "E", "F", "W"]
+
+[lint.mccabe]
 max-complexity = 10
 
-[pycodestyle]
+[lint.pycodestyle]
 max-doc-length = 110
 
-[pydocstyle]
+[lint.pydocstyle]
 convention = "google"

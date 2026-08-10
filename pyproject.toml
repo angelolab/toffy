@@ -18,9 +18,10 @@ classifiers = [
     "License :: OSI Approved :: Apache Software License",
     "Development Status :: 4 - Beta",
     "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
 ]
 packages = [{ include = 'toffy', from = 'src' }]
 
@@ -36,19 +37,19 @@ style = "pep440"
 metadata = false
 
 [tool.poetry.dependencies]
-python = "^3.9,<3.12"
-alpineer = ">=0.1.10"
-mibi-bin-tools = ">=0.2.14"
+python = "^3.11,<3.15"
+alpineer = ">=0.2.1"
+mibi-bin-tools = ">=0.3.1"
 ipywidgets = "^8"
-numpy = "1.*"
+numpy = ">=2.4.1,<2.5"
 natsort = "^8"
 seaborn = "^0.13"
-scikit-learn = "^1"
+scikit-learn = "^1.9"
 watchdog = "^6"
 tqdm = "^4"
-scipy = "^1.10.1"
-pandas = "^2"
-pywavelets = "^1.4.1"
+scipy = ">=1.16.2,<1.18"
+pandas = "^2.3.3"
+pywavelets = "^1.7"
 
 [tool.poetry.group.test]
 optional = true
@@ -67,8 +68,8 @@ mock = "^5.0.1"
 optional = true
 
 [tool.poetry.group.dev.dependencies]
-black = "^22.10.0"
-isort = "^5.10.1"
+black = "^26.5"
+isort = "^8.0"
 jupyterlab = "^3.6.1"
 jupyter-contrib-nbextensions = "^0.7.0"
 loguru = "^0.7.0"
@@ -76,7 +77,7 @@ loguru = "^0.7.0"
 ## TYPE CHECKING ##
 
 [tool.mypy]
-python_version = "3.9"
+python_version = "3.11"
 mypy_path = "$MYPY_CONFIG_FILE_DIR/src:$MYPY_CONFIG_FILE_DIR/tests"
 warn_return_any = true
 warn_unused_configs = true
@@ -87,12 +88,12 @@ ignore_missing_imports = true
 
 [tool.black]
 line-length = 100
-target-version = ["py39", "py310", "py311"]
+target-version = ["py311", "py312", "py313", "py314"]
 include = '\.pyi?$'
 preview = true
 
 [tool.isort]
-py_version = 38
+py_version = 311
 line_length = 100
 profile = "black"
 multi_line_output = 3

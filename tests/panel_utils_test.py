@@ -125,9 +125,7 @@ def test_convert_panel():
         assert len(list(converted_panel["Mass"])) == len(set(converted_panel["Mass"]))
 
         # check for all necessary masses
-        assert all(
-            mass in list(converted_panel["Mass"]) for mass in (list(necessary_panel["Mass"]))
-        )
+        assert all(mass in list(converted_panel["Mass"]) for mass in list(necessary_panel["Mass"]))
 
         # check for correct Noodle extraction range
         assert converted_panel[converted_panel.Mass == 117].Stop.values[0] == 125
